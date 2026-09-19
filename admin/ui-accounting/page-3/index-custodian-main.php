@@ -1290,55 +1290,55 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
         // ─── Voucher Modal ───────────────────────────────────
         function viewVoucher(row) {
-    currentRow = row;
-    const items = row.items ?? [];
-    const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+            currentRow = row;
+            const items = row.items ?? [];
+            const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
-    // ── ADD THIS: lock state ──
-    const isStaff = POSITION === '<?= POSITION_STAFF ?>';
-    const isSubmitted = !!row.voucher_status; // may status na = submitted na, dapat locked
-    const canEditFields = isStaff && !isSubmitted;
+            // ── ADD THIS: lock state ──
+            const isStaff = POSITION === '<?= POSITION_STAFF ?>';
+            const isSubmitted = !!row.voucher_status; // may status na = submitted na, dapat locked
+            const canEditFields = isStaff && !isSubmitted;
 
-    document.getElementById('v-control-no').textContent = row.voucher_control_no ?? row.control_no;
-    document.getElementById('v-date').textContent = row.date_requested;
-    document.getElementById('v-second-no').textContent = row.voucher_payment_method ?? '—';
-    document.getElementById('v-title').textContent = row.voucher_title ?? '';
-    document.getElementById('v-payee').value = row.voucher_payee ?? '';
-    document.getElementById('v-amount-words').value = numberToWords(total);
-    document.getElementById('v-payment-method').value = row.voucher_payment_method ?? '';
-    document.getElementById('v-payment-method-m').value = row.voucher_payment_method ?? '';
+            document.getElementById('v-control-no').textContent = row.voucher_control_no ?? row.control_no;
+            document.getElementById('v-date').textContent = row.date_requested;
+            document.getElementById('v-second-no').textContent = row.voucher_payment_method ?? '—';
+            document.getElementById('v-title').textContent = row.voucher_title ?? '';
+            document.getElementById('v-payee').value = row.voucher_payee ?? '';
+            document.getElementById('v-amount-words').value = numberToWords(total);
+            document.getElementById('v-payment-method').value = row.voucher_payment_method ?? '';
+            document.getElementById('v-payment-method-m').value = row.voucher_payment_method ?? '';
 
-    // ── ADD THIS: apply disabled state ──
-    document.getElementById('v-payee').disabled = !canEditFields;
-    document.getElementById('v-payee-m').disabled = !canEditFields;
-    document.getElementById('v-payment-method').disabled = !canEditFields;
-    document.getElementById('v-payment-method-m').disabled = !canEditFields;
-    [document.getElementById('v-payee'), document.getElementById('v-payee-m'),
-     document.getElementById('v-payment-method'), document.getElementById('v-payment-method-m')]
-     .forEach(el => el.classList.toggle('bg-gray-100', !canEditFields));
+            // ── ADD THIS: apply disabled state ──
+            document.getElementById('v-payee').disabled = !canEditFields;
+            document.getElementById('v-payee-m').disabled = !canEditFields;
+            document.getElementById('v-payment-method').disabled = !canEditFields;
+            document.getElementById('v-payment-method-m').disabled = !canEditFields;
+            [document.getElementById('v-payee'), document.getElementById('v-payee-m'),
+            document.getElementById('v-payment-method'), document.getElementById('v-payment-method-m')]
+                .forEach(el => el.classList.toggle('bg-gray-100', !canEditFields));
 
-    // Populate Payment For dropdown (account titles)
-    fetch('<?= BASE_URL ?>/fetchpettycashaccounttitles')
-        .then(r => r.json())
-        .then(titles => {
-            const sel = document.getElementById('v-purpose');
-            const selM = document.getElementById('v-purpose-m');
-            sel.innerHTML = '<option value="">— Select —</option>';
-            selM.innerHTML = '<option value="">— Select —</option>';
-            titles.forEach(d => {
-                const o = `<option value="${d.title}">${d.title}</option>`;
-                sel.insertAdjacentHTML('beforeend', o);
-                selM.insertAdjacentHTML('beforeend', o);
-            });
-            sel.value = row.voucher_purpose ?? '';
-            selM.value = row.voucher_purpose ?? '';
+            // Populate Payment For dropdown (account titles)
+            fetch('<?= BASE_URL ?>/fetchpettycashaccounttitles')
+                .then(r => r.json())
+                .then(titles => {
+                    const sel = document.getElementById('v-purpose');
+                    const selM = document.getElementById('v-purpose-m');
+                    sel.innerHTML = '<option value="">— Select —</option>';
+                    selM.innerHTML = '<option value="">— Select —</option>';
+                    titles.forEach(d => {
+                        const o = `<option value="${d.title}">${d.title}</option>`;
+                        sel.insertAdjacentHTML('beforeend', o);
+                        selM.insertAdjacentHTML('beforeend', o);
+                    });
+                    sel.value = row.voucher_purpose ?? '';
+                    selM.value = row.voucher_purpose ?? '';
 
-            // ── ADD THIS: lock the dropdown too ──
-            sel.disabled = !canEditFields;
-            selM.disabled = !canEditFields;
-            sel.classList.toggle('bg-gray-100', !canEditFields);
-            selM.classList.toggle('bg-gray-100', !canEditFields);
-        });
+                    // ── ADD THIS: lock the dropdown too ──
+                    sel.disabled = !canEditFields;
+                    selM.disabled = !canEditFields;
+                    sel.classList.toggle('bg-gray-100', !canEditFields);
+                    selM.classList.toggle('bg-gray-100', !canEditFields);
+                });
 
 
             document.getElementById('v-total').textContent = 'PhP ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
@@ -2065,33 +2065,33 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         let _highlightDone = false;
 
         function fetchVouchers() {
-    fetch('<?= BASE_URL ?>/fetchreceived')
-        .then(res => res.json())
-        .then(data => {
-            // Custodian assistant lang: ready_to_release lang ang makikita
-            allData = isCustoAssistant
-                ? data.filter(r => r.voucher_status === 'ready_to_release')
-                : data;
+            fetch('<?= BASE_URL ?>/fetchreceived')
+                .then(res => res.json())
+                .then(data => {
+                    // Custodian assistant lang: ready_to_release lang ang makikita
+                    allData = isCustoAssistant
+                        ? data.filter(r => r.voucher_status === 'ready_to_release')
+                        : data;
 
-            if (currentView === 'list') {
-                applyFilters();
-            } else {
-                renderCalendar();
-                buildDatesDropdown();
-                if (selectedDate) {
-                    const rows = allData.filter(r => r.date_requested?.startsWith(selectedDate));
-                    openDayPanel(selectedDate, rows);
-                }
-            }
-            document.getElementById('last-updated').textContent =
-                'Updated ' + new Date().toLocaleTimeString('en-PH');
+                    if (currentView === 'list') {
+                        applyFilters();
+                    } else {
+                        renderCalendar();
+                        buildDatesDropdown();
+                        if (selectedDate) {
+                            const rows = allData.filter(r => r.date_requested?.startsWith(selectedDate));
+                            openDayPanel(selectedDate, rows);
+                        }
+                    }
+                    document.getElementById('last-updated').textContent =
+                        'Updated ' + new Date().toLocaleTimeString('en-PH');
 
-            if (!_highlightDone) {
-                _highlightDone = true;
-                checkHighlight();
-            }
-        });
-}
+                    if (!_highlightDone) {
+                        _highlightDone = true;
+                        checkHighlight();
+                    }
+                });
+        }
         // ─── Toast ───────────────────────────────────────────
         function showToast(message, type = 'success') {
             const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
@@ -2159,6 +2159,26 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 if (tries >= 25) clearInterval(interval);
             }, 200);
         }
+
+        // ─── ESC to close modals ───────────────────────────────
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+
+            const confirmModal = document.getElementById('voucher-confirm-modal');
+            const voucherModal = document.getElementById('voucher-modal');
+
+            // Priority: close confirm modal muna kung bukas siya (nasa taas siya sa stack),
+            // baka pa lang naka-open din yung voucher modal sa likod niya.
+            if (!confirmModal.classList.contains('hidden')) {
+                closeConfirmModal();
+                return;
+            }
+
+            if (!voucherModal.classList.contains('hidden')) {
+                closeVoucherModal();
+                return;
+            }
+        });
 
         // ─── Init ────────────────────────────────────────────
         fetchVouchers();

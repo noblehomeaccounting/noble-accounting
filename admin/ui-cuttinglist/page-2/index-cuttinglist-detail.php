@@ -185,7 +185,6 @@ if ($recordId <= 0) {
             `;
         }
 
-        
         function cutHoldNotice(r) {
             if (r.deposit_status === 'Notice to Proceed') return '';
             return `
@@ -228,13 +227,23 @@ if ($recordId <= 0) {
             `;
         }
 
-     
         function cutRevisedBadge(uploadedAt) {
             return `
                 <span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-blue-100 text-blue-700 border border-blue-200"
                       title="Re-uploaded ${cutEscapeHtml(cutFormatDateTimeLong(uploadedAt))} in response to feedback">
                     <i class="fa-solid fa-rotate text-[9px] leading-none"></i>
                     <span class="leading-none">Revised</span>
+                </span>
+            `;
+        }
+
+        // Shown once cutting has confirmed the 2D file has no more errors.
+        function cutVerifiedBadge(verifierName, verifiedAt) {
+            return `
+                <span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-green-100 text-green-700 border border-green-200"
+                      title="Verified by ${cutEscapeHtml(verifierName || '—')} on ${cutEscapeHtml(cutFormatDateTimeLong(verifiedAt))}">
+                    <i class="fa-solid fa-file-circle-check text-[9px] leading-none"></i>
+                    <span class="leading-none">Verified</span>
                 </span>
             `;
         }
@@ -273,7 +282,56 @@ if ($recordId <= 0) {
             `;
         }
 
-     
+        // 2D card gets its own renderer since it carries the Verify button /
+        // Verified badge that the other file types don't have.
+        function cutRender2dFileCard(r) {
+            const path = r.design_2d_path;
+            const feedback = r.cutting_feedback || [];
+            const revised = feedback.some(f => f.is_resolved);
+
+            const link = path
+                ? `<a href="${cutEscapeHtml(path)}" target="_blank" rel="noopener"
+                        class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px]">
+                        View PDF
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>`
+                : `<span class="text-gray-400 text-[13px]">No file uploaded</span>`;
+
+            const metaLine = path
+                ? `<p class="text-[11.5px] text-gray-500 mt-0.5">${cutEscapeHtml(r.design_2d_uploader_name || '—')} · ${cutEscapeHtml(r.design_2d_uploaded_role || '—')}${r.design_2d_uploaded_at ? ' · ' + cutEscapeHtml(cutFormatDateTimeLong(r.design_2d_uploaded_at)) : ''}</p>`
+                : '';
+
+            const actionSlot = !path
+                ? ''
+                : r.design_2d_verified
+                    ? cutVerifiedBadge(r.design_2d_verified_by_name, r.design_2d_verified_at)
+                    : `<button type="button" onclick="cutVerify2d(${r.id})"
+                            class="shrink-0 px-2.5 py-1.5 text-[11px] font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg transition-colors">
+                            Verify 2D
+                        </button>`;
+
+            return `
+                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-white">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${path ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-300'}">
+                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[13px] font-bold text-gray-800 flex items-center gap-2 flex-wrap">
+                                <span>2D File</span>
+                                ${revised ? cutRevisedBadge(r.design_2d_uploaded_at) : ''}
+                            </p>
+                            ${link}
+                            ${metaLine}
+                        </div>
+                    </div>
+                    ${actionSlot}
+                </div>
+            `;
+        }
+
         function cutRenderFeedbackSidebar(r) {
             const badge = document.getElementById('cutFeedbackBadge');
             const body = document.getElementById('cutFeedbackSidebarBody');
@@ -359,6 +417,29 @@ if ($recordId <= 0) {
             }
         }
 
+        // Marks the 2D file as verified (walang mali) by the current cutting user.
+        async function cutVerify2d(quotationId) {
+            const formData = new FormData();
+            formData.append('action', 'verify_2d');
+            formData.append('quotation_id', quotationId);
+
+            try {
+                const res = await fetch(CUT_LIST_AJAX_URL, { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (!data.success) {
+                    crmShowToast(data.message || 'Something went wrong.', 'error');
+                    return;
+                }
+
+                crmShowToast(data.message || '2D file verified.');
+                cutLoadDetail(); // reload so the badge shows immediately
+            } catch (e) {
+                console.error('cutVerify2d:', e);
+                crmShowToast('Connection error. Please try again.', 'error');
+            }
+        }
+
         function cutOpenFeedbackSidebar() {
             document.getElementById('cutFeedbackOverlay').classList.remove('opacity-0', 'pointer-events-none');
             document.getElementById('cutFeedbackSidebar').classList.remove('translate-x-full');
@@ -439,11 +520,8 @@ if ($recordId <= 0) {
                 return;
             }
 
-            const feedback = r.cutting_feedback || [];
-            const design2dRevised = feedback.some(f => f.is_resolved);
-
             const cards = [
-                cutFileCard('2D File', r.design_2d_path, r.design_2d_uploader_name, r.design_2d_uploaded_role, r.design_2d_uploaded_at, design2dRevised),
+                cutRender2dFileCard(r),
                 cutFileCard('Quotation File', r.quotation_path, r.quotation_uploader_name, r.quotation_uploaded_role, r.quotation_uploaded_at, false),
                 r.show_3d
                     ? cutFileCard('3D File', r.design_3d_path, r.design_3d_uploader_name, r.design_3d_uploaded_role, r.design_3d_uploaded_at, false)
@@ -451,7 +529,6 @@ if ($recordId <= 0) {
             ].join('');
             document.getElementById('cutFileRows').innerHTML = cards;
         }
-
 
         function cutRenderSiteVisits(siteVisits, r) {
             const container = document.getElementById('cutSiteVisits');

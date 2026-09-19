@@ -195,6 +195,7 @@ $adminRoutes = [
 
     // cuttinglist page 3
     'crmewood',
+    'bomajax',
     'crmewoodajax',
     
     // super admin page 1
@@ -209,6 +210,12 @@ $adminRoutes = [
 
     // super admin backend page 2
     'monitoringcrmajax',
+
+    // super admin page 3
+    'crmewoodapproval',
+
+    // super admin backend page 3
+    'crmwoodapprovalajax',
 
     
     'unauthorized',                    
@@ -393,7 +400,6 @@ $routes = [
     // sales page 3
     'crmsaleslist'                     => 'admin/ui-salesmarket/page-3/crmsaleslist.php',
 
-
     // graphic design
     'graphicdesign'                    => 'admin/ui-graphicdesign/index-graphic-main.php',
 
@@ -414,9 +420,8 @@ $routes = [
 
     // cutting list page 3
     'crmewood'                         => 'admin/ui-cuttinglist/page-3/ewoodfile.php',
+    'bomajax'                          => 'admin/ui-cuttinglist/backend/page-3/bomajax.php',
     'crmewoodajax'                     => 'admin/ui-cuttinglist/backend/page-3/cuttinglistprogressionajax.php',
-
-   
 
     // super admin page 1
     'crm-main'                         => 'admin/ui-superad/page-1/check2dquotation.php',
@@ -428,11 +433,14 @@ $routes = [
     'monitoring'                       => 'admin/ui-superad/page-2/monitoringcrm.php',
     'monitoringcrmview'                => 'admin/ui-superad/page-2/monitoringcrmview.php',
     
-
     // super admin backend page 2
     'monitoringcrmajax'                => 'admin/ui-superad/backend/page-2/monitoringcrmajax.php',
-  
 
+    // super admin page 3
+    'crmewoodapproval'                 => 'admin/ui-superad/page-3/ewood.php',
+
+    // super admin backend page 3
+    'crmwoodapprovalajax'              => 'admin/ui-superad/backend/page-3/ewoodapprovalajax.php',
 
     'unauthorized'                     => 'admin/authentication/index-unauthorized.php',
     'fetchrequests'                    => 'admin/requestcentral/fetch-requests.php',

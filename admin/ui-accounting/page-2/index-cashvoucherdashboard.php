@@ -6,7 +6,7 @@ include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
 $allowedRoles = [ROLE_ACCOUNTING];
-$allowedPositions = [POSITION_CUSTODIAN, POSITION_HEAD,POSITION_STAFF];
+$allowedPositions = [POSITION_CUSTODIAN, POSITION_HEAD, POSITION_STAFF];
 
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
@@ -750,6 +750,12 @@ $position = $_SESSION['position'] ?? '';
             currentRow = null;
         }
 
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !document.getElementById('voucher-modal').classList.contains('hidden')) {
+                closeVoucherModal();
+            }
+        });
+
         function markPrepared(voucherId) {
             fetch('<?= BASE_URL ?>/cashvoucherprepared', {
                 method: 'POST',
@@ -1010,6 +1016,8 @@ $position = $_SESSION['position'] ?? '';
             }, 200);
             setTimeout(() => clearInterval(interval), 5000);
         }
+
+
 
         fetchVouchers();
         setTimeout(checkHighlight, 500);

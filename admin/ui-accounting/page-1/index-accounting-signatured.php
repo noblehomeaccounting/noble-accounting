@@ -5,7 +5,7 @@ include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_ACCOUNTING];
+$allowedRoles = [ROLE_ACCOUNTING, ROLE_SUPERADMIN];
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 

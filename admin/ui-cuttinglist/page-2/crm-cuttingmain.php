@@ -186,10 +186,7 @@ $cutDetailUrl = BASE_URL . '/crmcuttinglistdetail';
                     </span>`;
         }
 
-        // NTP badge cell: green "Notice to Proceed" once the deposit has
-        // been logged by accounting, amber "Hold" while it's still
-        // pending — so cutting can see the submission early but knows not
-        // to start until it flips to NTP.
+    
         function cutListNtpBadge(row) {
             const isNtp = row.deposit_status === 'Notice to Proceed';
 
@@ -320,7 +317,7 @@ $cutDetailUrl = BASE_URL . '/crmcuttinglistdetail';
                     <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">
                         <button type="button" onclick="cutListGoToDetail(${row.id})"
                             class="px-2.5 py-1.5 text-[11px] font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            View
+                            View Details
                         </button>
                     </td>
                 </tr>

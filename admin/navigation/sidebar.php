@@ -6,6 +6,7 @@ $isHead = $position === POSITION_HEAD;
 $isStaff = $position === POSITION_STAFF;
 $isCustodian = $position === POSITION_CUSTODIAN;
 $isCustooAssistant = $position === POSITION_CUSTOASSISTANT;
+$isSuperAdmin = $position === POSITION_SUPERADMIN;
 
 function isActive(string $path): string
 {
@@ -461,24 +462,28 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if ($role === ROLE_SUPERADMIN): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/crm-main" data-tooltip="2D & Quotation Approval"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/crm-main') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crm-main') ?>">
                     <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">2D & Quotation</span>
                 </a>
             <?php endif; ?>
 
-            <a href="<?= BASE_URL ?>/monitoring" data-tooltip="Monitoring"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/monitoring') ?>">
-                <i class="fa-solid fa-chart-simple w-4 text-center text-sm flex-shrink-0"></i>
-                <span class="sidebar-label">Monitoring</span>
-            </a>
-
-            <a href="<?= BASE_URL ?>/workbench" data-tooltip="Work Bench"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/workbench') ?>">
+        <a href="<?= BASE_URL ?>/crmewoodapproval" data-tooltip="E-Wood Management"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crmewoodapproval') ?>">
                 <i class="fa-solid fa-business-time w-4 text-center text-sm flex-shrink-0"></i>
-                <span class="sidebar-label">Work Bench</span>
+                <span class="sidebar-label">E-Wood Management</span>
             </a>
 
+            <div class="sidebar-section-label pt-4">
+                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Tracking</p>
+            </div>
+
+            <a href="<?= BASE_URL ?>/monitoring" data-tooltip="Monitoring"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/monitoring') ?>">
+                <i class="fa-solid fa-chart-simple w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Monitoring & WorkBench</span>
+            </a>
+    
 
         <?php endif; ?>
 
@@ -486,20 +491,20 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if ($role === ROLE_CUTTING): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/crmcuttinglist" data-tooltip="2D & Quotation Approval"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/crmcuttinglist') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crmcuttinglist') ?>">
                     <i class="fa-solid fa-pen-ruler w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Cutting List</span>
                 </a>
             <?php endif; ?>
 
             <a href="<?= BASE_URL ?>/crmewood" data-tooltip="Wood Working"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/crmewood') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crmewood') ?>">
                 <i class="fa-solid fa-file-circle-question w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">E-Woodfile</span>
             </a>
 
             <a href="<?= BASE_URL ?>/billofmaterial" data-tooltip="Bill of Material"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/billofmaterial') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/billofmaterial') ?>">
                 <i class="fa-solid fa-file-circle-plus w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Bill of Material</span>
             </a>
@@ -561,7 +566,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Settings</p>
         </div>
 
-        <?php if ($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF])): ?>
+        <?php if (($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF])) || $role === ROLE_SUPERADMIN): ?>
+
             <a href="<?= BASE_URL ?>/accountingsignatured" data-tooltip="Signatured Request"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingsignatured') ?>">
                 <i class="fa-solid fa-signature w-4 text-center text-sm flex-shrink-0"></i>
