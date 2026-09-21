@@ -416,36 +416,33 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
 
                 function q2dRenderActiveDraftSlots(activeDraft, design3d) {
-                    const twoD = activeDraft.design_2d;
-                    const quot = activeDraft.quotation;
-                    const locked = activeDraft.is_locked;
-                    const include3d = !!(design3d && design3d.include_3d);
+    const twoD = activeDraft.design_2d;
+    const quot = activeDraft.quotation;
+    const locked = activeDraft.is_locked;
+    const include3d = !!(design3d && design3d.include_3d);
 
-                    const twoDInner = twoD.done
-                        ? q2dSlotDoneView(twoD, !locked, '2d')
-                        : q2dSlotUploadView('2d', twoD.path ? `Current: ${twoD.filename}` : 'Click to upload 2D PDF');
+    const twoDInner = twoD.done
+        ? q2dSlotDoneView(twoD, !locked, '2d')
+        : q2dSlotUploadView('2d', twoD.path ? `Current: ${twoD.filename}` : 'Click to upload 2D PDF');
 
-                    const quotInner = quot.done
-                        ? q2dSlotDoneView(quot, !locked, 'quotation')
-                        : q2dSlotUploadView('quotation', quot.path ? `Current: ${quot.filename}` : 'Click to upload Quotation PDF');
+    const quotInner = quot.done
+        ? q2dSlotDoneView(quot, !locked, 'quotation')
+        : q2dSlotUploadView('quotation', quot.path ? `Current: ${quot.filename}` : 'Click to upload Quotation PDF');
 
-                    const columns = [
-                        { label: '2D File', slot: '2d', contentHtml: twoDInner },
-                        { label: 'Quotation File', slot: 'quotation', contentHtml: q2dSlotDoneView(completedEntry.quotation, false, 'quotation') },
-                    ];
-                    if (design3d && design3d.include_3d && design3d.url) {
-                        columns.push({ label: '3D File', slot: '3d', contentHtml: q2dSlotDoneView(design3d, false, '3d') });
-                    }
+    const columns = [
+        { label: '2D File', slot: '2d', contentHtml: twoDInner },
+        { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
+    ];
 
-                    if (include3d) {
-                        const threeDInner = design3d.done
-                            ? q2dSlotDoneView(design3d, !locked, '3d')
-                            : q2dSlotUpload3dView(design3d.path ? `Current: ${design3d.filename}` : 'Click to upload 3D file');
-                        columns.push({ label: '3D File', slot: '3d', contentHtml: threeDInner });
-                    }
+    if (include3d) {
+        const threeDInner = design3d.done
+            ? q2dSlotDoneView(design3d, !locked, '3d')
+            : q2dSlotUpload3dView(design3d.path ? `Current: ${design3d.filename}` : 'Click to upload 3D file');
+        columns.push({ label: '3D File', slot: '3d', contentHtml: threeDInner });
+    }
 
-                    return q2dFileTable(columns);
-                }
+    return q2dFileTable(columns);
+}
 
                 function q2dRenderSubmitBar(activeDraft, design3d, contractAmount) {
                     if (activeDraft.is_locked) return '';
@@ -498,13 +495,13 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         ? q2dApprovedNoReuploadView(revisionEntry.quotation)
                         : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.quotation.remarks) : ''}${q2dSlotUploadView('quotation', 'Click to upload Quotation PDF')}`;
 
-                    return `
-                    ${headerBlock}
-                    ${q2dFileTable(columns)}
-                    { label: '2D File', slot: '2d', contentHtml: twoDInner },
-                    { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
-                ])}
-                `;
+                     return `
+        ${headerBlock}
+        ${q2dFileTable([
+            { label: '2D File', slot: '2d', contentHtml: twoDInner },
+            { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
+        ])}
+    `;
                 }
 
                 function q2dFileCell(fileData) {
