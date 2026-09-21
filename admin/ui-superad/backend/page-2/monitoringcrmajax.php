@@ -147,7 +147,7 @@ if ($action === 'timeline') {
         SELECT
             i.id, i.control_no, i.client_name, i.address, i.contact_number,
             i.project_type, i.project_scope, i.measuring_space, i.measurement_datetime,
-            i.contract_amount, i.branch, i.created_at, i.status AS inquiry_status, i.mode,
+            i.contract_amount, i.branch, i.created_at, i.status AS inquiry_status, i.mode, i.deadline,
             i.sales_staff_id, i.designer_id,
             i.design_progress, i.design_confirmed, i.design_confirmed_at, i.design_confirmed_by, i.clientstatus,
             sales.name AS sales_staff_name,
@@ -175,6 +175,8 @@ if ($action === 'timeline') {
 
     $stmt = $conn->prepare("
         SELECT sv.id, sv.address, sv.visit_datetime, sv.visited, sv.photos, sv.created_at,
+               sv.measurement_files, sv.measurements, sv.site_conditions,
+               sv.client_requirements, sv.existing_structure,
                d.name AS designer_name
         FROM noblecrm_sitevisit sv
         LEFT JOIN noblerole d ON d.id = sv.designer_id
@@ -188,85 +190,123 @@ if ($action === 'timeline') {
     $siteVisits = [];
     while ($row = $result->fetch_assoc()) {
         $photos = array_values(array_filter(explode(',', $row['photos'] ?? '')));
+        $measFiles = array_values(array_filter(explode(',', $row['measurement_files'] ?? '')));
         $siteVisits[] = [
-            'id'            => (int) $row['id'],
-            'address'       => $row['address'],
-            'visit_datetime'=> $row['visit_datetime'],
-            'visited'       => $row['visited'] === 'yes',
-            'photos'        => array_map(fn($p) => BASE_URL . '/' . $p, $photos),
-            'designer_name' => $row['designer_name'] ?? '—',
-            'created_at'    => $row['created_at'],
+            'id'                  => (int) $row['id'],
+            'address'             => $row['address'],
+            'visit_datetime'      => $row['visit_datetime'],
+            'visited'             => $row['visited'] === 'yes',
+            'photos'              => array_map(fn($p) => BASE_URL . '/' . $p, $photos),
+            'measurement_files'   => array_map(fn($p) => BASE_URL . '/' . $p, $measFiles),
+            'measurements'        => $row['measurements'],
+            'site_conditions'     => $row['site_conditions'],
+            'client_requirements' => $row['client_requirements'],
+            'existing_structure'  => $row['existing_structure'],
+            'designer_name'       => $row['designer_name'] ?? '—',
+            'created_at'          => $row['created_at'],
         ];
     }
     $stmt->close();
 
-    $stmt = $conn->prepare("
-        SELECT
-            q.id, q.status, q.remarks, q.submitted_at, q.created_at, q.reviewed_at,
-            q.design_2d_path, q.design_2d_uploaded_role, q.design_2d_uploaded_at,
-            q.design_2d_review_status, q.design_2d_remarks,
-            q.quotation_path, q.quotation_uploaded_role, q.quotation_uploaded_at,
-            q.quotation_review_status, q.quotation_remarks,
-            q.include_3d, q.design_3d_stage, q.design_3d_path, q.design_3d_uploaded_role,
-            q.design_3d_uploaded_at, q.design_3d_review_status, q.design_3d_remarks, q.design_3d_reviewed_at,
-            d2u.name AS design_2d_uploader_name,
-            qtu.name AS quotation_uploader_name,
-            d3u.name AS design_3d_uploader_name
-        FROM noblecrm_2dquotation q
-        LEFT JOIN noblerole d2u ON d2u.id = q.design_2d_uploaded_by
-        LEFT JOIN noblerole qtu ON qtu.id = q.quotation_uploaded_by
-        LEFT JOIN noblerole d3u ON d3u.id = q.design_3d_uploaded_by
-        WHERE q.inquiry_id = ?
-        ORDER BY q.id ASC
-    ");
-    $stmt->bind_param("i", $inquiryId);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // ─────────────────────────────────────────────────────────────
+    // 2D & Quotation HISTORY — Initial + Final, APPROVED submissions only.
+    // Draft / Waiting for Approval / For Revision rows are left out.
+    // Order: Initial (oldest→newest) then Final (oldest→newest); the front-end
+    // reverses it so the newest (Final) shows first.
+    // ─────────────────────────────────────────────────────────────
+    $stageTables = [
+        'Initial' => 'noblecrm_2dquotation',
+        'Final'   => 'noblecrm_2dquotation_final',
+    ];
 
     $cycles = [];
-    while ($row = $result->fetch_assoc()) {
-        $info = monStageInfo($row);
-        $cycles[] = [
-            'id'                       => (int) $row['id'],
-            'status'                   => $row['status'],
-            'stage_label'              => $info['stage_label'],
-            'stage_group'              => $info['stage_group'],
-            'remarks'                  => $row['remarks'],
-            'submitted_at'             => $row['submitted_at'],
-            'created_at'               => $row['created_at'],
-            'reviewed_at'              => $row['reviewed_at'],
-            'design_2d_path'           => $row['design_2d_path'],
-            'design_2d_uploaded_role'  => monRoleLabel($row['design_2d_uploaded_role']),
-            'design_2d_uploader_name'  => $row['design_2d_uploader_name'] ?? '—',
-            'design_2d_uploaded_at'    => $row['design_2d_uploaded_at'],
-            'design_2d_review_status'  => $row['design_2d_review_status'] ?? 'Pending',
-            'design_2d_remarks'        => $row['design_2d_remarks'],
-            'quotation_path'           => $row['quotation_path'],
-            'quotation_uploaded_role'  => monRoleLabel($row['quotation_uploaded_role']),
-            'quotation_uploader_name'  => $row['quotation_uploader_name'] ?? '—',
-            'quotation_uploaded_at'    => $row['quotation_uploaded_at'],
-            'quotation_review_status'  => $row['quotation_review_status'] ?? 'Pending',
-            'quotation_remarks'        => $row['quotation_remarks'],
-            'include_3d'               => (bool) $row['include_3d'],
-            'design_3d_stage'          => $row['design_3d_stage'] ?? 'Locked',
-            'design_3d_path'           => $row['design_3d_path'],
-            'design_3d_uploaded_role'  => monRoleLabel($row['design_3d_uploaded_role']),
-            'design_3d_uploader_name'  => $row['design_3d_uploader_name'] ?? '—',
-            'design_3d_uploaded_at'    => $row['design_3d_uploaded_at'],
-            'design_3d_review_status'  => $row['design_3d_review_status'] ?? 'Pending',
-            'design_3d_remarks'        => $row['design_3d_remarks'],
-            'design_3d_reviewed_at'    => $row['design_3d_reviewed_at'],
-        ];
+    $latestAny = null;       // newest row overall (any status) — only for the overall stage label
+    $latestAnyStage = null;
+
+    foreach ($stageTables as $stageName => $tbl) {
+        $stmt = $conn->prepare("
+            SELECT
+                q.id, q.status, q.remarks, q.submitted_at, q.created_at, q.reviewed_at,
+                q.design_2d_path, q.design_2d_uploaded_role, q.design_2d_uploaded_at,
+                q.design_2d_review_status, q.design_2d_remarks,
+                q.quotation_path, q.quotation_uploaded_role, q.quotation_uploaded_at,
+                q.quotation_review_status, q.quotation_remarks,
+                q.include_3d, q.design_3d_stage, q.design_3d_path, q.design_3d_uploaded_role,
+                q.design_3d_uploaded_at, q.design_3d_review_status, q.design_3d_remarks, q.design_3d_reviewed_at,
+                d2u.name AS design_2d_uploader_name,
+                qtu.name AS quotation_uploader_name,
+                d3u.name AS design_3d_uploader_name
+            FROM {$tbl} q
+            LEFT JOIN noblerole d2u ON d2u.id = q.design_2d_uploaded_by
+            LEFT JOIN noblerole qtu ON qtu.id = q.quotation_uploaded_by
+            LEFT JOIN noblerole d3u ON d3u.id = q.design_3d_uploaded_by
+            WHERE q.inquiry_id = ?
+            ORDER BY q.id ASC
+        ");
+        $stmt->bind_param("i", $inquiryId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        if (!empty($rows)) {
+            $latestAny = end($rows);
+            $latestAnyStage = $stageName;
+        }
+
+        $approvedRows = array_values(array_filter($rows, fn($r) => $r['status'] === 'Approved'));
+        $stageTotal = count($approvedRows);
+
+        foreach ($approvedRows as $n => $row) {
+            $info = monStageInfo($row);
+            $cycles[] = [
+                'stage'                    => $stageName,
+                'stage_no'                 => $n + 1,
+                'stage_total'              => $stageTotal,
+                'id'                       => (int) $row['id'],
+                'status'                   => $row['status'],
+                'stage_label'              => $info['stage_label'],
+                'stage_group'              => $info['stage_group'],
+                'remarks'                  => $row['remarks'],
+                'submitted_at'             => $row['submitted_at'],
+                'created_at'               => $row['created_at'],
+                'reviewed_at'              => $row['reviewed_at'],
+                'design_2d_path'           => $row['design_2d_path'],
+                'design_2d_uploaded_role'  => monRoleLabel($row['design_2d_uploaded_role']),
+                'design_2d_uploader_name'  => $row['design_2d_uploader_name'] ?? '—',
+                'design_2d_uploaded_at'    => $row['design_2d_uploaded_at'],
+                'design_2d_review_status'  => $row['design_2d_review_status'] ?? 'Pending',
+                'design_2d_remarks'        => $row['design_2d_remarks'],
+                'quotation_path'           => $row['quotation_path'],
+                'quotation_uploaded_role'  => monRoleLabel($row['quotation_uploaded_role']),
+                'quotation_uploader_name'  => $row['quotation_uploader_name'] ?? '—',
+                'quotation_uploaded_at'    => $row['quotation_uploaded_at'],
+                'quotation_review_status'  => $row['quotation_review_status'] ?? 'Pending',
+                'quotation_remarks'        => $row['quotation_remarks'],
+                'include_3d'               => (bool) $row['include_3d'],
+                'design_3d_stage'          => $row['design_3d_stage'] ?? 'Locked',
+                'design_3d_path'           => $row['design_3d_path'],
+                'design_3d_uploaded_role'  => monRoleLabel($row['design_3d_uploaded_role']),
+                'design_3d_uploader_name'  => $row['design_3d_uploader_name'] ?? '—',
+                'design_3d_uploaded_at'    => $row['design_3d_uploaded_at'],
+                'design_3d_review_status'  => $row['design_3d_review_status'] ?? 'Pending',
+                'design_3d_remarks'        => $row['design_3d_remarks'],
+                'design_3d_reviewed_at'    => $row['design_3d_reviewed_at'],
+            ];
+        }
     }
-    $stmt->close();
 
-    $latest = end($cycles) ?: null;
-    $overall = $latest
-        ? ['stage_label' => $latest['stage_label'], 'stage_group' => $latest['stage_group']]
-        : monStageInfo(null);
+    // Overall stage label still reflects the newest row of ANY status, so the
+    // header info stays accurate even though the history hides unapproved ones.
+    if ($latestAny) {
+        $overall = monStageInfo($latestAny);
+        if ($latestAnyStage === 'Final') {
+            $overall['stage_label'] = 'Final — ' . $overall['stage_label'];
+        }
+    } else {
+        $overall = monStageInfo(null);
+    }
 
-    // Build the design_progress block, applying the ready_for_quotation
-    // override on top of the real saved values (see note above the flag).
+
     if ($isReadyForQuotation) {
         $designProgress = [
             'progress'          => '100',
@@ -298,6 +338,7 @@ if ($action === 'timeline') {
             'measuring_space'     => $inquiry['measuring_space'],
             'measurement_datetime'=> $inquiry['measurement_datetime'],
             'contract_amount'     => $inquiry['contract_amount'],
+            'deadline'            => $inquiry['deadline'],
             'branch'              => $inquiry['branch'],
             'created_at'          => $inquiry['created_at'],
             'inquiry_status'      => $inquiry['inquiry_status'],
@@ -307,9 +348,7 @@ if ($action === 'timeline') {
             'stage_label'         => $overall['stage_label'],
             'stage_group'         => $overall['stage_group'],
         ],
-        // step1 in 2d-and-quotation.php's terms — the design-progress /
-        // customer-confirmation gate that has to clear before 2D &
-        // Quotation upload slots even unlock.
+
         'design_progress' => $designProgress,
         'site_visits' => $siteVisits,
         'cycles'  => $cycles,
@@ -317,4 +356,4 @@ if ($action === 'timeline') {
     exit;
 }
 
-echo json_encode(['success' => false, 'message' => 'Unknown action.']); 
+echo json_encode(['success' => false, 'message' => 'Unknown action.']);

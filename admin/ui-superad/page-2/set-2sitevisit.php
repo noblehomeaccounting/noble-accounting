@@ -17,6 +17,14 @@
             : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-red-700 text-white border-red-200">Not Visited</span>`;
     }
 
+    // Date-only (walang oras) — para sa deadline
+    function monFormatDateOnly(value) {
+        if (!value) return '—';
+        const dt = new Date(String(value).substring(0, 10) + 'T00:00:00');
+        if (isNaN(dt.getTime())) return value;
+        return dt.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
     // Tracker steps: Scheduled -> Ongoing/Visited -> Report Uploaded
     function monTrackerStatus(visit) {
         const hasPhotos = visit.photos.length > 0;
@@ -56,9 +64,43 @@
         return html;
     }
 
-    function monRenderSiteVisitCard(visit, label) {
+    // ── Site notes helpers ──
+    function monSvText(text) {
+        return text && String(text).trim() !== ''
+            ? monEscapeHtml(text).replace(/\n/g, '<br>')
+            : '<span class="text-gray-400 italic">None provided</span>';
+    }
+
+    function monSvField(label, valueHtml, extraCls = '') {
+        return `
+            <div class="${extraCls}">
+                <p class="text-[10px] text-gray-400 font-semibold tracking-[0.1em] uppercase mb-1">${label}</p>
+                <div class="text-[13px] text-gray-800 leading-relaxed">${valueHtml}</div>
+            </div>
+        `;
+    }
+
+    // PDF ng measurements; kung wala, fallback sa lumang text column.
+    function monSvMeasurements(visit) {
+        const files = visit.measurement_files || [];
+        if (files.length) {
+            return `<ul class="space-y-1">
+                ${files.map((p, i) => `
+                    <li>
+                        <a href="${monEscapeHtml(p)}" target="_blank" rel="noopener"
+                            class="inline-flex items-center gap-1.5 text-amber-700 hover:underline font-medium">
+                            <i class="fa-solid fa-file-pdf text-red-500"></i> Measurement PDF ${i + 1}
+                        </a>
+                    </li>
+                `).join('')}
+            </ul>`;
+        }
+        return monSvText(visit.measurements);
+    }
+
+    function monRenderSiteVisitCard(visit, label, deadline) {
         const photosHtml = visit.photos.length
-            ? `<div class="grid grid-cols-6 sm:grid-cols-8 gap-2 mt-3">
+            ? `<div class="grid grid-cols-6 sm:grid-cols-8 gap-2 mt-2">
                 ${visit.photos.map(p => `
                     <a href="${monEscapeHtml(p)}" target="_blank" rel="noopener" class="block aspect-square border border-gray-200 rounded overflow-hidden hover:border-amber-600 transition-colors">
                         <img src="${monEscapeHtml(p)}" class="w-full h-full object-cover">
@@ -79,16 +121,32 @@
                 <div class="px-5 py-2 border-b border-gray-100 bg-gray-50/60">
                     ${monRenderTracker(visit)}
                 </div>
-                <div class="px-5 py-3">
-                    <p class="text-[13px] text-gray-800">${monEscapeHtml(visit.address)}</p>
-                    <p class="text-xs text-gray-400 mt-1">Visit date: ${monFormatDateTimeLong(visit.visit_datetime)}</p>
-                    ${photosHtml}
+                <div class="px-5 py-4">
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        ${monSvField('Address', monEscapeHtml(visit.address), 'sm:col-span-2')}
+                        ${monSvField('Visit Date', monFormatDateTimeLong(visit.visit_datetime))}
+                        ${deadline ? monSvField('Deadline (2D &amp; Quotation)', monFormatDateOnly(deadline)) : ''}
+                    </div>
+
+                    <div class="grid sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                        ${monSvField('Measurements', monSvMeasurements(visit), 'sm:col-span-2')}
+                        ${monSvField('Site Conditions / Notes', monSvText(visit.site_conditions))}
+                        ${monSvField('Client Requirements', monSvText(visit.client_requirements))}
+                        ${monSvField('Existing Structure', monSvText(visit.existing_structure), 'sm:col-span-2')}
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-[10px] text-gray-400 font-semibold tracking-[0.1em] uppercase">
+                            Photographs${visit.photos.length ? ` (${visit.photos.length})` : ''}
+                        </p>
+                        ${photosHtml}
+                    </div>
                 </div>
             </div>
         `;
     }
 
-    function monRenderSiteVisits(siteVisits) {
+    function monRenderSiteVisits(siteVisits, deadline) {
         const container = document.getElementById('monSiteVisits');
         if (!siteVisits || siteVisits.length === 0) {
             container.innerHTML = `
@@ -100,8 +158,13 @@
         }
         const ordered = [...siteVisits].reverse();
         const total = siteVisits.length;
+        // Deadline ay per-inquiry, kaya sa pinakabagong visit lang ipinapakita.
         container.innerHTML = ordered
-            .map((visit, i) => monRenderSiteVisitCard(visit, total > 1 ? `Visit ${total - i}` : 'Site Visit'))
+            .map((visit, i) => monRenderSiteVisitCard(
+                visit,
+                total > 1 ? `Visit ${total - i}` : 'Site Visit',
+                i === 0 ? deadline : null
+            ))
             .join('');
     }
 </script>

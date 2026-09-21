@@ -20,6 +20,18 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
     <title>2D Quotation Approval</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
+    <style>
+        /* Initial ↔ Final overview: both halves of a pair light up together on hover */
+        .chk2d-pair-cell {
+            transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .chk2d-pair-cell.chk2d-pair-active {
+            background-color: #fffbeb !important;
+            border-color: #d97706 !important;
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, .18);
+        }
+    </style>
 </head>
 
 <body class="bg-slate-100">
@@ -102,11 +114,46 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             </div>
 
             <p id="chk2dCount" class="text-[11px] text-gray-400 mt-2.5"></p>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 INITIAL ↔ FINAL OVERVIEW
+                 One aligned row per inquiry. Hover either side and its pair
+                 on the other side is highlighted too.
+            ═══════════════════════════════════════════════════════════ -->
+            <div class="mt-8">
+                <div class="mb-3">
+                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Overview</p>
+                    <h2 class="text-gray-900 text-base font-semibold">Initial &amp; Final</h2>
+                    <p class="text-[11px] text-gray-400 mt-0.5">Hover a submission to highlight its Initial ↔ Final
+                        pair. Click one to open it.</p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="grid grid-cols-2 gap-x-4 px-4 pt-4 pb-2 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border bg-amber-50 text-amber-700 border-amber-200">Initial</span>
+                            <span class="text-[11px] text-gray-400">2D &amp; Quotation</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border bg-green-50 text-green-700 border-green-200">Final</span>
+                            <span class="text-[11px] text-gray-400">2D &amp; Quotation</span>
+                        </div>
+                    </div>
+
+                    <div id="chk2dPairBody"
+                        class="grid grid-cols-2 gap-x-3 gap-y-1.5 p-3 max-h-[34rem] overflow-y-auto">
+                        <div class="col-span-2 py-8 text-center text-xs text-gray-400">Loading…</div>
+                    </div>
+                </div>
+
+                <p id="chk2dPairCount" class="text-[11px] text-gray-400 mt-2.5"></p>
+            </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════
-             RIGHT-SIDE REVIEW PANEL (slides in from the right, replaces
-             the old center modal)
+             RIGHT-SIDE REVIEW PANEL (slides in from the right)
         ═══════════════════════════════════════════════════════════ -->
         <div id="chk2dOverlay" class="fixed inset-0 bg-black/30 hidden z-40" onclick="chk2dClosePanel()"></div>
 
@@ -115,7 +162,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
             <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between shrink-0">
                 <div>
-                    <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">
+                    <p id="chk2dModalHeading"
+                        class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">
                         Submission Review</p>
                     <h3 id="chk2dModalControlNo" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
                 </div>
@@ -175,9 +223,14 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         let chk2dPollTimer = null;
         let chk2dSearchDebounce = null;
         let chk2dCurrentId = null;
-        let chk2dLastRows = []; // most recently rendered row set, kept around so
+        let chk2dCurrentStage = null; // 'Initial' | 'Final' — ids repeat across the two tables
+        let chk2dLastRows = []; // most recently rendered row set
 
         const CHK2D_VIEWED_KEY = 'chk2dViewedIds';
+
+        function chk2dRowKey(stage, id) {
+            return `${stage}:${id}`;
+        }
 
         function chk2dGetViewedIds() {
             try {
@@ -188,10 +241,15 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             }
         }
 
-        function chk2dMarkViewed(id) {
+        // Old entries were plain numeric ids (Initial only) — still honored.
+        function chk2dIsViewed(viewedSet, stage, id) {
+            return viewedSet.has(chk2dRowKey(stage, id)) || (stage === 'Initial' && viewedSet.has(id));
+        }
+
+        function chk2dMarkViewed(stage, id) {
             const viewed = chk2dGetViewedIds();
-            if (viewed.has(id)) return; // already marked, nothing to do
-            viewed.add(id);
+            if (chk2dIsViewed(viewed, stage, id)) return;
+            viewed.add(chk2dRowKey(stage, id));
             try {
                 localStorage.setItem(CHK2D_VIEWED_KEY, JSON.stringify([...viewed]));
             } catch (e) {
@@ -227,7 +285,9 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             });
         }
 
-        function chk2dStatusBadge(status) {
+        function chk2dStatusBadge(status, compact = false) {
+
+
             const map = {
                 'Approved': 'bg-green-50 text-green-700 border-green-200',
                 'For Revision': 'bg-red-50 text-red-700 border-red-200',
@@ -240,16 +300,27 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             };
             const cls = map[status] || 'bg-gray-50 text-gray-600 border-gray-200';
             const dot = dotMap[status] || 'bg-gray-400';
-            return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${cls}">
-                        <span class="w-1.5 h-1.5 rounded-full shrink-0 ${dot}"></span>${chk2dEscapeHtml(status)}
-                    </span>`;
+            const size = compact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]';
+            return `<span class="inline-flex items-center gap-1.5 ${size} rounded-full font-semibold border whitespace-nowrap ${cls}">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0 ${dot}"></span>${chk2dEscapeHtml(status)}
+            </span>`;
         }
 
-        // NEW-3D: when a row is overall 'Approved' but its 3D file is still
-        // sitting in the sequential queue, the plain status badge alone
-        // ("Approved") would be misleading — show a small suffix pill.
-        function chk2dStatusBadgeWithRow(row) {
-            const base = chk2dStatusBadge(row.status);
+        // Initial / Final tag — same colors as the Initial and Final pages.
+        function chk2dStageBadge(stage) {
+
+            const isFinal = stage === 'Final';
+            const cls = isFinal
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200';
+            return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border whitespace-nowrap ${cls}">${isFinal ? 'Final' : 'Initial'}</span>`;
+        }
+
+        // When a row is overall 'Approved' but its 3D file is still sitting in
+        // the sequential queue, the plain "Approved" badge alone would be
+        // misleading — show a small suffix pill.
+        function chk2dStatusBadgeWithRow(row, compact = false) {
+            const base = chk2dStatusBadge(row.status, compact);
             if (row.status === 'Approved' && row.design_3d_stage === 'Waiting for Approval') {
                 return base + ` <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-amber-200 bg-amber-50 text-amber-700 whitespace-nowrap ml-1">3D Waiting</span>`;
             }
@@ -326,6 +397,10 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     const countEl = btn.querySelector('.chk2d-tab-count');
                     if (countEl) countEl.textContent = counts[btn.dataset.status] ?? 0;
                 });
+
+                // Same full (unfiltered-by-status) row set also feeds the Initial ↔ Final overview.
+                chk2dAllRows = data.rows;
+                chk2dRenderPairs();
             } catch (e) {
                 console.error('chk2dFetchCounts:', e);
             }
@@ -336,7 +411,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             const tbody = document.getElementById('chk2dTbody');
             tbody.innerHTML = Array.from({ length: count }).map(() => `
                 <tr>
-                    ${Array.from({ length: 8 }).map(() => `
+                    ${Array.from({ length: 9 }).map(() => `
                         <td class="px-4 py-3"><div class="h-3 rounded bg-gray-100 animate-pulse"></div></td>
                     `).join('')}
                 </tr>
@@ -349,7 +424,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 : 'No submissions found.';
             return `
                 <tr>
-                    <td colspan="8" class="p-0">
+                    <td colspan="9" class="p-0">
                         <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
                             <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -361,16 +436,16 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             `;
         }
 
-        // NEW-3D: Review whenever review_target says there's something to
-        // decide on (main / main_with_3d / 3d_only); View otherwise.
+        // Review whenever review_target says there's something to decide on
+        // (main / main_with_3d / 3d_only); View otherwise.
         function chk2dActionButton(row) {
             if (row.review_target && row.review_target !== 'none') {
-                return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
+                return `<button type="button" onclick="chk2dOpenPanel('${row.stage}', ${row.id})"
                             class="px-3 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-800 transition-colors whitespace-nowrap">
                             Review
                         </button>`;
             }
-            return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
+            return `<button type="button" onclick="chk2dOpenPanel('${row.stage}', ${row.id})"
                         class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
                         View
                     </button>`;
@@ -394,13 +469,12 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             const viewedIds = chk2dGetViewedIds();
 
             tbody.innerHTML = rows.map(row => {
-                const isViewed = viewedIds.has(row.id);
-                const isActive = chk2dCurrentId === row.id;
+                const isViewed = chk2dIsViewed(viewedIds, row.stage, row.id);
+                const isActive = chk2dCurrentId === row.id && chk2dCurrentStage === row.stage;
 
                 let rowBgCls = '';
                 if (isActive) rowBgCls = 'bg-amber-100';
                 else if (!isViewed) rowBgCls = 'bg-amber-50/30';
-
 
                 const firstCellAccent = isActive
                     ? 'border-l-4 border-l-amber-600 pl-3'
@@ -412,13 +486,16 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     ? `<span class="text-[10px] text-gray-400 whitespace-nowrap">Viewed</span>`
                     : '';
                 return `
-                <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer ${rowBgCls}" data-row-id="${row.id}" onclick="chk2dOpenPanel(${row.id})">
+                <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer ${rowBgCls}" data-row-key="${chk2dRowKey(row.stage, row.id)}" onclick="chk2dOpenPanel('${row.stage}', ${row.id})">
                     <td class="pr-4 py-2.5 ${firstCellAccent}">
                         <div class="flex items-center gap-1.5">
                             ${unreadDot}
                             <span class="font-mono text-[11px] font-semibold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>
                         </div>
-                        ${viewedLabel}
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            ${chk2dStageBadge(row.stage)}
+                            ${viewedLabel}
+                        </div>
                     </td>
                     <td class="px-4 py-2.5 text-gray-800">${chk2dEscapeHtml(row.client_name)}</td>
                     <td class="px-4 py-2.5 whitespace-nowrap" onclick="event.stopPropagation()">${chk2dFileLink(row.design_2d_path, row.design_2d_uploader_name, row.design_2d_uploaded_role)}</td>
@@ -427,8 +504,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                         ? chk2dFileLink(row.design_3d_path, row.design_3d_uploader_name, row.design_3d_uploaded_role)
                         : '<span class="text-gray-300 text-xs">Not yet</span>'
                     }</td>
-<td class="px-4 py-2.5 text-gray-800 font-medium whitespace-nowrap">${chk2dFormatCurrency(row.contract_amount)}</td>
-<td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${chk2dFormatDate(row.submitted_at)}</td>
+                    <td class="px-4 py-2.5 text-gray-800 font-medium whitespace-nowrap">${chk2dFormatCurrency(row.contract_amount)}</td>
+                    <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${chk2dFormatDate(row.submitted_at)}</td>
                     <td class="px-4 py-2.5">${chk2dStatusBadgeWithRow(row)}</td>
                     <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">${chk2dActionButton(row)}</td>
                 </tr>
@@ -448,7 +525,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     return;
                 }
 
-                const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.design_3d_stage)) + chk2dStatusFilter;
+                const signature = JSON.stringify(data.rows.map(r => `${r.stage}:${r.id}:${r.status}:${r.design_3d_stage}`)) + chk2dStatusFilter;
                 if (signature !== chk2dLastSignature) {
                     chk2dRenderRows(data.rows);
                     chk2dLastSignature = signature;
@@ -502,11 +579,115 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             chk2dSearchInput.focus();
         });
 
+        // ═══════════════════════════════════════════════════════════
+        // INITIAL ↔ FINAL OVERVIEW
+        // Two columns, one aligned row per inquiry. Hovering either side
+        // highlights its pair on the other side (matched by inquiry_id).
+        // ═══════════════════════════════════════════════════════════
+        let chk2dAllRows = [];
+        let chk2dPairSignature = '';
+        let chk2dPairActiveId = null;
+
+        function chk2dPairCell(row, stage, group) {
+            const pairId = group.inquiry_id;
+
+            if (!row) {
+                let msg = 'No Initial submitted';
+                if (stage === 'Final') {
+                    msg = (group.initial && group.initial.status !== 'Approved')
+                        ? 'Locked — Initial not approved yet'
+                        : 'No Final submitted yet';
+                }
+                return `
+            <div class="chk2d-pair-cell border border-dashed border-gray-300 rounded-md bg-gray-50/60 px-2.5 py-1.5 flex items-center"
+                 data-pair="${pairId}">
+                <p class="text-[10px] text-gray-400 italic">${msg}</p>
+            </div>
+        `;
+            }
+
+            return `
+        <div class="chk2d-pair-cell border border-gray-200 rounded-md bg-white px-2.5 py-1.5 cursor-pointer"
+             data-pair="${pairId}" onclick="chk2dOpenPanel('${row.stage}', ${row.id})">
+            <div class="flex items-center justify-between gap-2">
+                <span class="font-mono text-[10px] font-semibold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>
+                ${chk2dStatusBadgeWithRow(row, true)}
+            </div>
+            <p class="text-[11px] text-gray-800 truncate leading-tight mt-0.5">
+                ${chk2dEscapeHtml(row.client_name)}
+                <span class="text-gray-400">· ${chk2dFormatDate(row.submitted_at)}</span>
+            </p>
+        </div>
+    `;
+        }
+
+        function chk2dRenderPairs() {
+            const body = document.getElementById('chk2dPairBody');
+            const countEl = document.getElementById('chk2dPairCount');
+            if (!body) return;
+
+            // Same search box as the table above — filtered client-side.
+            const term = chk2dSearchTerm.toLowerCase();
+            const rows = term
+                ? chk2dAllRows.filter(r => [r.control_no, r.client_name, r.contact_number]
+                    .some(v => String(v ?? '').toLowerCase().includes(term)))
+                : chk2dAllRows;
+
+            // Only re-render when something actually changed, so the hover
+            // highlight doesn't flicker on every poll.
+            const signature = term + '|' + rows.map(r => `${r.stage}:${r.id}:${r.status}:${r.design_3d_stage}`).join(',');
+            if (signature === chk2dPairSignature) return;
+            chk2dPairSignature = signature;
+            chk2dPairActiveId = null;
+
+            const groups = new Map(); // inquiry_id → { initial, final } (rows arrive newest-first)
+            rows.forEach(r => {
+                if (!groups.has(r.inquiry_id)) {
+                    groups.set(r.inquiry_id, { inquiry_id: r.inquiry_id, initial: null, final: null });
+                }
+                const g = groups.get(r.inquiry_id);
+                if (r.stage === 'Final') g.final = r; else g.initial = r;
+            });
+
+            if (groups.size === 0) {
+                body.innerHTML = `<div class="col-span-2 py-8 text-center text-xs text-gray-400">${term ? 'No matches.' : 'No submissions to show.'}</div>`;
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            body.innerHTML = [...groups.values()]
+                .map(g => chk2dPairCell(g.initial, 'Initial', g) + chk2dPairCell(g.final, 'Final', g))
+                .join('');
+
+            if (countEl) countEl.textContent = `${groups.size} inquir${groups.size === 1 ? 'y' : 'ies'}`;
+        }
+
+        // Linked hover: whichever side you point at, both cells of that pair light up.
+        (function chk2dBindPairHover() {
+            const body = document.getElementById('chk2dPairBody');
+            if (!body) return;
+
+            function setActive(id) {
+                if (id === chk2dPairActiveId) return;
+                body.querySelectorAll('.chk2d-pair-active').forEach(el => el.classList.remove('chk2d-pair-active'));
+                chk2dPairActiveId = id;
+                if (id !== null) {
+                    body.querySelectorAll(`[data-pair="${id}"]`).forEach(el => el.classList.add('chk2d-pair-active'));
+                }
+            }
+
+            body.addEventListener('mouseover', e => {
+                const cell = e.target.closest('[data-pair]');
+                setActive(cell ? cell.dataset.pair : null);
+            });
+            body.addEventListener('mouseleave', () => setActive(null));
+        })();
+
         chk2dInitTabs();
         chk2dFetchList().then(chk2dStartPolling);
 
         // ═══════════════════════════════════════════════════════════
-        // REVIEW PANEL (right-side slide-in — replaces the old center modal)
+        // REVIEW PANEL (right-side slide-in)
         // ═══════════════════════════════════════════════════════════
         function chk2dDetailRow(label, value) {
             return `
@@ -534,8 +715,6 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         // Shows the current review status (+ remarks, if any) for one file.
-        // Used in the panel body so it's visible whether the panel is in
-        // "still deciding" mode or "already reviewed" (read-only) mode.
         function chk2dFileReviewSummary(label, reviewStatus, remarks) {
             const remarksHtml = remarks
                 ? `<p class="text-xs text-red-700 mt-1 max-w-[220px] ml-auto text-right">${chk2dEscapeHtml(remarks)}</p>`
@@ -551,14 +730,10 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             `;
         }
 
-        // One decision block inside the footer: a "View File" link (so you
-        // can check the file right where you're deciding on it), Approve /
-        // Send for Revision buttons, and a remarks box that only shows up
-        // once "Send for Revision" is picked.
-        //
-        // If `alreadyApproved` is true (file was approved in a prior
-        // partial-review pass), the block renders as a locked/read-only
-        // summary instead — no need to re-decide something already settled.
+        // One decision block inside the footer: a "View File" link, Approve /
+        // Send for Revision buttons, and a remarks box that only shows up once
+        // "Send for Revision" is picked. If `alreadyApproved`, the block renders
+        // as a locked read-only summary.
         function chk2dDecisionRow(slot, label, path, alreadyApproved) {
             const pdfLink = path
                 ? `<a href="${chk2dEscapeHtml(path)}" target="_blank" rel="noopener"
@@ -640,9 +815,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             chk2dUpdateSubmitState();
         }
 
-        // NEW-3D: iterate over whatever slots actually exist in
-        // chk2dDecisions right now (2, or 3 when 3D is part of this review)
-        // instead of a hardcoded ['design_2d','quotation'] list.
+        // Iterates over whatever slots exist in chk2dDecisions right now
+        // (2, or 3 when 3D is part of this review).
         function chk2dUpdateSubmitState() {
             const btn = document.getElementById('chk2dSubmitReviewBtn');
             if (!btn) return;
@@ -659,8 +833,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         function chk2dRenderFooter(record) {
             const footer = document.getElementById('chk2dModalFooter');
 
-            // NEW-3D: sequential 3D-only review — 2D & Quotation are already
-            // Approved and locked; only the 3D file needs a decision here.
+            // Sequential 3D-only review — 2D & Quotation are already Approved
+            // and locked; only the 3D file needs a decision here.
             if (record.review_target === '3d_only') {
                 chk2dDecisions = {
                     design_3d: { decision: null, remarks: '' },
@@ -701,8 +875,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             // optionally with a bundled 3D decision too.
 
             // Files already Approved in a prior partial-review pass are
-            // pre-filled and locked — the approver only needs to decide on
-            // whatever is still Pending / For Revision.
+            // pre-filled and locked.
             const design2dLocked = record.design_2d_review_status === 'Approved';
             const quotationLocked = record.quotation_review_status === 'Approved';
 
@@ -733,24 +906,23 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 ${record.include_3d ? `<p class="text-[11px] text-gray-400 mt-2">Sending the 3D file back for revision will also send the 2D file back, since 3D is derived from it.</p>` : ''}
             `;
 
-            // Re-check right away — the button might already be ready to
-            // go if only one of the two/three slots still needs a decision.
             chk2dUpdateSubmitState();
         }
 
-        async function chk2dOpenPanel(id) {
+        async function chk2dOpenPanel(stage, id) {
             const overlay = document.getElementById('chk2dOverlay');
             const panel = document.getElementById('chk2dPanel');
             const body = document.getElementById('chk2dModalBody');
             const footer = document.getElementById('chk2dModalFooter');
             chk2dCurrentId = id;
+            chk2dCurrentStage = stage;
 
-            // Mark viewed immediately (before the fetch even resolves) and
-            // refresh the table right away so the unread dot disappears the
-            // moment the user opens the record.
-            chk2dMarkViewed(id);
+            // Mark viewed immediately and refresh the table so the unread dot
+            // disappears the moment the record is opened.
+            chk2dMarkViewed(stage, id);
             if (chk2dLastRows.length) chk2dRenderRows(chk2dLastRows);
 
+            document.getElementById('chk2dModalHeading').textContent = `${stage} Submission Review`;
             document.getElementById('chk2dModalControlNo').textContent = 'Loading…';
             body.innerHTML = `
                 <div class="space-y-2 py-1">
@@ -763,7 +935,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             requestAnimationFrame(() => panel.classList.remove('translate-x-full'));
 
             try {
-                const res = await fetch(`${CHK2D_AJAX_URL}?action=detail&id=${id}`);
+                const res = await fetch(`${CHK2D_AJAX_URL}?action=detail&id=${id}&stage=${encodeURIComponent(stage)}`);
                 const data = await res.json();
 
                 if (!data.success) {
@@ -811,6 +983,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             panel.classList.add('translate-x-full');
             setTimeout(() => overlay.classList.add('hidden'), 300);
             chk2dCurrentId = null;
+            chk2dCurrentStage = null;
             if (chk2dLastRows.length) chk2dRenderRows(chk2dLastRows);
         }
 
@@ -818,16 +991,15 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             if (e.key === 'Escape') chk2dClosePanel();
         });
 
-        // Sends both/all file decisions together — this is the single
-        // "submit" action for the main review (2D + Quotation, optionally
-        // + bundled 3D), regardless of how many slots were already locked
-        // coming in.
+        // Sends both/all file decisions together — the single "submit" action
+        // for the main review (2D + Quotation, optionally + bundled 3D).
         async function chk2dSubmitReview() {
-            if (!chk2dCurrentId) return;
+            if (!chk2dCurrentId || !chk2dCurrentStage) return;
 
             const formData = new FormData();
             formData.append('action', 'review');
             formData.append('id', chk2dCurrentId);
+            formData.append('stage', chk2dCurrentStage);
             formData.append('design_2d_decision', chk2dDecisions.design_2d.decision);
             formData.append('design_2d_remarks', chk2dDecisions.design_2d.remarks.trim());
             formData.append('quotation_decision', chk2dDecisions.quotation.decision);
@@ -856,13 +1028,14 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             }
         }
 
-        // NEW-3D: standalone submit for the sequential "3D only" review.
+        // Standalone submit for the sequential "3D only" review.
         async function chk2dSubmitReview3d() {
-            if (!chk2dCurrentId) return;
+            if (!chk2dCurrentId || !chk2dCurrentStage) return;
 
             const formData = new FormData();
             formData.append('action', 'review_3d');
             formData.append('id', chk2dCurrentId);
+            formData.append('stage', chk2dCurrentStage);
             formData.append('design_3d_decision', chk2dDecisions.design_3d.decision);
             formData.append('design_3d_remarks', chk2dDecisions.design_3d.remarks.trim());
 

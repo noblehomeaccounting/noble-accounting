@@ -245,8 +245,10 @@ $adminRoutes = [
 
     // crm management page 3
     'crmdesignerajax',
+    'crm2dquotationajaxfinal',
 
     // crm management sub page 3
+    'crm2dquotationfinal',
     'crmsitevisit',     
     'crm2dquotation',
 
@@ -467,12 +469,17 @@ $routes = [
 
     // crm management page 1
     'crmajax'                          => 'admin/crm-management/backend/page-1/crm-options-ajax.php',
+
     // crm management page 2
     'crmlistajax'                      => 'admin/crm-management/backend/page-2/crmlistajax.php',
     'crm2dquotationajax'               => 'admin/crm-management/backend/page-2/crm2dquotationajax.php',
+    
     // crm management page 3
     'crmdesignerajax'                  => 'admin/crm-management/backend/page-3/crmdesignerajax.php',
+    'crm2dquotationajaxfinal'          => 'admin/crm-management/backend/page-3/subpage-3/crm2dquotationajaxfinal.php',
+
     // crm management page 3
+    'crm2dquotationfinal'              => 'admin/crm-management/page-3/subpage-3/2d-and-quotation-final.php',
     'crmsitevisit'                     => 'admin/crm-management/page-3/subpage-3/sitevisitform.php',
     'crm2dquotation'                   => 'admin/crm-management/page-3/subpage-3/2d-and-quotation.php',
 ];

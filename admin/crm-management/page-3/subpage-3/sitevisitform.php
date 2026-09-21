@@ -40,10 +40,6 @@ if ($inquiryId <= 0) {
     }
 }
 
-// --- Redirect guard: "Ready for Quotation" inquiries skip Site Visit entirely ---
-// Kung ang mode ng inquiry ay "ready_for_quotation" (may 2D na ang client),
-// walang dapat gawing site visit form dito — deretso sa 2D & Quotation page,
-// kahit i-type pa ng designer ang URL ng site visit page nang manual.
 if (empty($svError) && $inquiry && ($inquiry['mode'] ?? 'site_visit') === 'ready_for_quotation') {
     header('Location: ' . BASE_URL . '/crm2dquotation?id=' . $inquiryId);
     exit;
@@ -66,7 +62,7 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
     $visitAddress = trim($_POST['visit_address'] ?? '');
     $visitDatetime = trim($_POST['visit_datetime'] ?? '');
     $visited = trim($_POST['visited'] ?? '');
-    $measurements = trim($_POST['measurements'] ?? '');
+    $measurements = ''; // legacy text column — hindi na ginagamit ng form (PDF upload na)
     $siteConditions = trim($_POST['site_conditions'] ?? '');
     $clientRequirements = trim($_POST['client_requirements'] ?? '');
     $existingStructure = trim($_POST['existing_structure'] ?? '');
@@ -158,22 +154,52 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
             }
         }
 
+        // --- Upload measurement PDFs (optional, multiple allowed) ---
+        $measurementPaths = [];
+        $maxPdfBytes = 15 * 1024 * 1024; // 15MB bawat file
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+        if (!empty($_FILES['measurement_pdfs']) && is_array($_FILES['measurement_pdfs']['name'])) {
+            foreach ($_FILES['measurement_pdfs']['name'] as $i => $fileName) {
+                if ($_FILES['measurement_pdfs']['error'][$i] !== UPLOAD_ERR_OK || $fileName === '') {
+                    continue;
+                }
+                $tmpName = $_FILES['measurement_pdfs']['tmp_name'][$i];
+                $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+                if ($ext !== 'pdf' || finfo_file($finfo, $tmpName) !== 'application/pdf') {
+                    continue; // skip non-PDF
+                }
+                if ($_FILES['measurement_pdfs']['size'][$i] > $maxPdfBytes) {
+                    continue; // skip lampas sa 15MB
+                }
+
+                $safeName = 'svm_' . $inquiryId . '_' . time() . '_' . $i . '_' . bin2hex(random_bytes(4)) . '.pdf';
+                if (move_uploaded_file($tmpName, $uploadDir . $safeName)) {
+                    $measurementPaths[] = 'uploads/crm-sitevisit/' . $safeName;
+                }
+            }
+        }
+        finfo_close($finfo);
+
         $photosCsv = implode(',', $uploadedPaths);
+        $measurementFilesCsv = implode(',', $measurementPaths);
 
         $stmt = $conn->prepare("
             INSERT INTO noblecrm_sitevisit
-                (inquiry_id, designer_id, address, visit_datetime, visited, photos,
+                (inquiry_id, designer_id, address, visit_datetime, visited, photos, measurement_files,
                  measurements, site_conditions, client_requirements, existing_structure, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->bind_param(
-            "iissssssss",
+            "iisssssssss",
             $inquiryId,
             $currentDesignerId,
             $visitAddress,
             $visitDatetime,
             $visited,
             $photosCsv,
+            $measurementFilesCsv,
             $measurements,
             $siteConditions,
             $clientRequirements,
@@ -212,7 +238,7 @@ if (!empty($_SESSION['sv_flash_success'])) {
 $svHistory = [];
 if (empty($svError) && $inquiryId > 0) {
     $histStmt = $conn->prepare("
-        SELECT id, address, visit_datetime, visited, photos,
+        SELECT id, address, visit_datetime, visited, photos, measurement_files,
                measurements, site_conditions, client_requirements, existing_structure, created_at
         FROM noblecrm_sitevisit
         WHERE inquiry_id = ? AND designer_id = ?
@@ -350,6 +376,7 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
 
                     <?php $latestVisit = $svHistory[0]; ?>
                     <?php $latestPhotos = array_filter(explode(',', $latestVisit['photos'] ?? '')); ?>
+                    <?php $latestMeasFiles = array_values(array_filter(explode(',', $latestVisit['measurement_files'] ?? ''))); ?>
                     <?php $latestVisited = $latestVisit['visited'] === 'yes'; ?>
 
                     <div class="grid lg:grid-cols-3 gap-6">
@@ -392,29 +419,36 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                             <div class="sv-card p-5">
                                 <h2 class="text-sm font-semibold text-gray-900 mb-4">Site notes</h2>
                                 <div class="grid sm:grid-cols-2 gap-5">
-                                    <div>
+                                    <div class="sm:col-span-2">
                                         <p class="text-xs font-medium text-gray-500 mb-1">Measurements</p>
-                                        <p class="text-sm text-gray-800 whitespace-pre-line">
-                                            <?= !empty($latestVisit['measurements']) ? nl2br(htmlspecialchars($latestVisit['measurements'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
+                                        <?php if (!empty($latestMeasFiles)): ?>
+                                            <ul class="space-y-1">
+                                                <?php foreach ($latestMeasFiles as $mi => $mPath): ?>
+                                                    <li>
+                                                        <a href="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" target="_blank" rel="noopener"
+                                                            class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline">
+                                                            <i class="fa-solid fa-file-pdf"></i> Measurement PDF <?= $mi + 1 ?>
+                                                        </a>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php elseif (!empty($latestVisit['measurements'])): ?>
+                                            <p class="text-sm text-gray-800"><?= nl2br(htmlspecialchars($latestVisit['measurements'])) ?></p>
+                                        <?php else: ?>
+                                            <span class="text-sm text-gray-400 italic">None provided</span>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <p class="text-xs font-medium text-gray-500 mb-1">Site conditions</p>
-                                        <p class="text-sm text-gray-800 whitespace-pre-line">
-                                            <?= !empty($latestVisit['site_conditions']) ? nl2br(htmlspecialchars($latestVisit['site_conditions'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
+                                        <p class="text-sm text-gray-800"><?= !empty($latestVisit['site_conditions']) ? nl2br(htmlspecialchars($latestVisit['site_conditions'])) : '<span class="text-gray-400 italic">None provided</span>' ?></p>
                                     </div>
                                     <div>
                                         <p class="text-xs font-medium text-gray-500 mb-1">Client requirements</p>
-                                        <p class="text-sm text-gray-800 whitespace-pre-line">
-                                            <?= !empty($latestVisit['client_requirements']) ? nl2br(htmlspecialchars($latestVisit['client_requirements'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
+                                        <p class="text-sm text-gray-800"><?= !empty($latestVisit['client_requirements']) ? nl2br(htmlspecialchars($latestVisit['client_requirements'])) : '<span class="text-gray-400 italic">None provided</span>' ?></p>
                                     </div>
                                     <div>
                                         <p class="text-xs font-medium text-gray-500 mb-1">Existing structure</p>
-                                        <p class="text-sm text-gray-800 whitespace-pre-line">
-                                            <?= !empty($latestVisit['existing_structure']) ? nl2br(htmlspecialchars($latestVisit['existing_structure'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
+                                        <p class="text-sm text-gray-800"><?= !empty($latestVisit['existing_structure']) ? nl2br(htmlspecialchars($latestVisit['existing_structure'])) : '<span class="text-gray-400 italic">None provided</span>' ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -566,11 +600,19 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                         min="<?= htmlspecialchars(date('Y-m-d')) ?>">
                                 </div>
 
-                                <!-- Measurements -->
+                                <!-- Measurements (PDF) -->
                                 <div class="sm:col-span-2">
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Measurements</label>
-                                    <input type="text" name="measurements" class="sv-field sv-field-sm"
-                                        placeholder="Lot dimensions, floor area, ceiling height, etc.">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Measurements (PDF)</label>
+                                    <label for="sv_meas_pdfs"
+                                        class="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-fit">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <span class="text-xs text-gray-600">Upload PDF(s), max 15MB each</span>
+                                    </label>
+                                    <input id="sv_meas_pdfs" type="file" name="measurement_pdfs[]" accept="application/pdf" multiple class="hidden">
+                                    <ul id="sv_meas_list" class="mt-2 space-y-1"></ul>
                                 </div>
 
                                 <!-- Site Conditions / Notes -->
@@ -606,7 +648,7 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                     </svg>
                                     <span class="text-xs text-gray-600">Upload photographs (JPG, PNG, WEBP)</span>
                                 </label>
-                                <input id="sv_photos" type="file" name="photos[]" accept="image/*" multiple class="hidden">
+                                <input id="sv_photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
                                 <div id="sv_photo_preview" class="mt-2 grid grid-cols-6 sm:grid-cols-8 gap-1.5"></div>
                             </div>
 
@@ -659,20 +701,101 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                 crmShowToast(<?= json_encode($svSuccess) ?>, 'success');
             <?php endif; ?>
 
-            // Photo preview thumbnails
+            // Photo upload — nag-iipon kada pili (hindi napapalitan), may thumbnail + remove button
             const svPhotosInput = document.getElementById('sv_photos');
             if (svPhotosInput) {
-                svPhotosInput.addEventListener('change', function () {
-                    const preview = document.getElementById('sv_photo_preview');
-                    preview.innerHTML = '';
-                    Array.from(this.files).forEach(file => {
-                        if (!file.type.startsWith('image/')) return;
-                        const url = URL.createObjectURL(file);
+                const svPhotoDt = new DataTransfer();
+                const svPhotoPreview = document.getElementById('sv_photo_preview');
+                const svPhotoUrls = new Map(); // File -> object URL, para ma-revoke pag tinanggal
+                const svPhotoTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+                function svRenderPhotoPreview() {
+                    svPhotoPreview.innerHTML = '';
+                    Array.from(svPhotoDt.files).forEach((file, idx) => {
+                        if (!svPhotoUrls.has(file)) svPhotoUrls.set(file, URL.createObjectURL(file));
+
+                        const wrap = document.createElement('div');
+                        wrap.className = 'relative';
+
                         const img = document.createElement('img');
-                        img.src = url;
+                        img.src = svPhotoUrls.get(file);
+                        img.title = file.name;
                         img.className = 'w-full h-16 object-cover rounded-md border border-gray-200';
-                        preview.appendChild(img);
+                        wrap.appendChild(img);
+
+                        const rm = document.createElement('button');
+                        rm.type = 'button';
+                        rm.setAttribute('aria-label', 'Remove photo');
+                        rm.className = 'absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gray-700 text-white text-[11px] leading-none flex items-center justify-center hover:bg-red-600';
+                        rm.innerHTML = '&times;';
+                        rm.addEventListener('click', () => {
+                            const removed = svPhotoDt.files[idx];
+                            URL.revokeObjectURL(svPhotoUrls.get(removed));
+                            svPhotoUrls.delete(removed);
+                            svPhotoDt.items.remove(idx);
+                            svPhotosInput.files = svPhotoDt.files;
+                            svRenderPhotoPreview();
+                        });
+                        wrap.appendChild(rm);
+
+                        svPhotoPreview.appendChild(wrap);
                     });
+                }
+
+                svPhotosInput.addEventListener('change', function () {
+                    Array.from(this.files).forEach(file => {
+                        const isDup = Array.from(svPhotoDt.files).some(f =>
+                            f.name === file.name && f.size === file.size && f.lastModified === file.lastModified);
+                        if (svPhotoTypes.includes(file.type) && !isDup) svPhotoDt.items.add(file);
+                    });
+                    this.files = svPhotoDt.files;
+                    svRenderPhotoPreview();
+                });
+            }
+
+            // Measurement PDFs — nag-iipon ng files kada pili (hindi napapalitan), may remove button
+            const svMeasInput = document.getElementById('sv_meas_pdfs');
+            if (svMeasInput) {
+                const svMeasDt = new DataTransfer();
+                const svMeasList = document.getElementById('sv_meas_list');
+
+                function svRenderMeasList() {
+                    svMeasList.innerHTML = '';
+                    Array.from(svMeasDt.files).forEach((file, idx) => {
+                        const li = document.createElement('li');
+                        li.className = 'text-xs text-gray-600 flex items-center gap-1.5';
+                        li.innerHTML = '<i class="fa-solid fa-file-pdf text-red-500"></i>';
+
+                        const name = document.createElement('span');
+                        name.className = 'truncate max-w-xs';
+                        name.textContent = file.name;
+                        li.appendChild(name);
+
+                        const rm = document.createElement('button');
+                        rm.type = 'button';
+                        rm.className = 'text-gray-400 hover:text-red-600 text-base leading-none ml-1';
+                        rm.setAttribute('aria-label', 'Remove file');
+                        rm.innerHTML = '&times;';
+                        rm.addEventListener('click', () => {
+                            svMeasDt.items.remove(idx);
+                            svMeasInput.files = svMeasDt.files;
+                            svRenderMeasList();
+                        });
+                        li.appendChild(rm);
+
+                        svMeasList.appendChild(li);
+                    });
+                }
+
+                svMeasInput.addEventListener('change', function () {
+                    const picked = Array.from(this.files);
+                    picked.forEach(file => {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        const isDup = Array.from(svMeasDt.files).some(f => f.name === file.name && f.size === file.size);
+                        if (isPdf && !isDup) svMeasDt.items.add(file);
+                    });
+                    this.files = svMeasDt.files;
+                    svRenderMeasList();
                 });
             }
         </script>
