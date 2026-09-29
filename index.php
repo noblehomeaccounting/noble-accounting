@@ -268,6 +268,9 @@ if (in_array($request, $adminRoutes)) {
 session_start();
 
 $routes = [
+    'apilogin'                         => 'api/login.php',
+    'apinoblerole'                     => 'api/noblerole.php',
+
     'home'                             => 'user/authentication/index-login.php',
     'logout'                           => 'admin/authentication/index-logout.php',
     'loginadmin'                       => 'admin/authentication/index-login.php',

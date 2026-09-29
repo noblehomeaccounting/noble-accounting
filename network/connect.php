@@ -1,30 +1,24 @@
 <?php
 // connect.php
 
-$isLocal = in_array($_SERVER['HTTP_HOST'], ['localhost', 'localhost:8000', '127.0.0.1', '127.0.0.1:8000']);
+require_once ROOT_PATH . '/vendor/autoload.php';
+Dotenv\Dotenv::createImmutable(ROOT_PATH)->safeLoad();
 
-// Set database credentials based on environment
-if ($isLocal) {
-    // Local/XAMPP Configuration
-    $host = getenv('DB_HOST_LOCAL') ?: 'localhost:3306';
-    $username = getenv('DB_USER_LOCAL') ?: 'root';
-    $password = getenv('DB_PASSWORD_LOCAL') ?: '';
-    $database = getenv('DB_NAME_LOCAL') ?: 'noblehomeaccounting';
-} else {
-    // Production Configuration
-    $host = getenv('DB_HOST_PROD') ?: 'localhost';
-    $username = getenv('DB_USER_PROD') ?: 'u441967563_finance';
-    $password = getenv('DB_PASSWORD_PROD') ?: 'NobleHomecc@2025';
-    $database = getenv('DB_NAME_PROD') ?: 'u441967563_finance';
-}
+$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', 'localhost:8000', '127.0.0.1', '127.0.0.1:8000']);
+$suffix  = $isLocal ? 'LOCAL' : 'PROD';
 
-// Create connection
+$host     = $_ENV["DB_HOST_$suffix"]     ?? '';
+$username = $_ENV["DB_USER_$suffix"]     ?? '';
+$password = $_ENV["DB_PASSWORD_$suffix"] ?? '';
+$database = $_ENV["DB_NAME_$suffix"]     ?? '';
+
 $conn = new mysqli($host, $username, $password, $database);
 
-// Check connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    error_log("DB connection failed: " . $conn->connect_error);
+    http_response_code(500);
+    die("Database connection failed");
 }
 
-$conn->set_charset("utf8");
+$conn->set_charset("utf8mb4");
 $conn->query("SET time_zone = '+08:00'");
