@@ -1,16 +1,47 @@
 <?php
 //step2.php
-$postedMode = $_POST['inquiry_mode'] ?? 'site_visit';
+$postedMode = $_POST['inquiry_mode'] ?? '';
+$postedNature = $_POST['project_nature'] ?? '';
 ?>
 <div class="crm-step-panel" id="crm-step-2">
     <p class="text-xs text-gray-400 mb-4">What the client needs and when to measure.</p>
 
     <div class="space-y-5">
 
-        <!-- Mode: Site Visit Needed vs Ready for Quotation -->
+        <!-- Project Nature: dictates the Mode below -->
         <div>
             <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-                Mode <span class="text-red-500">*</span>
+                Project Nature <span class="text-red-500">*</span>
+            </label>
+            <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden h-[38px]">
+                <label class="cursor-pointer">
+                    <input type="radio" name="project_nature" id="crm_nature_modular" value="modular"
+                        class="peer sr-only" onchange="crmSyncModeFromNature()"
+                        <?= $postedNature === 'modular' ? 'checked' : '' ?>>
+                    <span
+                        class="flex items-center h-[36px] px-4 text-xs text-gray-600 peer-checked:bg-amber-700 peer-checked:text-white transition-colors">
+                        Modular
+                    </span>
+                </label>
+                <label class="cursor-pointer border-l border-gray-300">
+                    <input type="radio" name="project_nature" id="crm_nature_material" value="material"
+                        class="peer sr-only" onchange="crmSyncModeFromNature()"
+                        <?= $postedNature === 'material' ? 'checked' : '' ?>>
+                    <span
+                        class="flex items-center h-[36px] px-4 text-xs text-gray-600 peer-checked:bg-amber-700 peer-checked:text-white transition-colors">
+                        Material Only
+                    </span>
+                </label>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1.5">
+                Modular = Site Visit Needed. Material Only = Ready for Quotation lang, walang site visit.
+            </p>
+        </div>
+
+        <!-- Mode: Site Visit Needed vs Ready for Quotation (auto-set base sa Project Nature) -->
+        <div>
+            <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+                Mode <span class="text-gray-400 normal-case">(auto-set base sa Project Nature)</span>
             </label>
             <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden h-[38px]">
                 <label class="cursor-pointer">
@@ -31,8 +62,7 @@ $postedMode = $_POST['inquiry_mode'] ?? 'site_visit';
                 </label>
             </div>
             <p class="text-[11px] text-gray-400 mt-1.5">
-                Select "Ready for Quotation" if the client already has a 2D — the designer will go straight to
-                uploading the 2D &amp; Quotation, skipping the Site Visit step.
+                Awtomatikong naka-lock ito base sa Project Nature na pinili sa itaas.
             </p>
         </div>
 
@@ -109,26 +139,18 @@ $postedMode = $_POST['inquiry_mode'] ?? 'site_visit';
             </div>
         </div>
 
-                <!-- Desired Measurement Date & Time -->
-        <div>
-            <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-                Desired Measurement Date &amp; Time
-            </label>
-            <input type="datetime-local" name="measurement_datetime" id="crm_measurement_datetime"
-                value="<?= htmlspecialchars($_POST['measurement_datetime'] ?? '') ?>"
-                class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
+        <!-- Desired Measurement Date & Time: removed from this form on purpose.
+             Sales must contact the client first to confirm their available
+             schedule; the actual date/time (and Designer Assign) is set later
+             from the Sales & Market List (crmlist.php -> crmlistajax.php
+             "assign" action), once confirmed with the client. -->
+        <div class="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2.5">
+            <p class="text-xs text-gray-500">
+                Measurement Date &amp; Time will be set later, once Sales has confirmed the client's available
+                schedule — from the <strong>Sales &amp; Market List</strong>.
+            </p>
         </div>
 
-        <!-- Target Completion Date -->
-        <div>
-            <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-                Target Completion Date
-            </label>
-            <input type="date" name="target_completion_date" id="crm_target_completion_date"
-                value="<?= htmlspecialchars($_POST['target_completion_date'] ?? '') ?>"
-                class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
-            <p class="text-[11px] text-gray-400 mt-1.5">Kailan target matapos ang project na ito.</p>
-        </div>
     </div>
 
     <div class="flex justify-between mt-6">
@@ -136,9 +158,9 @@ $postedMode = $_POST['inquiry_mode'] ?? 'site_visit';
             class="text-gray-500 hover:text-gray-700 text-sm font-medium px-4 py-2.5 rounded-md border border-gray-300 hover:border-gray-400 transition">
              Back
         </button>
-        <button type="button" onclick="crmGoToStep(3)"
+        <button type="button" onclick="crmGoToStep3()"
             class="bg-gray-900 hover:bg-gray-800 text-white font-medium px-6 py-2.5 rounded-md text-sm uppercase tracking-wide transition">
-            Next: Assignment 
+            Next: Assignment
         </button>
     </div>
 </div>

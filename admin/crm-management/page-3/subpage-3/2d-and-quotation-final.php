@@ -570,6 +570,177 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 `;
                 }
 
+                // ═══════════════════════════════════════════════════════════
+                // CONTRACT (Final only) — amount + file (PDF or image, converted
+                // to webp server-side). Sales-only to edit; locked once the
+                // Final submission is Waiting for Approval / Approved.
+                // ═══════════════════════════════════════════════════════════
+                function q2dRenderContractSection(state) {
+                    const inquiry = state.inquiry;
+                    const locked = state.contract_locked;
+                    const hasAmount = inquiry.contract_amount !== null && inquiry.contract_amount !== undefined
+                        && inquiry.contract_amount !== '' && Number(inquiry.contract_amount) > 0;
+                    const hasFile = !!inquiry.contract_file_url;
+                    const fileLabel = hasFile ? inquiry.contract_file_url.split('/').pop() : '';
+
+                    const readOnlyTable = `
+                    <table class="w-full border border-gray-300 text-sm mb-6">
+                        <tbody>
+                            <tr>
+                                <td class="w-32 bg-gray-50 font-semibold text-[10px] uppercase tracking-wider text-gray-500 px-4 py-2.5 border-r border-gray-200">
+                                    Amount
+                                </td>
+                                <td class="px-4 py-2.5 text-gray-900 font-semibold">
+                                    ${hasAmount ? q2dFormatCurrency(inquiry.contract_amount) : '<span class="text-gray-400 italic font-normal">Not yet set.</span>'}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="w-32 bg-gray-50 font-semibold text-[10px] uppercase tracking-wider text-gray-500 px-4 py-2.5 border-r border-t border-gray-200">
+                                    File
+                                </td>
+                                <td class="px-4 py-2.5 border-t border-gray-200">
+                                    ${hasFile ? `<a href="${q2dEscapeHtml(inquiry.contract_file_url)}" target="_blank" class="text-[#0B2540] hover:text-[#A9822C] font-semibold underline underline-offset-2">View File</a>` : '<span class="text-gray-400 italic">Not yet uploaded.</span>'}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+
+                    if (!Q2D_IS_SALES) {
+                        if (!hasAmount && !hasFile) return '';
+                        return `${q2dSectionLabel('Contract')}${readOnlyTable}`;
+                    }
+
+                    if (locked) {
+                        return `${q2dSectionLabel('Contract')}${readOnlyTable}`;
+                    }
+
+                    return `
+                    ${q2dSectionLabel('Contract')}
+                    <div class="border border-gray-300 p-4 mb-6">
+                        <label class="block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                            Contract Amount
+                        </label>
+                        <input id="contract_amount_input" type="text" inputmode="decimal"
+                            value="${hasAmount ? inquiry.contract_amount : ''}" placeholder="0.00"
+                            class="w-full border border-gray-400 px-3 py-2 text-sm mb-4 focus:outline-none focus:border-[#0B2540]">
+
+                        <label class="block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                            Contract File
+                        </label>
+                        <label for="contract_file_input"
+                            class="flex flex-col items-center justify-center gap-1.5 border border-dashed border-gray-400 py-5 px-3 cursor-pointer hover:border-[#0B2540] hover:bg-gray-50 transition-colors">
+                            ${Q2D_UPLOAD_SVG}
+                            <span id="contract_file_input_label" class="text-sm text-gray-600 text-center w-full truncate px-1">${hasFile ? 'Current: ' + q2dEscapeHtml(fileLabel) : 'Click to upload contract (PDF or image)'}</span>
+                            <span class="text-[11px] text-gray-400">PDF or image (JPG/PNG/WEBP), max 15MB</span>
+                        </label>
+                        <input id="contract_file_input" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="hidden">
+                        <a id="contract_file_input_preview" href="#" target="_blank" rel="noopener"
+                            class="hidden mt-1.5 items-center gap-1 text-xs font-medium text-[#0B2540] hover:text-[#A9822C] hover:underline">
+                            View selected file &rarr;
+                        </a>
+
+                        <button type="button" onclick="q2dSaveContract()"
+                            class="mt-4 px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-[#0B2540] hover:bg-[#123564] transition-colors">
+                            Save Contract
+                        </button>
+                    </div>
+                `;
+                }
+
+                // Live thousands-separator formatting while typing, e.g. 1000000000 -> 1,000,000,000
+                function q2dBindContractAmountInput() {
+                    const input = document.getElementById('contract_amount_input');
+                    if (!input) return;
+
+                    function formatWithCommas(raw) {
+                        let cleaned = String(raw).replace(/[^\d.]/g, '');
+                        const parts = cleaned.split('.');
+                        let intPart = (parts[0] || '').replace(/^0+(?=\d)/, '');
+                        intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                        if (parts.length > 1) {
+                            return intPart + '.' + parts.slice(1).join('').slice(0, 2);
+                        }
+                        return intPart;
+                    }
+
+                    input.addEventListener('input', function () {
+                        const before = this.value;
+                        const caretPos = (typeof this.selectionStart === 'number') ? this.selectionStart : before.length;
+                        const caretFromEnd = before.length - caretPos;
+                        this.value = formatWithCommas(before);
+                        const newPos = Math.max(0, this.value.length - caretFromEnd);
+                        try { this.setSelectionRange(newPos, newPos); } catch (err) { /* ignore */ }
+                    });
+
+                    // format whatever value was pre-filled (existing contract amount)
+                    if (input.value) {
+                        input.value = formatWithCommas(input.value);
+                    }
+                }
+
+                function q2dBindContractFileLabel() {
+                    const input = document.getElementById('contract_file_input');
+                    const label = document.getElementById('contract_file_input_label');
+                    const preview = document.getElementById('contract_file_input_preview');
+                    if (!input || !label || !preview) return;
+
+                    let currentObjectUrl = null;
+                    const fallback = label.textContent;
+
+                    input.addEventListener('change', function () {
+                        if (currentObjectUrl) {
+                            URL.revokeObjectURL(currentObjectUrl);
+                            currentObjectUrl = null;
+                        }
+                        if (this.files.length) {
+                            const file = this.files[0];
+                            label.textContent = file.name;
+                            label.title = file.name;
+                            currentObjectUrl = URL.createObjectURL(file);
+                            preview.href = currentObjectUrl;
+                            preview.classList.remove('hidden');
+                            preview.classList.add('flex');
+                        } else {
+                            label.textContent = fallback;
+                            label.title = '';
+                            preview.classList.add('hidden');
+                            preview.classList.remove('flex');
+                            preview.href = '#';
+                        }
+                    });
+                }
+
+                async function q2dSaveContract() {
+                    const amountInput = document.getElementById('contract_amount_input');
+                    const fileInput = document.getElementById('contract_file_input');
+                    const amount = amountInput ? amountInput.value.trim().replace(/,/g, '') : '';
+
+                    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+                        crmShowToast('Please enter a valid contract amount.', 'error');
+                        return;
+                    }
+
+                    const extra = { contract_amount: amount };
+                    if (fileInput && fileInput.files.length) {
+                        extra.contract_file = fileInput.files[0];
+                    }
+
+                    try {
+                        const data = await q2dPost('save_contract_amount', extra);
+                        if (!data.success) {
+                            crmShowToast(data.message || 'Something went wrong.', 'error');
+                            return;
+                        }
+                        q2dLastSignature = '';
+                        crmShowToast(data.message || 'Contract saved.');
+                        await q2dFetchState();
+                    } catch (e) {
+                        console.error('q2dSaveContract:', e);
+                        crmShowToast('Connection error. Please try again.', 'error');
+                    }
+                }
+
                 function q2dFileCell(fileData) {
                     if (!fileData.url) return '—';
                     const reviewLine = fileData.review_status
@@ -687,12 +858,15 @@ const amountRow = `
                     if (state.active_draft) {
                         body += q2dRenderStatusBanner(state.active_draft);
                         body += q2dRenderActiveDraftSlots(state.active_draft, design3d);
+                        body += q2dRenderContractSection(state);
                         body += q2dRenderSubmitBar(state.active_draft, design3d);
                     } else if (state.completed_entry) {
                         body += q2dRenderCompletedView(state.completed_entry, design3d);
+                        body += q2dRenderContractSection(state);
                         body += q2dRender3dStandaloneSection(design3d);
                     } else {
                         body += q2dRenderRevisionOrFreshSlots(state.revision_entry);
+                        body += q2dRenderContractSection(state);
                         body += q2dRender3dStandaloneSection(design3d);
                     }
 
@@ -704,6 +878,8 @@ const amountRow = `
                     q2dBindLabel('2d');
                     q2dBindLabel('quotation');
                     q2dBindLabel('3d');
+                    q2dBindContractFileLabel();
+                    q2dBindContractAmountInput();
                 }
 
                 // ── Filename label + preview link + enable "Mark as Done" once may napiling file ──
@@ -782,7 +958,8 @@ const amountRow = `
 
                         const signature = JSON.stringify(data.active_draft) + JSON.stringify(data.completed_entry)
                             + JSON.stringify(data.revision_entry) + JSON.stringify(data.past_entries)
-                            + JSON.stringify(data.cutting_feedback) + JSON.stringify(data.design_3d);
+                            + JSON.stringify(data.cutting_feedback) + JSON.stringify(data.design_3d)
+                            + JSON.stringify(data.inquiry) + JSON.stringify(data.contract_locked);
                         if (signature !== q2dLastSignature) {
                             q2dRenderRoot(data);
                             q2dLastSignature = signature;

@@ -5,8 +5,7 @@ $formError = '';
 $formSuccess = '';
 $generatedControlNo = '';
 
-// Kunin ang flash message mula sa session (kung meron), tapos agad na i-clear
-// para hindi na ito lumabas ulit sa susunod na refresh
+
 if (!empty($_SESSION['crm_flash_success'])) {
     $formSuccess = $_SESSION['crm_flash_success'];
     $generatedControlNo = $_SESSION['crm_flash_control_no'] ?? '';
@@ -16,19 +15,6 @@ if (!empty($_SESSION['crm_flash_success'])) {
 // --- Auto-assigned sales staff (currently logged-in user) ---
 $currentSalesName = $_SESSION['username'] ?? '';
 $currentSalesId = intval($_SESSION['account_id'] ?? 0);
-
-// --- Fetch designer list para sa "Designer Assign" dropdown ---
-$designers = [];
-$designerResult = $conn->query("
-    SELECT id, name FROM noblerole
-    WHERE role IN ('DESIGN DEPARTMENT')
-    ORDER BY name ASC
-");
-if ($designerResult) {
-    while ($row = $designerResult->fetch_assoc()) {
-        $designers[] = $row;
-    }
-}
 
 function fetchCrmOptions($conn, $table)
 {
@@ -96,14 +82,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
     $clientName = trim($_POST['client_name'] ?? '');
     $contactNumber = trim($_POST['contact_number'] ?? '');
     $projectType = trim($_POST['project_type'] ?? '');
-    $designerId = intval($_POST['designer_id'] ?? 0);
-    $measurementDatetime = trim($_POST['measurement_datetime'] ?? '');
-    $targetCompletionDate = trim($_POST['target_completion_date'] ?? '');
-   
-    $inquiryMode = trim($_POST['inquiry_mode'] ?? 'site_visit');
-    if (!in_array($inquiryMode, ['site_visit', 'ready_for_quotation'], true)) {
-        $inquiryMode = 'site_visit';
+
+    // Project Nature: 'modular' (Site Visit Needed) o 'material' (Ready for Quotation).
+    // Walang default — required field, kailangan piliin ng user.
+    $projectNature = trim($_POST['project_nature'] ?? '');
+    if (!in_array($projectNature, ['modular', 'material'], true)) {
+        $projectNature = '';
     }
+
+    $designerId = 0;
+    $measurementDatetime = null;
+
+    $targetCompletionDate = null; // Ise-set na lang mamaya sa Sales & Market List (Schedule & Assign), kasabay ng measurement datetime
+
+    // Mode ay HINDI galing sa POST ng user — laging derived mula sa Project Nature,
+    // para hindi ma-bypass kahit galawin ng user yung DOM/devtools.
+    $inquiryMode = ($projectNature === 'material') ? 'ready_for_quotation' : 'site_visit';
 
     $initialStatus = ($inquiryMode === 'ready_for_quotation') ? 'In Progress' : 'Pending';
 
@@ -134,7 +128,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
         ? implode(', ', array_map('trim', $projectScopeSelected))
         : trim($projectScopeSelected);
 
-    if (empty($clientName) || empty($houseStreet) || empty($cityName) || empty($barangayName) || empty($contactNumber)) {
+    if (
+        empty($clientName) || empty($houseStreet) || empty($cityName) || empty($barangayName)
+        || empty($contactNumber) || empty($projectNature)
+    ) {
         $formError = 'Please fill out all required fields.';
     } elseif (!preg_match('/^[0-9]{11}$/', $contactNumber)) {
         $formError = 'Contact Number must be exactly 11 digits.';
@@ -143,20 +140,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
         $branchId = getBranchId($conn, $branch);
         $controlNo = generateCrmControlNo($conn, $branchId);
 
- 
-                $stmt = $conn->prepare("
+        $stmt = $conn->prepare("
             INSERT INTO noblecrminquiry
-                (control_no, client_name, address, project_type, project_scope, measuring_space,
+                (control_no, client_name, address, project_type, project_nature, project_scope, measuring_space,
                  measurement_datetime, target_completion_date, contact_number, sales_staff_id, designer_id,
                  branch, mode, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->bind_param(
-            "sssssssssiisss",
+            "ssssssssssiisss",
             $controlNo,
             $clientName,
             $address,
             $projectType,
+            $projectNature,
             $projectScope,
             $measuringSpace,
             $measurementDatetime,
@@ -173,38 +170,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
             $inquiryId = $stmt->insert_id;
             $stmt->close();
 
-            // --- Notify ang naka-assign na designer tungkol sa bagong inquiry ---
-            // Palitan ang link path kung iba ang route papunta sa designer's view ng CRM record.
-            if ($designerId > 0) {
-                $notifMessage = $inquiryMode === 'ready_for_quotation'
-                    ? "New inquiry from {$clientName} (Control No. {$controlNo}) — client already has 2D, ready for Quotation."
-                    : "New inquiry from {$clientName} (Control No. {$controlNo}) has been assigned to you.";
-                $notifLink = '/crmdesigner?id=' . $inquiryId;
 
-                $notifStmt = $conn->prepare("
-    INSERT INTO noblenotification
-        (user_id, request_id, control_no, type, message, is_read, created_at, sender_id, link)
-    VALUES (?, ?, ?, 'crm', ?, 0, NOW(), ?, ?)
-");
-                $notifStmt->bind_param(
-                    "iissis",
-                    $designerId,
-                    $inquiryId,
-                    $controlNo,
-                    $notifMessage,
-                    $currentSalesId,
-                    $notifLink
-                );
-                $notifStmt->execute();
-                $notifStmt->close();
-            }
-
-            // I-store sa session bilang "flash message" bago i-redirect
             $_SESSION['crm_flash_success'] = 'Inquiry submitted successfully.';
             $_SESSION['crm_flash_control_no'] = $controlNo;
 
-            // I-redirect papunta sa parehong page (GET request) para maiwasan
-            // ang form resubmission pag nag-refresh (Post-Redirect-Get pattern)
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
         } else {
@@ -217,7 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
 // Ginagamit sa pag-check ng mga naka-checked na checkbox pagkatapos ng failed submit
 $postedMeasuringSpace = (array) ($_POST['measuring_space'] ?? []);
 $postedProjectScope = (array) ($_POST['project_scope'] ?? []);
-$postedMode = $_POST['inquiry_mode'] ?? 'site_visit';
+$postedMode = $_POST['inquiry_mode'] ?? '';
+$postedNature = $_POST['project_nature'] ?? '';
 
 // Folder kung saan nakatago ang bawat step's markup (palitan kung iba ang gusto mong path)
 $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
@@ -489,6 +459,45 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         crmGoToStep(2);
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // PROJECT NATURE -> MODE (auto-lock, no default — user must pick)
+    // ═══════════════════════════════════════════════════════════
+    function crmSyncModeFromNature() {
+        const nature = document.querySelector('input[name="project_nature"]:checked')?.value;
+        const siteVisitRadio = document.getElementById('crm_mode_sitevisit');
+        const readyRadio = document.getElementById('crm_mode_ready');
+        const siteVisitLabel = siteVisitRadio.closest('label');
+        const readyLabel = readyRadio.closest('label');
+
+        // Reset muna
+        siteVisitLabel.classList.remove('opacity-40', 'pointer-events-none');
+        readyLabel.classList.remove('opacity-40', 'pointer-events-none');
+        siteVisitRadio.disabled = false;
+        readyRadio.disabled = false;
+        siteVisitRadio.checked = false;
+        readyRadio.checked = false;
+
+        if (nature === 'modular') {
+            siteVisitRadio.checked = true;
+            readyRadio.disabled = true;
+            readyLabel.classList.add('opacity-40', 'pointer-events-none');
+        } else if (nature === 'material') {
+            readyRadio.checked = true;
+            siteVisitRadio.disabled = true;
+            siteVisitLabel.classList.add('opacity-40', 'pointer-events-none');
+        }
+        crmSaveDraft();
+    }
+
+    function crmGoToStep3() {
+        const nature = document.querySelector('input[name="project_nature"]:checked');
+        if (!nature) {
+            alert('Please select Project Nature (Modular or Material Only).');
+            return;
+        }
+        crmGoToStep(3);
+    }
+
     function crmGoToStep4() {
         crmBuildReview();
         crmGoToStep(4);
@@ -641,21 +650,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
             .join(', ') || '—';
     }
 
-    function crmFormatDateTime(value) {
-        if (!value) return '—';
-        const dt = new Date(value);
-        if (isNaN(dt.getTime())) return value; // fallback kung di ma-parse
-        return dt.toLocaleString('en-PH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-        function crmFormatDate(value) {
+    function crmFormatDate(value) {
         if (!value) return '—';
         const dt = new Date(value + 'T00:00:00');
         if (isNaN(dt.getTime())) return value;
@@ -664,6 +659,12 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
             month: 'long',
             day: 'numeric'
         });
+    }
+
+    function crmSelectedNatureLabel() {
+        const checked = document.querySelector('input[name="project_nature"]:checked');
+        if (!checked) return '—';
+        return checked.value === 'modular' ? 'Modular' : 'Material Only';
     }
 
     function crmSelectedModeLabel() {
@@ -685,23 +686,16 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
             crmSelectedText('crm_region'),
         ].filter(Boolean);
 
-        const designerSel = document.getElementById('crm_designer_id');
-        const designerText = designerSel.options[designerSel.selectedIndex]?.text || '—';
-
-        // NOTE: Contract Amount row removed from review — it's no longer
-        // collected in this form. It's set later by Sales on the 2D &
-        // Quotation page, once the Quotation file is marked "Done".
-                const rows = [
+        const rows = [
             ['Client Name', document.getElementById('crm_client_name').value || '—'],
             ['Address', addressParts.join(', ') || '—'],
             ['Contact Number', document.getElementById('crm_contact_number').value || '—'],
+            ['Project Nature', crmSelectedNatureLabel()],
             ['Mode', crmSelectedModeLabel()],
             ['Type of Project', document.getElementById('crm_project_type').value || '—'],
             ['Scope of Project', crmCheckedValues('project_scope_checkboxes')],
             ['Measuring Space', crmCheckedValues('measuring_space_checkboxes')],
-            ['Measurement Date & Time', crmFormatDateTime(document.getElementById('crm_measurement_datetime').value)],
-            ['Target Completion Date', crmFormatDate(document.getElementById('crm_target_completion_date').value)],
-            ['Designer Assign', designerText.startsWith('Select') ? '—' : designerText],
+
         ];
 
         document.getElementById('crm_review_content').innerHTML = rows.map(([label, val]) => `
@@ -721,11 +715,11 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         const form = document.getElementById('crmInquiryForm');
         const data = {};
 
-        // NOTE: crm_contract_amount / crm_contract_amount_display removed —
-        // no longer part of this form.
-                const simpleIds = [
+        // NOTE: crm_measurement_datetime / crm_designer_id / crm_contract_amount
+        // removed — none of these are part of this form anymore.
+        const simpleIds = [
             'crm_client_name', 'crm_house_street', 'crm_contact_number',
-            'crm_project_type', 'crm_measurement_datetime', 'crm_target_completion_date', 'crm_designer_id',
+            'crm_project_type',
             'crm_region', 'crm_province', 'crm_city', 'crm_barangay'
         ];
         simpleIds.forEach(id => {
@@ -735,7 +729,8 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
 
         data.project_scope = Array.from(form.querySelectorAll('input[name="project_scope[]"]:checked')).map(cb => cb.value);
         data.measuring_space = Array.from(form.querySelectorAll('input[name="measuring_space[]"]:checked')).map(cb => cb.value);
-        data.inquiry_mode = (form.querySelector('input[name="inquiry_mode"]:checked') || {}).value || 'site_visit';
+        data.project_nature = (form.querySelector('input[name="project_nature"]:checked') || {}).value || '';
+        data.inquiry_mode = (form.querySelector('input[name="inquiry_mode"]:checked') || {}).value || '';
         data.step = crmCurrentStep;
 
         localStorage.setItem(CRM_DRAFT_KEY, JSON.stringify(data));
@@ -748,10 +743,10 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         let data;
         try { data = JSON.parse(raw); } catch (e) { return; }
 
-        // NOTE: crm_contract_amount / crm_contract_amount_display removed
-        // from restore too.
-                const simpleIds = ['crm_client_name', 'crm_house_street', 'crm_contact_number',
-            'crm_project_type', 'crm_measurement_datetime', 'crm_target_completion_date'];
+        // NOTE: crm_measurement_datetime / crm_designer_id / crm_contract_amount
+        // removed from restore too.
+        const simpleIds = ['crm_client_name', 'crm_house_street', 'crm_contact_number',
+            'crm_project_type'];
         simpleIds.forEach(id => {
             const el = document.getElementById(id);
             if (el && data[id] !== undefined) el.value = data[id];
@@ -792,14 +787,13 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         }
         crmSyncAddressHiddenFields();
 
-        if (data.crm_designer_id) {
-            const designerSel = document.getElementById('crm_designer_id');
-            if (designerSel) designerSel.value = data.crm_designer_id;
-        }
-
-        if (data.inquiry_mode) {
-            const modeInput = document.querySelector(`input[name="inquiry_mode"][value="${CSS.escape(data.inquiry_mode)}"]`);
-            if (modeInput) modeInput.checked = true;
+        // Project Nature -> derives Mode automatically (no separate inquiry_mode restore needed)
+        if (data.project_nature) {
+            const natureInput = document.querySelector(`input[name="project_nature"][value="${CSS.escape(data.project_nature)}"]`);
+            if (natureInput) {
+                natureInput.checked = true;
+                crmSyncModeFromNature();
+            }
         }
 
         (data.project_scope || []).forEach(val => {

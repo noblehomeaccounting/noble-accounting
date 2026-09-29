@@ -1,5 +1,8 @@
 <?php
-// crm2dquotationajax.php
+// crm2dquotationajax.php  — INITIAL step (walang contract dito; nasa Final na)
+// MULTI-ATTACHMENT VERSION: bawat slot (2D / Quotation / 3D) ay pwede nang maraming file.
+// Ang mga file ay nasa table `noblecrm_2dquotation_files`. Ang `*_path` column ay
+// pinapanatili bilang "first file" para hindi masira ang ibang pages (checkdesigner, final, atbp.).
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -10,6 +13,9 @@ include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 header('Content-Type: application/json');
+
+const Q2D_MAX_FILES_PER_SLOT = 10;
+const Q2D_MAX_FILE_BYTES = 15 * 1024 * 1024; // 15MB bawat file
 
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 
@@ -29,6 +35,14 @@ function q2dRespond(bool $success, string $message = '', array $extra = []): voi
     exit;
 }
 
+// Kapag lumampas sa post_max_size, binubura ng PHP ang buong $_POST at $_FILES.
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && empty($_POST) && empty($_FILES)
+    && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+) {
+    q2dRespond(false, 'The files are too large for the server to accept. Try uploading fewer or smaller files.');
+}
 
 function q2dRequireDesigner(bool $isSales): void
 {
@@ -37,7 +51,7 @@ function q2dRequireDesigner(bool $isSales): void
     }
 }
 
-// NEW: per-slot na check — 2D at 3D ay designer-only, Quotation ay sales-only.
+// per-slot na check — 2D at 3D ay designer-only, Quotation ay sales-only.
 function q2dRequireSlotOwner(string $slot, bool $isSales): void
 {
     if ($slot === 'quotation') {
@@ -54,15 +68,18 @@ if ($inquiryId <= 0) {
     q2dRespond(false, 'Missing or invalid inquiry reference.');
 }
 
-// NEW-3D: '3d' is now a valid slot for save_slot / unlock_slot.
-if (in_array($action, ['save_slot', 'unlock_slot'], true) && !in_array($slot, ['2d', 'quotation', '3d'], true)) {
+if (in_array($action, ['save_slot', 'unlock_slot', 'delete_file'], true) && !in_array($slot, ['2d', 'quotation', '3d'], true)) {
     q2dRespond(false, 'Invalid slot.');
+}
+
+// Ang contract (amount + attachment) ay nasa Final na — dito hindi na.
+if ($action === 'save_contract_amount') {
+    q2dRespond(false, 'The Contract is now set in the Final submission.');
 }
 
 $stmt = $conn->prepare("
     SELECT id, control_no, client_name, status, mode, deadline,
-           design_progress, design_confirmed, design_confirmed_at, design_confirmed_by, clientstatus,
-           contract_amount
+           design_progress, design_confirmed, design_confirmed_at, design_confirmed_by, clientstatus
     FROM noblecrminquiry
     WHERE id = ? AND {$ownerColumn} = ?
     LIMIT 1
@@ -79,7 +96,7 @@ if (!in_array($inquiry['status'], ['In Progress', 'Approved', 'For Revision'], t
     q2dRespond(false, 'The site visit must be completed first.');
 }
 
-// NEW-LATE: shared helper — true kapag lagpas na sa deadline ng inquiry ngayong araw.
+// shared helper — true kapag lagpas na sa deadline ng inquiry ngayong araw.
 function q2dIsPastDeadline(array $inquiry): bool
 {
     if (empty($inquiry['deadline'])) {
@@ -103,10 +120,20 @@ function q2dGetLatestEntry(mysqli $conn, int $inquiryId): ?array
     $stmt = $conn->prepare("
         SELECT * FROM noblecrm_2dquotation
         WHERE inquiry_id = ? AND stage = 'Initial'
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
     ");
     $stmt->bind_param("i", $inquiryId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function q2dGetEntryById(mysqli $conn, int $id): ?array
+{
+    $stmt = $conn->prepare("SELECT * FROM noblecrm_2dquotation WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $id);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -117,8 +144,8 @@ function q2dGetHistory(mysqli $conn, int $inquiryId): array
 {
     $stmt = $conn->prepare("
         SELECT * FROM noblecrm_2dquotation
-       WHERE inquiry_id = ? AND stage = 'Initial'
-        ORDER BY created_at DESC
+        WHERE inquiry_id = ? AND stage = 'Initial'
+        ORDER BY created_at DESC, id DESC
     ");
     $stmt->bind_param("i", $inquiryId);
     $stmt->execute();
@@ -168,34 +195,203 @@ function q2dUrl(?string $path): ?string
 }
 
 
-function q2dNotifySuperAdmins(mysqli $conn, int $inquiryId, array $inquiry, int $senderId, bool $is3dOnly = false): void
+// ═══════════════════════════════════════════════════════════════
+//  MULTI-FILE HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+// Column prefix ng bawat slot sa noblecrm_2dquotation.
+function q2dSlotPrefix(string $slot): string
 {
-    $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ?");
-    $stmt->bind_param("s", $role);
-    $role = ROLE_SUPERADMIN; // ⚠️ verify constant name
+    if ($slot === '2d')
+        return 'design_2d_';
+    if ($slot === '3d')
+        return 'design_3d_';
+    return 'quotation_';
+}
+
+// I-normalize ang $_FILES['files'] (files[]) papunta sa listahan ng single-file arrays.
+function q2dNormalizeFiles(array $f): array
+{
+    $out = [];
+    if (!isset($f['name'])) {
+        return $out;
+    }
+    if (!is_array($f['name'])) {
+        return ($f['error'] === UPLOAD_ERR_NO_FILE) ? [] : [$f];
+    }
+    foreach ($f['name'] as $i => $n) {
+        if ($f['error'][$i] === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        $out[] = [
+            'name' => $n,
+            'type' => $f['type'][$i],
+            'tmp_name' => $f['tmp_name'][$i],
+            'error' => $f['error'][$i],
+            'size' => $f['size'][$i],
+        ];
+    }
+    return $out;
+}
+
+function q2dCountSlotFiles(mysqli $conn, int $quotationId, string $slot): int
+{
+    $stmt = $conn->prepare("SELECT COUNT(*) AS c FROM noblecrm_2dquotation_files WHERE quotation_id = ? AND slot = ?");
+    $stmt->bind_param("is", $quotationId, $slot);
     $stmt->execute();
-    $superAdmins = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $c = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    return $c;
+}
+
+// Lumang data (may *_path pero wala pang rows sa files table) → auto-backfill.
+function q2dBackfillEntry(mysqli $conn, array $row): void
+{
+    foreach (['2d', 'quotation', '3d'] as $slot) {
+        $p = q2dSlotPrefix($slot);
+        $path = $row[$p . 'path'] ?? null;
+        if (empty($path)) {
+            continue;
+        }
+        if (q2dCountSlotFiles($conn, (int) $row['id'], $slot) > 0) {
+            continue;
+        }
+        $by = !empty($row[$p . 'uploaded_by']) ? (int) $row[$p . 'uploaded_by'] : null;
+        $role = $row[$p . 'uploaded_role'] ?? null;
+        $name = basename($path);
+        $qid = (int) $row['id'];
+        $inqId = (int) $row['inquiry_id'];
+
+        $stmt = $conn->prepare("
+            INSERT INTO noblecrm_2dquotation_files
+                (quotation_id, inquiry_id, slot, path, original_name, uploaded_by, uploaded_role)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("iisssis", $qid, $inqId, $slot, $path, $name, $by, $role);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+// Kunin lahat ng files ng ilang submissions nang sabay: [quotation_id][slot] => [ {id,url,name}, ... ]
+function q2dLoadFilesMap(mysqli $conn, array $quotationIds): array
+{
+    $ids = array_values(array_filter(array_map('intval', $quotationIds)));
+    if (empty($ids)) {
+        return [];
+    }
+    $in = implode(',', $ids);
+    $res = $conn->query("
+        SELECT id, quotation_id, slot, path, original_name
+        FROM noblecrm_2dquotation_files
+        WHERE quotation_id IN ({$in})
+        ORDER BY id ASC
+    ");
+    $map = [];
+    while ($r = $res->fetch_assoc()) {
+        $map[(int) $r['quotation_id']][$r['slot']][] = [
+            'id' => (int) $r['id'],
+            'url' => q2dUrl($r['path']),
+            'name' => !empty($r['original_name']) ? $r['original_name'] : basename($r['path']),
+        ];
+    }
+    return $map;
+}
+
+// JSON ng isang slot ng isang submission.
+function q2dSlotJson(mysqli $conn, array $row, string $slot, array $filesMap): array
+{
+    $p = q2dSlotPrefix($slot);
+    $files = $filesMap[(int) $row['id']][$slot] ?? [];
+    $path = $row[$p . 'path'] ?? null;
+    $by = !empty($row[$p . 'uploaded_by']) ? (int) $row[$p . 'uploaded_by'] : null;
+
+    return [
+        'done' => (bool) ($row[$p . 'done'] ?? false),
+        'path' => $path,
+        // compat: "first file" para sa lumang consumers (hal. feedback2d.php)
+        'url' => $files[0]['url'] ?? q2dUrl($path),
+        'filename' => $files[0]['name'] ?? (!empty($path) ? basename($path) : null),
+        'files' => $files,
+        'uploaded_by_name' => q2dAccountName($conn, $by),
+        'uploaded_role_label' => q2dRoleLabel($row[$p . 'uploaded_role'] ?? null),
+    ];
+}
+
+// I-sync ang `*_path` column sa first file ng slot (o NULL kung wala nang file).
+function q2dSyncPathColumn(mysqli $conn, int $quotationId, string $slot): void
+{
+    $col = q2dSlotPrefix($slot) . 'path'; // whitelisted sa q2dSlotPrefix
+    $stmt = $conn->prepare("SELECT path FROM noblecrm_2dquotation_files WHERE quotation_id = ? AND slot = ? ORDER BY id ASC LIMIT 1");
+    $stmt->bind_param("is", $quotationId, $slot);
+    $stmt->execute();
+    $first = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    if (empty($superAdmins)) {
+    $path = $first['path'] ?? null;
+    $stmt = $conn->prepare("UPDATE noblecrm_2dquotation SET {$col} = ? WHERE id = ?");
+    $stmt->bind_param("si", $path, $quotationId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// Ilang rows ang gumagamit pa ng path na ito? (may kopya kasi tuwing carry-over)
+function q2dPathRefCount(mysqli $conn, string $path): int
+{
+    $stmt = $conn->prepare("SELECT COUNT(*) AS c FROM noblecrm_2dquotation_files WHERE path = ?");
+    $stmt->bind_param("s", $path);
+    $stmt->execute();
+    $c = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    return $c;
+}
+
+function q2dCopySlotFiles(mysqli $conn, int $fromId, int $toId, string $slot): void
+{
+    $stmt = $conn->prepare("
+        INSERT INTO noblecrm_2dquotation_files
+            (quotation_id, inquiry_id, slot, path, original_name, uploaded_by, uploaded_role, uploaded_at)
+        SELECT ?, inquiry_id, slot, path, original_name, uploaded_by, uploaded_role, uploaded_at
+        FROM noblecrm_2dquotation_files
+        WHERE quotation_id = ? AND slot = ?
+        ORDER BY id ASC
+    ");
+    $stmt->bind_param("iis", $toId, $fromId, $slot);
+    $stmt->execute();
+    $stmt->close();
+}
+
+
+// Initial submissions → DESIGNER HEAD na ang magre-review (hindi na Superadmin).
+function q2dNotifyDesignerHeads(mysqli $conn, int $inquiryId, array $inquiry, int $senderId, bool $is3dOnly = false): void
+{
+    $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ? AND position = ?");
+    $role = ROLE_DESIGNER;
+    $pos = POSITION_HEAD;
+    $stmt->bind_param("ss", $role, $pos);
+    $stmt->execute();
+    $heads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    if (empty($heads)) {
         return;
     }
 
     $message = $is3dOnly
-        ? "New 3D file submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})"
-        : "New 2D and Quotation submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})";
-    $link = "/crm-main?id={$inquiryId}"; // ⚠️ verify expected param name
+        ? "New Initial 3D file submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})"
+        : "New Initial 2D and Quotation submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})";
+    $link = "/checkdesigner2dquotation?id={$inquiryId}";
     $controlNo = $inquiry['control_no'];
 
     $stmt = $conn->prepare("
         INSERT INTO noblenotification
             (user_id, request_id, control_no, type, message, is_read, created_at, sender_id, link)
-        VALUES (?, ?, ?, 'crm_inquiry', ?, 0, NOW(), ?, ?)
+        VALUES (?, ?, ?, 'crm_2dquotation', ?, 0, NOW(), ?, ?)
     ");
-    $stmt->bind_param("iissis", $adminId, $inquiryId, $controlNo, $message, $senderId, $link);
+    $stmt->bind_param("iissis", $headId, $inquiryId, $controlNo, $message, $senderId, $link);
 
-    foreach ($superAdmins as $admin) {
-        $adminId = (int) $admin['id'];
+    foreach ($heads as $h) {
+        $headId = (int) $h['id'];
         $stmt->execute();
     }
     $stmt->close();
@@ -219,7 +415,6 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
     $carryQuotRole = null;
     $carryQuotBy = null;
     $carryQuotReview = 'Pending';
-    // NEW-3D: 3D carries the same way 2D/Quotation already do.
     $carry3dDone = 0;
     $carry3dPath = null;
     $carry3dRole = null;
@@ -228,7 +423,11 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
     $carryInclude3d = 0;
     $carry3dStage = 'Locked';
 
+    $copySlots = []; // slots na naka-Approved → kokopyahin ang lahat ng files nila
+
     if ($latest && $latest['status'] === 'For Revision') {
+
+        q2dBackfillEntry($conn, $latest);
 
         $carryInclude3d = (int) ($latest['include_3d'] ?? 0);
 
@@ -237,8 +436,8 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
             $carry2dPath = $latest['design_2d_path'];
             $carry2dRole = $latest['design_2d_uploaded_role'];
             $carry2dBy = $latest['design_2d_uploaded_by'];
-
             $carry2dReview = 'Approved';
+            $copySlots[] = '2d';
         }
         if (($latest['quotation_review_status'] ?? null) === 'Approved') {
             $carryQuotDone = 1;
@@ -246,6 +445,7 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
             $carryQuotRole = $latest['quotation_uploaded_role'];
             $carryQuotBy = $latest['quotation_uploaded_by'];
             $carryQuotReview = 'Approved';
+            $copySlots[] = 'quotation';
         }
 
         if (($latest['design_3d_review_status'] ?? null) === 'Approved') {
@@ -254,6 +454,7 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
             $carry3dRole = $latest['design_3d_uploaded_role'];
             $carry3dBy = $latest['design_3d_uploaded_by'];
             $carry3dReview = 'Approved';
+            $copySlots[] = '3d';
         }
         if ($carryInclude3d) {
             $carry3dStage = 'Draft';
@@ -299,50 +500,24 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
         $carry3dStage
     );
     $stmt->execute();
+    $newId = (int) $stmt->insert_id;
     $stmt->close();
 
-    return q2dGetLatestEntry($conn, $inquiryId);
-}
-
-
-function q2dGetPreviousEntry(mysqli $conn, int $inquiryId, int $excludeId): ?array
-{
-    $stmt = $conn->prepare("
-        SELECT * FROM noblecrm_2dquotation
-        WHERE inquiry_id = ? AND stage = 'Initial' AND id != ?
-        ORDER BY created_at DESC
-        LIMIT 1
-    ");
-    $stmt->bind_param("ii", $inquiryId, $excludeId);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    return $row ?: null;
-}
-
-
-function q2dReplaceSlotFile(mysqli $conn, int $inquiryId, int $draftId, string $pathField, ?string $oldPath): void
-{
-    if (empty($oldPath)) {
-        return;
+    // Kopyahin ang lahat ng files ng mga naka-Approved na slot papunta sa bagong draft.
+    if ($latest && $newId > 0) {
+        foreach ($copySlots as $cs) {
+            q2dCopySlotFiles($conn, (int) $latest['id'], $newId, $cs);
+        }
     }
 
-    @unlink(ROOT_PATH . '/' . $oldPath);
-
-    $stmt = $conn->prepare("
-        UPDATE noblecrm_2dquotation
-        SET {$pathField} = NULL
-        WHERE inquiry_id = ? AND id != ? AND {$pathField} = ?
-    ");
-    $stmt->bind_param("iis", $inquiryId, $draftId, $oldPath);
-    $stmt->execute();
-    $stmt->close();
+    return q2dGetEntryById($conn, $newId) ?: q2dGetLatestEntry($conn, $inquiryId);
 }
+
 
 function q2dSaveUploadedPdf(array $file, string $prefix, int $inquiryId, int $maxBytes, string $uploadDir): array
 {
     if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) {
-        return ['path' => null, 'error' => 'File is too large for the server to accept.'];
+        return ['path' => null, 'error' => 'A file is too large for the server to accept.'];
     }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return ['path' => null, 'error' => 'Upload failed. Please try again.'];
@@ -355,10 +530,10 @@ function q2dSaveUploadedPdf(array $file, string $prefix, int $inquiryId, int $ma
     finfo_close($finfo);
 
     if ($ext !== 'pdf' || $mime !== 'application/pdf') {
-        return ['path' => null, 'error' => 'File must be a valid PDF.'];
+        return ['path' => null, 'error' => '"' . $file['name'] . '" must be a valid PDF.'];
     }
     if ($file['size'] > $maxBytes) {
-        return ['path' => null, 'error' => 'File exceeds the 15MB limit.'];
+        return ['path' => null, 'error' => '"' . $file['name'] . '" exceeds the 15MB limit.'];
     }
 
     $safeName = $prefix . '_' . $inquiryId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.pdf';
@@ -375,13 +550,13 @@ function q2dSaveUploadedPdf(array $file, string $prefix, int $inquiryId, int $ma
 function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, string $uploadDir): array
 {
     if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) {
-        return ['path' => null, 'error' => 'File is too large for the server to accept.'];
+        return ['path' => null, 'error' => 'A file is too large for the server to accept.'];
     }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return ['path' => null, 'error' => 'Upload failed. Please try again.'];
     }
     if ($file['size'] > $maxBytes) {
-        return ['path' => null, 'error' => 'File exceeds the 15MB limit.'];
+        return ['path' => null, 'error' => '"' . $file['name'] . '" exceeds the 15MB limit.'];
     }
 
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -400,7 +575,7 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
 
     $allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!in_array($mime, $allowedImageMimes, true)) {
-        return ['path' => null, 'error' => 'The 3D file must be a PDF or an image (JPG, PNG, WEBP).'];
+        return ['path' => null, 'error' => '"' . $file['name'] . '": the 3D file must be a PDF or an image (JPG, PNG, WEBP).'];
     }
 
     $srcImage = null;
@@ -412,7 +587,7 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
         $srcImage = @imagecreatefromwebp($file['tmp_name']);
 
     if (!$srcImage) {
-        return ['path' => null, 'error' => 'Could not read the uploaded image.'];
+        return ['path' => null, 'error' => 'Could not read the uploaded image "' . $file['name'] . '".'];
     }
 
     // Preserve transparency for PNG/WEBP sources.
@@ -431,11 +606,129 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
 }
 
 
+// Alin bang submission row ang kasalukuyang ine-edit ng slot na ito?
+// Returns [entry|null, errorMessage]. $create = true → pwedeng gumawa ng bagong Draft.
+function q2dResolveEditableEntry(mysqli $conn, int $inquiryId, string $slot, bool $create): array
+{
+    $latest = q2dGetLatestEntry($conn, $inquiryId);
+
+    if ($slot === '3d') {
+        if (!$latest || ($latest['design_3d_stage'] ?? 'Locked') !== 'Draft') {
+            return [null, '3D upload is not open right now.'];
+        }
+        return [$latest, ''];
+    }
+
+    // Approved na submission pero may open feedback sa 2D → pwedeng palitan ang 2D file.
+    if ($slot === '2d' && $latest && $latest['status'] === 'Approved' && (int) $latest['design_2d_done'] === 0) {
+        if (!q2dHasUnresolvedFeedback($conn, (int) $latest['id'])) {
+            return [null, 'No open feedback on this file.'];
+        }
+        return [$latest, ''];
+    }
+
+    if ($latest && $latest['status'] === 'Approved') {
+        return [null, 'Nothing to edit right now.'];
+    }
+
+    if ($create) {
+        $draft = q2dGetOrCreateDraft($conn, $inquiryId);
+    } else {
+        $draft = ($latest && in_array($latest['status'], ['Draft', 'Waiting for Approval'], true)) ? $latest : null;
+    }
+
+    if (!$draft) {
+        return [null, 'Nothing to edit right now.'];
+    }
+    if ($draft['status'] !== 'Draft') {
+        return [null, 'This submission is locked and can no longer be edited.'];
+    }
+    return [$draft, ''];
+}
+
+// Ang sentral na "Mark as Done": tanggapin ang mga bagong files, i-save, i-mark done.
+function q2dSaveSlotFiles(mysqli $conn, array $entry, string $slot, int $inquiryId, int $userId, string $roleLabel): void
+{
+    $p = q2dSlotPrefix($slot);
+    $entryId = (int) $entry['id'];
+
+    if ((int) ($entry[$p . 'done'] ?? 0) === 1) {
+        q2dRespond(false, 'This file is already marked done. Click Edit first.');
+    }
+
+    q2dBackfillEntry($conn, $entry);
+
+    $newFiles = q2dNormalizeFiles($_FILES['files'] ?? []);
+    $existingCount = q2dCountSlotFiles($conn, $entryId, $slot);
+    $total = $existingCount + count($newFiles);
+
+    if ($total === 0) {
+        q2dRespond(false, 'Please attach at least one file before marking this as done.');
+    }
+    if ($total > Q2D_MAX_FILES_PER_SLOT) {
+        q2dRespond(false, 'Maximum of ' . Q2D_MAX_FILES_PER_SLOT . ' files per slot.');
+    }
+
+    $saved = [];
+    if (!empty($newFiles)) {
+        $uploadDir = ROOT_PATH . '/uploads/crm-2dquotation/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        foreach ($newFiles as $f) {
+            $r = ($slot === '3d')
+                ? q2dSaveUploaded3dFile($f, $inquiryId, Q2D_MAX_FILE_BYTES, $uploadDir)
+                : q2dSaveUploadedPdf($f, $slot === '2d' ? 'design2d' : 'quotation', $inquiryId, Q2D_MAX_FILE_BYTES, $uploadDir);
+
+            if (!$r['path']) {
+                foreach ($saved as $s) { // rollback — walang natitirang kalahating upload
+                    @unlink(ROOT_PATH . '/' . $s['path']);
+                }
+                q2dRespond(false, $r['error']);
+            }
+            $saved[] = ['path' => $r['path'], 'name' => $f['name']];
+        }
+
+        $ins = $conn->prepare("
+            INSERT INTO noblecrm_2dquotation_files
+                (quotation_id, inquiry_id, slot, path, original_name, uploaded_by, uploaded_role)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        foreach ($saved as $s) {
+            $ins->bind_param("iisssis", $entryId, $inquiryId, $slot, $s['path'], $s['name'], $userId, $roleLabel);
+            $ins->execute();
+        }
+        $ins->close();
+    }
+
+    q2dSyncPathColumn($conn, $entryId, $slot);
+
+    $stmt = $conn->prepare("
+        UPDATE noblecrm_2dquotation
+        SET {$p}done = 1, {$p}uploaded_role = ?, {$p}uploaded_by = ?, {$p}uploaded_at = NOW()
+        WHERE id = ?
+    ");
+    $stmt->bind_param("sii", $roleLabel, $userId, $entryId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTIONS
+// ═══════════════════════════════════════════════════════════════
+
 if ($action === 'state') {
 
     $qHistory = q2dGetHistory($conn, $inquiryId);
-    $latest = $qHistory[0] ?? null;
 
+    // Lumang data → siguraduhing may rows sa files table.
+    foreach ($qHistory as $hRow) {
+        q2dBackfillEntry($conn, $hRow);
+    }
+
+    $latest = $qHistory[0] ?? null;
 
     if (
         $latest
@@ -453,6 +746,8 @@ if ($action === 'state') {
         $qHistory[0] = $latest;
     }
 
+    $filesMap = q2dLoadFilesMap($conn, array_column($qHistory, 'id'));
+
     $activeDraftRow = null;
     if ($latest && in_array($latest['status'], ['Draft', 'Waiting for Approval'], true)) {
         $activeDraftRow = $latest;
@@ -460,7 +755,6 @@ if ($action === 'state') {
 
     $isLocked = $activeDraftRow && $activeDraftRow['status'] === 'Waiting for Approval';
     $pastEntries = $activeDraftRow ? array_slice($qHistory, 1) : $qHistory;
-
 
     $completedRow = null;
     if (!$activeDraftRow && $latest && $latest['status'] === 'Approved') {
@@ -486,33 +780,15 @@ if ($action === 'state') {
             'status_label' => $statusLabel,
             'status_class' => $statusClass,
             'is_locked' => $isLocked,
-            // NEW-LATE: naka-save na (mula submit_final) kapag naka-lock na ito;
-            // habang Draft pa, live-compute batay sa kasalukuyang oras.
             'is_late' => $isLocked
                 ? (bool) ($activeDraftRow['is_late'] ?? 0)
                 : q2dIsPastDeadline($inquiry),
             'both_done' => (bool) $activeDraftRow['design_2d_done'] && (bool) $activeDraftRow['quotation_done'],
-            'design_2d' => [
-                'done' => (bool) $activeDraftRow['design_2d_done'],
-                'path' => $activeDraftRow['design_2d_path'],
-                'url' => q2dUrl($activeDraftRow['design_2d_path']),
-                'filename' => !empty($activeDraftRow['design_2d_path']) ? basename($activeDraftRow['design_2d_path']) : null,
-                'uploaded_by_name' => q2dAccountName($conn, $activeDraftRow['design_2d_uploaded_by'] ? (int) $activeDraftRow['design_2d_uploaded_by'] : null),
-                'uploaded_role_label' => q2dRoleLabel($activeDraftRow['design_2d_uploaded_role']),
-            ],
-            'quotation' => [
-                'done' => (bool) $activeDraftRow['quotation_done'],
-                'path' => $activeDraftRow['quotation_path'],
-                'url' => q2dUrl($activeDraftRow['quotation_path']),
-                'filename' => !empty($activeDraftRow['quotation_path']) ? basename($activeDraftRow['quotation_path']) : null,
-                'uploaded_by_name' => q2dAccountName($conn, $activeDraftRow['quotation_uploaded_by'] ? (int) $activeDraftRow['quotation_uploaded_by'] : null),
-                'uploaded_role_label' => q2dRoleLabel($activeDraftRow['quotation_uploaded_role']),
-            ],
+            'design_2d' => q2dSlotJson($conn, $activeDraftRow, '2d', $filesMap),
+            'quotation' => q2dSlotJson($conn, $activeDraftRow, 'quotation', $filesMap),
         ];
     }
 
-    // NEW-FEEDBACK: unresolved feedback flag drives whether the 2D slot
-    // can be unlocked/re-uploaded on an Approved submission.
     $hasUnresolvedFeedback = $latest ? q2dHasUnresolvedFeedback($conn, (int) $latest['id']) : false;
 
     $completedEntryJson = null;
@@ -520,19 +796,8 @@ if ($action === 'state') {
         $completedEntryJson = [
             'reviewed_at' => $completedRow['reviewed_at'] ? date('F d, Y g:i A', strtotime($completedRow['reviewed_at'])) : null,
             'design_2d_revisable' => $hasUnresolvedFeedback,
-            'design_2d' => [
-                'done' => (bool) $completedRow['design_2d_done'],
-                'path' => $completedRow['design_2d_path'],
-                'url' => q2dUrl($completedRow['design_2d_path']),
-                'filename' => !empty($completedRow['design_2d_path']) ? basename($completedRow['design_2d_path']) : null,
-                'uploaded_by_name' => q2dAccountName($conn, $completedRow['design_2d_uploaded_by'] ? (int) $completedRow['design_2d_uploaded_by'] : null),
-                'uploaded_role_label' => q2dRoleLabel($completedRow['design_2d_uploaded_role']),
-            ],
-            'quotation' => [
-                'url' => q2dUrl($completedRow['quotation_path']),
-                'uploaded_by_name' => q2dAccountName($conn, $completedRow['quotation_uploaded_by'] ? (int) $completedRow['quotation_uploaded_by'] : null),
-                'uploaded_role_label' => q2dRoleLabel($completedRow['quotation_uploaded_role']),
-            ],
+            'design_2d' => q2dSlotJson($conn, $completedRow, '2d', $filesMap),
+            'quotation' => q2dSlotJson($conn, $completedRow, 'quotation', $filesMap),
         ];
     }
 
@@ -541,20 +806,18 @@ if ($action === 'state') {
         $revisionEntryJson = [
             'design_2d_needs_revision' => $design2dNeedsRevision,
             'quotation_needs_revision' => $quotationNeedsRevision,
-            'design_2d' => [
-                'path' => $revisionEntryRow['design_2d_path'],
-                'url' => q2dUrl($revisionEntryRow['design_2d_path']),
-                'remarks' => $revisionEntryRow['design_2d_remarks'],
-            ],
-            'quotation' => [
-                'path' => $revisionEntryRow['quotation_path'],
-                'url' => q2dUrl($revisionEntryRow['quotation_path']),
-                'remarks' => $revisionEntryRow['quotation_remarks'],
-            ],
+            'design_2d' => array_merge(
+                q2dSlotJson($conn, $revisionEntryRow, '2d', $filesMap),
+                ['remarks' => $revisionEntryRow['design_2d_remarks']]
+            ),
+            'quotation' => array_merge(
+                q2dSlotJson($conn, $revisionEntryRow, 'quotation', $filesMap),
+                ['remarks' => $revisionEntryRow['quotation_remarks']]
+            ),
         ];
     }
 
-    $pastEntriesJson = array_map(function (array $entry): array {
+    $pastEntriesJson = array_map(function (array $entry) use ($conn, $filesMap): array {
         [$statusClass, $statusLabel] = q2dStatusStyle($entry['status']);
 
         $d2dReviewStatus = (!empty($entry['design_2d_review_status']) && $entry['design_2d_review_status'] !== 'Pending')
@@ -565,31 +828,23 @@ if ($action === 'state') {
             ? $entry['design_3d_review_status'] : null;
 
         return [
-            'design_2d' => [
-                'path' => $entry['design_2d_path'],
-                'url' => q2dUrl($entry['design_2d_path']),
+            'design_2d' => array_merge(q2dSlotJson($conn, $entry, '2d', $filesMap), [
                 'review_status' => $d2dReviewStatus,
                 'review_class' => $d2dReviewStatus ? q2dStatusStyle($d2dReviewStatus)[0] : null,
-            ],
-            'quotation' => [
-                'path' => $entry['quotation_path'],
-                'url' => q2dUrl($entry['quotation_path']),
+            ]),
+            'quotation' => array_merge(q2dSlotJson($conn, $entry, 'quotation', $filesMap), [
                 'review_status' => $qtReviewStatus,
                 'review_class' => $qtReviewStatus ? q2dStatusStyle($qtReviewStatus)[0] : null,
-            ],
-            // NEW-3D: only meaningful when this past cycle actually bundled 3D.
-            'design_3d' => [
+            ]),
+            'design_3d' => array_merge(q2dSlotJson($conn, $entry, '3d', $filesMap), [
                 'included' => (bool) ($entry['include_3d'] ?? 0),
-                'path' => $entry['design_3d_path'],
-                'url' => q2dUrl($entry['design_3d_path']),
                 'review_status' => $d3dReviewStatus,
                 'review_class' => $d3dReviewStatus ? q2dStatusStyle($d3dReviewStatus)[0] : null,
-            ],
+            ]),
             'submitted_at' => $entry['submitted_at'] ? date('M d, Y g:i A', strtotime($entry['submitted_at'])) : null,
             'status' => $entry['status'],
             'status_label' => $statusLabel,
             'status_class' => $statusClass,
-            // NEW-LATE: naka-save na sa oras ng submit_final / submit_3d.
             'is_late' => (bool) ($entry['is_late'] ?? 0),
             'design_2d_remarks' => $entry['design_2d_remarks'] ?? null,
             'quotation_remarks' => $entry['quotation_remarks'] ?? null,
@@ -597,22 +852,16 @@ if ($action === 'state') {
         ];
     }, $pastEntries);
 
-
     $include3d = (int) ($latest['include_3d'] ?? 0);
-    $design3dJson = $latest ? [
+    $design3dJson = $latest ? array_merge(q2dSlotJson($conn, $latest, '3d', $filesMap), [
         'include_3d' => (bool) $include3d,
         'stage' => $latest['design_3d_stage'] ?? 'Locked',
-        'done' => (bool) ($latest['design_3d_done'] ?? false),
-        'path' => $latest['design_3d_path'] ?? null,
-        'url' => q2dUrl($latest['design_3d_path'] ?? null),
-        'filename' => !empty($latest['design_3d_path']) ? basename($latest['design_3d_path']) : null,
-        'uploaded_by_name' => q2dAccountName($conn, !empty($latest['design_3d_uploaded_by']) ? (int) $latest['design_3d_uploaded_by'] : null),
-        'uploaded_role_label' => q2dRoleLabel($latest['design_3d_uploaded_role'] ?? null),
         'review_status' => $latest['design_3d_review_status'] ?? 'Pending',
         'remarks' => $latest['design_3d_remarks'] ?? null,
         // NOTE: 3D standalone submissions are no longer flagged as Late Submission — 2D & Quotation only.
         'toggle_editable' => (bool) ($activeDraftRow && $activeDraftRow['status'] === 'Draft'),
-    ] : null;
+    ]) : null;
+
     $isReadyForQuotation = ($inquiry['mode'] ?? 'site_visit') === 'ready_for_quotation';
 
     $step1Json = [
@@ -622,13 +871,9 @@ if ($action === 'state') {
             ? date('F d, Y g:i A', strtotime($inquiry['design_confirmed_at'])) : null,
         'confirmed_by_name' => $isReadyForQuotation ? null : q2dAccountName($conn, $inquiry['design_confirmed_by'] ? (int) $inquiry['design_confirmed_by'] : null),
         'client_status' => $inquiry['clientstatus'] ?? null,
-        'auto_confirmed' => $isReadyForQuotation, // para hindi ipakita ng frontend yung "confirmed by X at Y" badge line
+        'auto_confirmed' => $isReadyForQuotation,
     ];
 
-    $quotationDone = (bool) ($latest['quotation_done'] ?? false);
-
-    // NEW-FEEDBACK: full feedback log for the current 2D submission,
-    // shown to the designer regardless of draft/approved/revision state.
     $cuttingFeedback = [];
     if ($latest) {
         $stmt = $conn->prepare("
@@ -662,7 +907,6 @@ if ($action === 'state') {
         }
     }
 
-         // NEW-FINAL: may Final na ba para sa inquiry na ito?
     $finalStmt = $conn->prepare("
         SELECT id FROM noblecrm_2dquotation_final
         WHERE inquiry_id = ?
@@ -674,25 +918,23 @@ if ($action === 'state') {
     $finalStmt->close();
 
     q2dRespond(true, '', [
-          'stage' => $latest['stage'] ?? 'Initial',
+        'stage' => $latest['stage'] ?? 'Initial',
         'inquiry' => [
             'control_no' => $inquiry['control_no'],
             'client_name' => $inquiry['client_name'],
-            'contract_amount' => $inquiry['contract_amount'],
-            // NEW-LATE: para magamit din sa frontend (e.g. deadline row sa summary table).
             'deadline' => !empty($inquiry['deadline']) ? date('F d, Y', strtotime($inquiry['deadline'])) : null,
             'deadline_overdue' => $qDeadlineOverdue,
         ],
         'is_sales' => $isSales,
-        'quotation_done' => $quotationDone,
-        'step1' => $step1Json, // NEW-STEP1
+        'max_files' => Q2D_MAX_FILES_PER_SLOT,
+        'step1' => $step1Json,
         'active_draft' => $activeDraftJson,
         'completed_entry' => $completedEntryJson,
         'revision_entry' => $revisionEntryJson,
         'past_entries' => $pastEntriesJson,
         'design_3d' => $design3dJson,
-        'cutting_feedback' => $cuttingFeedback, // NEW-FEEDBACK
-         'has_final' => $hasFinal,  
+        'cutting_feedback' => $cuttingFeedback,
+        'has_final' => $hasFinal,
         'server_time' => date('c'),
     ]);
 }
@@ -770,192 +1012,75 @@ if ($action === 'save_toggle') {
 }
 
 
+// Isang save_slot na para sa lahat ng slot (2D / Quotation / 3D), multi-file.
 if ($action === 'save_slot') {
     q2dRequireSlotOwner($slot, $isSales);
 
-    if ($slot === '3d') {
-        $latest = q2dGetLatestEntry($conn, $inquiryId);
+    [$entry, $err] = q2dResolveEditableEntry($conn, $inquiryId, $slot, true);
+    if (!$entry) {
+        q2dRespond(false, $err);
+    }
 
-        if (!$latest || ($latest['design_3d_stage'] ?? 'Locked') !== 'Draft') {
-            q2dRespond(false, '3D upload is not open right now.');
-        }
-        if ((int) $latest['design_3d_done'] === 1) {
-            q2dRespond(false, 'This file is already marked done. Click Edit first.');
-        }
+    q2dSaveSlotFiles($conn, $entry, $slot, $inquiryId, $currentUserId, $roleLabel);
 
-        $existingPath = $latest['design_3d_path'] ?? null;
-        $newPath = null;
-
-        if (!empty($_FILES['design_3d_file']) && $_FILES['design_3d_file']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $maxBytes = 15 * 1024 * 1024; // 15MB
-            $uploadDir = ROOT_PATH . '/uploads/crm-2dquotation/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-
-            $result = q2dSaveUploaded3dFile($_FILES['design_3d_file'], $inquiryId, $maxBytes, $uploadDir);
-            if (!$result['path']) {
-                q2dRespond(false, $result['error']);
-            }
-
-            q2dReplaceSlotFile($conn, $inquiryId, (int) $latest['id'], 'design_3d_path', $existingPath);
-            $newPath = $result['path'];
-
-        } elseif (empty($latest['design_3d_path'])) {
-            q2dRespond(false, 'Please attach a PDF or image before marking this as done.');
-        }
-
-        if ($newPath) {
-            $stmt = $conn->prepare("
-                UPDATE noblecrm_2dquotation
-                SET design_3d_path = ?, design_3d_done = 1, design_3d_uploaded_role = ?, design_3d_uploaded_by = ?, design_3d_uploaded_at = NOW()
-                WHERE id = ?
-            ");
-            $stmt->bind_param("ssii", $newPath, $roleLabel, $currentUserId, $latest['id']);
-        } else {
-            $stmt = $conn->prepare("
-                UPDATE noblecrm_2dquotation
-                SET design_3d_done = 1, design_3d_uploaded_role = ?, design_3d_uploaded_by = ?, design_3d_uploaded_at = NOW()
-                WHERE id = ?
-            ");
-            $stmt->bind_param("sii", $roleLabel, $currentUserId, $latest['id']);
-        }
+    // Revised 2D sa Approved na submission → i-resolve ang lahat ng open feedback.
+    if ($slot === '2d' && $entry['status'] === 'Approved') {
+        $stmt = $conn->prepare("UPDATE noblecrm_2d_feedback SET is_resolved = 1 WHERE quotation_id = ? AND is_resolved = 0");
+        $stmt->bind_param("i", $entry['id']);
         $stmt->execute();
         $stmt->close();
 
-        q2dRespond(true, 'Saved.');
+        q2dRespond(true, 'Revised 2D file saved.');
     }
 
+    q2dRespond(true, 'Saved.');
+}
 
-    if ($slot === '2d') {
-        $latestCheck = q2dGetLatestEntry($conn, $inquiryId);
-        if ($latestCheck && $latestCheck['status'] === 'Approved' && (int) $latestCheck['design_2d_done'] === 0) {
 
-            if (!q2dHasUnresolvedFeedback($conn, (int) $latestCheck['id'])) {
-                q2dRespond(false, 'No open feedback on this file.');
-            }
+// Alisin ang isang file sa slot habang naka-unlock (hindi pa "done").
+if ($action === 'delete_file') {
+    q2dRequireSlotOwner($slot, $isSales);
 
-            $existingPath = $latestCheck['design_2d_path'] ?? null;
-            $newPath = null;
-
-            if (!empty($_FILES['design_2d_pdf']) && $_FILES['design_2d_pdf']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $maxBytes = 15 * 1024 * 1024;
-                $uploadDir = ROOT_PATH . '/uploads/crm-2dquotation/';
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
-
-                $result = q2dSaveUploadedPdf($_FILES['design_2d_pdf'], 'design2d', $inquiryId, $maxBytes, $uploadDir);
-                if (!$result['path']) {
-                    q2dRespond(false, $result['error']);
-                }
-
-                q2dReplaceSlotFile($conn, $inquiryId, (int) $latestCheck['id'], 'design_2d_path', $existingPath);
-                $newPath = $result['path'];
-
-            } elseif (empty($existingPath)) {
-                q2dRespond(false, 'Please attach a PDF before marking this as done.');
-            }
-
-            if ($newPath) {
-                $stmt = $conn->prepare("
-                    UPDATE noblecrm_2dquotation
-                    SET design_2d_path = ?, design_2d_done = 1, design_2d_uploaded_role = ?, design_2d_uploaded_by = ?, design_2d_uploaded_at = NOW()
-                    WHERE id = ?
-                ");
-                $stmt->bind_param("ssii", $newPath, $roleLabel, $currentUserId, $latestCheck['id']);
-            } else {
-                $stmt = $conn->prepare("
-                    UPDATE noblecrm_2dquotation
-                    SET design_2d_done = 1, design_2d_uploaded_role = ?, design_2d_uploaded_by = ?, design_2d_uploaded_at = NOW()
-                    WHERE id = ?
-                ");
-                $stmt->bind_param("sii", $roleLabel, $currentUserId, $latestCheck['id']);
-            }
-            $stmt->execute();
-            $stmt->close();
-
-            // Resolve all outstanding feedback now that the designer re-uploaded.
-            $stmt = $conn->prepare("UPDATE noblecrm_2d_feedback SET is_resolved = 1 WHERE quotation_id = ? AND is_resolved = 0");
-            $stmt->bind_param("i", $latestCheck['id']);
-            $stmt->execute();
-            $stmt->close();
-
-            q2dRespond(true, 'Revised 2D file saved.');
-        }
+    $fileId = intval($_POST['file_id'] ?? 0);
+    if ($fileId <= 0) {
+        q2dRespond(false, 'Invalid file.');
     }
 
-    $draft = q2dGetOrCreateDraft($conn, $inquiryId);
-
-    if ($draft['status'] !== 'Draft') {
-        q2dRespond(false, 'This submission is locked and can no longer be edited.');
+    [$entry, $err] = q2dResolveEditableEntry($conn, $inquiryId, $slot, false);
+    if (!$entry) {
+        q2dRespond(false, $err);
     }
 
-    $doneField = $slot === '2d' ? 'design_2d_done' : 'quotation_done';
-    $pathField = $slot === '2d' ? 'design_2d_path' : 'quotation_path';
-    $roleField = $slot === '2d' ? 'design_2d_uploaded_role' : 'quotation_uploaded_role';
-    $byField = $slot === '2d' ? 'design_2d_uploaded_by' : 'quotation_uploaded_by';
-    $atField = $slot === '2d' ? 'design_2d_uploaded_at' : 'quotation_uploaded_at';
-
-    if ((int) $draft[$doneField] === 1) {
-        q2dRespond(false, 'This file is already marked done. Click Edit first.');
+    $p = q2dSlotPrefix($slot);
+    if ((int) ($entry[$p . 'done'] ?? 0) === 1) {
+        q2dRespond(false, 'Click Edit first before removing files.');
     }
 
-    $fileKey = $slot === '2d' ? 'design_2d_pdf' : 'quotation_pdf';
-    $newPath = null;
+    $entryId = (int) $entry['id'];
 
-    // Kunin ang "kasalukuyang" file ng slot na ito bago pa man mapalitan —
-    $existingPath = $draft[$pathField] ?? null;
-    if (empty($existingPath)) {
-        $prevEntry = q2dGetPreviousEntry($conn, $inquiryId, (int) $draft['id']);
-        if ($prevEntry && !empty($prevEntry[$pathField])) {
-            $existingPath = $prevEntry[$pathField];
-        }
+    $stmt = $conn->prepare("SELECT path FROM noblecrm_2dquotation_files WHERE id = ? AND quotation_id = ? AND slot = ? LIMIT 1");
+    $stmt->bind_param("iis", $fileId, $entryId, $slot);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        q2dRespond(false, 'File not found.');
     }
 
-    if (!empty($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] !== UPLOAD_ERR_NO_FILE) {
-
-        $maxBytes = 15 * 1024 * 1024; // 15MB
-        $uploadDir = ROOT_PATH . '/uploads/crm-2dquotation/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $result = q2dSaveUploadedPdf($_FILES[$fileKey], $slot === '2d' ? 'design2d' : 'quotation', $inquiryId, $maxBytes, $uploadDir);
-
-        if (!$result['path']) {
-            q2dRespond(false, $result['error']);
-        }
-
-
-        q2dReplaceSlotFile($conn, $inquiryId, (int) $draft['id'], $pathField, $existingPath);
-
-        $newPath = $result['path'];
-
-    } elseif (empty($draft[$pathField])) {
-        q2dRespond(false, 'Please attach a PDF before marking this as done.');
-    }
-
-    if ($newPath) {
-        $stmt = $conn->prepare("
-            UPDATE noblecrm_2dquotation
-            SET {$pathField} = ?, {$doneField} = 1, {$roleField} = ?, {$byField} = ?, {$atField} = NOW()
-            WHERE id = ?
-        ");
-        $stmt->bind_param("ssii", $newPath, $roleLabel, $currentUserId, $draft['id']);
-    } else {
-        // Re-confirming an existing file na hindi pinalitan
-        $stmt = $conn->prepare("
-            UPDATE noblecrm_2dquotation
-            SET {$doneField} = 1, {$roleField} = ?, {$byField} = ?, {$atField} = NOW()
-            WHERE id = ?
-        ");
-        $stmt->bind_param("sii", $roleLabel, $currentUserId, $draft['id']);
-    }
+    $stmt = $conn->prepare("DELETE FROM noblecrm_2dquotation_files WHERE id = ?");
+    $stmt->bind_param("i", $fileId);
     $stmt->execute();
     $stmt->close();
 
-    q2dRespond(true, 'Saved.');
+    // Buburahin lang sa disk kung wala nang ibang submission na gumagamit (carry-over copies).
+    if (q2dPathRefCount($conn, $row['path']) === 0) {
+        @unlink(ROOT_PATH . '/' . $row['path']);
+    }
+
+    q2dSyncPathColumn($conn, $entryId, $slot);
+
+    q2dRespond(true, 'File removed.');
 }
 
 
@@ -976,7 +1101,6 @@ if ($action === 'unlock_slot') {
         }
     }
 
-    // NEW-3D
     if ($slot === '3d') {
         $latest = q2dGetLatestEntry($conn, $inquiryId);
         if (!$latest || ($latest['design_3d_stage'] ?? 'Locked') !== 'Draft') {
@@ -1006,47 +1130,12 @@ if ($action === 'unlock_slot') {
 }
 
 
-if ($action === 'save_contract_amount') {
-
-    if (!$isSales) {
-        q2dRespond(false, 'Only Sales can set the Contract Amount.');
-    }
-
-    $latest = q2dGetLatestEntry($conn, $inquiryId);
-    if (!$latest || !$latest['quotation_done']) {
-        q2dRespond(false, 'The Quotation file must be marked done first.');
-    }
-
-    $rawAmount = trim($_POST['contract_amount'] ?? '');
-    $cleanAmount = preg_replace('/[^0-9.]/', '', $rawAmount);
-
-    if ($cleanAmount === '' || !is_numeric($cleanAmount) || (float) $cleanAmount <= 0) {
-        q2dRespond(false, 'Please enter a valid contract amount.');
-    }
-
-    $stmt = $conn->prepare("
-        UPDATE noblecrminquiry SET contract_amount = ?
-        WHERE id = ? AND sales_staff_id = ?
-    ");
-    $stmt->bind_param("dii", $cleanAmount, $inquiryId, $currentUserId);
-    $stmt->execute();
-    $stmt->close();
-
-    q2dRespond(true, 'Contract amount saved.');
-}
-
-
 if ($action === 'submit_final') {
 
     $draft = q2dGetLatestEntry($conn, $inquiryId);
 
     if (!$draft || $draft['status'] !== 'Draft') {
         q2dRespond(false, 'Nothing to submit right now.');
-    }
-
-    // Contract Amount must be set by Sales before submitting.
-    if (empty($inquiry['contract_amount']) || (float) $inquiry['contract_amount'] <= 0) {
-        q2dRespond(false, 'The Contract Amount must be set by Sales before this can be submitted.');
     }
 
     if (!$draft['design_2d_done'] || !$draft['quotation_done']) {
@@ -1058,7 +1147,6 @@ if ($action === 'submit_final') {
         q2dRespond(false, 'The 3D File must be marked done before submitting, or turn off "Submit 3D together" to submit 2D and Quotation only.');
     }
 
-    // NEW-LATE: naka-lock na ang "late" status sa oras mismo ng pag-submit.
     $isLate = q2dIsPastDeadline($inquiry) ? 1 : 0;
 
     $newStatus = 'Waiting for Approval';
@@ -1073,7 +1161,7 @@ if ($action === 'submit_final') {
     $stmt->execute();
     $stmt->close();
 
-    q2dNotifySuperAdmins($conn, $inquiryId, $inquiry, $currentUserId);
+    q2dNotifyDesignerHeads($conn, $inquiryId, $inquiry, $currentUserId);
 
     q2dRespond(true, $isLate ? 'Submitted for approval (Late Submission).' : 'Submitted for approval.');
 }
@@ -1103,7 +1191,7 @@ if ($action === 'submit_3d') {
     $stmt->execute();
     $stmt->close();
 
-    q2dNotifySuperAdmins($conn, $inquiryId, $inquiry, $currentUserId, true);
+    q2dNotifyDesignerHeads($conn, $inquiryId, $inquiry, $currentUserId, true);
 
     q2dRespond(true, 'Submitted for approval.');
 }

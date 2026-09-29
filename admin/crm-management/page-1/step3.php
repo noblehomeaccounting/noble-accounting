@@ -14,20 +14,17 @@
                 class="w-full px-3 py-2.5 text-sm text-gray-500 bg-gray-100 border border-gray-200 rounded-md cursor-not-allowed">
         </div>
 
-        <!-- Designer Assign -->
+        <!-- Designer Assign: removed from this form on purpose. Assigned
+             later from the Sales & Market List, together with the confirmed
+             measurement schedule, once Sales has contacted the client.
+             See crmlistajax.php ("assign" action). -->
         <div>
             <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
                 Designer Assign
             </label>
-            <select name="designer_id" id="crm_designer_id"
-                class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
-                <option value="">Select designer</option>
-                <?php foreach ($designers as $d): ?>
-                    <option value="<?= intval($d['id']) ?>" <?= (intval($_POST['designer_id'] ?? 0) === intval($d['id'])) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($d['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <p class="text-xs text-gray-400 italic px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md">
+                Assigned later from the Sales &amp; Market List, together with the confirmed measurement schedule.
+            </p>
         </div>
 
         <!-- Contract Amount: removed from here on purpose — set later by

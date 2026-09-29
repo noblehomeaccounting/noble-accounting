@@ -20,6 +20,19 @@ function monRoleLabel(?string $role): string
     return '—';
 }
 
+// Adds an equality filter to the query. "__none__" matches NULL / empty.
+// $column is always a hardcoded string from this file (never user input).
+function monAddFilter(string &$sql, string &$types, array &$params, string $column, string $value): void
+{
+    if ($value === '') return;
+    if ($value === '__none__') {
+        $sql .= " AND ($column IS NULL OR $column = '') ";
+        return;
+    }
+    $sql .= " AND $column = ? ";
+    $types .= 's';
+    $params[] = $value;
+}
 
 function monStageInfo(?array $row): array
 {
@@ -62,10 +75,14 @@ if ($action === 'list') {
 
     $search = trim($_GET['q'] ?? '');
     $stageFilter = trim($_GET['stage'] ?? '');
+    $modeFilter = trim($_GET['mode'] ?? '');
+    $clientFilter = trim($_GET['clientstatus'] ?? '');
+    $visitFilter = trim($_GET['visitstatus'] ?? '');
 
     $sql = "
         SELECT
             i.id AS inquiry_id, i.control_no, i.client_name, i.contact_number, i.project_type, i.branch,
+            i.mode, i.clientstatus, i.statusdesignersitevisit,
             i.created_at AS inquiry_created_at,
             q.id AS q_id, q.status, q.include_3d, q.design_3d_stage,
             q.submitted_at, q.reviewed_at, q.created_at AS q_created_at
@@ -93,6 +110,15 @@ if ($action === 'list') {
         $params[] = $like;
     }
 
+    // Mode: NULL/empty is treated as 'site_visit' (same default used in the timeline action)
+    if ($modeFilter === 'site_visit') {
+        $sql .= " AND (i.mode = 'site_visit' OR i.mode IS NULL OR i.mode = '') ";
+    } elseif ($modeFilter !== '') {
+        monAddFilter($sql, $types, $params, 'i.mode', $modeFilter);
+    }
+    monAddFilter($sql, $types, $params, 'i.clientstatus', $clientFilter);
+    monAddFilter($sql, $types, $params, 'i.statusdesignersitevisit', $visitFilter);
+
     $sql .= " ORDER BY COALESCE(q.reviewed_at, q.submitted_at, q.created_at, i.created_at) DESC LIMIT 200 ";
 
     if ($types !== '') {
@@ -119,6 +145,9 @@ if ($action === 'list') {
             'contact_number' => $row['contact_number'],
             'project_type'   => $row['project_type'],
             'branch'         => $row['branch'],
+            'mode'           => $row['mode'] ?: 'site_visit',
+            'clientstatus'   => $row['clientstatus'],
+            'visitstatus'    => $row['statusdesignersitevisit'],
             'stage_label'    => $info['stage_label'],
             'stage_group'    => $info['stage_group'],
             'last_updated'   => $row['reviewed_at'] ?? $row['submitted_at'] ?? $row['q_created_at'] ?? $row['inquiry_created_at'],
@@ -131,6 +160,25 @@ if ($action === 'list') {
         'rows'    => $rows,
         'count'   => count($rows),
         'server_time' => date('c'),
+    ]);
+    exit;
+}
+
+// Distinct values used to populate the Client Status / Site Visit Status dropdowns.
+if ($action === 'filter_options') {
+
+    $clientStatuses = [];
+    $r = $conn->query("SELECT DISTINCT clientstatus AS v FROM noblecrminquiry WHERE clientstatus IS NOT NULL AND clientstatus <> '' ORDER BY v");
+    while ($x = $r->fetch_assoc()) $clientStatuses[] = $x['v'];
+
+    $visitStatuses = [];
+    $r = $conn->query("SELECT DISTINCT statusdesignersitevisit AS v FROM noblecrminquiry WHERE statusdesignersitevisit IS NOT NULL AND statusdesignersitevisit <> '' ORDER BY v");
+    while ($x = $r->fetch_assoc()) $visitStatuses[] = $x['v'];
+
+    echo json_encode([
+        'success'         => true,
+        'client_statuses' => $clientStatuses,
+        'visit_statuses'  => $visitStatuses,
     ]);
     exit;
 }

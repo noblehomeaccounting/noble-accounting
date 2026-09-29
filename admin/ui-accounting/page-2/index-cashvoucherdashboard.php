@@ -199,17 +199,17 @@ $position = $_SESSION['position'] ?? '';
                     </table>
                 </div>
 
-                <!-- Signatures -->
+                <!-- Signatures: Prepared → Approved → Released → Received -->
                 <div class="grid grid-cols-4 border-t-2 border-orange-400">
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5 border-r border-orange-400">
                         Prepared By</div>
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5 border-r border-orange-400">
-                        Certified Thru Correct</div>
+                        Approved By</div>
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5 border-r border-orange-400">
-                        Approved By</div>
+                        Released By</div>
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5">
                         Received By</div>
@@ -222,15 +222,15 @@ $position = $_SESSION['position'] ?? '';
                                 class="text-gray-600 text-xs"></span></p>
                     </div>
                     <div class="px-4 py-4 border-r border-gray-200">
-                        <p class="text-[10px] text-gray-500">Name: <span id="v-certified"
-                                class="text-gray-800 font-semibold text-xs"></span></p>
-                        <p class="text-[10px] text-gray-500 mt-3">Date: <span id="v-certified-at"
-                                class="text-gray-600 text-xs"></span></p>
-                    </div>
-                    <div class="px-4 py-4 border-r border-gray-200">
                         <p class="text-[10px] text-gray-500">Name: <span id="v-approver"
                                 class="text-gray-800 font-semibold text-xs"></span></p>
                         <p class="text-[10px] text-gray-500 mt-3">Date: <span id="v-approved-at"
+                                class="text-gray-600 text-xs"></span></p>
+                    </div>
+                    <div class="px-4 py-4 border-r border-gray-200">
+                        <p class="text-[10px] text-gray-500">Name: <span id="v-released"
+                                class="text-gray-800 font-semibold text-xs"></span></p>
+                        <p class="text-[10px] text-gray-500 mt-3">Date: <span id="v-released-at"
                                 class="text-gray-600 text-xs"></span></p>
                     </div>
                     <div class="px-4 py-4">
@@ -332,26 +332,25 @@ $position = $_SESSION['position'] ?? '';
                         <span class="text-[9px] font-bold text-white uppercase tracking-wider">Prepared By</span>
                     </div>
                     <div class="border-b border-gray-100 bg-orange-500 py-1 text-center">
-                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Certified Thru
-                            Correct</span>
+                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Approved By</span>
                     </div>
                     <div class="px-3 py-3 border-r border-b border-gray-100 min-h-[70px] flex flex-col justify-end">
                         <p id="v-prepared-m" class="text-xs font-semibold text-gray-800"></p>
                         <p id="v-prepared-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
                     </div>
                     <div class="px-3 py-3 border-b border-gray-100 min-h-[70px] flex flex-col justify-end">
-                        <p id="v-certified-m" class="text-xs font-semibold text-gray-800"></p>
-                        <p id="v-certified-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
+                        <p id="v-approver-m" class="text-xs font-semibold text-gray-800"></p>
+                        <p id="v-approved-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
                     </div>
                     <div class="border-r border-gray-100 bg-orange-500 py-1 text-center">
-                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Approved By</span>
+                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Released By</span>
                     </div>
                     <div class="bg-orange-500 py-1 text-center">
                         <span class="text-[9px] font-bold text-white uppercase tracking-wider">Received By</span>
                     </div>
                     <div class="px-3 py-3 border-r border-gray-100 min-h-[70px] flex flex-col justify-end">
-                        <p id="v-approver-m" class="text-xs font-semibold text-gray-800"></p>
-                        <p id="v-approved-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
+                        <p id="v-released-m" class="text-xs font-semibold text-gray-800"></p>
+                        <p id="v-released-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
                     </div>
                     <div class="px-3 py-3 min-h-[70px] flex flex-col justify-end">
                         <p id="v-receiver-m" class="text-xs font-semibold text-gray-800"></p>
@@ -569,16 +568,7 @@ $position = $_SESSION['position'] ?? '';
                 ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
             document.getElementById('v-prepared-at').textContent = preparedAtStr;
 
-            // Certified
-            const certSig = row.certified_signature ?? '';
-            document.getElementById('v-certified').innerHTML = certSig
-                ? `<span class="relative inline-block"><img src="${certSig}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">${row.certified_name ?? ''}</span>`
-                : (row.certified_name ?? '');
-            const certifiedAtStr = row.certified_name && row.certified_at
-                ? new Date(row.certified_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-            document.getElementById('v-certified-at').textContent = certifiedAtStr;
-
-            // Approver
+            // Approver (2nd column)
             const apprSig = row.approver_signature ?? '';
             document.getElementById('v-approver').innerHTML = apprSig
                 ? `<span class="relative inline-block"><img src="${apprSig}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">${row.approver_name ?? ''}</span>`
@@ -586,6 +576,15 @@ $position = $_SESSION['position'] ?? '';
             const approvedAtStr = row.approver_name && row.approved_at
                 ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
             document.getElementById('v-approved-at').textContent = approvedAtStr;
+
+            // Released (3rd column, custodian assistant)
+            const relSig = row.released_signature ?? '';
+            document.getElementById('v-released').innerHTML = relSig
+                ? `<span class="relative inline-block"><img src="${relSig}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">${row.released_name ?? ''}</span>`
+                : (row.released_name ?? '');
+            const releasedAtStr = row.released_name && row.released_at
+                ? new Date(String(row.released_at).replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+            document.getElementById('v-released-at').textContent = releasedAtStr;
 
             const receiverName = row.manual_receiver_name || row.receiver_name || '';
             const receivedAt = row.manual_receiver_date
@@ -634,10 +633,10 @@ $position = $_SESSION['position'] ?? '';
             document.getElementById('v-total-m').textContent = 'PhP ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
             document.getElementById('v-prepared-m').textContent = row.prepared_name ?? '';
             document.getElementById('v-prepared-at-m').textContent = preparedAtStr;
-            document.getElementById('v-certified-m').textContent = row.certified_name ?? '';
-            document.getElementById('v-certified-at-m').textContent = certifiedAtStr;
             document.getElementById('v-approver-m').textContent = row.approver_name ?? '';
             document.getElementById('v-approved-at-m').textContent = approvedAtStr;
+            document.getElementById('v-released-m').textContent = row.released_name ?? '';
+            document.getElementById('v-released-at-m').textContent = releasedAtStr;
             document.getElementById('v-receiver-m').textContent = receiverName;
             document.getElementById('v-received-at-m').textContent = receivedAt;
 
@@ -811,8 +810,8 @@ $position = $_SESSION['position'] ?? '';
             }
 
             const preparedAt = row.prepared_at ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-            const certifiedAt = row.certified_at ? new Date(row.certified_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
             const approvedAt = row.approved_at ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+            const releasedAt = row.released_at ? new Date(String(row.released_at).replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
             const receiverName = row.manual_receiver_name || row.receiver_name || '';
             const receivedAt = row.manual_receiver_date
                 ? new Date(row.manual_receiver_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -904,8 +903,8 @@ $position = $_SESSION['position'] ?? '';
                 </table>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:2px solid #f97316;">
                     <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Prepared By</div>
-                    <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Certified Thru Correct</div>
                     <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Approved By</div>
+                    <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Released By</div>
                     <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;">Received By</div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid #e5e7eb;">
@@ -920,20 +919,20 @@ $position = $_SESSION['position'] ?? '';
                     </div>
                     <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
                         <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
-                            ${row.certified_signature ? `<img src="${row.certified_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
-                        </div>
-                        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
-                            <div style="font-size:10px;font-weight:600;">${row.certified_name ?? ''}</div>
-                            <div style="font-size:9px;color:#888;">${certifiedAt}</div>
-                        </div>
-                    </div>
-                    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
-                        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
                             ${row.approver_signature ? `<img src="${row.approver_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
                         </div>
                         <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
                             <div style="font-size:10px;font-weight:600;">${row.approver_name ?? ''}</div>
                             <div style="font-size:9px;color:#888;">${approvedAt}</div>
+                        </div>
+                    </div>
+                    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
+                        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
+                            ${row.released_signature ? `<img src="${row.released_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
+                        </div>
+                        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
+                            <div style="font-size:10px;font-weight:600;">${row.released_name ?? ''}</div>
+                            <div style="font-size:9px;color:#888;">${releasedAt}</div>
                         </div>
                     </div>
                     <div style="padding:10px 8px;display:flex;flex-direction:column;">

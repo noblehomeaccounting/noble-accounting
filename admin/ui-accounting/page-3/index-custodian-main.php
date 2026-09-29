@@ -346,16 +346,17 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 </div>
 
                 <!-- Signatures -->
+
                 <div class="grid grid-cols-4 border-t-2 border-orange-400">
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5 border-r border-orange-400">
                         Prepared By</div>
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5 border-r border-orange-400">
-                        Certified Thru Correct</div>
+                        Approved By</div>
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5 border-r border-orange-400">
-                        Approved By</div>
+                        Released By</div>
                     <div
                         class="bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1.5">
                         Received By</div>
@@ -368,15 +369,15 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                                 class="text-gray-600 text-xs"></span></p>
                     </div>
                     <div class="px-4 py-4 border-r border-gray-200">
-                        <p class="text-[10px] text-gray-500">Name: <span id="v-certified"
-                                class="text-gray-800 font-semibold text-xs"></span></p>
-                        <p class="text-[10px] text-gray-500 mt-3">Date: <span id="v-certified-at"
-                                class="text-gray-600 text-xs"></span></p>
-                    </div>
-                    <div class="px-4 py-4 border-r border-gray-200">
                         <p class="text-[10px] text-gray-500">Name: <span id="v-approver"
                                 class="text-gray-800 font-semibold text-xs"></span></p>
                         <p class="text-[10px] text-gray-500 mt-3">Date: <span id="v-approved-at"
+                                class="text-gray-600 text-xs"></span></p>
+                    </div>
+                    <div class="px-4 py-4 border-r border-gray-200">
+                        <p class="text-[10px] text-gray-500">Name: <span id="v-released"
+                                class="text-gray-800 font-semibold text-xs"></span></p>
+                        <p class="text-[10px] text-gray-500 mt-3">Date: <span id="v-released-at"
                                 class="text-gray-600 text-xs"></span></p>
                     </div>
                     <div class="px-4 py-4">
@@ -485,26 +486,25 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                         <span class="text-[9px] font-bold text-white uppercase tracking-wider">Prepared By</span>
                     </div>
                     <div class="border-b border-gray-100 bg-orange-500 py-1 text-center">
-                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Certified Thru
-                            Correct</span>
+                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Approved By</span>
                     </div>
                     <div class="px-3 py-3 border-r border-b border-gray-100 min-h-[70px] flex flex-col justify-end">
                         <p id="v-prepared-m" class="text-xs font-semibold text-gray-800"></p>
                         <p id="v-prepared-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
                     </div>
                     <div class="px-3 py-3 border-b border-gray-100 min-h-[70px] flex flex-col justify-end">
-                        <p id="v-certified-m" class="text-xs font-semibold text-gray-800"></p>
-                        <p id="v-certified-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
+                        <p id="v-approver-m" class="text-xs font-semibold text-gray-800"></p>
+                        <p id="v-approved-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
                     </div>
                     <div class="border-r border-gray-100 bg-orange-500 py-1 text-center">
-                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Approved By</span>
+                        <span class="text-[9px] font-bold text-white uppercase tracking-wider">Released By</span>
                     </div>
                     <div class="bg-orange-500 py-1 text-center">
                         <span class="text-[9px] font-bold text-white uppercase tracking-wider">Received By</span>
                     </div>
                     <div class="px-3 py-3 border-r border-gray-100 min-h-[70px] flex flex-col justify-end">
-                        <p id="v-approver-m" class="text-xs font-semibold text-gray-800"></p>
-                        <p id="v-approved-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
+                        <p id="v-released-m" class="text-xs font-semibold text-gray-800"></p>
+                        <p id="v-released-at-m" class="text-[9px] text-gray-400 mt-0.5"></p>
                     </div>
                     <div class="px-3 py-3 min-h-[70px] flex flex-col justify-end">
                         <p id="v-receiver-m" class="text-xs font-semibold text-gray-800"></p>
@@ -730,6 +730,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         let allDatesCache = [];
         const POSITION = '<?= htmlspecialchars($position) ?>';
         const isCustoAssistant = POSITION === '<?= POSITION_CUSTOASSISTANT ?>';
+        const MY_ID = '<?= intval($_SESSION['account_id'] ?? 0) ?>';
 
         const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -1294,7 +1295,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const items = row.items ?? [];
             const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
-            // ── ADD THIS: lock state ──
+            // ── lock state ──
             const isStaff = POSITION === '<?= POSITION_STAFF ?>';
             const isSubmitted = !!row.voucher_status; // may status na = submitted na, dapat locked
             const canEditFields = isStaff && !isSubmitted;
@@ -1308,7 +1309,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             document.getElementById('v-payment-method').value = row.voucher_payment_method ?? '';
             document.getElementById('v-payment-method-m').value = row.voucher_payment_method ?? '';
 
-            // ── ADD THIS: apply disabled state ──
+            // ── apply disabled state ──
             document.getElementById('v-payee').disabled = !canEditFields;
             document.getElementById('v-payee-m').disabled = !canEditFields;
             document.getElementById('v-payment-method').disabled = !canEditFields;
@@ -1333,7 +1334,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     sel.value = row.voucher_purpose ?? '';
                     selM.value = row.voucher_purpose ?? '';
 
-                    // ── ADD THIS: lock the dropdown too ──
+                    // ── lock the dropdown too ──
                     sel.disabled = !canEditFields;
                     selM.disabled = !canEditFields;
                     sel.classList.toggle('bg-gray-100', !canEditFields);
@@ -1356,20 +1357,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             document.getElementById('v-prepared-at').textContent = row.prepared_at
                 ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 
-            // Certified — may signature (galing sa certified_signature column)
-            const certSig = row.certified_signature ?? '';
-            document.getElementById('v-certified').innerHTML = certSig
-                ? `<span class="relative inline-block">
-        <img src="${certSig}" 
-             style="position:absolute; bottom:-50px; left:80px; transform:translateX(-50%); 
-                    height:90px; max-width:160px; object-fit:contain; z-index:10; pointer-events:none;">
-        ${row.certified_name ?? ''}
-       </span>`
-                : (row.certified_name ?? '');
-            document.getElementById('v-certified-at').textContent = row.certified_name && row.certified_at
-                ? new Date(row.certified_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-
-            // Approver — may signature
+            // Approver — may signature (2nd column na ngayon)
             const apprSig = row.approver_signature ?? '';
             document.getElementById('v-approver').innerHTML = apprSig
                 ? `<span class="relative inline-block">
@@ -1381,6 +1369,19 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 : (row.approver_name ?? '');
             document.getElementById('v-approved-at').textContent = row.approver_name && row.approved_at
                 ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+
+            // Released — custodian assistant (3rd column, pumalit sa Certified)
+            const relSig = row.released_signature ?? '';
+            document.getElementById('v-released').innerHTML = relSig
+                ? `<span class="relative inline-block">
+        <img src="${relSig}" 
+             style="position:absolute; bottom:-50px; left:80px; transform:translateX(-50%); 
+                    height:90px; max-width:160px; object-fit:contain; z-index:10; pointer-events:none;">
+        ${row.released_name ?? ''}
+       </span>`
+                : (row.released_name ?? '');
+            document.getElementById('v-released-at').textContent = row.released_name && row.released_at
+                ? new Date(row.released_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 
             const receiverName = row.manual_receiver_name || row.receiver_name || '';
             const receivedAt = row.manual_receiver_date
@@ -1481,10 +1482,10 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             document.getElementById('v-total-m').textContent = 'PhP ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
             document.getElementById('v-prepared-m').textContent = row.prepared_name ?? '';
             document.getElementById('v-prepared-at-m').textContent = document.getElementById('v-prepared-at').textContent;
-            document.getElementById('v-certified-m').textContent = row.certified_name ?? '';
-            document.getElementById('v-certified-at-m').textContent = document.getElementById('v-certified-at').textContent;
             document.getElementById('v-approver-m').textContent = row.approver_name ?? '';
             document.getElementById('v-approved-at-m').textContent = document.getElementById('v-approved-at').textContent;
+            document.getElementById('v-released-m').textContent = row.released_name ?? '';
+            document.getElementById('v-released-at-m').textContent = document.getElementById('v-released-at').textContent;
             document.getElementById('v-receiver-m').textContent = receiverName;
             document.getElementById('v-received-at-m').textContent = receivedAt;
 
@@ -1558,9 +1559,6 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             }
 
             document.getElementById('voucher-modal').classList.remove('hidden');
-
-
-
         }
 
         function closeVoucherModal() {
@@ -1679,7 +1677,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             }
             if (e.target.id === 'conf-second-no-select') {
                 updateProjectNotice();
-                e.target.classList.remove('border-red-400'); // add this line
+                e.target.classList.remove('border-red-400');
             }
         });
 
@@ -1881,13 +1879,9 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         </tr>`;
             }
 
-            const prepSig = row.prepared_signature ? `<img src="${row.prepared_signature}"   style="position:absolute;top:0;left:50%;transform:translateX(-50%);height:60px;max-width:140px;object-fit:contain;">` : '';
-            const certSig = row.certified_signature ? `<img src="${row.certified_signature}"  style="position:absolute;top:0;left:50%;transform:translateX(-50%);height:60px;max-width:140px;object-fit:contain;">` : '';
-            const apprSig = row.approver_signature ? `<img src="${row.approver_signature}"   style="position:absolute;top:0;left:50%;transform:translateX(-50%);height:60px;max-width:140px;object-fit:contain;">` : '';
-
             const preparedAt = row.prepared_at ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-            const certifiedAt = row.certified_at ? new Date(row.certified_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
             const approvedAt = row.approved_at ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+            const releasedAt = row.released_at ? new Date(row.released_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
             const receiverName = row.manual_receiver_name || row.receiver_name || '';
             const receivedAt = row.manual_receiver_date
                 ? new Date(row.manual_receiver_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -1902,9 +1896,6 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}
         table{width:100%;border-collapse:collapse;}
         .orange-bg{background:#f97316;color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-       .sig-cell{padding:12px 8px;width:25%;border-right:1px solid #e5e7eb;box-sizing:border-box;vertical-align:top;}
-.sig-inner{height:70px;display:flex;align-items:center;justify-content:center;}
-.sig-line{border-top:1px solid #999;margin-top:6px;padding-top:4px;text-align:center;}
         @page{size:A4 portrait;margin:1cm;}
     </style></head><body>
     <div style="border:2px solid #f97316;border-radius:2px;">
@@ -2000,15 +1991,16 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             </tfoot>
         </table>
 
-        <!-- Signature Headers -->
+        <!-- Signature Headers: Prepared → Approved → Released → Received -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:2px solid #f97316;">
             <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Prepared By</div>
-            <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Certified Thru Correct</div>
             <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Approved By</div>
+            <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Released By</div>
             <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;">Received By</div>
         </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid #e5e7eb;">
+    <!-- Prepared -->
     <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
         <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
             ${row.prepared_signature ? `<img src="${row.prepared_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
@@ -2018,15 +2010,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             <div style="font-size:9px;color:#888;">${preparedAt}</div>
         </div>
     </div>
-    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
-        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
-            ${row.certified_signature ? `<img src="${row.certified_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
-        </div>
-        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
-            <div style="font-size:10px;font-weight:600;">${row.certified_name ?? ''}</div>
-            <div style="font-size:9px;color:#888;">${certifiedAt}</div>
-        </div>
-    </div>
+    <!-- Approved -->
     <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
         <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
             ${row.approver_signature ? `<img src="${row.approver_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
@@ -2036,6 +2020,17 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             <div style="font-size:9px;color:#888;">${approvedAt}</div>
         </div>
     </div>
+    <!-- Released -->
+    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
+        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
+            ${row.released_signature ? `<img src="${row.released_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
+        </div>
+        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
+            <div style="font-size:10px;font-weight:600;">${row.released_name ?? ''}</div>
+            <div style="font-size:9px;color:#888;">${releasedAt}</div>
+        </div>
+    </div>
+    <!-- Received -->
     <div style="padding:10px 8px;display:flex;flex-direction:column;">
         <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
             <!-- no signature for receiver -->
@@ -2070,7 +2065,9 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 .then(data => {
                     // Custodian assistant lang: ready_to_release lang ang makikita
                     allData = isCustoAssistant
-                        ? data.filter(r => r.voucher_status === 'ready_to_release')
+                        ? data.filter(r =>
+                            r.voucher_status === 'ready_to_release' ||
+                            (r.voucher_status === 'released' && String(r.released_by) === MY_ID))
                         : data;
 
                     if (currentView === 'list') {
@@ -2167,8 +2164,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const confirmModal = document.getElementById('voucher-confirm-modal');
             const voucherModal = document.getElementById('voucher-modal');
 
-            // Priority: close confirm modal muna kung bukas siya (nasa taas siya sa stack),
-            // baka pa lang naka-open din yung voucher modal sa likod niya.
+            // Priority: close confirm modal muna kung bukas siya (nasa taas siya sa stack)
             if (!confirmModal.classList.contains('hidden')) {
                 closeConfirmModal();
                 return;

@@ -1,5 +1,6 @@
 <?php
-// 2d-and-quotation.php
+// 2d-and-quotation.php  — INITIAL step (walang contract dito; nasa Final na)
+// MULTI-ATTACHMENT VERSION
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -48,7 +49,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
         SELECT status, is_late
         FROM noblecrm_2dquotation
         WHERE inquiry_id = ? AND stage = 'Initial'
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
     ");
     $qLatestStmt->bind_param("i", $inquiryId);
@@ -80,13 +81,13 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 </head>
 
 <body class="bg-gray-100 font-['Barlow_Condensed']">
-    <main class="ml-56 min-h-screen p-6">
+    <main class="ml-56 min-h-screen p-4">
 
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-7xl mx-auto">
 
             <div class="bg-white border border-gray-300 shadow-sm rounded-lg">
 
-                <div class="px-8 pt-6 pb-5 flex items-start justify-between border-b border-gray-300">
+                <div class="px-6 pt-6 pb-5 flex items-start justify-between border-b border-gray-300">
                     <div>
                         <p class="text-[10px] tracking-[0.25em] uppercase text-gray-500 mb-1 ">Client Relationship
                             Management</p>
@@ -119,7 +120,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                 <div class="h-[3px] bg-gray-200"></div>
 
-                <div class="px-8 py-6 text-sm">
+                <div class="px-6 py-6 text-sm">
 
                     <?php if (!empty($qError)): ?>
                         <div class="border border-gray-400 bg-gray-50 text-gray-800 text-sm px-4 py-2.5">
@@ -141,7 +142,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                 </div>
 
-                <div class="border-t border-gray-300 px-8 py-3 text-[11px] text-gray-400 flex justify-between">
+                <div class="border-t border-gray-300 px-6 py-3 text-[11px] text-gray-400 flex justify-between">
                     <span>Generated on <?= date('F d, Y g:i A') ?></span>
                     <span id="q2dUpdatedAt">2D and Quotation</span>
                 </div>
@@ -167,6 +168,23 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
             </div>
         </aside>
 
+        <!-- Files sidebar — dito lumalabas ang lahat ng files ng isang slot (2D / Quotation / 3D) -->
+        <div id="q2dFilesOverlay" onclick="q2dCloseFilesSidebar()"
+            class="fixed inset-0 bg-black/30 z-[9998] opacity-0 pointer-events-none transition-opacity duration-300">
+        </div>
+
+        <aside id="q2dFilesSidebar"
+            class="fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl z-[9999] translate-x-full transition-transform duration-300 ease-out flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-300">
+                <h2 id="q2dFilesSidebarTitle" class="text-sm font-bold text-[#0B2540] uppercase tracking-wide">Files</h2>
+                <button type="button" onclick="q2dCloseFilesSidebar()"
+                    class="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+            </div>
+            <div id="q2dFilesSidebarBody" class="flex-1 overflow-y-auto px-5 py-4">
+                <p class="text-sm text-gray-400 italic">No files.</p>
+            </div>
+        </aside>
+
         <div id="crmToastContainer"
             class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none w-30 max-w-sm px-4 sm:px-0">
         </div>
@@ -182,10 +200,19 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 const Q2D_IS_SALES = <?= json_encode($isSales) ?>;
 
                 const Q2D_POLL_INTERVAL_MS = 8000;
+                const Q2D_MAX_FILES = 10;                  // dapat kapareho ng Q2D_MAX_FILES_PER_SLOT sa PHP
+                const Q2D_MAX_BYTES = 15 * 1024 * 1024;    // 15MB bawat file
 
                 let q2dPollTimer = null;
                 let q2dLastSignature = '';
-                let q2dPendingSelection = { '2d': false, quotation: false, '3d': false };
+
+                // MULTI-FILE: mga bagong napiling file (hindi pa na-upload) bawat slot.
+                let q2dSelected = { '2d': [], quotation: [], '3d': [] };
+                let q2dObjectUrls = { '2d': [], quotation: [], '3d': [] };
+
+                function q2dHasPending() {
+                    return Object.values(q2dSelected).some(arr => arr.length > 0);
+                }
 
                 function crmShowToast(message, type = 'success', duration = 4000) {
                     const container = document.getElementById('crmToastContainer');
@@ -218,7 +245,15 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     return div.innerHTML;
                 }
 
-                // NEW-LATE: small reusable "Late Submission" pill.
+                // Detect kung ang status/label ay talagang "Approved" para malagyan ng
+                // checkmark icon — hindi lang basta text badge.
+                function q2dIsApproved(label) {
+                    return typeof label === 'string' && label.trim().toLowerCase() === 'approved';
+                }
+                function q2dApprovedIcon() {
+                    return '<i class="fa-solid fa-circle-check text-green-600 mr-1"></i>';
+                }
+
                 function q2dLateBadge() {
                     return `<span class="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-red-700 text-red-700 ml-1">Late Submission</span>`;
                 }
@@ -239,14 +274,69 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     return `<h2 class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold border-b border-gray-300 pb-2 mb-4">${text}</h2>`;
                 }
 
+                // ── Files sidebar: bawat slot (2D / Quotation / 3D) ay button na lang na
+                // nagpapakita ng bilang ng files. Pag-click, doon lumalabas ang buong listahan
+                // sa slide-out sidebar — hindi na crowded ang table.
+                const Q2D_SLOT_LABELS = { '2d': '2D', quotation: 'Quotation', '3d': '3D' };
+                let q2dFilesRegistry = {}; // { slot: fileData } — pinopopulate tuwing nag-re-render
+
+                function q2dFilesSidebarListHtml(fileData) {
+                    const files = q2dGetFilesArray(fileData);
+                    if (!files.length) return '<p class="text-sm text-gray-400 italic">No files.</p>';
+
+                    const list = files.map(f => `
+                        <a href="${q2dEscapeHtml(f.url)}" target="_blank" title="${q2dEscapeHtml(f.name)}"
+                            class="flex items-center gap-2 text-sm border border-gray-200 bg-gray-50 hover:bg-gray-100 px-3 py-2 mb-2 transition-colors">
+                            <i class="fa-solid fa-file-lines text-gray-400 shrink-0"></i>
+                            <span class="flex-1 truncate text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2">${q2dEscapeHtml(f.name)}</span>
+                        </a>
+                    `).join('');
+
+                    const uploadedLine = (fileData && fileData.uploaded_by_name)
+                        ? `<p class="text-[11px] text-gray-500 mt-3 pt-3 border-t border-gray-200">Uploaded by: ${q2dEscapeHtml(fileData.uploaded_by_name)} (${q2dEscapeHtml(fileData.uploaded_role_label)})</p>`
+                        : '';
+
+                    return `<div>${list}</div>${uploadedLine}`;
+                }
+
+                function q2dOpenFilesSidebar(slot) {
+                    const fileData = q2dFilesRegistry[slot];
+                    const label = Q2D_SLOT_LABELS[slot] || 'Files';
+                    document.getElementById('q2dFilesSidebarTitle').textContent = `${label} Files`;
+                    document.getElementById('q2dFilesSidebarBody').innerHTML = q2dFilesSidebarListHtml(fileData);
+
+                    const overlay = document.getElementById('q2dFilesOverlay');
+                    const sidebar = document.getElementById('q2dFilesSidebar');
+                    overlay.classList.remove('opacity-0', 'pointer-events-none');
+                    sidebar.classList.remove('translate-x-full');
+                }
+
+                function q2dCloseFilesSidebar() {
+                    const overlay = document.getElementById('q2dFilesOverlay');
+                    const sidebar = document.getElementById('q2dFilesSidebar');
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                    sidebar.classList.add('translate-x-full');
+                }
+
+                // Button na nagbubukas ng files sidebar para sa isang slot — ipinapalit sa
+                // dating direktang listahan ng "View File 1, View File 2, ..." sa loob ng table.
+                function q2dFilesButton(slot, fileData) {
+                    q2dFilesRegistry[slot] = fileData;
+                    const label = Q2D_SLOT_LABELS[slot] || 'Files';
+                    const count = q2dGetFilesArray(fileData).length;
+                    return `
+                        <button type="button" onclick="q2dOpenFilesSidebar('${slot}')"
+                            class="inline-flex items-center gap-2 text-sm font-semibold text-[#0B2540] border border-gray-300 rounded-full px-3 py-1.5 hover:bg-gray-50 hover:border-[#0B2540] transition-colors">
+                            <i class="fa-solid fa-folder-open"></i> View ${label} File${count === 1 ? '' : 's'} (${count})
+                        </button>
+                    `;
+                }
+
                 function q2dSlotDoneView(fileData, showEdit, slot) {
                     return `
                     <div class="text-sm">
-                        <a href="${q2dEscapeHtml(fileData.url)}" target="_blank"
-                            class="text-[#0B2540] hover:text-[#A9822C] font-semibold underline underline-offset-2 block mb-1">
-                            View File
-                        </a>
-                        <p class="text-[11px] text-gray-500">
+                        ${q2dFilesButton(slot, fileData)}
+                        <p class="text-[11px] text-gray-500 mt-2">
                             Uploaded by: ${q2dEscapeHtml(fileData.uploaded_by_name)}
                             (${q2dEscapeHtml(fileData.uploaded_role_label)})
                         </p>
@@ -260,45 +350,40 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 `;
                 }
 
-                function q2dSlotUploadView(slot, currentLabel) {
+                // Upload view para sa lahat ng slot — multi-file. `savedFiles` = mga naka-save na sa server.
+                function q2dSlotUploadView(slot, savedFiles) {
+                    savedFiles = savedFiles || [];
                     const inputId = q2dInputId(slot);
-                    const hasCurrent = currentLabel.startsWith('Current: ');
+                    const is3d = slot === '3d';
+                    const accept = is3d ? 'application/pdf,image/jpeg,image/png,image/webp' : 'application/pdf';
+                    const hint = is3d
+                        ? `PDF or image (JPG/PNG/WEBP), max 15MB each · up to ${Q2D_MAX_FILES} files`
+                        : `PDF only, max 15MB each · up to ${Q2D_MAX_FILES} files`;
+                    const idleLabel = savedFiles.length ? 'Click to add more files' : (is3d ? 'Click to upload 3D file(s)' : (slot === '2d' ? 'Click to upload 2D PDF(s)' : 'Click to upload Quotation PDF(s)'));
+
+                    const savedList = savedFiles.length ? `
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Saved files (${savedFiles.length})</p>
+                        <ul class="mb-3 space-y-1">
+                            ${savedFiles.map(f => `
+                                <li class="flex items-center gap-2 text-xs border border-gray-200 bg-gray-50 px-2 py-1">
+                                    <a href="${q2dEscapeHtml(f.url)}" target="_blank" class="flex-1 truncate text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2" title="${q2dEscapeHtml(f.name)}">${q2dEscapeHtml(f.name)}</a>
+                                    <button type="button" onclick="q2dDeleteFile('${slot}', ${Number(f.id)})"
+                                        class="shrink-0 text-gray-400 hover:text-red-700 text-base leading-none" title="Remove file" aria-label="Remove file">&times;</button>
+                                </li>`).join('')}
+                        </ul>
+                    ` : '';
+
                     return `
+                    ${savedList}
                     <label for="${inputId}"
                         class="flex flex-col items-center justify-center gap-1.5 border border-dashed border-gray-400 py-5 px-3 cursor-pointer hover:border-[#0B2540] hover:bg-gray-50 transition-colors">
                         ${Q2D_UPLOAD_SVG}
-                        <span id="${inputId}_label" class="text-sm text-gray-600 text-center w-full truncate px-1">${q2dEscapeHtml(currentLabel)}</span>
-                        <span class="text-[11px] text-gray-400">PDF only, max 15MB</span>
+                        <span id="${inputId}_label" data-idle="${q2dEscapeHtml(idleLabel)}" class="text-sm text-gray-600 text-center w-full truncate px-1">${q2dEscapeHtml(idleLabel)}</span>
+                        <span class="text-[11px] text-gray-400 text-center">${hint}</span>
                     </label>
-                    <input id="${inputId}" type="file" accept="application/pdf" class="hidden">
-                    <a id="${inputId}_preview" href="#" target="_blank" rel="noopener"
-                        class="hidden mt-1.5 items-center gap-1 text-xs font-medium text-[#0B2540] hover:text-[#A9822C] hover:underline">
-                        View selected PDF &rarr;
-                    </a>
-                    <button type="button" id="${inputId}_done_btn" onclick="q2dSaveSlot('${slot}')" ${hasCurrent ? '' : 'disabled'}
-                        class="mt-3 w-full px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-[#0B2540] hover:bg-[#123564] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
-                        Mark as Done
-                    </button>
-                `;
-                }
-
-
-                function q2dSlotUpload3dView(currentLabel) {
-                    const inputId = 'design_3d_file';
-                    const hasCurrent = currentLabel.startsWith('Current: ');
-                    return `
-                    <label for="${inputId}"
-                        class="flex flex-col items-center justify-center gap-1.5 border border-dashed border-gray-400 py-5 px-3 cursor-pointer hover:border-[#0B2540] hover:bg-gray-50 transition-colors">
-                        ${Q2D_UPLOAD_SVG}
-                        <span id="${inputId}_label" class="text-sm text-gray-600 text-center w-full truncate px-1">${q2dEscapeHtml(currentLabel)}</span>
-                        <span class="text-[11px] text-gray-400">PDF or image (JPG/PNG/WEBP), max 15MB</span>
-                    </label>
-                    <input id="${inputId}" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="hidden">
-                    <a id="${inputId}_preview" href="#" target="_blank" rel="noopener"
-                        class="hidden mt-1.5 items-center gap-1 text-xs font-medium text-[#0B2540] hover:text-[#A9822C] hover:underline">
-                        View selected file &rarr;
-                    </a>
-                    <button type="button" id="${inputId}_done_btn" onclick="q2dSaveSlot('3d')" ${hasCurrent ? '' : 'disabled'}
+                    <input id="${inputId}" type="file" multiple accept="${accept}" data-saved-count="${savedFiles.length}" class="hidden">
+                    <ul id="${inputId}_list" class="mt-2 space-y-1"></ul>
+                    <button type="button" id="${inputId}_done_btn" onclick="q2dSaveSlot('${slot}')" ${savedFiles.length ? '' : 'disabled'}
                         class="mt-3 w-full px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-[#0B2540] hover:bg-[#123564] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                         Mark as Done
                     </button>
@@ -316,12 +401,12 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 }
 
 
-                function q2dApprovedNoReuploadView(fileData) {
+                function q2dApprovedNoReuploadView(fileData, slot) {
                     return `
                     <div class="text-sm">
-                        <span class="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 text-green-800 mb-2">Approved</span>
-                        ${fileData.url ? `<a href="${q2dEscapeHtml(fileData.url)}" target="_blank" class="text-[#0B2540] hover:text-[#A9822C] font-semibold underline underline-offset-2 block mb-1">View File</a>` : ''}
-                        <p class="text-[11px] text-gray-500">No re-upload needed.</p>
+                        <span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 text-green-800 mb-2">${q2dApprovedIcon()}Approved</span>
+                        <div class="mt-1">${q2dFilesButton(slot, fileData)}</div>
+                        <p class="text-[11px] text-gray-500 mt-2">No re-upload needed.</p>
                     </div>
                 `;
                 }
@@ -367,7 +452,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     const twoD = completedEntry.design_2d;
                     const twoDInner = twoD.done
                         ? q2dSlotDoneView(twoD, completedEntry.design_2d_revisable, '2d')
-                        : q2dSlotUploadView('2d', twoD.path ? `Current: ${twoD.filename}` : 'Click to upload revised 2D PDF');
+                        : q2dSlotUploadView('2d', twoD.files);
 
                     const columns = [
                         { label: '2D File', slot: '2d', contentHtml: twoDInner },
@@ -375,7 +460,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     ];
 
                     // 3D na kasama sa Initial submission
-                    if (design3d && design3d.include_3d && design3d.url) {
+                    if (design3d && design3d.include_3d && design3d.files && design3d.files.length) {
                         columns.push({ label: '3D File', slot: '3d', contentHtml: q2dSlotDoneView(design3d, false, '3d') });
                     }
 
@@ -384,13 +469,13 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
             <div>
                 <p class="text-sm text-gray-800">
                     <strong class="uppercase tracking-wide text-[11px]">Status:</strong>
-                    <span class="inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 ml-1 text-green-800">Approved</span>
+                    <span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 ml-1 text-green-800">${q2dApprovedIcon()}Approved</span>
                 </p>
                 ${reviewedLine}
             </div>
         </div>
         <p class="text-sm text-gray-500 italic mb-6">
-            ${twoD.done ? 'Both files have been approved. No further action is needed.' : 'Cutting flagged an issue with the 2D file — upload a corrected copy below.'}
+            ${twoD.done ? 'Both files have been approved. No further action is needed.' : 'Cutting flagged an issue with the 2D file — update the files below.'}
         </p>
         ${q2dFileTable(columns)}
     `;
@@ -402,7 +487,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     <div class="flex items-center justify-between border-l-4 border-[#0B2540] bg-gray-50 px-4 py-2.5 mb-6">
                         <p class="text-sm text-gray-800">
                             <strong class="uppercase tracking-wide text-[11px]">Status:</strong>
-                            <span class="inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border ml-1 ${activeDraft.status_class}">${q2dEscapeHtml(activeDraft.status_label)}</span>
+                            <span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border ml-1 ${activeDraft.status_class}">${q2dIsApproved(activeDraft.status_label) ? q2dApprovedIcon() : ''}${q2dEscapeHtml(activeDraft.status_label)}</span>
                             ${activeDraft.is_late ? q2dLateBadge() : ''}
                         </p>
                     </div>
@@ -416,47 +501,40 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
 
                 function q2dRenderActiveDraftSlots(activeDraft, design3d) {
-    const twoD = activeDraft.design_2d;
-    const quot = activeDraft.quotation;
-    const locked = activeDraft.is_locked;
-    const include3d = !!(design3d && design3d.include_3d);
+                    const twoD = activeDraft.design_2d;
+                    const quot = activeDraft.quotation;
+                    const locked = activeDraft.is_locked;
+                    const include3d = !!(design3d && design3d.include_3d);
 
-    const twoDInner = twoD.done
-        ? q2dSlotDoneView(twoD, !locked, '2d')
-        : q2dSlotUploadView('2d', twoD.path ? `Current: ${twoD.filename}` : 'Click to upload 2D PDF');
+                    const twoDInner = twoD.done
+                        ? q2dSlotDoneView(twoD, !locked, '2d')
+                        : q2dSlotUploadView('2d', twoD.files);
 
-    const quotInner = quot.done
-        ? q2dSlotDoneView(quot, !locked, 'quotation')
-        : q2dSlotUploadView('quotation', quot.path ? `Current: ${quot.filename}` : 'Click to upload Quotation PDF');
+                    const quotInner = quot.done
+                        ? q2dSlotDoneView(quot, !locked, 'quotation')
+                        : q2dSlotUploadView('quotation', quot.files);
 
-    const columns = [
-        { label: '2D File', slot: '2d', contentHtml: twoDInner },
-        { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
-    ];
+                    const columns = [
+                        { label: '2D File', slot: '2d', contentHtml: twoDInner },
+                        { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
+                    ];
 
-    if (include3d) {
-        const threeDInner = design3d.done
-            ? q2dSlotDoneView(design3d, !locked, '3d')
-            : q2dSlotUpload3dView(design3d.path ? `Current: ${design3d.filename}` : 'Click to upload 3D file');
-        columns.push({ label: '3D File', slot: '3d', contentHtml: threeDInner });
-    }
+                    if (include3d) {
+                        const threeDInner = design3d.done
+                            ? q2dSlotDoneView(design3d, !locked, '3d')
+                            : q2dSlotUploadView('3d', design3d.files);
+                        columns.push({ label: '3D File', slot: '3d', contentHtml: threeDInner });
+                    }
 
-    return q2dFileTable(columns);
-}
+                    return q2dFileTable(columns);
+                }
 
-                function q2dRenderSubmitBar(activeDraft, design3d, contractAmount) {
+                // Files na lang ang kailangan — ang contract ay nasa Final na.
+                function q2dRenderSubmitBar(activeDraft, design3d) {
                     if (activeDraft.is_locked) return '';
                     const include3d = !!(design3d && design3d.include_3d);
-                    const filesDone = activeDraft.both_done && (!include3d || design3d.done);
-                    const hasContractAmount = contractAmount !== null && contractAmount !== undefined && contractAmount !== '' && Number(contractAmount) > 0;
-                    const allDone = filesDone && hasContractAmount;
-
-                    let blockerMsg = '';
-                    if (!filesDone) {
-                        blockerMsg = `Complete ${include3d ? 'all three files' : 'both files'} first.`;
-                    } else if (!hasContractAmount) {
-                        blockerMsg = 'Waiting for Sales to set the Contract Amount.';
-                    }
+                    const allDone = activeDraft.both_done && (!include3d || design3d.done);
+                    const blockerMsg = allDone ? '' : `Complete ${include3d ? 'all three slots' : 'both slots'} first.`;
 
                     return `
     <div class="pt-3 border-t border-gray-300 flex items-center justify-end gap-3">
@@ -483,83 +561,167 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 ` : `
                     ${q2dSectionLabel('No Active Submission')}
                     <p class="text-sm text-gray-500 italic mb-6">
-                        No 2D and Quotation files have been submitted yet for this inquiry. Attach a PDF below to start.
+                        No 2D and Quotation files have been submitted yet for this inquiry. Attach one or more PDFs below to start.
                     </p>
                 `;
 
                     const twoDInner = (revisionEntry && !revisionEntry.design_2d_needs_revision)
-                        ? q2dApprovedNoReuploadView(revisionEntry.design_2d)
-                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.design_2d.remarks) : ''}${q2dSlotUploadView('2d', 'Click to upload 2D PDF')}`;
+                        ? q2dApprovedNoReuploadView(revisionEntry.design_2d, '2d')
+                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.design_2d.remarks) : ''}${q2dSlotUploadView('2d', [])}`;
 
                     const quotInner = (revisionEntry && !revisionEntry.quotation_needs_revision)
-                        ? q2dApprovedNoReuploadView(revisionEntry.quotation)
-                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.quotation.remarks) : ''}${q2dSlotUploadView('quotation', 'Click to upload Quotation PDF')}`;
+                        ? q2dApprovedNoReuploadView(revisionEntry.quotation, 'quotation')
+                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.quotation.remarks) : ''}${q2dSlotUploadView('quotation', [])}`;
 
-                     return `
+                    return `
         ${headerBlock}
         ${q2dFileTable([
-            { label: '2D File', slot: '2d', contentHtml: twoDInner },
-            { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
-        ])}
+                    { label: '2D File', slot: '2d', contentHtml: twoDInner },
+                    { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
+                ])}
     `;
                 }
 
+                // Kunin ang listahan ng files ng isang slot sa magkaparehong shape, kahit
+                // "files" array (multi) o "url" na lang (single/legacy) ang laman ng fileData.
+                function q2dGetFilesArray(fileData) {
+                    if (!fileData) return [];
+                    if (fileData.files && fileData.files.length) return fileData.files;
+                    if (fileData.url) return [{ url: fileData.url, name: fileData.name || 'File' }];
+                    return [];
+                }
+
+                // Ginagamit pa rin ng ibang parte ng page (hindi Prior Submissions) — hindi na
+                // ito tinutukoy ng bagong table-style na history sa ibaba.
                 function q2dFileCell(fileData) {
-                    if (!fileData.url) return '—';
+                    const files = (fileData && fileData.files) || [];
+                    if (!files.length && !(fileData && fileData.url)) return '—';
+
+                    const links = files.length
+                        ? `<div class="space-y-1">${files.map((f, i) => `
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <a href="${q2dEscapeHtml(f.url)}" target="_blank"
+                                    class="shrink-0 text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2 whitespace-nowrap text-xs">
+                                    ${files.length > 1 ? `File ${i + 1}` : 'View File'}
+                                </a>
+                                ${files.length > 1 ? `
+                                    <span class="text-gray-400 truncate min-w-0 text-xs" title="${q2dEscapeHtml(f.name)}">${q2dEscapeHtml(f.name)}</span>
+                                ` : ''}
+                            </div>`).join('')}</div>`
+                        : `<a href="${q2dEscapeHtml(fileData.url)}" target="_blank" class="block text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2 text-xs">View File</a>`;
+
                     const reviewLine = fileData.review_status
                         ? `<span class="block text-[10px] font-semibold uppercase tracking-wide mt-0.5 ${fileData.review_class}">${q2dEscapeHtml(fileData.review_status)}</span>`
                         : '';
-                    return `<a href="${q2dEscapeHtml(fileData.url)}" target="_blank" class="text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2">View File</a>${reviewLine}`;
+                    return `${links}${reviewLine}`;
                 }
 
+                // Isang file lang ang nilalaman ng cell na ito (row-per-file na ngayon ang
+                // Prior Submissions table). Ang reviewStatus ay status ng buong slot/grupo
+                // (2D, Quotation, o 3D) ng submission entry na ito — ipinapakita na ngayon sa
+                // BAWAT file row sa loob ng column na iyon, hindi lang sa huling row, para
+                // malinaw na "Approved" (o kung ano man ang status) ang bawat individual file.
+                function q2dPastFileCell(files, idx, reviewStatus, reviewClass) {
+                    const f = files[idx];
+                    if (!f) return idx === 0 ? '<span class="text-gray-300">—</span>' : '';
+                    const reviewHtml = reviewStatus
+                        ? `<span class="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide mt-0.5 ${reviewClass || ''}">${q2dIsApproved(reviewStatus) ? q2dApprovedIcon() : ''}${q2dEscapeHtml(reviewStatus)}</span>`
+                        : '';
+                    return `
+                        <a href="${q2dEscapeHtml(f.url)}" target="_blank" title="${q2dEscapeHtml(f.name)}"
+                            class="text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2 truncate block">
+                            ${q2dEscapeHtml(f.name)}
+                        </a>
+                        ${reviewHtml}
+                    `;
+                }
 
+                // Prior Submissions bilang tunay na table: bawat file ay sariling row na
+                // ("spreadsheet style"), imbes na nakatambak lahat sa iisang cell. Ang
+                // Submitted / Result / Remarks ay iisa lang bawat submission entry, kaya
+                // naka-rowspan ito sa unang row ng grupong iyon.
                 function q2dRenderPastEntries(pastEntries) {
                     if (!pastEntries || pastEntries.length === 0) return '';
 
                     const anyBundled3d = pastEntries.some(e => e.design_3d && e.design_3d.included);
 
-                    const rows = pastEntries.map(entry => {
+                    const colWidths = anyBundled3d
+                        ? ['w-[16%]', 'w-[16%]', 'w-[13%]', 'w-[13%]', 'w-[11%]', 'w-[auto]']
+                        : ['w-[20%]', 'w-[20%]', 'w-[14%]', 'w-[12%]', 'w-[auto]'];
+
+                    let rowsHtml = '';
+
+                    pastEntries.forEach((entry, entryIdx) => {
+                        const d2Files = q2dGetFilesArray(entry.design_2d);
+                        const qFiles = q2dGetFilesArray(entry.quotation);
+                        const d3Files = anyBundled3d
+                            ? q2dGetFilesArray(entry.design_3d && entry.design_3d.included ? entry.design_3d : null)
+                            : [];
+                        const rowCount = Math.max(d2Files.length, qFiles.length, d3Files.length, 1);
+
                         const hasPerFileRemarks = !!entry.design_2d_remarks || !!entry.quotation_remarks;
                         const remarksCell = hasPerFileRemarks
                             ? `${entry.design_2d_remarks ? `<p class="mb-1"><span class="font-semibold text-gray-700">2D:</span> ${q2dEscapeHtml(entry.design_2d_remarks).replace(/\n/g, '<br>')}</p>` : ''}${entry.quotation_remarks ? `<p><span class="font-semibold text-gray-700">Quotation:</span> ${q2dEscapeHtml(entry.quotation_remarks).replace(/\n/g, '<br>')}</p>` : ''}`
                             : (entry.remarks ? q2dEscapeHtml(entry.remarks).replace(/\n/g, '<br>') : '—');
 
-                        const threeDCell = anyBundled3d
-                            ? `<td class="px-4 py-2 border-r border-gray-200">${entry.design_3d && entry.design_3d.included ? q2dFileCell(entry.design_3d) : '<span class="text-gray-300">—</span>'}</td>`
-                            : '';
+                        for (let i = 0; i < rowCount; i++) {
+                            const isFirst = i === 0;
+                            // Makapal na border sa taas ng bawat bagong submission entry (maliban sa una)
+                            // para malinaw kung saan nagsisimula/natatapos ang bawat grupo.
+                            const groupTop = (entryIdx > 0 && isFirst) ? 'border-t-2 border-t-gray-300' : '';
 
-                        return `
-                        <tr class="border-b border-gray-200 last:border-b-0">
-                            <td class="px-4 py-2 border-r border-gray-200">${q2dFileCell(entry.design_2d)}</td>
-                            <td class="px-4 py-2 border-r border-gray-200">${q2dFileCell(entry.quotation)}</td>
-                            ${threeDCell}
-                            <td class="px-4 py-2 border-r border-gray-200 text-gray-600 whitespace-nowrap">${entry.submitted_at ? q2dEscapeHtml(entry.submitted_at) : '—'}</td>
-                            <td class="px-4 py-2 border-r border-gray-200">
-                                <span class="text-[11px] font-semibold uppercase tracking-wide ${entry.status_class}">${q2dEscapeHtml(entry.status_label)}</span>
-                                ${entry.is_late ? `<span class="block text-[10px] font-semibold uppercase text-red-700 mt-0.5">Late Submission</span>` : ''}
-                            </td>
-                            <td class="px-4 py-2 text-gray-600 max-w-[220px]">${remarksCell}</td>
-                        </tr>
-                    `;
-                    }).join('');
+                            const threeDCell = anyBundled3d
+                                ? `<td class="align-top px-4 py-2 border-r border-gray-100 text-xs ${groupTop}">${q2dPastFileCell(d3Files, i, entry.design_3d && entry.design_3d.review_status, entry.design_3d && entry.design_3d.review_class)}</td>`
+                                : '';
+
+                            // "Submitted" — ipinapakita na ngayon sa bawat file row (hindi na naka-rowspan),
+                            // gamit ang timestamp ng buong submission entry (iisa lang ang batayan nito
+                            // dahil sabay isinusumite ang lahat ng files sa isang entry).
+                            const submittedCell = `
+                                <td class="align-top px-4 py-2 border-r border-l border-gray-200 text-gray-600 text-xs ${groupTop}">${entry.submitted_at ? q2dEscapeHtml(entry.submitted_at) : '—'}</td>
+                            `;
+
+                            const sharedCells = isFirst ? `
+                                <td rowspan="${rowCount}" class="align-top px-4 py-2 border-r border-gray-200 ${groupTop}">
+                                    <span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide ${entry.status_class}">
+                                        ${q2dIsApproved(entry.status_label) ? q2dApprovedIcon() : ''}${q2dEscapeHtml(entry.status_label)}
+                                    </span>
+                                    ${entry.is_late ? `<span class="block text-[10px] font-semibold uppercase text-red-700 mt-0.5">Late Submission</span>` : ''}
+                                </td>
+                                <td rowspan="${rowCount}" class="align-top px-4 py-2 text-gray-600 text-xs ${groupTop}">${remarksCell}</td>
+                            ` : '';
+
+                            rowsHtml += `
+                                <tr class="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/60">
+                                    <td class="align-top px-4 py-2 border-r border-gray-100 text-xs ${groupTop}">${q2dPastFileCell(d2Files, i, entry.design_2d.review_status, entry.design_2d.review_class)}</td>
+                                    <td class="align-top px-4 py-2 border-r border-gray-100 text-xs ${groupTop}">${q2dPastFileCell(qFiles, i, entry.quotation.review_status, entry.quotation.review_class)}</td>
+                                    ${threeDCell}
+                                    ${submittedCell}
+                                    ${sharedCells}
+                                </tr>
+                            `;
+                        }
+                    });
 
                     return `
                     <h2 class="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold border-b border-gray-300 pb-2 mb-4 mt-8">
                         Prior Submissions
                     </h2>
-                    <table class="w-full border border-gray-300 text-sm mb-4">
-                        <thead>
-                            <tr class="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-500">
-                                <th class="text-left font-medium px-4 py-2 border-r border-b border-gray-200">2D File</th>
-                                <th class="text-left font-medium px-4 py-2 border-r border-b border-gray-200">Quotation File</th>
-                                ${anyBundled3d ? `<th class="text-left font-medium px-4 py-2 border-r border-b border-gray-200">3D File</th>` : ''}
-                                <th class="text-left font-medium px-4 py-2 border-r border-b border-gray-200">Submitted</th>
-                                <th class="text-left font-medium px-4 py-2 border-r border-b border-gray-200">Result</th>
-                                <th class="text-left font-medium px-4 py-2 border-b border-gray-200">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
+                    <div class="overflow-x-auto border border-gray-300 mb-4">
+                        <table class="w-full table-fixed text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-500">
+                                    <th class="${colWidths[0]} text-left font-medium px-4 py-2 border-r border-b border-gray-200">2D File</th>
+                                    <th class="${colWidths[1]} text-left font-medium px-4 py-2 border-r border-b border-gray-200">Quotation File</th>
+                                    ${anyBundled3d ? `<th class="${colWidths[2]} text-left font-medium px-4 py-2 border-r border-b border-gray-200">3D File</th>` : ''}
+                                    <th class="${colWidths[anyBundled3d ? 3 : 2]} text-left font-medium px-4 py-2 border-r border-l border-b border-gray-200">Submitted</th>
+                                    <th class="${colWidths[anyBundled3d ? 4 : 3]} text-left font-medium px-4 py-2 border-r border-b border-gray-200">Result</th>
+                                    <th class="${colWidths[anyBundled3d ? 5 : 4]} text-left font-medium px-4 py-2 border-b border-gray-200">Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>
+                    </div>
                 `;
                 }
 
@@ -581,11 +743,11 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                             ? q2dRevisionRemarksBox(design3d.remarks) : '';
                         const uploadInner = design3d.done
                             ? q2dSlotDoneView(design3d, true, '3d')
-                            : q2dSlotUpload3dView(design3d.path ? `Current: ${design3d.filename}` : 'Click to upload 3D file');
+                            : q2dSlotUploadView('3d', design3d.files);
                         inner = `
         ${q2dFileTable([{ label: '3D File', slot: '3d', contentHtml: remarksBox + uploadInner }])}
         <div class="pt-3 -mt-3 border-t border-gray-300 flex items-center justify-end gap-3">
-            ${!design3d.done ? `<p class="text-xs text-gray-400">Complete the 3D file first.</p>` : ''}
+            ${!design3d.done ? `<p class="text-xs text-gray-400">Complete the 3D slot first.</p>` : ''}
             <button type="button" onclick="q2dSubmit3d()" ${design3d.done ? '' : 'disabled'}
                 class="px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-[#0B2540] hover:bg-[#123564] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                 Submit 3D for Approval
@@ -648,15 +810,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     if (isSales) {
                         const pct = Number(step1.progress) || 0;
 
-                        const markers = steps.map(s => {
-                            const reached = pct >= Number(s.value);
-                            return `
-                <div class="flex flex-col items-center" style="width: 1px;">
-                    <span class="text-[11px] font-medium mt-2 ${reached ? 'text-[#0B2540]' : 'text-gray-400'}">${s.label}</span>
-                </div>
-            `;
-                        }).join('');
-
                         return `
             ${q2dSectionLabel('Design Progress')}
             <p class="text-sm text-gray-500 italic mb-5">
@@ -681,7 +834,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
         `;
                     }
 
-                    // DESIGNER: editable (dating behavior)
+                    // DESIGNER: editable
                     const buttons = steps.map(s => {
                         const active = step1.progress === s.value;
                         return `
@@ -712,7 +865,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 }
 
 
-                // confirmed, so it's always clear when/who confirmed it.
                 function q2dRenderStep1ConfirmedBadge(step1) {
                     return `
         <div class="flex items-center justify-between border-l-4 border-[#0B2540] bg-gray-50 px-4 py-2.5 mb-6">
@@ -723,119 +875,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
             ${step1.confirmed_at ? `<p class="text-xs text-gray-400">${q2dEscapeHtml(step1.confirmed_at)} by ${q2dEscapeHtml(step1.confirmed_by_name)}</p>` : ''}
         </div>
     `;
-                }
-
-                function q2dFormatCurrency(value, withSymbol = true) {
-                    const num = Number(value);
-                    if (value === null || value === undefined || value === '' || isNaN(num)) {
-                        return withSymbol ? '—' : '';
-                    }
-                    const formatted = num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    return withSymbol ? '₱' + formatted : formatted;
-                }
-
-                function q2dFormatNumberInput(rawValue) {
-                    let cleaned = rawValue.replace(/[^0-9.]/g, '');
-                    const parts = cleaned.split('.');
-                    if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
-                    const [intPart, decimalPart] = cleaned.split('.');
-                    const formattedInt = intPart ? Number(intPart).toLocaleString('en-US') : '';
-                    return decimalPart !== undefined ? formattedInt + '.' + decimalPart.slice(0, 2) : formattedInt;
-                }
-
-                function q2dRenderContractAmount(state) {
-                    if (!state.quotation_done) return '';
-
-                    const amount = state.inquiry.contract_amount;
-                    const hasAmount = amount !== null && amount !== undefined && amount !== '' && Number(amount) > 0;
-
-                    if (!state.is_sales) {
-                        return `
-        <table class="w-full border border-gray-300 text-md mb-6">
-            <tbody><tr>
-                <td class="w-40 bg-gray-50 font-semibold text-[10px] uppercase tracking-wider text-black px-4 py-2.5 border-r border-gray-200">Contract Amount :</td>
-                <td class="px-4 py-2.5 text-gray-900">${hasAmount ? q2dFormatCurrency(amount) : '<span class="text-gray-400 italic">Not yet set by Sales.</span>'}</td>
-            </tr></tbody>
-        </table>
-    `;
-                    }
-
-                    return `
-    <div class="rounded-lg border border-gray-200 bg-white p-3 mb-6 shadow-sm">
-    <label for="q2dContractAmountInput" class="block text-md font-medium text-black mb-2">
-        Contract amount :
-    </label>
-    <div class="flex items-stretch gap-2">
-        <div class="relative flex-1">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₱</span>
-            <input type="text" inputmode="decimal" id="q2dContractAmountInput"
-                value="${hasAmount ? q2dFormatCurrency(amount, false) : ''}" placeholder="0.00"
-                class="w-full pl-7 pr-2 py-2 text-sm rounded-lg border border-gray-300 text-gray-900
-                       focus:outline-none focus:ring-2 focus:ring-[#0B2540]/20 focus:border-[#0B2540]
-                       transition-colors">
-        </div>
-        <button type="button" id="q2dContractAmountSaveBtn" onclick="q2dSaveContractAmount()" ${hasAmount ? '' : 'disabled'}
-            class="px-4 py-2 text-md font-medium text-white bg-black rounded-lg
-                   hover:bg-[#123564] active:bg-[#0a1f36] transition-colors 
-                   disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300
-                   focus:outline-none focus:ring-2 focus:ring-[#0B2540]/40 focus:ring-offset-1">
-            ${hasAmount ? 'Update' : 'Save'}
-        </button>
-    </div>
-</div>
-                `;
-                }
-
-                function q2dBindContractAmountInput() {
-                    const input = document.getElementById('q2dContractAmountInput');
-                    const saveBtn = document.getElementById('q2dContractAmountSaveBtn');
-                    if (!input) return;
-
-                    input.addEventListener('input', function () {
-                        const cursorFromEnd = this.value.length - this.selectionStart;
-                        this.value = q2dFormatNumberInput(this.value);
-                        const newPos = this.value.length - cursorFromEnd;
-                        this.setSelectionRange(newPos, newPos);
-
-                        if (saveBtn) {
-                            const rawValue = this.value.replace(/,/g, '').trim();
-                            const isValid = rawValue !== '' && !isNaN(Number(rawValue)) && Number(rawValue) > 0;
-                            saveBtn.disabled = !isValid;
-                        }
-                    });
-                }
-
-                async function q2dSaveContractAmount() {
-                    const input = document.getElementById('q2dContractAmountInput');
-                    if (!input) return;
-                    const rawValue = input.value.replace(/,/g, '').trim();
-
-                    if (!rawValue || isNaN(Number(rawValue)) || Number(rawValue) <= 0) {
-                        crmShowToast('Please enter a valid contract amount.', 'error');
-                        return;
-                    }
-
-                    const formData = new FormData();
-                    formData.append('action', 'save_contract_amount');
-                    formData.append('inquiry_id', Q2D_INQUIRY_ID);
-                    formData.append('contract_amount', rawValue);
-
-                    try {
-                        const res = await fetch(Q2D_AJAX_URL, { method: 'POST', body: formData });
-                        const data = await res.json();
-
-                        if (!data.success) {
-                            crmShowToast(data.message || 'Something went wrong.', 'error');
-                            return;
-                        }
-
-                        q2dLastSignature = '';
-                        crmShowToast(data.message || 'Saved.');
-                        await q2dFetchState();
-                    } catch (e) {
-                        console.error('q2dSaveContractAmount:', e);
-                        crmShowToast('Connection error. Please try again.', 'error');
-                    }
                 }
 
                 function q2dRenderProceedToFinal(state) {
@@ -865,13 +904,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 function q2dRenderRoot(state) {
                     const root = document.getElementById('q2dRoot');
 
-                    // Preserve any unsaved (not-yet-clicked-Save) contract amount typing
-                    // across re-renders triggered by other actions (e.g. toggling 3D).
-                    const existingAmountInput = document.getElementById('q2dContractAmountInput');
-                    const pendingAmountValue = existingAmountInput ? existingAmountInput.value : null;
-                    const pendingAmountWasFocused = existingAmountInput === document.activeElement;
-                    const pendingAmountCaret = pendingAmountWasFocused ? existingAmountInput.selectionStart : null;
-
                     if (!state.step1 || !state.step1.confirmed) {
                         root.innerHTML = q2dInquirySummary(state.inquiry)
                             + q2dRenderCuttingFeedback(state.cutting_feedback)
@@ -884,13 +916,12 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     let body = q2dInquirySummary(state.inquiry);
                     body += q2dRenderStep1ConfirmedBadge(state.step1);
                     body += q2dRenderCuttingFeedback(state.cutting_feedback);
-                    body += q2dRenderContractAmount(state);
                     body += q2dRenderToggle(design3d);
 
                     if (state.active_draft) {
                         body += q2dRenderStatusBanner(state.active_draft);
                         body += q2dRenderActiveDraftSlots(state.active_draft, design3d);
-                        body += q2dRenderSubmitBar(state.active_draft, design3d, state.inquiry.contract_amount);
+                        body += q2dRenderSubmitBar(state.active_draft, design3d);
                     } else if (state.completed_entry) {
                         body += q2dRenderCompletedView(state.completed_entry, design3d);
                         body += q2dRender3dStandaloneSection(design3d);
@@ -904,68 +935,104 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                     root.innerHTML = body;
 
-                    // Restore whatever the user had typed but not yet saved.
-                    if (pendingAmountValue) {
-                        const newAmountInput = document.getElementById('q2dContractAmountInput');
-                        if (newAmountInput && newAmountInput.value !== pendingAmountValue) {
-                            newAmountInput.value = pendingAmountValue;
-                            if (pendingAmountWasFocused) {
-                                newAmountInput.focus();
-                                if (pendingAmountCaret !== null) {
-                                    newAmountInput.setSelectionRange(pendingAmountCaret, pendingAmountCaret);
-                                }
-                            }
-                        }
-                    }
-
-                    q2dPendingSelection = { '2d': false, quotation: false, '3d': false };
-                    q2dBindLabel('2d');
-                    q2dBindLabel('quotation');
-                    q2dBindLabel('3d');
-                    q2dBindContractAmountInput();
+                    // Hindi na nire-reset ang q2dSelected dito — para hindi mawala ang mga napili
+                    // (hal. kapag nag-delete ka ng naka-save na file sa kabilang slot).
+                    q2dBindSlot('2d');
+                    q2dBindSlot('quotation');
+                    q2dBindSlot('3d');
                 }
 
 
-                // ── Filename label + preview link + enable "Mark as Done" once may napiling file ──
-                function q2dBindLabel(slot) {
+                // ── MULTI-FILE: pagpili, listahan ng napili, remove, at "Mark as Done" enable/disable ──
+                function q2dIsAllowedFile(slot, file) {
+                    const name = (file.name || '').toLowerCase();
+                    if (slot === '3d') {
+                        return ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+                            || /\.(pdf|jpe?g|png|webp)$/.test(name);
+                    }
+                    return file.type === 'application/pdf' || name.endsWith('.pdf');
+                }
+
+                function q2dRefreshSlotUi(slot) {
                     const inputId = q2dInputId(slot);
                     const input = document.getElementById(inputId);
                     const label = document.getElementById(`${inputId}_label`);
-                    const preview = document.getElementById(`${inputId}_preview`);
+                    const list = document.getElementById(`${inputId}_list`);
                     const doneBtn = document.getElementById(`${inputId}_done_btn`);
-                    if (!input || !label || !preview) return;
+                    if (!input || !list) return;
 
-                    let currentObjectUrl = null;
-                    const fallback = label.textContent;
+                    // linisin ang lumang object URLs
+                    q2dObjectUrls[slot].forEach(u => URL.revokeObjectURL(u));
+                    q2dObjectUrls[slot] = [];
+
+                    const selected = q2dSelected[slot];
+                    const savedCount = Number(input.dataset.savedCount || 0);
+
+                    list.innerHTML = selected.map((f, i) => {
+                        const url = URL.createObjectURL(f);
+                        q2dObjectUrls[slot].push(url);
+                        return `
+                            <li class="flex items-center gap-2 text-xs border border-green-200 bg-green-50 px-2 py-1">
+                                <a href="${url}" target="_blank" rel="noopener" class="flex-1 truncate text-[#0B2540] hover:text-[#A9822C] underline underline-offset-2" title="${q2dEscapeHtml(f.name)}">${q2dEscapeHtml(f.name)}</a>
+                                <span class="shrink-0 text-[10px] text-green-700 uppercase font-semibold">New</span>
+                                <button type="button" onclick="q2dRemoveSelected('${slot}', ${i})"
+                                    class="shrink-0 text-gray-400 hover:text-red-700 text-base leading-none" title="Remove" aria-label="Remove">&times;</button>
+                            </li>`;
+                    }).join('');
+
+                    if (label) {
+                        label.textContent = selected.length
+                            ? `${selected.length} new file${selected.length > 1 ? 's' : ''} selected — click to add more`
+                            : (label.dataset.idle || label.textContent);
+                    }
+                    if (doneBtn) doneBtn.disabled = (savedCount + selected.length) === 0;
+                }
+
+                function q2dRemoveSelected(slot, index) {
+                    q2dSelected[slot].splice(index, 1);
+                    q2dRefreshSlotUi(slot);
+                }
+
+                function q2dBindSlot(slot) {
+                    const input = document.getElementById(q2dInputId(slot));
+                    if (!input) {
+                        // walang upload view ngayon para sa slot na ito → walang dapat i-hold na napili
+                        q2dSelected[slot] = [];
+                        q2dObjectUrls[slot].forEach(u => URL.revokeObjectURL(u));
+                        q2dObjectUrls[slot] = [];
+                        return;
+                    }
 
                     input.addEventListener('change', function () {
-                        if (currentObjectUrl) {
-                            URL.revokeObjectURL(currentObjectUrl);
-                            currentObjectUrl = null;
+                        const savedCount = Number(input.dataset.savedCount || 0);
+                        const picked = Array.from(input.files);
+                        input.value = ''; // para pwedeng pumili ulit ng parehong file
+
+                        let rejected = null;
+                        for (const f of picked) {
+                            if (!q2dIsAllowedFile(slot, f)) {
+                                rejected = `"${f.name}" is not an allowed file type.`;
+                                continue;
+                            }
+                            if (f.size > Q2D_MAX_BYTES) {
+                                rejected = `"${f.name}" exceeds the 15MB limit.`;
+                                continue;
+                            }
+                            if (q2dSelected[slot].some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) {
+                                continue; // duplicate
+                            }
+                            if (savedCount + q2dSelected[slot].length >= Q2D_MAX_FILES) {
+                                rejected = `Maximum of ${Q2D_MAX_FILES} files per slot.`;
+                                break;
+                            }
+                            q2dSelected[slot].push(f);
                         }
+                        if (rejected) crmShowToast(q2dEscapeHtml(rejected), 'error');
 
-                        if (this.files.length) {
-                            const file = this.files[0];
-                            label.textContent = file.name;
-                            label.title = file.name;
-
-                            currentObjectUrl = URL.createObjectURL(file);
-                            preview.href = currentObjectUrl;
-                            preview.classList.remove('hidden');
-                            preview.classList.add('flex');
-
-                            if (doneBtn) doneBtn.disabled = false;
-                            q2dPendingSelection[slot] = true;
-                        } else {
-                            label.textContent = fallback;
-                            label.title = '';
-                            preview.classList.add('hidden');
-                            preview.classList.remove('flex');
-                            preview.href = '#';
-                            q2dPendingSelection[slot] = fallback.startsWith('Current: ') ? true : false;
-                            if (doneBtn) doneBtn.disabled = !fallback.startsWith('Current: ');
-                        }
+                        q2dRefreshSlotUi(slot);
                     });
+
+                    q2dRefreshSlotUi(slot); // ibalik ang listahan ng napili kung na-re-render lang ang page
                 }
 
                 function q2dRenderStageBadge(stage) {
@@ -996,15 +1063,15 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                         q2dRenderStageBadge(data.stage);
 
-                        const hasPendingSelection = q2dPendingSelection['2d'] || q2dPendingSelection.quotation || q2dPendingSelection['3d'];
-                        if (silent && hasPendingSelection) {
+                        // Huwag i-refresh sa background poll habang may napiling file na hindi pa naa-upload.
+                        if (silent && q2dHasPending()) {
                             return;
                         }
 
                         const signature = JSON.stringify(data.step1) + JSON.stringify(data.active_draft) + JSON.stringify(data.completed_entry)
                             + JSON.stringify(data.revision_entry) + JSON.stringify(data.past_entries)
-                            + JSON.stringify(data.design_3d) + JSON.stringify(data.inquiry.contract_amount) + JSON.stringify(data.quotation_done)
-                            + JSON.stringify(data.cutting_feedback);
+                            + JSON.stringify(data.design_3d) + JSON.stringify(data.cutting_feedback)
+                            + JSON.stringify(data.has_final);
                         if (signature !== q2dLastSignature) {
                             q2dRenderRoot(data);
                             q2dLastSignature = signature;
@@ -1039,7 +1106,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 q2dFetchState().then(q2dStartPolling);
 
 
-                // NEW-3D: toggle "submit 3D together" on/off.
+                // toggle "submit 3D together" on/off.
                 async function q2dToggleInclude3d(checked) {
                     const formData = new FormData();
                     formData.append('action', 'save_toggle');
@@ -1063,7 +1130,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     }
                 }
 
-                // NEW-STEP1: save the 0/50/100 progress value.
+                // save the 0/50/100 progress value.
                 async function q2dSaveProgress(value) {
                     const formData = new FormData();
                     formData.append('action', 'save_progress');
@@ -1087,8 +1154,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     }
                 }
 
-                // NEW-STEP1: staff marks the design as confirmed by the customer.
-                // Requires progress to already be at 100% (enforced server-side too).
+                // staff marks the design as confirmed by the customer.
                 async function q2dConfirmCustomer() {
                     const formData = new FormData();
                     formData.append('action', 'confirm_customer');
@@ -1112,34 +1178,62 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     }
                 }
 
+                // MULTI-FILE: i-upload lahat ng napiling file (files[]) at i-mark done ang slot.
                 async function q2dSaveSlot(slot) {
-                    const inputId = q2dInputId(slot);
-                    const fileKey = slot === '2d' ? 'design_2d_pdf' : (slot === 'quotation' ? 'quotation_pdf' : 'design_3d_file');
-                    const input = document.getElementById(inputId);
-
                     const formData = new FormData();
                     formData.append('action', 'save_slot');
                     formData.append('inquiry_id', Q2D_INQUIRY_ID);
                     formData.append('slot', slot);
-                    if (input && input.files.length) {
-                        formData.append(fileKey, input.files[0]);
-                    }
+                    q2dSelected[slot].forEach(f => formData.append('files[]', f));
+
+                    const doneBtn = document.getElementById(`${q2dInputId(slot)}_done_btn`);
+                    if (doneBtn) doneBtn.disabled = true;
 
                     try {
                         const res = await fetch(Q2D_AJAX_URL, { method: 'POST', body: formData });
                         const data = await res.json();
 
                         if (!data.success) {
-                            crmShowToast(data.message || 'Something went wrong.', 'error');
+                            crmShowToast(q2dEscapeHtml(data.message || 'Something went wrong.'), 'error');
+                            q2dRefreshSlotUi(slot); // ibalik ang tamang state ng button
                             return;
                         }
 
-                        q2dPendingSelection[slot] = false;
+                        q2dSelected[slot] = [];
                         q2dLastSignature = ''; // force re-render even if signature looks unchanged
                         crmShowToast(data.message || 'Saved.');
                         await q2dFetchState();
                     } catch (e) {
                         console.error('q2dSaveSlot:', e);
+                        crmShowToast('Connection error. Please try again.', 'error');
+                        q2dRefreshSlotUi(slot);
+                    }
+                }
+
+                // MULTI-FILE: alisin ang isang naka-save na file (habang naka-Edit / hindi pa done).
+                async function q2dDeleteFile(slot, fileId) {
+                    if (!confirm('Remove this file?')) return;
+
+                    const formData = new FormData();
+                    formData.append('action', 'delete_file');
+                    formData.append('inquiry_id', Q2D_INQUIRY_ID);
+                    formData.append('slot', slot);
+                    formData.append('file_id', fileId);
+
+                    try {
+                        const res = await fetch(Q2D_AJAX_URL, { method: 'POST', body: formData });
+                        const data = await res.json();
+
+                        if (!data.success) {
+                            crmShowToast(q2dEscapeHtml(data.message || 'Something went wrong.'), 'error');
+                            return;
+                        }
+
+                        q2dLastSignature = '';
+                        crmShowToast(data.message || 'File removed.');
+                        await q2dFetchState();
+                    } catch (e) {
+                        console.error('q2dDeleteFile:', e);
                         crmShowToast('Connection error. Please try again.', 'error');
                     }
                 }

@@ -1,10 +1,8 @@
 <?php
 // check2dquotationajax.php
 //
-// Handles BOTH stages of the 2D & Quotation approval:
-//   stage = Initial → noblecrm_2dquotation
-//   stage = Final   → noblecrm_2dquotation_final   (same columns)
-// Ids can repeat across the two tables, so a record is always identified by (stage, id).
+// SUPERADMIN — FINAL stage approval lang (noblecrm_2dquotation_final).
+// Ang Initial approval ay nasa Designer Head na: checkdesigner2dquotationajax.php
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -19,33 +17,20 @@ header('Content-Type: application/json');
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
 
-// Statuses that are actually visible to the approver. 'Draft' means the
-// designer/sales hasn't submitted yet, so it's excluded entirely.
 const CHK2D_VISIBLE_STATUSES = ['Waiting for Approval', 'Approved', 'For Revision'];
 const CHK2D_REVIEW_DECISIONS = ['Approved', 'For Revision'];
-const CHK2D_3D_STAGES_VISIBLE = ['Waiting for Approval', 'Approved', 'For Revision'];
 
-// Stage → table. (Only ever interpolated after being validated against these keys.)
-const CHK2D_TABLES = [
-    'Initial' => 'noblecrm_2dquotation',
-    'Final'   => 'noblecrm_2dquotation_final',
-];
-
-// Stage is required by detail / review / review_3d. `list` covers both stages.
-$stage = $_POST['stage'] ?? $_GET['stage'] ?? 'Initial';
-if (!isset(CHK2D_TABLES[$stage])) {
-    echo json_encode(['success' => false, 'message' => 'Invalid stage.']);
-    exit;
-}
-$table = CHK2D_TABLES[$stage];
+// Final lang ang hawak ng page na ito.
+$stage = 'Final';
+$table = 'noblecrm_2dquotation_final';
 
 /**
- * SELECT for one stage's table. $latestOnly = true keeps only the newest
+ * SELECT for the Final table. $latestOnly = true keeps only the newest
  * row per inquiry (used by the list); false is used for single-record detail.
  */
-function chk2dSelectSql(string $stage, bool $latestOnly): string
+function chk2dSelectSql(bool $latestOnly): string
 {
-    $table = CHK2D_TABLES[$stage];
+    global $table, $stage;
 
     $latestJoin = $latestOnly ? "
         JOIN (
@@ -87,7 +72,6 @@ function chk2dRoleLabel(?string $role): string
     if ($role === 'designer') return 'Designer';
     return '—';
 }
-
 
 function chk2dReviewTarget(array $row): string
 {
@@ -146,7 +130,7 @@ function chk2dFormatRow(array $row): array
 // NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════
 
-function chk2dNotifyAccountingHead(mysqli $conn, int $inquiryId, array $record, int $senderId, string $stage = 'Initial'): void
+function chk2dNotifyAccountingHead(mysqli $conn, int $inquiryId, array $record, int $senderId, string $stage = 'Final'): void
 {
     $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ? AND position = ?");
     $role = ROLE_ACCOUNTING;      // ⚠️ verify column name `role`
@@ -178,7 +162,6 @@ function chk2dNotifyAccountingHead(mysqli $conn, int $inquiryId, array $record, 
     $stmt->close();
 }
 
-
 function chk2dNotifyRoleRevision(
     mysqli $conn,
     string $role,
@@ -187,7 +170,7 @@ function chk2dNotifyRoleRevision(
     int $senderId,
     string $fileLabel,
     ?string $remarks,
-    string $stage = 'Initial'
+    string $stage = 'Final'
 ): void {
     $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ?"); // ⚠️ verify column name `role`
     $stmt->bind_param("s", $role);
@@ -204,9 +187,7 @@ function chk2dNotifyRoleRevision(
         $message .= ": {$remarks}";
     }
 
-    // Each stage has its own page.  ⚠️ verify both routes.
-    $route = ($stage === 'Final') ? '/crm2dquotationfinal' : '/crm2dquotation';
-    $link = "{$route}?id={$inquiryId}";
+    $link = "/crm2dquotationfinal?id={$inquiryId}"; // ⚠️ verify route
     $controlNo = $record['control_no'];
 
     $stmt = $conn->prepare("
@@ -224,7 +205,7 @@ function chk2dNotifyRoleRevision(
 }
 
 // ═══════════════════════════════════════════════════════════
-// LIST — Initial + Final together, each row tagged with its stage
+// LIST — Final lang
 // ═══════════════════════════════════════════════════════════
 
 if ($action === 'list') {
@@ -234,10 +215,8 @@ if ($action === 'list') {
 
     $placeholders = implode(',', array_fill(0, count(CHK2D_VISIBLE_STATUSES), '?'));
 
-    $union = '(' . chk2dSelectSql('Initial', true) . ') UNION ALL (' . chk2dSelectSql('Final', true) . ')';
-
     $sql = "
-        SELECT * FROM ({$union}) x
+        SELECT * FROM (" . chk2dSelectSql(true) . ") x
         WHERE (
             x.status IN ({$placeholders})
             OR (x.status = 'Approved' AND x.design_3d_stage = 'Waiting for Approval')
@@ -295,7 +274,7 @@ if ($action === 'detail') {
         exit;
     }
 
-    $sql = chk2dSelectSql($stage, false) . " WHERE q.id = ? LIMIT 1 ";
+    $sql = chk2dSelectSql(false) . " WHERE q.id = ? LIMIT 1 ";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $id);
     $stmt->execute();
@@ -307,15 +286,12 @@ if ($action === 'detail') {
         exit;
     }
 
-    echo json_encode([
-        'success' => true,
-        'record'  => chk2dFormatRow($row),
-    ]);
+    echo json_encode(['success' => true, 'record' => chk2dFormatRow($row)]);
     exit;
 }
 
 // ═══════════════════════════════════════════════════════════
-// REVIEW — the main 2D + Quotation (+ bundled 3D) decision
+// REVIEW — main 2D + Quotation (+ bundled 3D) decision
 // ═══════════════════════════════════════════════════════════
 
 if ($action === 'review') {
@@ -325,7 +301,6 @@ if ($action === 'review') {
     $design2dRemarks   = trim($_POST['design_2d_remarks'] ?? '');
     $quotationDecision = trim($_POST['quotation_decision'] ?? '');
     $quotationRemarks  = trim($_POST['quotation_remarks'] ?? '');
-    // Only required/used when the record's include_3d = 1.
     $design3dDecision  = trim($_POST['design_3d_decision'] ?? '');
     $design3dRemarks   = trim($_POST['design_3d_remarks'] ?? '');
 
@@ -373,8 +348,6 @@ if ($action === 'review') {
 
     $include3d = (int) $current['include_3d'];
 
-    // If this submission bundled a 3D file, its decision is required too
-    // before the review can be saved.
     if ($include3d) {
         if (!in_array($design3dDecision, CHK2D_REVIEW_DECISIONS, true)) {
             echo json_encode(['success' => false, 'message' => 'Please decide on the 3D file as well.']);
@@ -411,14 +384,10 @@ if ($action === 'review') {
     ]))) ?: null;
 
     if ($include3d) {
-        // Bundled cycle: 3D's stage mirrors whatever the batch outcome was.
-        $new3dStage = $overallStatus; // 'Approved' or 'For Revision'
+        $new3dStage = $overallStatus;
     } elseif ($overallStatus === 'Approved') {
-        // Sequential flow: 2D & Quotation just got approved without 3D —
-        // unlock the 3D upload slot now.
         $new3dStage = 'Draft';
     } else {
-        // 2D/Quotation sent back for revision — 3D isn't relevant yet.
         $new3dStage = 'Locked';
     }
 
@@ -436,7 +405,7 @@ if ($action === 'review') {
         WHERE id = ?
     ");
 
-    $types = 's' . 's' . 's' . 's' . 's' . 'i' . 's' . 'i' . 's' . 's' . 'i' . 's' . 'i';
+    $types = 'sssssisissisi';
     $stmt->bind_param(
         $types,
         $overallStatus,
@@ -459,39 +428,18 @@ if ($action === 'review') {
         ];
 
         if ($overallStatus === 'Approved') {
-
-            chk2dNotifyAccountingHead(
-                $conn,
-                (int) $current['inquiry_id'],
-                $recordForNotif,
-                $currentUserId,
-                $stage
-            );
+            chk2dNotifyAccountingHead($conn, (int) $current['inquiry_id'], $recordForNotif, $currentUserId, $stage);
         } else {
-
             if ($design2dDecision === 'For Revision') {
                 chk2dNotifyRoleRevision(
-                    $conn,
-                    ROLE_DESIGNER,
-                    (int) $current['inquiry_id'],
-                    $recordForNotif,
-                    $currentUserId,
-                    '2D File',
-                    $design2dRemarksToSave,
-                    $stage
+                    $conn, ROLE_DESIGNER, (int) $current['inquiry_id'], $recordForNotif,
+                    $currentUserId, '2D File', $design2dRemarksToSave, $stage
                 );
             }
-
             if ($quotationDecision === 'For Revision') {
                 chk2dNotifyRoleRevision(
-                    $conn,
-                    ROLE_SALES,
-                    (int) $current['inquiry_id'],
-                    $recordForNotif,
-                    $currentUserId,
-                    'Quotation File',
-                    $quotationRemarksToSave,
-                    $stage
+                    $conn, ROLE_SALES, (int) $current['inquiry_id'], $recordForNotif,
+                    $currentUserId, 'Quotation File', $quotationRemarksToSave, $stage
                 );
             }
         }
@@ -572,8 +520,6 @@ if ($action === 'review_3d') {
         $include3d = 1;
         $newStage3d = 'Draft';
 
-        // New revision cycle row in the SAME table (Initial stays in Initial,
-        // Final stays in Final).
         $stmt = $conn->prepare("
             INSERT INTO {$table}
                 (inquiry_id, status, created_at, include_3d,
@@ -587,7 +533,7 @@ if ($action === 'review_3d') {
                  0, ?, ?, ?, 'For Revision', ?, ?)
         ");
 
-        $types = 'i' . 's' . 'i' . 's' . 's' . 'i' . 's' . 's' . 's' . 'i' . 's' . 's' . 'i' . 's' . 's';
+        $types = 'isississsississ';
         $design2dUploadedBy = (int) $current['design_2d_uploaded_by'];
         $quotationUploadedBy = (int) $current['quotation_uploaded_by'];
         $design3dUploadedBy = (int) $current['design_3d_uploaded_by'];
@@ -603,14 +549,8 @@ if ($action === 'review_3d') {
 
         if ($ok) {
             chk2dNotifyRoleRevision(
-                $conn,
-                ROLE_DESIGNER,
-                (int) $current['inquiry_id'],
-                $recordForNotif,
-                $currentUserId,
-                '2D File (triggered by 3D revision)',
-                $cascadeNote,
-                $stage
+                $conn, ROLE_DESIGNER, (int) $current['inquiry_id'], $recordForNotif,
+                $currentUserId, '2D File (triggered by 3D revision)', $cascadeNote, $stage
             );
         }
 

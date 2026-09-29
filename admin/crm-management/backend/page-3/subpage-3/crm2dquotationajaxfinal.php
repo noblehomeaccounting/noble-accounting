@@ -1,6 +1,5 @@
 <?php
 // crm2dquotationajaxfinal.php  (shared by Initial + Final — pass `stage` = Initial | Final; default Initial)
-// Initial rows live in noblecrm_2dquotation, Final rows live in noblecrm_2dquotation_final (same columns).
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -31,7 +30,7 @@ $isFinal = ($stage === 'Final');
 // NEW-TABLE: Final submissions are stored in their own table.
 $TABLE_INITIAL = 'noblecrm_2dquotation';
 $TABLE_FINAL = 'noblecrm_2dquotation_final';
-$table = $isFinal ? $TABLE_FINAL : $TABLE_INITIAL; 
+$table = $isFinal ? $TABLE_FINAL : $TABLE_INITIAL;
 
 function q2dRespond(bool $success, string $message = '', array $extra = []): void
 {
@@ -68,22 +67,24 @@ if (!in_array($stage, ['Initial', 'Final'], true)) {
     q2dRespond(false, 'Invalid stage.');
 }
 
-// Final has no Step 1 and no Contract Amount step. (3D is now allowed.)
+// Final has no Step 1. Ang contract ay Final lang.
 if ($isFinal) {
-    if (in_array($action, ['save_progress', 'confirm_customer', 'save_contract_amount'], true)) {
+    if (in_array($action, ['save_progress', 'confirm_customer'], true)) {
         q2dRespond(false, 'This action is not available for the Final submission.');
     }
+} elseif ($action === 'save_contract_amount') {
+    q2dRespond(false, 'The Contract is set in the Final submission.');
 }
 
-// '3d' is a valid slot for save_slot / unlock_slot (Initial only — blocked above for Final).
+// '3d' is a valid slot for save_slot / unlock_slot.
 if (in_array($action, ['save_slot', 'unlock_slot'], true) && !in_array($slot, ['2d', 'quotation', '3d'], true)) {
     q2dRespond(false, 'Invalid slot.');
 }
 
 $stmt = $conn->prepare("
-    SELECT id, control_no, client_name, status, mode, deadline, contract_amount
+    SELECT id, control_no, client_name, status, mode, deadline,
            design_progress, design_confirmed, design_confirmed_at, design_confirmed_by, clientstatus,
-           contract_amount
+           contract_amount, contract_file
     FROM noblecrminquiry
     WHERE id = ? AND {$ownerColumn} = ?
     LIMIT 1
@@ -206,9 +207,9 @@ function q2dNotifySuperAdmins(mysqli $conn, int $inquiryId, array $inquiry, int 
 
     $stageLabel = ($stage === 'Final') ? 'Final' : 'Initial';
     $message = $is3dOnly
-        ? "New 3D file submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})"
+        ? "New {$stageLabel} 3D file submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})"
         : "New {$stageLabel} 2D and Quotation submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})";
-    $link = "/crm-main?id={$inquiryId}"; // ⚠️ verify expected param name
+    $link = "/check2dquotation?id={$inquiryId}"; // ⚠️ verify expected route
     $controlNo = $inquiry['control_no'];
 
     $stmt = $conn->prepare("
@@ -456,6 +457,67 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
 }
 
 
+// CONTRACT upload — same PDF-or-image behavior as the 3D slot, so Sales can
+// attach either a signed PDF or a photo of the signed contract (auto-converted to webp).
+function q2dSaveUploadedContractFile(array $file, int $inquiryId, int $maxBytes, string $uploadDir): array
+{
+    if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) {
+        return ['path' => null, 'error' => 'File is too large for the server to accept.'];
+    }
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return ['path' => null, 'error' => 'Upload failed. Please try again.'];
+    }
+    if ($file['size'] > $maxBytes) {
+        return ['path' => null, 'error' => 'File exceeds the 15MB limit.'];
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    $safeBase = 'contract_' . $inquiryId . '_' . time() . '_' . bin2hex(random_bytes(4));
+
+    if ($mime === 'application/pdf') {
+        $destPath = $uploadDir . $safeBase . '.pdf';
+        if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+            return ['path' => null, 'error' => 'Something went wrong while saving the file.'];
+        }
+        return ['path' => 'uploads/crm-2dquotation/' . $safeBase . '.pdf', 'error' => null];
+    }
+
+    $allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!in_array($mime, $allowedImageMimes, true)) {
+        return ['path' => null, 'error' => 'The contract file must be a PDF or an image (JPG, PNG, WEBP).'];
+    }
+
+    $srcImage = null;
+    if ($mime === 'image/jpeg')
+        $srcImage = @imagecreatefromjpeg($file['tmp_name']);
+    if ($mime === 'image/png')
+        $srcImage = @imagecreatefrompng($file['tmp_name']);
+    if ($mime === 'image/webp')
+        $srcImage = @imagecreatefromwebp($file['tmp_name']);
+
+    if (!$srcImage) {
+        return ['path' => null, 'error' => 'Could not read the uploaded image.'];
+    }
+
+    // Preserve transparency for PNG/WEBP sources.
+    imagepalettetotruecolor($srcImage);
+    imagealphablending($srcImage, true);
+    imagesavealpha($srcImage, true);
+
+    $destPath = $uploadDir . $safeBase . '.webp';
+    if (!imagewebp($srcImage, $destPath, 90)) {
+        imagedestroy($srcImage);
+        return ['path' => null, 'error' => 'Something went wrong while converting the image.'];
+    }
+    imagedestroy($srcImage);
+
+    return ['path' => 'uploads/crm-2dquotation/' . $safeBase . '.webp', 'error' => null];
+}
+
+
 // NEW-STAGE: Final can only be worked on once the Initial is Approved.
 if ($isFinal) {
     $initialLatest = q2dGetLatestEntry($conn, $inquiryId, $TABLE_INITIAL);
@@ -470,8 +532,8 @@ if ($action === 'state') {
     $qHistory = q2dGetHistory($conn, $inquiryId, $table);
     $latest = $qHistory[0] ?? null;
 
-    // Standalone 3D unlock applies to Initial only.
-     if (
+    // Standalone 3D unlock (Approved + toggle OFF → 3D slot opens as Draft).
+    if (
         $latest
         && $latest['status'] === 'Approved'
         && (int) ($latest['include_3d'] ?? 0) === 0
@@ -630,7 +692,7 @@ if ($action === 'state') {
     }, $pastEntries);
 
 
-        $include3d = (int) ($latest['include_3d'] ?? 0);
+    $include3d = (int) ($latest['include_3d'] ?? 0);
 
     // Editable kapag: wala pang entry, For Revision, o Draft. Designer lang.
     $toggleEditable = !$isSales && (
@@ -678,6 +740,9 @@ if ($action === 'state') {
 
     $quotationDone = (bool) ($latest['quotation_done'] ?? false);
 
+    // Contract can no longer be edited once the Final is submitted / approved.
+    $contractLocked = (bool) ($latest && in_array($latest['status'], ['Waiting for Approval', 'Approved'], true));
+
     // full feedback log for the current 2D submission of THIS stage.
     $cuttingFeedback = [];
     if ($latest) {
@@ -718,11 +783,13 @@ if ($action === 'state') {
             'control_no' => $inquiry['control_no'],
             'client_name' => $inquiry['client_name'],
             'contract_amount' => $inquiry['contract_amount'],
+            'contract_file_url' => q2dUrl($inquiry['contract_file'] ?? null),
             'deadline' => !empty($inquiry['deadline']) ? date('F d, Y', strtotime($inquiry['deadline'])) : null,
             'deadline_overdue' => $qDeadlineOverdue,
         ],
         'is_sales' => $isSales,
         'quotation_done' => $quotationDone,
+        'contract_locked' => $contractLocked,
         'step1' => $step1Json,
         'active_draft' => $activeDraftJson,
         'completed_entry' => $completedEntryJson,
@@ -1043,33 +1110,62 @@ if ($action === 'unlock_slot') {
 }
 
 
+// ═══════════════════════════════════════════════════════════
+// CONTRACT (FINAL only) — amount + file (PDF or image, converted to
+// webp), Sales lang.
+// ═══════════════════════════════════════════════════════════
 if ($action === 'save_contract_amount') {
 
     if (!$isSales) {
-        q2dRespond(false, 'Only Sales can set the Contract Amount.');
+        q2dRespond(false, 'Only Sales can set the Contract.');
     }
 
-    $latest = q2dGetLatestEntry($conn, $inquiryId, $TABLE_INITIAL);
+    $latest = q2dGetLatestEntry($conn, $inquiryId, $table);
     if (!$latest || !$latest['quotation_done']) {
-        q2dRespond(false, 'The Quotation file must be marked done first.');
+        q2dRespond(false, 'The Final Quotation file must be marked done first.');
+    }
+    if (in_array($latest['status'], ['Waiting for Approval', 'Approved'], true)) {
+        q2dRespond(false, 'The contract can no longer be edited once the Final is submitted.');
     }
 
-    $rawAmount = trim($_POST['contract_amount'] ?? '');
-    $cleanAmount = preg_replace('/[^0-9.]/', '', $rawAmount);
-
+    $cleanAmount = preg_replace('/[^0-9.]/', '', trim($_POST['contract_amount'] ?? ''));
     if ($cleanAmount === '' || !is_numeric($cleanAmount) || (float) $cleanAmount <= 0) {
         q2dRespond(false, 'Please enter a valid contract amount.');
     }
 
+    $existingFile = $inquiry['contract_file'] ?? null;
+    $newFile = $existingFile;
+
+    if (!empty($_FILES['contract_file']) && $_FILES['contract_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $uploadDir = ROOT_PATH . '/uploads/crm-2dquotation/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        // Accepts PDF or image; images are auto-converted to webp.
+        $result = q2dSaveUploadedContractFile($_FILES['contract_file'], $inquiryId, 15 * 1024 * 1024, $uploadDir);
+        if (!$result['path']) {
+            q2dRespond(false, $result['error']);
+        }
+
+        if ($existingFile) {
+            @unlink(ROOT_PATH . '/' . $existingFile);
+        }
+        $newFile = $result['path'];
+    } elseif (empty($existingFile)) {
+        q2dRespond(false, 'Please attach the contract (PDF or image).');
+    }
+
+    $amount = (float) $cleanAmount;
     $stmt = $conn->prepare("
-        UPDATE noblecrminquiry SET contract_amount = ?
+        UPDATE noblecrminquiry SET contract_amount = ?, contract_file = ?
         WHERE id = ? AND sales_staff_id = ?
     ");
-    $stmt->bind_param("dii", $cleanAmount, $inquiryId, $currentUserId);
+    $stmt->bind_param("dsii", $amount, $newFile, $inquiryId, $currentUserId);
     $stmt->execute();
     $stmt->close();
 
-    q2dRespond(true, 'Contract amount saved.');
+    q2dRespond(true, 'Contract saved.');
 }
 
 
@@ -1081,10 +1177,9 @@ if ($action === 'submit_final') {
         q2dRespond(false, 'Nothing to submit right now.');
     }
 
-    // Contract Amount must be set by Sales before submitting the INITIAL.
-    // (Already set by the time Final opens, so it isn't re-checked there.)
-    if (!$isFinal && (empty($inquiry['contract_amount']) || (float) $inquiry['contract_amount'] <= 0)) {
-        q2dRespond(false, 'The Contract Amount must be set by Sales before this can be submitted.');
+    // FINAL: Sales must have set the Contract Amount AND attached the contract.
+    if ($isFinal && (empty($inquiry['contract_amount']) || (float) $inquiry['contract_amount'] <= 0 || empty($inquiry['contract_file']))) {
+        q2dRespond(false, 'Sales must set the Contract Amount and attach the contract before the Final can be submitted.');
     }
 
     if (!$draft['design_2d_done'] || !$draft['quotation_done']) {

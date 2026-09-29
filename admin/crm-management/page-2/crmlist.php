@@ -16,8 +16,10 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     <div class="relative w-full sm:w-64 mb-4">
         <input id="crmListSearch" type="text" placeholder="Search control no. / client / contact"
             class="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
-        <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+        <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
         </svg>
         <button type="button" id="crmListSearchClear"
             class="hidden absolute right-2 top-1.5 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
@@ -28,14 +30,17 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         <div class="overflow-x-auto">
             <table class="min-w-full text-xs">
                 <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200 text-left text-[10px] uppercase tracking-wide text-gray-500">
+                    <tr
+                        class="bg-gray-50 border-b border-gray-200 text-left text-[10px] uppercase tracking-wide text-gray-500">
                         <th class="px-4 py-2.5 font-semibold select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700" data-key="control_no">
+                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700"
+                                data-key="control_no">
                                 Control No. <span class="crm-sort-arrow text-gray-300">↕</span>
                             </button>
                         </th>
                         <th class="px-4 py-2.5 font-semibold select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700" data-key="client_name">
+                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700"
+                                data-key="client_name">
                                 Client <span class="crm-sort-arrow text-gray-300">↕</span>
                             </button>
                         </th>
@@ -43,13 +48,16 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                         <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Project</th>
                         <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Designer</th>
                         <th class="px-4 py-2.5 font-semibold text-right select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700 ml-auto" data-key="contract_amount">
+                            <button type="button"
+                                class="crm-sort-th flex items-center gap-1 hover:text-gray-700 ml-auto"
+                                data-key="contract_amount">
                                 Contract Amount <span class="crm-sort-arrow text-gray-300">↕</span>
                             </button>
                         </th>
                         <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
                         <th class="px-4 py-2.5 font-semibold select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700" data-key="created_at">
+                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700"
+                                data-key="created_at">
                                 Date Filed <span class="crm-sort-arrow text-gray-300">↕</span>
                             </button>
                         </th>
@@ -74,7 +82,8 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden max-h-[85vh] flex flex-col">
         <div class="px-5 py-3.5 border-b border-gray-100 flex items-start justify-between">
             <div>
-                <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">Inquiry Detail</p>
+                <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">Inquiry Detail
+                </p>
                 <h3 id="crmDetailControlNo" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
             </div>
             <button type="button" onclick="crmCloseDetailModal()"
@@ -86,8 +95,12 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         <div class="px-5 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
             <span id="crmDetailStatusBadge"></span>
             <div class="flex items-center gap-2">
+                <button type="button" id="crmDetailAssignBtn" onclick="crmOpenAssignModal(crmDetailCurrentId)"
+                    class="hidden px-3.5 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-600 transition-colors">
+                    Schedule &amp; Assign
+                </button>
                 <button type="button" id="crmDetail2dBtn" onclick="crm2dQuotationFromModal()" disabled
-                    class="px-3.5 py-1.5 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
+                    class="hidden px-3.5 py-1.5 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
                     2D &amp; Quotation
                 </button>
                 <button type="button" onclick="crmCloseDetailModal()"
@@ -95,6 +108,77 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                     Close
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule & Assign Modal -->
+<div id="crmAssignModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-800">Schedule &amp; Assign Designer</h3>
+            <button type="button" onclick="crmCloseAssignModal()"
+                class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-5 space-y-4">
+            <p class="text-xs text-gray-400">
+                Contact the client first to confirm their available date, then set the schedule and assign a
+                designer.
+            </p>
+
+            <div>
+                <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+                    Client Status <span class="text-gray-400 normal-case font-normal">(Required)</span>
+                </label>
+                <div id="crmAssignClientStatusGroup" class="flex gap-2">
+                    <button type="button"
+                        class="crm-client-status-btn flex-1 px-2.5 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                        data-value="confirmed">
+                        Confirmed
+                    </button>
+                    <button type="button"
+                        class="crm-client-status-btn flex-1 px-2.5 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                        data-value="tentative">
+                        Tentative
+                    </button>
+                    <button type="button"
+                        class="crm-client-status-btn flex-1 px-2.5 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                        data-value="no">
+                        Not Proceeding
+                    </button>
+                </div>
+                <p id="crmAssignPauseNote" class="hidden text-[11px] text-amber-600 mt-1.5"></p>
+            </div>
+
+            <div id="crmAssignScheduleFields" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+                        Measurement Date &amp; Time <span class="text-red-500">*</span>
+                    </label>
+                    <input type="datetime-local" id="crmAssignDatetime"
+                        class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
+                        Designer Assign <span class="text-red-500">*</span>
+                    </label>
+                    <select id="crmAssignDesigner"
+                        class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
+                        <option value="">Loading designers…</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+            <button type="button" onclick="crmCloseAssignModal()"
+                class="px-3.5 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                Cancel
+            </button>
+            <button type="button" id="crmAssignSaveBtn" onclick="crmSubmitAssign()"
+                class="px-3.5 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-600 disabled:opacity-50">
+                Submit site visit request
+            </button>
         </div>
     </div>
 </div>
@@ -191,6 +275,19 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         return palette[Math.abs(hash) % palette.length];
     }
 
+    function crmClientStatusBadge(status) {
+        const map = {
+            confirmed: { label: 'Confirmed', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+            tentative: { label: 'Tentative', cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+            no: { label: 'Not Proceeding', cls: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
+        };
+        const s = map[status];
+        if (!s) return '—';
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${s.cls}">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}"></span>${s.label}
+            </span>`;
+    }
+
     function crmStatusBadge(status) {
         const isDone = status === 'In Progress';
         const cls = isDone
@@ -202,10 +299,21 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                 </span>`;
     }
 
+    // Kung wala pang designer, "Schedule & Assign" muna ang action — di pa
+    // pwede diretso sa 2D & Quotation hangga't hindi pa naka-set ang schedule
+    // at designer. (Tentative/Not Proceeding client_status keeps designer_id
+    // null, so this button naturally stays "Schedule & Assign" for them.)
     function crmActionButton(row, size = 'normal') {
-        const isDone = row.status === 'In Progress';
         const sizeCls = size === 'small' ? 'px-3 py-1.5 text-xs w-full' : 'px-3 py-1.5 text-xs whitespace-nowrap';
 
+        if (!row.designer_id) {
+            return `<button type="button" onclick="crmOpenAssignModal(${row.id})"
+                        class="${sizeCls} font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-600 transition-colors">
+                        Schedule &amp; Assign
+                   </button>`;
+        }
+
+        const isDone = row.status === 'In Progress';
         return isDone
             ? `<button type="button" onclick="crm2dQuotation(${row.id})"
                     class="${sizeCls} font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
@@ -350,7 +458,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                 return;
             }
 
-            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status)) + crmSortKey + crmSortDir;
+            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id)) + crmSortKey + crmSortDir;
             crmListRawRows = data.rows;
             if (signature !== crmListLastSignature) {
                 crmRenderRows(data.rows);
@@ -448,10 +556,13 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         const modal = document.getElementById('crmDetailModal');
         const body = document.getElementById('crmDetailBody');
         const quotationBtn = document.getElementById('crmDetail2dBtn');
+        const assignBtn = document.getElementById('crmDetailAssignBtn');
         crmDetailCurrentId = id;
 
         document.getElementById('crmDetailControlNo').textContent = 'Loading…';
         document.getElementById('crmDetailStatusBadge').innerHTML = '';
+        quotationBtn.classList.add('hidden');
+        assignBtn.classList.add('hidden');
         quotationBtn.disabled = true;
         body.innerHTML = `
             <div class="space-y-2 py-1">
@@ -475,7 +586,15 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
             document.getElementById('crmDetailControlNo').textContent = r.control_no;
             document.getElementById('crmDetailStatusBadge').innerHTML = crmStatusBadge(r.status);
-            quotationBtn.disabled = !isDone;
+
+            if (!r.designer_id) {
+                assignBtn.classList.remove('hidden');
+                quotationBtn.classList.add('hidden');
+            } else {
+                assignBtn.classList.add('hidden');
+                quotationBtn.classList.remove('hidden');
+                quotationBtn.disabled = !isDone;
+            }
 
             body.innerHTML = [
                 crmDetailRow('Client Name', crmEscapeHtml(r.client_name)),
@@ -484,6 +603,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                 crmDetailRow('Type of Project', crmEscapeHtml(r.project_type) || '—'),
                 crmDetailRow('Scope of Project', crmEscapeHtml(r.project_scope) || '—'),
                 crmDetailRow('Measuring Space', crmEscapeHtml(r.measuring_space) || '—'),
+                crmDetailRow('Client Status', crmClientStatusBadge(r.client_status)),
                 crmDetailRow('Measurement Date &amp; Time', crmFormatDateTimeLong(r.measurement_datetime)),
                 crmDetailRow('Designer Assign', crmEscapeHtml(r.designer_name)),
                 crmDetailRow('Contract Amount', crmFormatCurrency(r.contract_amount)),
@@ -510,6 +630,158 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     });
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') crmCloseDetailModal();
+        if (e.key === 'Escape') {
+            crmCloseDetailModal();
+            crmCloseAssignModal();
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // SCHEDULE & ASSIGN MODAL
+    // ═══════════════════════════════════════════════════════════
+    let crmAssignCurrentId = null;
+    let crmAssignDesignersLoaded = false;
+    let crmAssignClientStatus = null; // 'confirmed' | 'tentative' | 'no' | null
+
+    const crmClientStatusStyles = {
+        confirmed: ['bg-emerald-50', 'border-emerald-500', 'text-emerald-700'],
+        tentative: ['bg-amber-50', 'border-amber-500', 'text-amber-700'],
+        no: ['bg-red-50', 'border-red-500', 'text-red-700'],
+    };
+
+    const crmClientStatusPauseNotes = {
+        tentative: 'Client hasn\u2019t decided yet — schedule and designer will be set once they confirm.',
+        no: 'Client is not proceeding — no schedule or designer needed for now.',
+    };
+
+    function crmUpdateClientStatusButtons() {
+        document.querySelectorAll('.crm-client-status-btn').forEach(btn => {
+            const value = btn.dataset.value;
+            const isSelected = value === crmAssignClientStatus;
+
+            btn.classList.remove('bg-emerald-50', 'border-emerald-500', 'text-emerald-700',
+                'bg-amber-50', 'border-amber-500', 'text-amber-700',
+                'bg-red-50', 'border-red-500', 'text-red-700');
+            btn.classList.add('border-gray-300', 'text-gray-600');
+
+            if (isSelected) {
+                btn.classList.remove('border-gray-300', 'text-gray-600');
+                btn.classList.add(...crmClientStatusStyles[value]);
+            }
+        });
+
+        // Lalabas lang yung schedule fields kapag "Confirmed" ang napili —
+        // wala pa (default) o Tentative/Not Proceeding = nakatago pa rin.
+        const showScheduleFields = crmAssignClientStatus === 'confirmed';
+        document.getElementById('crmAssignScheduleFields').classList.toggle('hidden', !showScheduleFields);
+
+        const note = document.getElementById('crmAssignPauseNote');
+        const isPaused = crmAssignClientStatus === 'tentative' || crmAssignClientStatus === 'no';
+        if (isPaused) {
+            note.textContent = crmClientStatusPauseNotes[crmAssignClientStatus];
+            note.classList.remove('hidden');
+        } else {
+            note.classList.add('hidden');
+        }
+    }
+
+    document.querySelectorAll('.crm-client-status-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const value = btn.dataset.value;
+            // click again on the same one to deselect — optional field kasi
+            crmAssignClientStatus = (crmAssignClientStatus === value) ? null : value;
+            crmUpdateClientStatusButtons();
+        });
+    });
+
+    async function crmOpenAssignModal(id) {
+        if (!id) return;
+        crmAssignCurrentId = id;
+        document.getElementById('crmAssignDatetime').value = '';
+        crmAssignClientStatus = null;
+        crmUpdateClientStatusButtons();
+        const modal = document.getElementById('crmAssignModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        if (!crmAssignDesignersLoaded) {
+            const sel = document.getElementById('crmAssignDesigner');
+            sel.innerHTML = '<option value="">Loading designers…</option>';
+            try {
+                const res = await fetch(`${CRM_LIST_AJAX_URL}?action=designers`);
+                const data = await res.json();
+                sel.innerHTML = '<option value="">Select designer</option>';
+                if (data.success) {
+                    data.designers.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = d.name;
+                        sel.appendChild(opt);
+                    });
+                    crmAssignDesignersLoaded = true;
+                }
+            } catch (e) {
+                console.error('crmOpenAssignModal designers:', e);
+                sel.innerHTML = '<option value="">Failed to load designers</option>';
+            }
+        }
+    }
+
+    function crmCloseAssignModal() {
+        document.getElementById('crmAssignModal').classList.add('hidden');
+        document.getElementById('crmAssignModal').classList.remove('flex');
+        crmAssignCurrentId = null;
+    }
+
+    async function crmSubmitAssign() {
+        if (!crmAssignClientStatus) {
+            crmShowToast('Please select a client status.', 'error');
+            return;
+        }
+
+        const isPaused = crmAssignClientStatus === 'tentative' || crmAssignClientStatus === 'no';
+        const datetime = document.getElementById('crmAssignDatetime').value;
+        const designerId = document.getElementById('crmAssignDesigner').value;
+
+        if (!isPaused && (!datetime || !designerId)) {
+            crmShowToast('Please set the measurement date/time and select a designer.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('crmAssignSaveBtn');
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('action', 'assign');
+        formData.append('id', crmAssignCurrentId);
+        formData.append('client_status', crmAssignClientStatus || '');
+        if (!isPaused) {
+            formData.append('designer_id', designerId);
+            formData.append('measurement_datetime', datetime);
+        }
+
+        try {
+            const res = await fetch(CRM_LIST_AJAX_URL, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                crmShowToast(isPaused ? 'Client status saved.' : 'Schedule saved and designer assigned.', 'success');
+                const wasDetailOpen = crmDetailCurrentId === crmAssignCurrentId;
+                crmCloseAssignModal();
+                crmListLastSignature = '';
+                crmFetchList();
+                if (wasDetailOpen) crmOpenDetailModal(crmDetailCurrentId);
+            } else {
+                crmShowToast(data.message || 'Failed to save.', 'error');
+            }
+        } catch (e) {
+            console.error('crmSubmitAssign:', e);
+            crmShowToast('Connection error.', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    document.getElementById('crmAssignModal').addEventListener('click', function (e) {
+        if (e.target === this) crmCloseAssignModal();
     });
 </script>

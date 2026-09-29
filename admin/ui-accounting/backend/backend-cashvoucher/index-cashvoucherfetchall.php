@@ -26,23 +26,23 @@ $result = $conn->query("SELECT b.*,
     v.payment_method as voucher_payment_method,
     v.manual_receiver_name,
     v.manual_receiver_date,
-    v.certified_signature,
     v.prepared_by, v.prepared_at,
-    v.certified_by, v.certified_at,
     v.approved_by, v.approved_at,
+    v.released_by, v.released_at,
     v.received_by, v.received_at,
     prep.name as prepared_name,
-    cert.name as certified_name,
     appr.name as approver_name,
+    rel.name as released_name,
     recv.name as receiver_name,
     v.prepared_signature,
-    v.approved_signature as approver_signature
+    v.approved_signature as approver_signature,
+    v.released_signature as released_signature
     FROM noblebudgetrequest b
     LEFT JOIN nobleaccount n ON b.user_id = n.id
     LEFT JOIN noblevoucher v ON b.id = v.request_id
     LEFT JOIN noblerole prep ON v.prepared_by = prep.id
-    LEFT JOIN noblerole cert ON v.certified_by = cert.id
     LEFT JOIN noblerole appr ON v.approved_by = appr.id
+    LEFT JOIN noblerole rel ON v.released_by = rel.id
     LEFT JOIN nobleaccount recv ON v.received_by = recv.id
     WHERE v.id IS NOT NULL
     ORDER BY v.created_at DESC");

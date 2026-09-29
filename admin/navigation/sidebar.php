@@ -416,20 +416,20 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if ($role === ROLE_SALES): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/salesmarket" data-tooltip="Sales Market"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/salesmarket') ?>">
-                    <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/salesmarket') ?>">
+                    <i class="fa-solid fa-wallet" style="color: rgba(24, 80, 8, 1); text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Budget Request list</span>
                 </a>
             <?php endif; ?>
 
             <a href="<?= BASE_URL ?>/crmsales" data-tooltip="CRM Main"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/crmsales') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/crmsales') ?>">
                 <i class="fa-solid fa-users w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">CRM Main</span>
             </a>
 
             <a href="<?= BASE_URL ?>/crmsaleslist" data-tooltip="CRM List"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/crmsaleslist') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/crmsaleslist') ?>">
                 <i class="fa-solid fa-list-ol w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">CRM List</span>
             </a>
@@ -440,8 +440,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <?php if ($isMainBranch): ?>
                 <?php if ($isHead): ?>
                     <a href="<?= BASE_URL ?>/designer" data-tooltip="Dashboard"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/designer') ?>">
-                        <i class="fa-sharp fa-solid fa-chart-bar w-4 text-center text-sm flex-shrink-0"></i>
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/designer') ?>">
+                        <i class="fa-solid fa-wallet" style="color: rgba(24, 80, 8, 1); text-center text-sm flex-shrink-0"></i>
                         <span class="sidebar-label">Budget Request</span>
                     </a>
                 <?php endif; ?>
@@ -452,10 +452,18 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             </div>
 
             <a href="<?= BASE_URL ?>/crmdesigner" data-tooltip="CRM Designer"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/crmdesigner') ?>">
-                <i class="fa-solid fa-folder-tree w-4 text-center text-sm flex-shrink-0"></i>
+                class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crmdesigner') ?>">
+                <i class="fa-solid fa-folder-tree" style="color: rgba(0, 0, 0, 1); text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">CRM Designer</span>
             </a>
+
+               <?php if ($isHead): ?>
+                    <a href="<?= BASE_URL ?>/checkdesignerquotation" data-tooltip="Check Designer Quotation"
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/checkdesignerquotation') ?>">
+                        <i class="fa-solid fa-file-pdf" style="color: rgba(0, 0, 0, 1); text-center text-sm flex-shrink-0"></i>
+                        <span class="sidebar-label">Check Designer Quotation</span>
+                    </a>
+                <?php endif; ?>
 
         <?php endif; ?>
 
@@ -655,7 +663,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 </header>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!--  MOBILE DRAWER                                             -->
+<!--  MOBILE DRAWER                                              -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div id="mobile-overlay" onclick="closeMobileDrawer()"
     class="md:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px]"></div>

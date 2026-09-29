@@ -183,8 +183,11 @@ $adminRoutes = [
 
     // designer page 2
     'crmdesigner',   
-    
-    
+
+    // designer page 3
+    'checkdesignerquotation',
+    'checkdesigner2dquotationajax',
+
     // cutting list
     'cuttinglist',     
 
@@ -245,6 +248,7 @@ $adminRoutes = [
 
     // crm management page 3
     'crmdesignerajax',
+    'crmsitevisitajax',
     'crm2dquotationajaxfinal',
 
     // crm management sub page 3
@@ -308,7 +312,7 @@ $routes = [
    
     // accounting
     'accounting'                       => 'admin/ui-accounting/page-1/index-accounting-main.php',
-    'download-pdfbudgetrequest'        => 'admin/ui-accounting/page-1/backend/backend-page1/download-pdfbudgetrequest.php',
+    'download-pdfbudgetrequest'        => 'admin/ui-accounting/backend/backend-page1/download-pdfbudgetrequest.php',
     'accountingdashboard'              => 'admin/ui-accounting/page-1/index-accounting-dashboard.php',
     'announcementdashboard'            => 'admin/ui-accounting/page-1/index-accounting-dashboard.php',
     'announcement'                     => 'admin/ui-accounting/page-1/index-accounting-announcement.php',
@@ -411,6 +415,9 @@ $routes = [
     // designer page 2
     'crmdesigner'                      => 'admin/ui-designer/page-2/crmdesigner.php',
 
+    // designer page 3
+    'checkdesignerquotation'           => 'admin/ui-designer/page-3/checkdesigner2dquotation.php',
+    'checkdesigner2dquotationajax'         => 'admin/ui-designer/backend/page-3/checkdesigner2dquotationajax.php',
 
     // cutting list
     'cuttinglist'                      => 'admin/ui-cuttinglist/page-1/index-cuttinglist-main.php',
@@ -476,6 +483,7 @@ $routes = [
     
     // crm management page 3
     'crmdesignerajax'                  => 'admin/crm-management/backend/page-3/crmdesignerajax.php',
+    'crmsitevisitajax'                 => 'admin/crm-management/backend/page-3/subpage-3/crmsitevisitajax.php',
     'crm2dquotationajaxfinal'          => 'admin/crm-management/backend/page-3/subpage-3/crm2dquotationajaxfinal.php',
 
     // crm management page 3

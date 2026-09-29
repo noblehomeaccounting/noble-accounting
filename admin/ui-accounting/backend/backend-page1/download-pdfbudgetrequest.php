@@ -40,10 +40,9 @@ if (!empty(trim($garbage))) {
     exit;
 }
 
-require_once ROOT_PATH . '/vendor/dompdf/dompdf/autoload.inc.php';
+require_once ROOT_PATH . '/vendor/autoload.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
 $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);

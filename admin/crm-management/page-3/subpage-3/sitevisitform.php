@@ -59,7 +59,7 @@ if (empty($svError) && $inquiryId > 0) {
 // --- Handle submit ---
 if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_sitevisit'])) {
 
-    $visitAddress = trim($_POST['visit_address'] ?? '');
+    $visitAddress = trim($inquiry['address'] ?? '');
     $visitDatetime = trim($_POST['visit_datetime'] ?? '');
     $visited = trim($_POST['visited'] ?? '');
     $measurements = ''; // legacy text column — hindi na ginagamit ng form (PDF upload na)
@@ -67,9 +67,6 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
     $clientRequirements = trim($_POST['client_requirements'] ?? '');
     $existingStructure = trim($_POST['existing_structure'] ?? '');
 
-    // Deadline for 2D & Quotation, set alongside the site visit record.
-    // Stored on the parent inquiry row (not per-visit) since only one
-    // deadline should be "active" per inquiry at a time.
     $deadlineRaw = trim($_POST['deadline'] ?? '');
     $deadline = null;
     if ($deadlineRaw !== '') {
@@ -185,10 +182,12 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         $photosCsv = implode(',', $uploadedPaths);
         $measurementFilesCsv = implode(',', $measurementPaths);
 
+
         $stmt = $conn->prepare("
             INSERT INTO noblecrm_sitevisit
                 (inquiry_id, designer_id, address, visit_datetime, visited, photos, measurement_files,
-                 measurements, site_conditions, client_requirements, existing_structure, created_at)
+                 measurements, site_conditions, client_requirements, existing_structure,
+                 created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->bind_param(
@@ -234,12 +233,12 @@ if (!empty($_SESSION['sv_flash_success'])) {
     unset($_SESSION['sv_flash_success']);
 }
 
-// Fetch the history of submitted site visits for this inquiry
 $svHistory = [];
 if (empty($svError) && $inquiryId > 0) {
     $histStmt = $conn->prepare("
         SELECT id, address, visit_datetime, visited, photos, measurement_files,
-               measurements, site_conditions, client_requirements, existing_structure, created_at
+               measurements, site_conditions, client_requirements, existing_structure,
+               created_at
         FROM noblecrm_sitevisit
         WHERE inquiry_id = ? AND designer_id = ?
         ORDER BY created_at DESC
@@ -263,11 +262,37 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
     <style>
-        .sv-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }
-        .sv-field { width: 100%; border: 1px solid #D1D5DB; border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 14px; color: #111827; background: #fff; }
-        .sv-field:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-        .sv-field::placeholder { color: #9CA3AF; }
-        .sv-field-sm { padding: 0.4rem 0.6rem; font-size: 13px; }
+        .sv-card {
+            background: #fff;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        }
+
+        .sv-field {
+            width: 100%;
+            border: 1px solid #D1D5DB;
+            border-radius: 8px;
+            padding: 0.55rem 0.75rem;
+            font-size: 14px;
+            color: #111827;
+            background: #fff;
+        }
+
+        .sv-field:focus {
+            outline: none;
+            border-color: #2563EB;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .sv-field::placeholder {
+            color: #9CA3AF;
+        }
+
+        .sv-field-sm {
+            padding: 0.4rem 0.6rem;
+            font-size: 13px;
+        }
     </style>
 </head>
 
@@ -290,7 +315,8 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                 <a href="<?= htmlspecialchars($crmDesignerListUrl) ?>"
                     class="shrink-0 inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                     Back to assigned list
                 </a>
@@ -299,7 +325,8 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
             <?php if (!empty($svError)): ?>
                 <div class="sv-card px-5 py-4 flex items-start gap-3 border-red-200 bg-red-50">
                     <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                     </svg>
                     <p class="text-sm text-red-800"><?= htmlspecialchars($svError) ?></p>
                 </div>
@@ -317,23 +344,27 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                             <i class="fa-solid fa-user"></i>
                         </div>
                         <p class="text-xs text-gray-500 mb-0.5">Client</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($inquiry['client_name']) ?></p>
+                        <p class="text-sm font-semibold text-gray-900 truncate">
+                            <?= htmlspecialchars($inquiry['client_name']) ?></p>
                     </div>
 
                     <div class="sv-card p-4">
                         <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
-                           <i class="fa-solid fa-clock"></i>
+                            <i class="fa-solid fa-clock"></i>
                         </div>
                         <p class="text-xs text-gray-500 mb-0.5">Status</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($inquiry['status']) ?></p>
+                        <p class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($inquiry['status']) ?>
+                        </p>
                     </div>
 
                     <div class="sv-card p-4">
-                        <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                        <div
+                            class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                             <i class="fa-solid fa-phone"></i>
                         </div>
                         <p class="text-xs text-gray-500 mb-0.5">Contact no.</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($inquiry['contact_number']) ?></p>
+                        <p class="text-sm font-semibold text-gray-900 truncate">
+                            <?= htmlspecialchars($inquiry['contact_number']) ?></p>
                     </div>
 
                     <div class="sv-card p-4">
@@ -341,7 +372,8 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                             <i class="fa-solid fa-pen-ruler"></i>
                         </div>
                         <p class="text-xs text-gray-500 mb-0.5">Assigned designer</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($currentDesignerName) ?></p>
+                        <p class="text-sm font-semibold text-gray-900 truncate">
+                            <?= htmlspecialchars($currentDesignerName) ?></p>
                     </div>
 
                 </div>
@@ -349,23 +381,28 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                 <!-- Registered address strip -->
                 <div class="sv-card px-5 py-3.5 mb-6 flex items-center gap-3">
                     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                     </svg>
                     <p class="text-sm text-gray-700"><?= htmlspecialchars($inquiry['address']) ?></p>
                 </div>
 
                 <?php if (!empty($inquiry['deadline'])): ?>
                     <?php
-                        $deadlineTs = strtotime($inquiry['deadline']);
-                        $isOverdue = $deadlineTs < strtotime('today') && $inquiry['status'] !== 'Approved';
+                    $deadlineTs = strtotime($inquiry['deadline']);
+                    $isOverdue = $deadlineTs < strtotime('today') && $inquiry['status'] !== 'Approved';
                     ?>
-                    <div class="sv-card px-5 py-3.5 mb-6 flex items-center gap-3 <?= $isOverdue ? 'bg-red-50 border-red-100' : '' ?>">
-                        <svg class="w-4 h-4 shrink-0 <?= $isOverdue ? 'text-red-500' : 'text-gray-400' ?>" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    <div
+                        class="sv-card px-5 py-3.5 mb-6 flex items-center gap-3 <?= $isOverdue ? 'bg-red-50 border-red-100' : '' ?>">
+                        <svg class="w-4 h-4 shrink-0 <?= $isOverdue ? 'text-red-500' : 'text-gray-400' ?>" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                         </svg>
                         <p class="text-sm <?= $isOverdue ? 'text-red-700 font-medium' : 'text-gray-700' ?>">
-                            Deadline for 2D &amp; Quotation:
+                           Initial Deadline for 2D &amp; Quotation:
                             <?= htmlspecialchars(date('F d, Y', $deadlineTs)) ?>
                             <?= $isOverdue ? ' — overdue' : '' ?>
                         </p>
@@ -394,23 +431,29 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                     </div>
                                     <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
                                         <p class="text-gray-500">Date &amp; time</p>
-                                        <p class="text-gray-900"><?= htmlspecialchars(date('F d, Y — g:i A', strtotime($latestVisit['visit_datetime']))) ?></p>
+                                        <p class="text-gray-900">
+                                            <?= htmlspecialchars(date('F d, Y — g:i A', strtotime($latestVisit['visit_datetime']))) ?>
+                                        </p>
                                     </div>
                                     <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm items-center">
                                         <p class="text-gray-500">Visited</p>
-                                        <span class="inline-flex w-fit items-center text-xs font-medium px-2.5 py-1 rounded-full <?= $latestVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
+                                        <span
+                                            class="inline-flex w-fit items-center text-xs font-medium px-2.5 py-1 rounded-full <?= $latestVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
                                             <?= $latestVisited ? 'Yes — proceed to 2D & Quotation' : 'No — not visited' ?>
                                         </span>
                                     </div>
                                     <?php if (!empty($inquiry['deadline'])): ?>
                                         <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
                                             <p class="text-gray-500">Deadline (2D &amp; Quotation)</p>
-                                            <p class="text-gray-900"><?= htmlspecialchars(date('F d, Y', strtotime($inquiry['deadline']))) ?></p>
+                                            <p class="text-gray-900">
+                                                <?= htmlspecialchars(date('F d, Y', strtotime($inquiry['deadline']))) ?></p>
                                         </div>
                                     <?php endif; ?>
                                     <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
                                         <p class="text-gray-500">Logged on</p>
-                                        <p class="text-gray-500"><?= htmlspecialchars(date('F d, Y / g:i A', strtotime($latestVisit['created_at']))) ?></p>
+                                        <p class="text-gray-500">
+                                            <?= htmlspecialchars(date('F d, Y / g:i A', strtotime($latestVisit['created_at']))) ?>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -425,7 +468,8 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                             <ul class="space-y-1">
                                                 <?php foreach ($latestMeasFiles as $mi => $mPath): ?>
                                                     <li>
-                                                        <a href="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" target="_blank" rel="noopener"
+                                                        <a href="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" target="_blank"
+                                                            rel="noopener"
                                                             class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline">
                                                             <i class="fa-solid fa-file-pdf"></i> Measurement PDF <?= $mi + 1 ?>
                                                         </a>
@@ -433,22 +477,29 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                                 <?php endforeach; ?>
                                             </ul>
                                         <?php elseif (!empty($latestVisit['measurements'])): ?>
-                                            <p class="text-sm text-gray-800"><?= nl2br(htmlspecialchars($latestVisit['measurements'])) ?></p>
+                                            <p class="text-sm text-gray-800">
+                                                <?= nl2br(htmlspecialchars($latestVisit['measurements'])) ?></p>
                                         <?php else: ?>
                                             <span class="text-sm text-gray-400 italic">None provided</span>
                                         <?php endif; ?>
                                     </div>
                                     <div>
                                         <p class="text-xs font-medium text-gray-500 mb-1">Site conditions</p>
-                                        <p class="text-sm text-gray-800"><?= !empty($latestVisit['site_conditions']) ? nl2br(htmlspecialchars($latestVisit['site_conditions'])) : '<span class="text-gray-400 italic">None provided</span>' ?></p>
+                                        <p class="text-sm text-gray-800">
+                                            <?= !empty($latestVisit['site_conditions']) ? nl2br(htmlspecialchars($latestVisit['site_conditions'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-xs font-medium text-gray-500 mb-1">Client requirements</p>
-                                        <p class="text-sm text-gray-800"><?= !empty($latestVisit['client_requirements']) ? nl2br(htmlspecialchars($latestVisit['client_requirements'])) : '<span class="text-gray-400 italic">None provided</span>' ?></p>
+                                        <p class="text-sm text-gray-800">
+                                            <?= !empty($latestVisit['client_requirements']) ? nl2br(htmlspecialchars($latestVisit['client_requirements'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-xs font-medium text-gray-500 mb-1">Existing structure</p>
-                                        <p class="text-sm text-gray-800"><?= !empty($latestVisit['existing_structure']) ? nl2br(htmlspecialchars($latestVisit['existing_structure'])) : '<span class="text-gray-400 italic">None provided</span>' ?></p>
+                                        <p class="text-sm text-gray-800">
+                                            <?= !empty($latestVisit['existing_structure']) ? nl2br(htmlspecialchars($latestVisit['existing_structure'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -475,11 +526,15 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                                 $entryPhotos = array_filter(explode(',', $entry['photos'] ?? ''));
                                                 ?>
                                                 <tr>
-                                                    <td class="py-2.5 pr-4 text-gray-800"><?= htmlspecialchars($entry['address']) ?></td>
-                                                    <td class="py-2.5 pr-4 text-gray-500 whitespace-nowrap"><?= htmlspecialchars(date('M d, Y g:i A', strtotime($entry['visit_datetime']))) ?></td>
+                                                    <td class="py-2.5 pr-4 text-gray-800"><?= htmlspecialchars($entry['address']) ?>
+                                                    </td>
+                                                    <td class="py-2.5 pr-4 text-gray-500 whitespace-nowrap">
+                                                        <?= htmlspecialchars(date('M d, Y g:i A', strtotime($entry['visit_datetime']))) ?>
+                                                    </td>
                                                     <td class="py-2.5 pr-4 text-gray-500"><?= count($entryPhotos) ?></td>
                                                     <td class="py-2.5">
-                                                        <span class="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full <?= $entryVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
+                                                        <span
+                                                            class="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full <?= $entryVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
                                                             <?= $entryVisited ? 'Visited' : 'Not visited' ?>
                                                         </span>
                                                     </td>
@@ -510,7 +565,8 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                                         <?php foreach ($latestPhotos as $photoPath): ?>
                                             <a href="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>" target="_blank"
                                                 class="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity">
-                                                <img src="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>" class="w-full h-full object-cover">
+                                                <img src="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>"
+                                                    class="w-full h-full object-cover">
                                             </a>
                                         <?php endforeach; ?>
                                     </div>
@@ -518,13 +574,17 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                             </div>
 
                             <!-- Status alert -->
-                            <div class="sv-card p-5 <?= $latestVisited ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100' ?>">
+                            <div
+                                class="sv-card p-5 <?= $latestVisited ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100' ?>">
                                 <div class="flex items-start gap-3">
-                                    <svg class="w-5 h-5 shrink-0 mt-0.5 <?= $latestVisited ? 'text-emerald-600' : 'text-amber-600' ?>" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="w-5 h-5 shrink-0 mt-0.5 <?= $latestVisited ? 'text-emerald-600' : 'text-amber-600' ?>"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <?php if ($latestVisited): ?>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         <?php else: ?>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                                         <?php endif; ?>
                                     </svg>
                                     <div>
@@ -546,115 +606,126 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
 
                 <?php else: ?>
 
-                    <div class="sv-card p-5 max-w-2xl">
+                    <div class="sv-card p-6 w-full">
                         <h2 class="text-sm font-semibold text-gray-900 mb-0.5">New record</h2>
-                        <p class="text-xs text-gray-400 italic mb-4">No site visits have been recorded yet for this inquiry.</p>
+                        <p class="text-xs text-gray-400 italic mb-5">No site visits have been recorded yet for this inquiry.</p>
 
                         <!-- Site Visit Form -->
-                        <form method="POST" action="" enctype="multipart/form-data" class="space-y-3.5">
+                        <form method="POST" action="" enctype="multipart/form-data" class="space-y-5">
 
                             <input type="hidden" name="inquiry_id" value="<?= (int) $inquiry['id'] ?>">
 
-                            <div class="grid sm:grid-cols-2 gap-3.5">
-                                <!-- Address -->
-                                <div class="sm:col-span-2">
+                            <!-- Row 1: Address / Date / Visited -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div class="lg:col-span-2">
                                     <label class="block text-xs font-medium text-gray-700 mb-1">
-                                        Address <span class="text-red-500">*</span>
+                                        Address
                                     </label>
-                                    <textarea name="visit_address" rows="1" required
-                                        class="sv-field sv-field-sm"
-                                        placeholder="Site visit address"><?= htmlspecialchars($inquiry['address']) ?></textarea>
+                                    <input type="text" name="visit_address" readonly
+                                        value="<?= htmlspecialchars($inquiry['address']) ?>"
+                                        class="sv-field sv-field-sm h-[38px] bg-gray-100 text-gray-600 cursor-not-allowed focus:border-gray-300 focus:shadow-none"
+                                        placeholder="Site visit address">
                                 </div>
 
-                                <!-- Date and Time -->
                                 <div>
                                     <label class="block text-xs font-medium text-gray-700 mb-1">
                                         Date &amp; time of visit <span class="text-red-500">*</span>
                                     </label>
-                                    <input type="datetime-local" name="visit_datetime" required class="sv-field sv-field-sm">
+                                    <input type="datetime-local" name="visit_datetime" required
+                                        class="sv-field sv-field-sm h-[38px]">
                                 </div>
 
-                                <!-- Visit Yes / No -->
                                 <div>
                                     <label class="block text-xs font-medium text-gray-700 mb-1">
                                         Did the site visit happen? <span class="text-red-500">*</span>
                                     </label>
-                                    <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden h-[34px]">
+                                    <div class="grid grid-cols-2 rounded-lg border border-gray-300 overflow-hidden h-[38px]">
                                         <label class="cursor-pointer">
                                             <input type="radio" name="visited" value="yes" class="peer sr-only" required>
-                                            <span class="flex items-center h-[32px] px-4 text-xs text-gray-600 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">Yes</span>
+                                            <span
+                                                class="flex items-center justify-center h-full text-xs text-gray-600 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">Yes</span>
                                         </label>
                                         <label class="cursor-pointer border-l border-gray-300">
                                             <input type="radio" name="visited" value="no" class="peer sr-only" required>
-                                            <span class="flex items-center h-[32px] px-4 text-xs text-gray-600 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">No</span>
+                                            <span
+                                                class="flex items-center justify-center h-full text-xs text-gray-600 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">No</span>
                                         </label>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Deadline for 2D & Quotation -->
+                            <!-- Row 2: Deadline -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-700 mb-1">
-                                        Deadline for 2D &amp; Quotation
+                                        Initial Deadline for 2D &amp; Quotation
                                     </label>
-                                    <input type="date" name="deadline" class="sv-field sv-field-sm"
+                                    <input type="date" name="deadline" class="sv-field sv-field-sm h-[38px]"
                                         min="<?= htmlspecialchars(date('Y-m-d')) ?>">
                                 </div>
+                            </div>
 
+                            <!-- Row 3: Notes (3 equal columns) -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Site conditions / notes</label>
+                                    <textarea name="site_conditions" rows="4" class="sv-field sv-field-sm resize-none"
+                                        placeholder="Terrain, access, utilities, hazards..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Client requirements</label>
+                                    <textarea name="client_requirements" rows="4" class="sv-field sv-field-sm resize-none"
+                                        placeholder="Preferences, budget notes, must-haves..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Existing structure
+                                        information</label>
+                                    <textarea name="existing_structure" rows="4" class="sv-field sv-field-sm resize-none"
+                                        placeholder="Age, condition, materials, any structures already on site..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Row 4: Uploads (2 equal columns) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- Measurements (PDF) -->
-                                <div class="sm:col-span-2">
+                                <div>
                                     <label class="block text-xs font-medium text-gray-700 mb-1">Measurements (PDF)</label>
                                     <label for="sv_meas_pdfs"
-                                        class="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-fit">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        class="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 h-[38px] cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-full">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                         </svg>
                                         <span class="text-xs text-gray-600">Upload PDF(s), max 15MB each</span>
                                     </label>
-                                    <input id="sv_meas_pdfs" type="file" name="measurement_pdfs[]" accept="application/pdf" multiple class="hidden">
+                                    <input id="sv_meas_pdfs" type="file" name="measurement_pdfs[]" accept="application/pdf"
+                                        multiple class="hidden">
                                     <ul id="sv_meas_list" class="mt-2 space-y-1"></ul>
                                 </div>
 
-                                <!-- Site Conditions / Notes -->
+                                <!-- Photos -->
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Site conditions / notes</label>
-                                    <textarea name="site_conditions" rows="2" class="sv-field sv-field-sm"
-                                        placeholder="Terrain, access, utilities, hazards..."></textarea>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Attach photograph(s)</label>
+                                    <label for="sv_photos"
+                                        class="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 h-[38px] cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-full">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <span class="text-xs text-gray-600">Upload photographs (JPG, PNG, WEBP)</span>
+                                    </label>
+                                    <input id="sv_photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp"
+                                        multiple class="hidden">
+                                    <div id="sv_photo_preview"
+                                        class="mt-2 grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-10 gap-1.5"></div>
                                 </div>
-
-                                <!-- Client Requirements -->
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Client requirements</label>
-                                    <textarea name="client_requirements" rows="2" class="sv-field sv-field-sm"
-                                        placeholder="Preferences, budget notes, must-haves..."></textarea>
-                                </div>
-
-                                <!-- Existing Structure Information -->
-                                <div class="sm:col-span-2">
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Existing structure information</label>
-                                    <textarea name="existing_structure" rows="2" class="sv-field sv-field-sm"
-                                        placeholder="Age, condition, materials, any structures already on site..."></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Upload Picture -->
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Attach photograph(s)</label>
-                                <label for="sv_photos"
-                                    class="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-fit">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <span class="text-xs text-gray-600">Upload photographs (JPG, PNG, WEBP)</span>
-                                </label>
-                                <input id="sv_photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
-                                <div id="sv_photo_preview" class="mt-2 grid grid-cols-6 sm:grid-cols-8 gap-1.5"></div>
                             </div>
 
                             <div class="pt-1 flex justify-end">
                                 <button type="submit" name="submit_sitevisit"
-                                    class="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                                    class="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
                                     Save record
                                 </button>
                             </div>

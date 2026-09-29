@@ -45,31 +45,38 @@ if (!$vRow) {
     exit;
 }
 
+// Kunin ang signature ng custodian assistant na nag-release
+$sigRow  = $conn->query("SELECT path FROM noblesignature WHERE user_id = $user_id AND is_active = 1 LIMIT 1");
+$sigPath = ($sigRow && $sigRow->num_rows) ? $sigRow->fetch_assoc()['path'] : null;
+
 if ($manual_name) {
     // Manual receiver
     $stmt = $conn->prepare("UPDATE noblevoucher 
-        SET status = 'released', released_by = ?, released_at = NOW(),
+        SET status = 'released', released_by = ?, released_at = NOW(), released_signature = ?,
             manual_receiver_name = ?, manual_receiver_date = ?
         WHERE id = ?");
     $manual_date_val = $manual_date ?: date('Y-m-d');
-    $stmt->bind_param("issi", $user_id, $manual_name, $manual_date_val, $voucher_id);
+    $stmt->bind_param("isssi", $user_id, $sigPath, $manual_name, $manual_date_val, $voucher_id);
 } else {
     $stmt = $conn->prepare("UPDATE noblevoucher 
-        SET status = 'released', released_by = ?, released_at = NOW()
+        SET status = 'released', released_by = ?, released_at = NOW(), released_signature = ?
         WHERE id = ?");
-    $stmt->bind_param("ii", $user_id, $voucher_id);
+    $stmt->bind_param("isi", $user_id, $sigPath, $voucher_id);
 }
 
 $success = $stmt->execute();
 $stmt->close();
 
-// Send email sa requestor
-if ($success && $vRow['requestor_email']) {
-
+// Laging i-clear ang cache kapag nag-succeed (kahit walang email)
+if ($success) {
     clearCache('cashvoucher_all');
     clearCache('custodian_received_requests');
     clearCache('staff_approved_requests');
     clearCache('staff_acknowledged_requests');
+}
+
+// Send email sa requestor
+if ($success && $vRow['requestor_email']) {
 
     $control_no = $vRow['control_no'];
     $purpose = $vRow['purpose'];

@@ -26,7 +26,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
 <body class="bg-slate-100">
     <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
 
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-8xl mx-auto">
 
             <!-- Header -->
             <div class="mb-4">
@@ -37,15 +37,37 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                     </div>
                 </div>
 
-                <!-- Search -->
-                <div class="relative w-full sm:w-64 min-w-0">
-                    <input id="monSearch" type="text" placeholder="Search control no. / client / contact"
-                        class="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
-                    <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                    </svg>
-                    <button type="button" id="monSearchClear"
-                        class="hidden absolute right-2 top-1.5 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
+                <!-- Search + Filters -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative w-full sm:w-64 min-w-0">
+                        <input id="monSearch" type="text" placeholder="Search control no. / client / contact"
+                            class="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
+                        <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                        </svg>
+                        <button type="button" id="monSearchClear"
+                            class="hidden absolute right-2 top-1.5 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
+                    </div>
+
+                    <select id="monFilterMode"
+                        class="mon-filter py-1.5 pl-2 pr-6 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600">
+                        <option value="">All Modes</option>
+                        <option value="site_visit">Site Visit</option>
+                        <option value="ready_for_quotation">Ready for Quotation</option>
+                    </select>
+
+                    <select id="monFilterClient"
+                        class="mon-filter py-1.5 pl-2 pr-6 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600">
+                        <option value="">All Client Status</option>
+                    </select>
+
+                    <select id="monFilterVisit"
+                        class="mon-filter py-1.5 pl-2 pr-6 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600">
+                        <option value="">All Site Visit Status</option>
+                    </select>
+
+                    <button type="button" id="monFilterReset"
+                        class="hidden text-xs text-amber-700 hover:underline px-1">Clear filters</button>
                 </div>
             </div>
 
@@ -82,6 +104,9 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                                 <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Control No.</th>
                                 <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Client</th>
                                 <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Contact</th>
+                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Mode</th>
+                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Client Status</th>
+                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Site Visit Status</th>
                                 <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Current Stage</th>
                                 <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Last Updated</th>
                                 <th class="px-4 py-2.5 font-semibold text-right whitespace-nowrap">Action</th>
@@ -135,6 +160,9 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
 
         let monSearchTerm = '';
         let monStageFilter = ''; // default tab: "All"
+        let monModeFilter = '';
+        let monClientFilter = '';
+        let monVisitFilter = '';
         let monLastSignature = '';
         let monPollTimer = null;
         let monSearchDebounce = null;
@@ -150,6 +178,36 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             const dt = new Date(value.replace(' ', 'T'));
             if (isNaN(dt.getTime())) return value;
             return dt.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        // Builds the list URL with the current search + filters.
+        function monBuildUrl(stage) {
+            const p = new URLSearchParams({
+                action: 'list',
+                q: monSearchTerm,
+                stage: stage,
+                mode: monModeFilter,
+                clientstatus: monClientFilter,
+                visitstatus: monVisitFilter,
+            });
+            return `${MON_AJAX_URL}?${p.toString()}`;
+        }
+
+        function monHasActiveFilters() {
+            return !!(monModeFilter || monClientFilter || monVisitFilter);
+        }
+
+        function monTextOrDash(value) {
+            return value ? monEscapeHtml(value) : '<span class="text-gray-300">—</span>';
+        }
+
+        function monModeBadge(mode) {
+            const isReady = mode === 'ready_for_quotation';
+            const cls = isReady
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : 'bg-gray-50 text-gray-600 border-gray-200';
+            const label = isReady ? 'Ready for Quotation' : 'Site Visit';
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap ${cls}">${label}</span>`;
         }
 
         // Maps the row's stage_group (computed server-side) to a badge style.
@@ -199,10 +257,58 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             });
         }
 
+        // ── Filters (Mode / Client Status / Site Visit Status) ──
+        function monFillSelect(id, values) {
+            const sel = document.getElementById(id);
+            const keep = sel.value;
+            sel.insertAdjacentHTML('beforeend',
+                `<option value="__none__">(None)</option>` +
+                values.map(v => `<option value="${monEscapeHtml(v)}">${monEscapeHtml(v)}</option>`).join('')
+            );
+            sel.value = keep;
+        }
+
+        async function monLoadFilterOptions() {
+            try {
+                const res = await fetch(`${MON_AJAX_URL}?action=filter_options`);
+                const data = await res.json();
+                if (!data.success) return;
+                monFillSelect('monFilterClient', data.client_statuses);
+                monFillSelect('monFilterVisit', data.visit_statuses);
+            } catch (e) {
+                console.error('monLoadFilterOptions:', e);
+            }
+        }
+
+        function monInitFilters() {
+            const bind = (id, setter) => {
+                document.getElementById(id).addEventListener('change', function () {
+                    setter(this.value);
+                    document.getElementById('monFilterReset').classList.toggle('hidden', !monHasActiveFilters());
+                    monLastSignature = '';
+                    monFetchList();
+                });
+            };
+            bind('monFilterMode', v => monModeFilter = v);
+            bind('monFilterClient', v => monClientFilter = v);
+            bind('monFilterVisit', v => monVisitFilter = v);
+
+            document.getElementById('monFilterReset').addEventListener('click', function () {
+                monModeFilter = monClientFilter = monVisitFilter = '';
+                ['monFilterMode', 'monFilterClient', 'monFilterVisit'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                this.classList.add('hidden');
+                monLastSignature = '';
+                monFetchList();
+            });
+
+            monLoadFilterOptions();
+        }
+
         async function monFetchCounts() {
             try {
-                const url = `${MON_AJAX_URL}?action=list&q=&stage=`;
-                const res = await fetch(url);
+                const res = await fetch(monBuildUrl(''));
                 const data = await res.json();
                 if (!data.success) return;
 
@@ -230,7 +336,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             const tbody = document.getElementById('monTbody');
             tbody.innerHTML = Array.from({ length: count }).map(() => `
                 <tr>
-                    ${Array.from({ length: 6 }).map(() => `
+                    ${Array.from({ length: 9 }).map(() => `
                         <td class="px-4 py-3"><div class="h-3 rounded bg-gray-100 animate-pulse"></div></td>
                     `).join('')}
                 </tr>
@@ -238,12 +344,12 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
         }
 
         function monEmptyState() {
-            const message = monSearchTerm
-                ? `No records match "${monEscapeHtml(monSearchTerm)}".`
+            const message = (monSearchTerm || monHasActiveFilters())
+                ? 'No records match your search or filters.'
                 : 'No records found.';
             return `
                 <tr>
-                    <td colspan="6" class="p-0">
+                    <td colspan="9" class="p-0">
                         <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
                             <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -270,6 +376,9 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                     </td>
                     <td class="px-4 py-2.5 text-gray-800 whitespace-nowrap">${monEscapeHtml(row.client_name)}</td>
                     <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${monEscapeHtml(row.contact_number)}</td>
+                    <td class="px-4 py-2.5">${monModeBadge(row.mode)}</td>
+                    <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">${monTextOrDash(row.clientstatus)}</td>
+                    <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">${monTextOrDash(row.visitstatus)}</td>
                     <td class="px-4 py-2.5">${monStageBadge(row)}</td>
                     <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${monFormatDate(row.last_updated)}</td>
                     <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">
@@ -289,8 +398,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
         async function monFetchList({ silent = false } = {}) {
             if (!silent) monSkeletonRows();
             try {
-                const url = `${MON_AJAX_URL}?action=list&q=${encodeURIComponent(monSearchTerm)}&stage=${encodeURIComponent(monStageFilter)}`;
-                const res = await fetch(url);
+                const res = await fetch(monBuildUrl(monStageFilter));
                 const data = await res.json();
 
                 if (!data.success) {
@@ -298,7 +406,8 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                     return;
                 }
 
-                const signature = JSON.stringify(data.rows.map(r => r.inquiry_id + ':' + r.stage_group + ':' + r.last_updated)) + monStageFilter;
+                const signature = JSON.stringify(data.rows.map(r => r.inquiry_id + ':' + r.stage_group + ':' + r.last_updated))
+                    + monStageFilter + monModeFilter + monClientFilter + monVisitFilter;
                 if (signature !== monLastSignature) {
                     monRenderRows(data.rows);
                     monLastSignature = signature;
@@ -352,6 +461,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             monSearchInput.focus();
         });
 
+        monInitFilters();
         monInitTabs();
         monFetchList().then(monStartPolling);
     </script>
