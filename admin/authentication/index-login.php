@@ -173,7 +173,7 @@ if (!empty($_SESSION['logged_in'])) {
             </form>
 
             <div class="text-center text-xs text-white border-t border-gray-100 pt-5 mt-7">
-                &copy; <?= date('Y') ?> Noble Accounting. All rights reserved.
+                &copy; <?= date('Y') ?> Noble Accounting. All rights reserved. Version 1.0
             </div>
 
             <script>
