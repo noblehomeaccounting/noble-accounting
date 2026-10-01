@@ -90,6 +90,7 @@
                 '/dashboard' => ['label' => 'Announcement', 'badge' => true],
                 '/requesthistory' => ['label' => 'My Requests', 'badge' => false],
                 '/myvouchers' => ['label' => 'My Vouchers', 'badge' => false],
+                '/rejectedrequests' => ['label' => 'Rejected Requests', 'badge' => false],
             ];
             foreach ($navLinks as $path => $item):
                 $isActive = str_starts_with($relativePath, $path);
@@ -249,6 +250,7 @@
             '/dashboard' => ['label' => 'Announcement', 'icon' => 'fa-bullhorn'],
             '/requesthistory' => ['label' => 'My Requests', 'icon' => 'fa-file-lines'],
             '/myvouchers' => ['label' => 'My Vouchers', 'icon' => 'fa-ticket'],
+            '/rejectedrequests' => ['label' => 'Rejected Requests', 'icon' => 'fa-file-lines'],
         ];
         foreach ($mobileNavLinks as $path => $item):
             $isActive = str_starts_with($relativePath, $path);

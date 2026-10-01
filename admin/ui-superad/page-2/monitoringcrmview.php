@@ -47,9 +47,9 @@ $inquiryId = intval($_GET['id'] ?? 0);
             <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-2sitevisit.php'; ?>
             <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-3clientreviewapproval.php'; ?>
             <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-4quotationhistory.php'; ?>
-
+Arzhel
         </div>
-
+Huibiuhbuibi
         <!-- Toast container -->
         <div id="crmToastContainer"
             class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">

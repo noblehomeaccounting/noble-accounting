@@ -296,6 +296,9 @@ $routes = [
     'fetchmyrequests'                  => 'user/ui/backend/index-fetch-my-requests.php',
     'requesthistory'                   => 'user/ui/index-my-request-history.php',
     'dashboard'                        => 'user/ui/index-main-dashboard.php',
+    'rejectedrequests'                 => 'user/ui/index-rejected-requests.php',
+    'fetchrejectedrequests'            => 'user/ui/backend/fetch-rejected-requests.php',
+    'resubmitrequest'                  => 'user/ui/backend/index-resubmit-request.php',
 
     //IT page 1
     'superad'                          => 'admin/ui-informationtech/page-1/it-registration-account.php',
