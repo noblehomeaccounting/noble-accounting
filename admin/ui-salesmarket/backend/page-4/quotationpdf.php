@@ -45,6 +45,16 @@ function qpQty($n): string
     return rtrim(rtrim(number_format((float)$n, 2, '.', ''), '0'), '.');
 }
 
+// Same rule as qDiscountAmount() in quotation-helpers.php (this file does not include the helpers)
+function qpDiscountAmount(float $subtotal, ?string $type, $value): float
+{
+    $v = max(0.0, (float)$value);
+    if ($type === 'percent')    $d = $subtotal * min($v, 100) / 100;
+    elseif ($type === 'fixed')  $d = min($v, $subtotal);
+    else                        $d = 0.0;
+    return round($d, 2);
+}
+
 // Company logo as a data URI (dompdf runs with remote files disabled). Null if the file is missing.
 function qpLogoDataUri(): ?string
 {
@@ -341,7 +351,17 @@ function qpRenderHtml(array $quote): string
         $body .= '<tr><td colspan="10" class="c" style="padding:14px;">No items.</td></tr>';
     }
 
-    $body .= '<tr class="grand"><td colspan="9" class="r b">GRAND TOTAL</td><td>' . qpMoney($grand) . '</td></tr>';
+       $discount = qpDiscountAmount($grand, $quote['discount_type'] ?? 'none', $quote['discount_value'] ?? 0);
+
+    if ($discount > 0) {
+        $pct = ($quote['discount_type'] ?? '') === 'percent'
+            ? ' (' . rtrim(rtrim(number_format((float)$quote['discount_value'], 2, '.', ''), '0'), '.') . '%)'
+            : '';
+        $body .= '<tr><td colspan="9" class="r b">SUBTOTAL</td><td>' . qpMoney($grand) . '</td></tr>'
+               . '<tr><td colspan="9" class="r b">LESS: DISCOUNT' . $pct . '</td><td>' . qpMoney(-$discount) . '</td></tr>';
+    }
+
+    $body .= '<tr class="grand"><td colspan="9" class="r b">GRAND TOTAL</td><td>' . qpMoney($grand - $discount) . '</td></tr>';
 
     return '<html><head><meta charset="UTF-8"><style>
         @page { margin: 22px 18px; }

@@ -1,5 +1,5 @@
 <?php
-// quotationbuilder.php  -  Quotation builder (sections, main items, accessories)
+// quotationbuilder.php  -  Quotation builder (sections, main items, accessories, discount)
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -55,6 +55,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
+            case 'update_discount': {
+                $type = $_POST['discount_type'] ?? 'none';
+                if (!in_array($type, ['none', 'percent', 'fixed'], true)) throw new QuoteError('Invalid discount type.');
+                $val = (float)str_replace(',', '', (string)($_POST['discount_value'] ?? '0'));
+                if ($type === 'none') $val = 0.0;
+                if ($val < 0) throw new QuoteError('Discount cannot be negative.');
+                if ($type === 'percent' && $val > 100) throw new QuoteError('Percent discount cannot be more than 100.');
+                if ($type !== 'none' && $val == 0) { $type = 'none'; }
+                qRun($conn, 'UPDATE noblecrm_quotations SET discount_type=?, discount_value=? WHERE id=?',
+                    'sdi', [$type, $val, $pq]);
+                $msg = $type === 'none' ? 'Discount removed.' : 'Discount saved.';
+                $redirect .= '#discount';
+                break;
+            }
+
             case 'save_section': {
                 $sid   = (int)($_POST['section_id'] ?? 0);
                 $title = trim($_POST['title'] ?? '');
@@ -96,22 +111,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sid = (int)($_POST['section_id'] ?? 0);
                 if (!qOwnsSection($conn, $sid, $pq)) throw new QuoteError('Section not found.');
 
-                $itemId   = (int)($_POST['item_id'] ?? 0);
-                $desc     = trim($_POST['description'] ?? '');
-                $unit     = $_POST['unit'] ?? '';
-                $a        = (float)($_POST['dim_a'] ?? 0);
-                $b        = (float)($_POST['dim_b'] ?? 0);
-                $ov       = (float)($_POST['measurement'] ?? 0);
-                $qty      = (float)($_POST['qty'] ?? 0);
-                $price    = (float)str_replace(',', '', $_POST['material_cost'] ?? '0');
-                $laborAmt = (float)str_replace(',', '', $_POST['labor_amount'] ?? '0');
+                $itemId = (int)($_POST['item_id'] ?? 0);
+                $desc   = trim($_POST['description'] ?? '');
+                $unit   = $_POST['unit'] ?? '';
+                $a      = (float)($_POST['dim_a'] ?? 0);
+                $b      = (float)($_POST['dim_b'] ?? 0);
+                $ov     = (float)($_POST['measurement'] ?? 0);
+                $qty    = (float)($_POST['qty'] ?? 0);
+                $price  = (float)str_replace(',', '', $_POST['material_cost'] ?? '0');
+
+                // Labor rate typed by the user. Blank = use the quotation's default rate.
+                $laborRaw = trim(str_replace(',', '', (string)($_POST['labor_amount'] ?? '')));
+                $laborAmt = $laborRaw === '' ? null : (float)$laborRaw;
+
+                // Price list selections (JSON from the form) so Edit can show them again
+                $plMeta = trim((string)($_POST['pl_meta'] ?? ''));
+                if ($plMeta !== '' && (strlen($plMeta) > 1000 || !is_array(json_decode($plMeta, true)))) $plMeta = '';
+                $plMeta = $plMeta === '' ? null : $plMeta;
 
                 if ($desc === '') throw new QuoteError('Description is required.');
-                // 'pc.' = flat price per piece (drawer, sink): price x qty, labor = labor_amount x qty (walang measurement)
+                // 'pc.' = flat price per piece (drawer, sink): measurement = 1
                 if (!in_array($unit, ['lm.', 'sqm.', 'pc.'], true)) throw new QuoteError('Invalid unit.');
                 if ($qty <= 0) throw new QuoteError('Quantity must be greater than zero.');
                 if ($price < 0) throw new QuoteError('Materials cost cannot be negative.');
-                if ($laborAmt < 0) throw new QuoteError('Labor cannot be negative.');
+                if ($laborAmt !== null && $laborAmt < 0) throw new QuoteError('Labor cannot be negative.');
 
                 if ($unit === 'pc.') {
                     $meas = 1.0;
@@ -126,23 +149,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $dbv = $b > 0 ? $b : null;
                 }
 
-                // pc. = fixed labor per piece; lm./sqm. = auto (rate x measurement, computed in qRecalcSection)
-                $lType = $unit === 'pc.' ? 'fixed' : 'auto';
-                $lAmt  = $unit === 'pc.' ? $laborAmt : 0.0;
+                // Every main item stores its own labor rate.
+                // Labor = labor_amount x measurement x qty (computed in qRecalcSection)
+                // Typed labor  -> 'fixed': labor rate = the amount typed
+                // Blank labor  -> 'auto' : labor rate = quotation rate (pc. = 0)
+                $lType = ($laborAmt !== null || $unit === 'pc.') ? 'fixed' : 'auto';
+                $lAmt  = $laborAmt ?? 0.0;
 
                 if ($itemId > 0) {
                     if (!qOne($conn, "SELECT id FROM noblecrm_quotation_items WHERE id=? AND section_id=? AND item_type='main'", 'ii', [$itemId, $sid])) {
                         throw new QuoteError('Item not found.');
                     }
-                    qRun($conn, 'UPDATE noblecrm_quotation_items SET description=?, dim_a_mm=?, dim_b_mm=?, measurement=?, unit=?, qty=?, unit_price=?, labor_type=?, labor_amount=? WHERE id=?',
-                        'sdddsddsdi', [$desc, $da, $dbv, $meas, $unit, $qty, $price, $lType, $lAmt, $itemId]);
+                    qRun($conn, 'UPDATE noblecrm_quotation_items SET description=?, dim_a_mm=?, dim_b_mm=?, measurement=?, unit=?, qty=?, unit_price=?, labor_type=?, labor_amount=?, pl_meta=? WHERE id=?',
+                        'sdddsddsdsi', [$desc, $da, $dbv, $meas, $unit, $qty, $price, $lType, $lAmt, $plMeta, $itemId]);
                     $msg = 'Main item updated.';
                 } else {
                     $next = (int)qOne($conn, 'SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM noblecrm_quotation_items WHERE section_id = ?', 'i', [$sid])['n'];
                     qRun($conn, "INSERT INTO noblecrm_quotation_items
-                                (section_id,item_type,sort_order,description,dim_a_mm,dim_b_mm,measurement,unit,qty,unit_price,uses_measurement,labor_type,labor_amount)
-                              VALUES (?, 'main', ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
-                        'iisdddsddsd', [$sid, $next, $desc, $da, $dbv, $meas, $unit, $qty, $price, $lType, $lAmt]);
+                                (section_id,item_type,sort_order,description,dim_a_mm,dim_b_mm,measurement,unit,qty,unit_price,uses_measurement,labor_type,labor_amount,pl_meta)
+                              VALUES (?, 'main', ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+                        'iisdddsddsds', [$sid, $next, $desc, $da, $dbv, $meas, $unit, $qty, $price, $lType, $lAmt, $plMeta]);
                     $msg = 'Main item added.';
                 }
                 qRecalcSection($conn, $sid, $rates);
@@ -248,6 +274,13 @@ if ($quote) {
     }
     $catalog = qRows($conn, 'SELECT * FROM noblecrm_accessories ORDER BY name');
 }
+
+// Subtotal -> discount -> grand total
+$subtotal      = $grandTotal;
+$discountType  = $quote['discount_type'] ?? 'none';
+$discountValue = (float)($quote['discount_value'] ?? 0);
+$discountAmt   = qDiscountAmount($subtotal, $discountType, $discountValue);
+$grandTotal    = $subtotal - $discountAmt;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -281,8 +314,6 @@ if ($quote) {
                 <p class="text-sm text-slate-600"><?= e($quote['project_name']) ?></p>
             </div>
             <div class="text-right">
-                <div class="text-sm text-slate-600">Grand total</div>
-                <div class="text-3xl font-semibold tabular-nums text-slate-900"><?= peso($grandTotal) ?></div>
                 <a href="<?= e(rtrim(BASE_URL, '/') . '/quotationpdf?id=' . $qid) ?>"
                    class="mt-3 inline-block rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300">
                     Export PDF
@@ -292,7 +323,7 @@ if ($quote) {
 
         <details class="mb-8 rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
             <summary class="cursor-pointer px-6 py-4 text-sm font-medium text-slate-800">
-                Quotation details (labor rate: lm. <?= peso($rates['lm.']) ?> &middot; sqm. <?= peso($rates['sqm.']) ?>)
+                Quotation details (default labor rate: lm. <?= peso($rates['lm.']) ?> &middot; sqm. <?= peso($rates['sqm.']) ?>)
             </summary>
             <form method="post" action="<?= e($selfUrl) ?>" class="grid grid-cols-1 gap-4 border-t border-slate-200 p-6 md:grid-cols-5">
                 <?= qHidden('csrf', $csrf) ?><?= qHidden('action', 'update_quotation') ?><?= qHidden('quotation_id', $qid) ?>
@@ -327,7 +358,7 @@ if ($quote) {
                 </div>
                 <div class="md:col-span-5 flex items-center gap-4">
                     <button class="<?= $btnCls ?>">Save details</button>
-                    <span class="text-xs text-slate-500">Changing the labor rate recalculates every section in this quotation.</span>
+                    <span class="text-xs text-slate-500">Default labor rate is used for accessories, old items, and main items with a blank labor field. Main items with their own labor are not changed.</span>
                 </div>
             </form>
         </details>
@@ -349,6 +380,12 @@ if ($quote) {
             // Drawer = n.1, Accessories = n.2 (or n.1 kung walang drawer).
             $pcs   = array_values(array_filter($mains, fn($i) => $i['unit'] === 'pc.'));
             $mains = array_values(array_filter($mains, fn($i) => $i['unit'] !== 'pc.'));
+            // Materials / Labor columns of main items show the UNIT cost (actual price and labor rate).
+            // The measurement and qty are applied in the Total column only.
+            $unitLabor = function ($it) use ($rates) {
+                if ($it['labor_type'] === 'fixed') return (float)$it['labor_amount'];
+                return isset($rates[$it['unit']]) ? (float)$rates[$it['unit']] : 0.0;
+            };
             $pcNo  = $n . '.1';
             $accNo = $n . '.' . ($pcs ? 2 : 1);
             $pcLabel = 'Drawer';
@@ -437,8 +474,8 @@ if ($quote) {
                                 <td class="px-4 py-2 text-right tabular-nums"><?= $it['unit'] === 'pc.' ? '' : qFmtMeas($it['measurement']) ?></td>
                                 <td class="px-4 py-2"><?= e($it['unit']) ?></td>
                                 <td class="px-4 py-2 text-right tabular-nums"><?= qFmtMeas($it['qty']) ?></td>
-                                <td class="px-4 py-2 text-right tabular-nums"><?= peso($it['material_total']) ?></td>
-                                <td class="px-4 py-2 text-right tabular-nums"><?= peso($it['labor_total']) ?></td>
+                                <td class="px-4 py-2 text-right tabular-nums"><?= peso($it['unit_price']) ?></td>
+                                <td class="px-4 py-2 text-right tabular-nums"><?= peso($unitLabor($it)) ?></td>
                                 <td class="px-4 py-2 text-right tabular-nums font-medium"><?= peso($it['material_total'] + $it['labor_total']) ?></td>
                                 <td class="whitespace-nowrap px-4 py-2 text-right">
                                     <a href="<?= $anchorUrl ?>&edit=<?= (int)$it['id'] ?>#section-<?= $sid ?>" class="text-slate-700 underline hover:text-slate-900">Edit</a>
@@ -460,8 +497,8 @@ if ($quote) {
                                     <td class="px-4 py-2 text-right tabular-nums"></td>
                                     <td class="px-4 py-2"><?= e($it['unit']) ?></td>
                                     <td class="px-4 py-2 text-right tabular-nums"><?= qFmtMeas($it['qty']) ?></td>
-                                    <td class="px-4 py-2 text-right tabular-nums"><?= peso($it['material_total']) ?></td>
-                                    <td class="px-4 py-2 text-right tabular-nums"><?= $it['labor_total'] > 0 ? peso($it['labor_total']) : '' ?></td>
+                                    <td class="px-4 py-2 text-right tabular-nums"><?= peso($it['unit_price']) ?></td>
+                                    <td class="px-4 py-2 text-right tabular-nums"><?= $unitLabor($it) > 0 ? peso($unitLabor($it)) : '' ?></td>
                                     <td class="px-4 py-2 text-right tabular-nums font-medium"><?= peso($it['material_total'] + $it['labor_total']) ?></td>
                                     <td class="whitespace-nowrap px-4 py-2 text-right">
                                         <a href="<?= $anchorUrl ?>&edit=<?= (int)$it['id'] ?>#section-<?= $sid ?>" class="text-slate-700 underline hover:text-slate-900">Edit</a>
@@ -534,7 +571,7 @@ if ($quote) {
                 </button>
             </div>
 
-                        <!-- ============ MODAL: Main item (landscape) ============ -->
+            <!-- ============ MODAL: Main item (landscape) ============ -->
             <dialog id="dlg-main-<?= $sid ?>"
                     class="m-auto w-full max-w-5xl overflow-y-auto rounded-lg p-0 shadow-xl backdrop:bg-slate-900/50" style="max-height:90vh;"
                     <?= $editMain ? 'data-autoopen data-close-url="' . $anchorUrl . '#section-' . $sid . '"' : '' ?>>
@@ -547,9 +584,10 @@ if ($quote) {
                     <?= qHidden('csrf', $csrf) ?><?= qHidden('action', 'save_main') ?>
                     <?= qHidden('quotation_id', $qid) ?><?= qHidden('section_id', $sid) ?>
                     <?= qHidden('item_id', $editMain ? $m['id'] : 0) ?>
+                    <input type="hidden" name="pl_meta" value="<?= e($m['pl_meta'] ?? '') ?>">
 
                     <!-- ───── KALIWA: Price list ───── -->
-                    <details data-plbox class="self-start rounded-md border border-slate-200 bg-slate-50">
+                    <details data-plbox data-saved="<?= e($m['pl_meta'] ?? '') ?>" <?= !empty($m['pl_meta']) ? 'open' : '' ?> class="self-start rounded-md border border-slate-200 bg-slate-50">
                         <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-slate-700">Use price list (optional)</summary>
                         <div class="space-y-3 border-t border-slate-200 p-3">
                             <div class="grid grid-cols-2 gap-3">
@@ -641,10 +679,12 @@ if ($quote) {
                             <label data-mat-lbl class="mb-1 block text-sm font-medium text-slate-700">Materials cost per unit (× measurement × qty)</label>
                             <input name="material_cost" type="number" step="0.01" min="0" required value="<?= e($m['unit_price'] ?? '') ?>" class="<?= $inputCls ?>">
                         </div>
-                        <div data-labor-wrap class="hidden">
-                            <label class="mb-1 block text-sm font-medium text-slate-700">Labor per piece (× qty)</label>
+                        <div data-labor-wrap>
+                            <label data-labor-lbl class="mb-1 block text-sm font-medium text-slate-700">Labor rate per unit (× measurement × qty)</label>
                             <input name="labor_amount" type="number" step="0.01" min="0"
-                                   value="<?= e($m && $m['unit'] === 'pc.' ? $m['labor_amount'] : '') ?>" class="<?= $inputCls ?>">
+                                   placeholder="<?= e($rates['sqm.']) ?>"
+                                   value="<?= e($m && $m['labor_type'] === 'fixed' ? $m['labor_amount'] : '') ?>" class="<?= $inputCls ?>">
+                            <p class="mt-1 text-xs text-slate-500">Leave blank to use the quotation's default labor rate.</p>
                         </div>
                     </div>
 
@@ -740,7 +780,7 @@ if ($quote) {
         </section>
         <?php endforeach; ?>
 
-        <section class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <section class="mb-8 rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 class="mb-4 text-lg font-semibold text-slate-900">Add section</h2>
             <form method="post" action="<?= e($selfUrl) ?>" enctype="multipart/form-data" class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
                 <?= qHidden('csrf', $csrf) ?><?= qHidden('action', 'save_section') ?>
@@ -757,7 +797,62 @@ if ($quote) {
             </form>
         </section>
 
+        <!-- ============ DISCOUNT ============ -->
+        <section id="discount" class="scroll-mt-6 rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 class="mb-4 text-lg font-semibold text-slate-900">Discount</h2>
+            <form method="post" action="<?= e($selfUrl) ?>" class="grid grid-cols-1 gap-4 md:grid-cols-[12rem_12rem_auto] md:items-end">
+                <?= qHidden('csrf', $csrf) ?><?= qHidden('action', 'update_discount') ?><?= qHidden('quotation_id', $qid) ?>
+                <div>
+                    <label for="disc_type" class="mb-1 block text-sm font-medium text-slate-700">Type</label>
+                    <select id="disc_type" name="discount_type" class="<?= $inputCls ?>">
+                        <option value="none"    <?= $discountType === 'none'    ? 'selected' : '' ?>>No discount</option>
+                        <option value="percent" <?= $discountType === 'percent' ? 'selected' : '' ?>>Percent (%)</option>
+                        <option value="fixed"   <?= $discountType === 'fixed'   ? 'selected' : '' ?>>Fixed amount (₱)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="disc_value" id="disc_value_lbl" class="mb-1 block text-sm font-medium text-slate-700">Value</label>
+                    <input id="disc_value" name="discount_value" type="number" step="0.01" min="0"
+                           value="<?= $discountType === 'none' ? '' : e($discountValue) ?>" class="<?= $inputCls ?>">
+                </div>
+                <button class="<?= $btnCls ?>">Save discount</button>
+            </form>
+
+            <dl class="mt-5 ml-auto max-w-sm space-y-1 text-sm">
+                <div class="flex justify-between text-slate-600">
+                    <dt>Subtotal</dt><dd class="tabular-nums"><?= peso($subtotal) ?></dd>
+                </div>
+                <div class="flex justify-between text-red-700">
+                    <dt>Discount<?= $discountType === 'percent' ? ' (' . e(qFmtMeas($discountValue)) . '%)' : '' ?></dt>
+                    <dd class="tabular-nums">- <?= peso($discountAmt) ?></dd>
+                </div>
+                <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold text-slate-900">
+                    <dt>Grand total</dt><dd class="tabular-nums"><?= peso($grandTotal) ?></dd>
+                </div>
+            </dl>
+            <p class="mt-3 text-xs text-slate-500">The discount applies to the whole quotation, not per item. It is shown on the PDF before the Grand Total.</p>
+        </section>
+
     </main>
+
+    <script>
+        /* ───────────── Discount form ───────────── */
+        (function () {
+            const type = document.getElementById('disc_type');
+            const val = document.getElementById('disc_value');
+            const lbl = document.getElementById('disc_value_lbl');
+            if (!type) return;
+            function sync() {
+                const none = type.value === 'none';
+                val.disabled = none;
+                if (none) val.value = '';
+                val.max = type.value === 'percent' ? '100' : '';
+                lbl.textContent = type.value === 'percent' ? 'Value (%)' : type.value === 'fixed' ? 'Value (₱)' : 'Value';
+            }
+            type.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
 
     <script>
         /* ───────────── Modals (native <dialog>) ───────────── */
@@ -800,32 +895,36 @@ if ($quote) {
 
             function updateMain(f) {
                 const unit = f.elements.unit.value;
+                const isPc = unit === 'pc.';
                 const rate = parseFloat(unit === 'sqm.' ? f.dataset.rateSqm : f.dataset.rateLm) || 0;
                 const a = val(f, 'dim_a'), b = val(f, 'dim_b'), ov = val(f, 'measurement'), qty = val(f, 'qty');
 
-                // pc. = flat price per piece (drawer / sink): walang dimensions, labor = labor per piece × qty
-                const isPc = unit === 'pc.';
+                const laborRaw = f.elements.labor_amount.value;
+                f.elements.labor_amount.placeholder = isPc ? '0' : 'default: ' + rate;
+
                 f.querySelector('[data-dims-wrap]').classList.toggle('hidden', isPc);
                 f.querySelector('[data-ov-wrap]').classList.toggle('hidden', isPc);
-                f.querySelector('[data-labor-wrap]').classList.toggle('hidden', !isPc);
                 f.querySelector('[data-mat-lbl]').textContent = isPc
                     ? 'Price per piece (× qty)'
                     : 'Materials cost per unit (× measurement × qty)';
+                f.querySelector('[data-labor-lbl]').textContent = isPc ? 'Labor per piece (× qty)' : 'Labor rate per unit (× measurement × qty)';
                 f.querySelector('[data-b-wrap]').classList.toggle('hidden', unit !== 'sqm.');
-                if (isPc) {
-                    const labPc = qty * val(f, 'labor_amount');
-                    f.querySelector('[data-preview]').textContent =
-                        'Materials ' + peso(qty * val(f, 'material_cost')) + ' (price × qty), labor ' + peso(labPc) + ' (labor × qty)';
-                    return;
-                }
 
-                let m = ov > 0 ? ov : (unit === 'sqm.' ? a * b / 1e6 : a / 1000);
-                m = Math.round(m * 1e4) / 1e4;
-                const labor = m * qty * rate;
-                const mat = m * qty * val(f, 'material_cost');
+                let m = 1;
+                if (!isPc) {
+                    m = ov > 0 ? ov : (unit === 'sqm.' ? a * b / 1e6 : a / 1000);
+                    m = Math.round(m * 1e4) / 1e4;
+                    if (m <= 0) {
+                        f.querySelector('[data-preview]').textContent = 'Enter the dimensions or a measurement to see the materials and labor.';
+                        return;
+                    }
+                }
+                const factor = m * qty;
+                const mat = factor * val(f, 'material_cost');
+                const labor = factor * (laborRaw !== '' ? (parseFloat(laborRaw) || 0) : (isPc ? 0 : rate));
                 f.querySelector('[data-preview]').textContent =
-                    m > 0 ? 'Measurement ' + m + ' ' + unit + ', materials ' + peso(mat) + ', labor ' + peso(labor)
-                          : 'Enter the dimensions or a measurement to see the materials and labor.';
+                    (isPc ? '' : 'Measurement ' + m + ' ' + unit + ', ') +
+                    'materials ' + peso(mat) + ', labor ' + peso(labor) + ', total ' + peso(mat + labor);
             }
 
             function updateAcc(f) {
@@ -1047,6 +1146,14 @@ if ($quote) {
 
                 bLabel.textContent = 'Width (mm)';
 
+                // Remember the selections so Edit can restore them
+                if (f.elements.pl_meta) {
+                    f.elements.pl_meta.value = cat ? JSON.stringify({
+                        cat, group: q(box, 'group').value, row: q(box, 'row').value, carcass: code,
+                        depth: q(box, 'depth').value, height: q(box, 'height').value, markup: q(box, 'markup').value
+                    }) : '';
+                }
+
                 // ── Drawer / Sink: flat price + labor per piece, qty ang magmu-multiply ──
                 if (isFlat(box)) {
                     const item = flatItem(box);
@@ -1135,19 +1242,54 @@ if ($quote) {
                 f.dispatchEvent(new Event('input', { bubbles: true }));   // i-refresh ang labor preview
             }
 
+            // Ibalik ang dating napili (galing sa Edit) nang hindi ginagalaw ang mga field ng item
+            async function restore(box) {
+                let saved;
+                try { saved = JSON.parse(box.dataset.saved || ''); } catch (err) { return; }
+                if (!saved || !saved.cat) return;
+                const f = box.closest('form');
+                const names = ['unit', 'dim_a', 'dim_b', 'measurement', 'material_cost', 'labor_amount', 'description'];
+                const snap = {};
+                names.forEach(n => snap[n] = f.elements[n].value);
+
+                q(box, 'cat').value = saved.cat;
+                await onCat(box);
+                q(box, 'group').value = saved.group || '';
+                onGroup(box);
+                q(box, 'row').value = saved.row || '';
+                onRow(box);
+                q(box, 'carcass').value = saved.carcass || '';
+                q(box, 'depth').value = saved.depth || '';
+                q(box, 'height').value = saved.height || '';
+                if (saved.markup !== '' && saved.markup != null) q(box, 'markup').value = saved.markup;
+                apply(box);
+
+                // apply() may recompute the fields, so put back what was saved
+                names.forEach(n => f.elements[n].value = snap[n]);
+                f.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
             // I-load lang ang price list kapag unang beses binuksan ang box
-            document.addEventListener('toggle', async e => {
-                const box = e.target;
-                if (!box.matches || !box.matches('details[data-plbox]') || !box.open || box._ready) return;
+            async function initBox(box) {
+                if (box._ready) return;
                 box._ready = true;
                 try {
                     const meta = await getMeta();
                     fill(q(box, 'cat'), Object.entries(meta).map(([k, c]) => ({ v: k, t: c.label })), 'Select product');
+                    await restore(box);
                 } catch (err) {
                     box._ready = false;
                     box.querySelector('[data-pl-result]').textContent = 'Could not load the price list. Try again.';
                 }
+            }
+
+            document.addEventListener('toggle', e => {
+                const box = e.target;
+                if (box.matches && box.matches('details[data-plbox]') && box.open) initBox(box);
             }, true);
+
+            // Edit mode: bukas na agad ang price list box kapag may naka-save
+            document.querySelectorAll('details[data-plbox][open]').forEach(initBox);
 
             document.addEventListener('change', async e => {
                 const t = e.target;
@@ -1191,6 +1333,8 @@ if ($quote) {
                     f.dispatchEvent(new Event('input', { bubbles: true }));
                 }
                 box.querySelector('[data-pl-result]').textContent = HINT;
+                if (f.elements.pl_meta) f.elements.pl_meta.value = '';
+                box.dataset.saved = '';
             });
         })();
     </script>

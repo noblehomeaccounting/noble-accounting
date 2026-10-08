@@ -98,13 +98,15 @@ function qRecalcSection(mysqli $conn, int $sid, array $rates): void
         $price = (float) $it['unit_price'];
 
         if ($it['item_type'] === 'main') {
-            // Materials cost is a rate per unit (lm. or sqm.), so it is multiplied by the measurement.
+            // Materials rate x measurement x qty
             $mat = $price * $meas * $qty;
-            if ($it['unit'] === 'pc.') {
-                // flat per piece (drawer): labor = labor_amount x qty
-                $lab = $it['labor_type'] === 'fixed' ? (float) $it['labor_amount'] * $qty : 0;
+            if ($it['labor_type'] === 'fixed') {
+                // Labor rate typed by the user: labor x measurement x qty
+                // (pc. items have measurement = 1, so it is labor x qty)
+                $lab = (float) $it['labor_amount'] * $meas * $qty;
             } else {
-                $lab = isset($rates[$it['unit']]) ? $meas * $qty * $rates[$it['unit']] : 0;  // rate follows the item's unit
+                // Old items (labor_type = 'auto'): follow the quotation rate
+                $lab = isset($rates[$it['unit']]) ? $meas * $qty * $rates[$it['unit']] : 0;
             }
         } else {
             $base = $it['uses_measurement'] ? $meas : 1;
@@ -133,6 +135,20 @@ function qRecalcQuotation(mysqli $conn, int $qid, array $rates): void
     foreach (qRows($conn, 'SELECT id FROM noblecrm_quotation_sections WHERE quotation_id = ?', 'i', [$qid]) as $s) {
         qRecalcSection($conn, (int) $s['id'], $rates);
     }
+}
+
+// Discount amount of a quotation (never more than the subtotal)
+function qDiscountAmount(float $subtotal, ?string $type, $value): float
+{
+    $v = max(0.0, (float) $value);
+    if ($type === 'percent') {
+        $d = $subtotal * min($v, 100) / 100;
+    } elseif ($type === 'fixed') {
+        $d = min($v, $subtotal);
+    } else {
+        $d = 0.0;
+    }
+    return round($d, 2);
 }
 
 function qOwnsSection(mysqli $conn, int $sid, int $qid): bool
