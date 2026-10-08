@@ -1,6 +1,6 @@
 <?php
 // 2d-and-quotation.php  — INITIAL step (walang contract dito; nasa Final na)
-// MULTI-ATTACHMENT VERSION
+// MULTI-ATTACHMENT VERSION + CUSTOMER REVIEW step
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -196,6 +196,8 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
             <script>
                 const Q2D_AJAX_URL = <?= json_encode(BASE_URL . '/crm2dquotationajax') ?>;
                 const Q2D_FINAL_URL = <?= json_encode(BASE_URL . '/crm2dquotationfinal?id=' . $inquiryId) ?>;
+                // ⚠️ Palitan kung iba ang route ng customer review page mo
+                const Q2D_CUSTOMER_URL = <?= json_encode(BASE_URL . '/crm2dcustomerreview?id=' . $inquiryId) ?>;
                 const Q2D_INQUIRY_ID = <?= (int) $inquiryId ?>;
                 const Q2D_IS_SALES = <?= json_encode($isSales) ?>;
 
@@ -390,11 +392,12 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 `;
                 }
 
-                function q2dRevisionRemarksBox(remarks) {
+                // fromCustomer = true → ang remarks ay galing sa customer, hindi sa Designer Head.
+                function q2dRevisionRemarksBox(remarks, fromCustomer) {
                     if (!remarks) return '';
                     return `
                     <div class="border-l-4 border-red-700 bg-red-50 px-3 py-2 mb-3">
-                        <p class="text-[10px] font-semibold uppercase tracking-wide text-red-700 mb-0.5">Revision Remarks</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-red-700 mb-0.5">${fromCustomer ? 'Customer Revision Remarks' : 'Revision Remarks'}</p>
                         <p class="text-xs text-red-800">${q2dEscapeHtml(remarks).replace(/\n/g, '<br>')}</p>
                     </div>
                 `;
@@ -444,7 +447,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
     `;
                 }
 
-                function q2dRenderCompletedView(completedEntry, design3d) {
+                function q2dRenderCompletedView(completedEntry, design3d, state) {
                     const reviewedLine = completedEntry.reviewed_at
                         ? `<p class="text-xs text-gray-400">Reviewed ${q2dEscapeHtml(completedEntry.reviewed_at)}</p>`
                         : '';
@@ -464,6 +467,17 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         columns.push({ label: '3D File', slot: '3d', contentHtml: q2dSlotDoneView(design3d, false, '3d') });
                     }
 
+                    let note;
+                    if (!twoD.done) {
+                        note = 'Cutting flagged an issue with the 2D file — update the files below.';
+                    } else if (state && state.customer_approved) {
+                        note = 'All files have been approved by the customer. No further action is needed here.';
+                    } else if (state && state.ready_for_customer) {
+                        note = 'All files are approved by the Designer Head. Waiting for the customer\'s decision.';
+                    } else {
+                        note = 'Both files have been approved. No further action is needed.';
+                    }
+
                     return `
         <div class="flex items-center justify-between border-l-4 border-[#0B2540] bg-gray-50 px-4 py-2.5 mb-6">
             <div>
@@ -474,9 +488,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 ${reviewedLine}
             </div>
         </div>
-        <p class="text-sm text-gray-500 italic mb-6">
-            ${twoD.done ? 'Both files have been approved. No further action is needed.' : 'Cutting flagged an issue with the 2D file — update the files below.'}
-        </p>
+        <p class="text-sm text-gray-500 italic mb-6">${note}</p>
         ${q2dFileTable(columns)}
     `;
                 }
@@ -549,36 +561,56 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 }
 
                 function q2dRenderRevisionOrFreshSlots(revisionEntry) {
-                    const headerBlock = revisionEntry ? `
+                    const fromCustomer = !!(revisionEntry && revisionEntry.source === 'Customer');
+                    const include3d = !!(revisionEntry && revisionEntry.include_3d);
+
+                    let headerBlock;
+                    if (revisionEntry) {
+                        const needs = [];
+                        if (revisionEntry.design_2d_needs_revision) needs.push('2D');
+                        if (revisionEntry.quotation_needs_revision) needs.push('Quotation');
+                        if (include3d && revisionEntry.design_3d_needs_revision) needs.push('3D');
+
+                        headerBlock = `
                     ${q2dSectionLabel('Re-upload Files')}
                     <p class="text-sm text-gray-500 italic mb-6">
-                        ${revisionEntry.design_2d_needs_revision && revisionEntry.quotation_needs_revision
-                        ? 'Both the 2D and Quotation files need revision. Attach the corrected PDFs below.'
-                        : revisionEntry.design_2d_needs_revision
-                            ? 'Only the 2D file needs revision. The Quotation file was already approved and does not need to be re-uploaded.'
-                            : 'Only the Quotation file needs revision. The 2D file was already approved and does not need to be re-uploaded.'}
+                        ${fromCustomer ? 'The customer requested changes. ' : ''}Needs revision: <strong>${needs.join(', ') || '—'}</strong>.
+                        Attach the corrected file(s) below. Files that were already approved do not need to be re-uploaded.
                     </p>
-                ` : `
+                `;
+                    } else {
+                        headerBlock = `
                     ${q2dSectionLabel('No Active Submission')}
                     <p class="text-sm text-gray-500 italic mb-6">
                         No 2D and Quotation files have been submitted yet for this inquiry. Attach one or more PDFs below to start.
                     </p>
                 `;
+                    }
 
                     const twoDInner = (revisionEntry && !revisionEntry.design_2d_needs_revision)
                         ? q2dApprovedNoReuploadView(revisionEntry.design_2d, '2d')
-                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.design_2d.remarks) : ''}${q2dSlotUploadView('2d', [])}`;
+                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.design_2d.remarks, fromCustomer) : ''}${q2dSlotUploadView('2d', [])}`;
 
                     const quotInner = (revisionEntry && !revisionEntry.quotation_needs_revision)
                         ? q2dApprovedNoReuploadView(revisionEntry.quotation, 'quotation')
-                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.quotation.remarks) : ''}${q2dSlotUploadView('quotation', [])}`;
+                        : `${revisionEntry ? q2dRevisionRemarksBox(revisionEntry.quotation.remarks, fromCustomer) : ''}${q2dSlotUploadView('quotation', [])}`;
+
+                    const columns = [
+                        { label: '2D File', slot: '2d', contentHtml: twoDInner },
+                        { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
+                    ];
+
+                    // 3D na kasama sa main submission — makikita rin dito kung kailangan ng revision.
+                    if (include3d) {
+                        const threeDInner = revisionEntry.design_3d_needs_revision
+                            ? `${q2dRevisionRemarksBox(revisionEntry.design_3d.remarks, fromCustomer)}${q2dSlotUploadView('3d', [])}`
+                            : q2dApprovedNoReuploadView(revisionEntry.design_3d, '3d');
+                        columns.push({ label: '3D File', slot: '3d', contentHtml: threeDInner });
+                    }
 
                     return `
         ${headerBlock}
-        ${q2dFileTable([
-                    { label: '2D File', slot: '2d', contentHtml: twoDInner },
-                    { label: 'Quotation File', slot: 'quotation', contentHtml: quotInner },
-                ])}
+        ${q2dFileTable(columns)}
     `;
                 }
 
@@ -664,6 +696,11 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                             ? `${entry.design_2d_remarks ? `<p class="mb-1"><span class="font-semibold text-gray-700">2D:</span> ${q2dEscapeHtml(entry.design_2d_remarks).replace(/\n/g, '<br>')}</p>` : ''}${entry.quotation_remarks ? `<p><span class="font-semibold text-gray-700">Quotation:</span> ${q2dEscapeHtml(entry.quotation_remarks).replace(/\n/g, '<br>')}</p>` : ''}`
                             : (entry.remarks ? q2dEscapeHtml(entry.remarks).replace(/\n/g, '<br>') : '—');
 
+                        // Kung customer ang nag-reject ng submission na ito, ipakita sa Result cell.
+                        const customerTag = (entry.status === 'For Revision' && entry.revision_source === 'Customer')
+                            ? `<span class="block text-[10px] font-semibold uppercase text-red-700 mt-0.5">By Customer</span>`
+                            : '';
+
                         for (let i = 0; i < rowCount; i++) {
                             const isFirst = i === 0;
                             // Makapal na border sa taas ng bawat bagong submission entry (maliban sa una)
@@ -686,6 +723,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                                     <span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide ${entry.status_class}">
                                         ${q2dIsApproved(entry.status_label) ? q2dApprovedIcon() : ''}${q2dEscapeHtml(entry.status_label)}
                                     </span>
+                                    ${customerTag}
                                     ${entry.is_late ? `<span class="block text-[10px] font-semibold uppercase text-red-700 mt-0.5">Late Submission</span>` : ''}
                                 </td>
                                 <td rowspan="${rowCount}" class="align-top px-4 py-2 text-gray-600 text-xs ${groupTop}">${remarksCell}</td>
@@ -739,8 +777,9 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
         ${q2dFileTable([{ label: '3D File', slot: '3d', contentHtml: q2dSlotDoneView(design3d, false, '3d') }])}
     `;
                     } else {
+                        // Stage 'For Revision' ay galing sa Designer Head O sa Customer — iisa ang remarks column.
                         const remarksBox = (stage === 'For Revision' && design3d.remarks)
-                            ? q2dRevisionRemarksBox(design3d.remarks) : '';
+                            ? q2dRevisionRemarksBox(design3d.remarks, false) : '';
                         const uploadInner = design3d.done
                             ? q2dSlotDoneView(design3d, true, '3d')
                             : q2dSlotUploadView('3d', design3d.files);
@@ -799,102 +838,88 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 `;
                 }
 
-                function q2dRenderStep1(step1, isSales) {
+                // 2D DESIGN PROGRESS — tracker lang (0 / 50 / 100%). HINDI na ito gate:
+                // pwedeng mag-upload at mag-submit ng 2D & Quotation kahit anong progress.
+                // Ang customer check ay nasa Customer Review step, pagkatapos lang ma-approve ng Designer Head.
+                function q2dRenderProgress(step1, isSales, submitted) {
                     const steps = [
                         { value: '0', label: '0%' },
                         { value: '50', label: '50%' },
                         { value: '100', label: '100%' },
                     ];
+                    const pct = Number(step1.progress) || 0;
+                    // read-only: Sales, ready_for_quotation, o kapag naisumite na ang 2D & Quotation (Waiting / Approved)
+                    const readOnly = isSales || step1.auto_confirmed || !!submitted;
 
-                    // SALES: view-only — progress bar, walang clickable buttons
-                    if (isSales) {
-                        const pct = Number(step1.progress) || 0;
+                    const hint = submitted
+                        ? 'The 2D & Quotation has been submitted, so the progress is now locked.'
+                        : readOnly
+                        ? 'Current progress of the 2D design. Only the assigned designer can update this.'
+                        : 'Update how far along the 2D design is. This is only a tracker — you can upload and submit the files for approval any time.';
 
-                        return `
-            ${q2dSectionLabel('Design Progress')}
-            <p class="text-sm text-gray-500 italic mb-5">
-                Current design progress. Only the assigned designer can update this and confirm customer approval.
-            </p>
-
+                    const bar = `
             <div class="mb-1 flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">Progress</span>
                 <span class="text-lg font-bold text-[#0B2540]">${pct}%</span>
             </div>
-
             <div class="relative h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                 <div class="h-full bg-gradient-to-r from-[#0B2540] to-[#1d4d85] rounded-full transition-all duration-500"
                     style="width: ${pct}%;"></div>
-            </div>
+            </div>`;
 
+                    const controls = readOnly ? `
             <div class="flex justify-between mt-2 px-0.5">
-                <span class="text-[11px] font-medium ${pct >= 0 ? 'text-[#0B2540]' : 'text-gray-400'}">0%</span>
+                <span class="text-[11px] font-medium text-[#0B2540]">0%</span>
                 <span class="text-[11px] font-medium ${pct >= 50 ? 'text-[#0B2540]' : 'text-gray-400'}">50%</span>
                 <span class="text-[11px] font-medium ${pct >= 100 ? 'text-[#0B2540]' : 'text-gray-400'}">100%</span>
-            </div>
-        `;
-                    }
-
-                    // DESIGNER: editable
-                    const buttons = steps.map(s => {
-                        const active = step1.progress === s.value;
-                        return `
-            <button type="button" onclick="q2dSaveProgress('${s.value}')"
-                class="flex-1 px-4 py-3 text-sm font-semibold uppercase tracking-wide border transition-colors
-                ${active ? 'bg-[#0B2540] text-white border-[#0B2540]' : 'bg-white text-gray-600 border-gray-400 hover:bg-gray-50'}">
-                ${s.label}
-            </button>
-        `;
-                    }).join('');
-
-                    const canConfirm = step1.progress === '100';
+            </div>` : `
+            <div class="flex gap-2 mt-3">
+                ${steps.map(s => `
+                    <button type="button" onclick="q2dSaveProgress('${s.value}')"
+                        class="flex-1 px-4 py-2 text-sm font-semibold uppercase tracking-wide border transition-colors
+                        ${step1.progress === s.value ? 'bg-[#0B2540] text-white border-[#0B2540]' : 'bg-white text-gray-600 border-gray-400 hover:bg-gray-50'}">
+                        ${s.label}
+                    </button>`).join('')}
+            </div>`;
 
                     return `
-        ${q2dSectionLabel('Design Progress')}
-        <p class="text-sm text-gray-500 italic mb-4">
-            Update the progress below. The 2D &amp; Quotation step unlocks once the design is confirmed by the customer.
-        </p>
-        <div class="flex gap-2 mb-5">${buttons}</div>
-        <div class="pt-3 border-t border-gray-300 flex items-center justify-end gap-3">
-            ${!canConfirm ? `<p class="text-xs text-gray-400">Progress must reach 100% first.</p>` : ''}
-            <button type="button" onclick="q2dConfirmCustomer()" ${canConfirm ? '' : 'disabled'}
-                class="px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-[#0B2540] hover:bg-[#123564] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
-                Confirm Customer Approval
-            </button>
-        </div>
+        ${q2dSectionLabel('2D Design Progress')}
+        <p class="text-sm text-gray-500 italic mb-4">${hint}</p>
+        ${bar}
+        ${controls}
+        <div class="mb-8"></div>
     `;
                 }
 
-
-                function q2dRenderStep1ConfirmedBadge(step1) {
-                    return `
-        <div class="flex items-center justify-between border-l-4 border-[#0B2540] bg-gray-50 px-4 py-2.5 mb-6">
-            <p class="text-sm text-gray-800">
-                <strong class="uppercase tracking-wide text-[11px]">Design Status:</strong>
-                <span class="inline-block text-[9px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 ml-1 text-white bg-green-600 rounded-2xl">Client Review & Approval</span>
-            </p>
-            ${step1.confirmed_at ? `<p class="text-xs text-gray-400">${q2dEscapeHtml(step1.confirmed_at)} by ${q2dEscapeHtml(step1.confirmed_by_name)}</p>` : ''}
-        </div>
-    `;
-                }
-
+                // Pagkatapos ma-approve ng Designer Head ang lahat:
+                //   1) Waiting for Customer → button papunta sa Customer Review page
+                //   2) Customer Approved    → Proceed to Final / View Final
                 function q2dRenderProceedToFinal(state) {
-                    const done = state.completed_entry;
-                    if (!done || !done.design_2d.done) return '';
+                    if (!state.ready_for_customer) return '';
 
-                    const d3 = state.design_3d;
-                    if (d3 && !d3.include_3d && d3.stage !== 'Approved') return '';
-
+                    if (!state.customer_approved) {
+                        return `
+    <div class="pt-4 mt-2 border-t border-gray-300 flex items-center justify-end gap-3">
+        <span class="inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-amber-700 text-amber-700">Waiting for Customer</span>
+        <a href="${Q2D_CUSTOMER_URL}"
+            class="px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-amber-600 hover:bg-amber-700 transition-colors">
+            Customer Review
+        </a>
+    </div>
+`;
+                    }
 
                     const hasFinal = !!state.has_final;
 
                     return `
     <div class="pt-4 mt-2 border-t border-gray-300 flex items-center justify-end gap-3">
-        <p class="text-xs text-gray-500">${hasFinal ? 'Final submission already created.' : 'All Initial files are approved.'}</p>
+        <span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 text-green-800">${q2dApprovedIcon()}Customer Approved</span>
+        <p class="text-xs text-gray-500">${hasFinal ? 'Final submission already created.' : 'All Initial files are approved by the customer.'}</p>
         <a href="${Q2D_FINAL_URL}"
             class="px-5 py-2 text-sm font-semibold uppercase tracking-wide transition-colors
             ${hasFinal
-                        ? 'text-green-900 bg-white border border-green-900 hover:bg-green-50'
-                        : 'text-white bg-green-900 hover:bg-green-800'}">
+                            ? 'text-green-900 bg-white border border-green-900 hover:bg-green-50'
+                            : 'text-white bg-green-900 hover:bg-green-800'}">
             ${hasFinal ? 'View Final' : 'Proceed to Final Submission'}
         </a>
     </div>
@@ -904,17 +929,11 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 function q2dRenderRoot(state) {
                     const root = document.getElementById('q2dRoot');
 
-                    if (!state.step1 || !state.step1.confirmed) {
-                        root.innerHTML = q2dInquirySummary(state.inquiry)
-                            + q2dRenderCuttingFeedback(state.cutting_feedback)
-                            + q2dRenderStep1(state.step1, state.is_sales);
-                        return;
-                    }
-
                     const design3d = state.design_3d;
 
                     let body = q2dInquirySummary(state.inquiry);
-                    body += q2dRenderStep1ConfirmedBadge(state.step1);
+                    const progressLocked = !!((state.active_draft && state.active_draft.is_locked) || state.completed_entry);
+                    body += q2dRenderProgress(state.step1, state.is_sales, progressLocked);
                     body += q2dRenderCuttingFeedback(state.cutting_feedback);
                     body += q2dRenderToggle(design3d);
 
@@ -923,7 +942,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         body += q2dRenderActiveDraftSlots(state.active_draft, design3d);
                         body += q2dRenderSubmitBar(state.active_draft, design3d);
                     } else if (state.completed_entry) {
-                        body += q2dRenderCompletedView(state.completed_entry, design3d);
+                        body += q2dRenderCompletedView(state.completed_entry, design3d, state);
                         body += q2dRender3dStandaloneSection(design3d);
                     } else {
                         body += q2dRenderRevisionOrFreshSlots(state.revision_entry);
@@ -1071,7 +1090,8 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         const signature = JSON.stringify(data.step1) + JSON.stringify(data.active_draft) + JSON.stringify(data.completed_entry)
                             + JSON.stringify(data.revision_entry) + JSON.stringify(data.past_entries)
                             + JSON.stringify(data.design_3d) + JSON.stringify(data.cutting_feedback)
-                            + JSON.stringify(data.has_final);
+                            + JSON.stringify(data.has_final)
+                            + JSON.stringify(data.ready_for_customer) + JSON.stringify(data.customer_approved);
                         if (signature !== q2dLastSignature) {
                             q2dRenderRoot(data);
                             q2dLastSignature = signature;
@@ -1150,30 +1170,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         await q2dFetchState();
                     } catch (e) {
                         console.error('q2dSaveProgress:', e);
-                        crmShowToast('Connection error. Please try again.', 'error');
-                    }
-                }
-
-                // staff marks the design as confirmed by the customer.
-                async function q2dConfirmCustomer() {
-                    const formData = new FormData();
-                    formData.append('action', 'confirm_customer');
-                    formData.append('inquiry_id', Q2D_INQUIRY_ID);
-
-                    try {
-                        const res = await fetch(Q2D_AJAX_URL, { method: 'POST', body: formData });
-                        const data = await res.json();
-
-                        if (!data.success) {
-                            crmShowToast(data.message || 'Something went wrong.', 'error');
-                            return;
-                        }
-
-                        q2dLastSignature = '';
-                        crmShowToast(data.message || 'Confirmed.');
-                        await q2dFetchState();
-                    } catch (e) {
-                        console.error('q2dConfirmCustomer:', e);
                         crmShowToast('Connection error. Please try again.', 'error');
                     }
                 }

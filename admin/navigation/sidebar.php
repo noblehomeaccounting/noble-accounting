@@ -39,6 +39,17 @@ if ($sessionBranch !== '') {
     $branchCheckStmt->close();
 }
 
+// Bilang ng pending na inquiry ng sales user (para sa badge ng CRM List)
+$crmPendingCount = 0;
+if ($role === ROLE_SALES) {
+    $pendStmt = $conn->prepare("SELECT COUNT(*) FROM noblecrminquiry WHERE sales_staff_id = ? AND status = 'Pending'");
+    $pendStmt->bind_param("i", $user_id);
+    $pendStmt->execute();
+    $pendStmt->bind_result($crmPendingCount);
+    $pendStmt->fetch();
+    $pendStmt->close();
+}
+
 $roleColors = [
     ROLE_IT => '#2563EB', // blue
     ROLE_DESIGNER => '#0D9488', // teal
@@ -54,30 +65,32 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 ?>
 
 <style>
-    nav {
-        scrollbar-width: thin;
-        /* Firefox */
-        scrollbar-color: #d1d5db transparent;
-        /* thumb / track */
-    }
+ nav,
+#sidebar-notif-list {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
 
-    nav::-webkit-scrollbar {
-        width: 4px;
-        /* Chrome/Edge/Safari */
-    }
+nav::-webkit-scrollbar,
+#sidebar-notif-list::-webkit-scrollbar {
+    width: 4px;
+}
 
-    nav::-webkit-scrollbar-track {
-        background: transparent;
-    }
+nav::-webkit-scrollbar-track,
+#sidebar-notif-list::-webkit-scrollbar-track {
+    background: transparent;
+}
 
-    nav::-webkit-scrollbar-thumb {
-        background-color: #d1d5db;
-        border-radius: 9999px;
-    }
+nav::-webkit-scrollbar-thumb,
+#sidebar-notif-list::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 9999px;
+}
 
-    nav::-webkit-scrollbar-thumb:hover {
-        background-color: #9ca3af;
-    }
+nav::-webkit-scrollbar-thumb:hover,
+#sidebar-notif-list::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+}
 
     /* ── Sidebar Desktop Transition ─────────────────────────── */
     #sidebar {
@@ -342,13 +355,13 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     <span class="sidebar-label">Cash Voucher Request</span>
                 </a>
 
-                 <a href="<?= BASE_URL ?>/projectmonitor" data-tooltip="Project Monitor"
+                <a href="<?= BASE_URL ?>/projectmonitor" data-tooltip="Project Monitor"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/projectmonitor') ?>">
                     <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Project Monitor</span>
                 </a>
 
-                 <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
+                <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
                     class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
                     <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Approval Cash Voucher</span>
@@ -395,7 +408,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Manage</p>
                 </div>
 
-                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
+                <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Cash Voucher Request</span>
@@ -431,7 +444,19 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <a href="<?= BASE_URL ?>/crmsaleslist" data-tooltip="CRM List"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/crmsaleslist') ?>">
                 <i class="fa-solid fa-list-ol w-4 text-center text-sm flex-shrink-0"></i>
-                <span class="sidebar-label">CRM List</span>
+                <span class="sidebar-label flex-1">CRM List</span>
+                <?php if ($crmPendingCount > 0): ?>
+                    <span
+                        class="sidebar-label min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        <?= $crmPendingCount > 99 ? '99+' : (int) $crmPendingCount ?>
+                    </span>
+                <?php endif; ?>
+            </a>
+
+            <a href="<?= BASE_URL ?>/quotation" data-tooltip="Quotation"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/quotation') ?>">
+                <i class="fa-solid fa-file-pen" style="color: rgb(0, 0, 0);"></i>
+                <span class="sidebar-label">Quotation</span>
             </a>
         <?php endif; ?>
 
@@ -457,13 +482,13 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <span class="sidebar-label">CRM Designer</span>
             </a>
 
-               <?php if ($isHead): ?>
-                    <a href="<?= BASE_URL ?>/checkdesignerquotation" data-tooltip="Check Designer Quotation"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/checkdesignerquotation') ?>">
-                        <i class="fa-solid fa-file-pdf" style="color: rgba(0, 0, 0, 1); text-center text-sm flex-shrink-0"></i>
-                        <span class="sidebar-label">Check Designer Quotation</span>
-                    </a>
-                <?php endif; ?>
+            <?php if ($isHead): ?>
+                <a href="<?= BASE_URL ?>/checkdesignerquotation" data-tooltip="Check Designer Quotation"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/checkdesignerquotation') ?>">
+                    <i class="fa-solid fa-file-pdf" style="color: rgba(0, 0, 0, 1); text-center text-sm flex-shrink-0"></i>
+                    <span class="sidebar-label">Check Designer Quotation</span>
+                </a>
+            <?php endif; ?>
 
         <?php endif; ?>
 
@@ -476,7 +501,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 </a>
             <?php endif; ?>
 
-        <a href="<?= BASE_URL ?>/crmewoodapproval" data-tooltip="E-Wood Management"
+            <a href="<?= BASE_URL ?>/crmewoodapproval" data-tooltip="E-Wood Management"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crmewoodapproval') ?>">
                 <i class="fa-solid fa-business-time w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">E-Wood Management</span>
@@ -491,7 +516,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <i class="fa-solid fa-chart-simple w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Monitoring & WorkBench</span>
             </a>
-    
+
 
         <?php endif; ?>
 
@@ -906,8 +931,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 <div id="notif-overlay" onclick="toggleSidebarNotif()" class="hidden fixed inset-0 z-40 bg-black/20"></div>
 
 <div id="notif-panel"
-    class="fixed top-0 z-50 h-screen w-72 bg-white border-r border-gray-100 shadow-xl flex flex-col transition-all duration-300 ease-in-out"
-    style="right: -288px; left: auto; border-r: none; border-left: 1px solid #f3f4f6;">
+    class="fixed top-0 z-50 h-screen bg-white border-r border-gray-100 shadow-xl flex flex-col transition-all duration-300 ease-in-out"
+    style="width: 420px; max-width: 100vw; right: auto; left: -420px; border-left: none;">
 
     <div class="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <div class="flex items-center gap-2">
@@ -1070,7 +1095,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             // Close mobile drawer if open
             closeMobileDrawer();
         } else {
-            panel.style.left = '-288px';
+            panel.style.left = '-420px';
             overlay.classList.add('hidden');
             if (chevron) chevron.classList.remove('rotate-90');
         }

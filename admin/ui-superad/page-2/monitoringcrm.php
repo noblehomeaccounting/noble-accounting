@@ -1,9 +1,7 @@
 <?php
 // monitoringcrm.php
-
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
-
 $allowedRoles = [ROLE_SUPERADMIN];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
@@ -21,95 +19,155 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
     <title>CRM Monitoring</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
+    <style>
+        .mon-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+
+        .mon-scroll::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .mon-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .mon-scroll::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 9999px;
+        }
+
+        .mon-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        .mon-field {
+            width: 100%;
+            font-size: 12px;
+            color: #374151;
+            background: #fff;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 7px 10px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .mon-field:focus {
+            border-color: #d97706;
+            box-shadow: 0 0 0 3px #fef3c7;
+        }
+
+        .mon-label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+
+        .mon-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 2px;
+        }
+
+        .mon-hint {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+    </style>
 </head>
 
-<body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
+<body>
 
-        <div class="max-w-8xl mx-auto">
+    <main class="md:pl-[240px] px-6 py-6">
+        <div class="max-w-6xl mx-auto">
 
             <!-- Header -->
-            <div class="mb-4">
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <div class="min-w-0">
-                        <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management</p>
-                        <h1 class="text-gray-900 text-xl font-semibold">Monitoring</h1>
-                    </div>
+            <div class="mb-5">
+                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management
+                </p>
+                <h1 class="text-gray-900 text-xl font-semibold">CRM Monitoring</h1>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <div class="relative w-full sm:w-80">
+                    <input id="monSearch" type="text" placeholder="Search control no., client, contact"
+                        class="w-full pl-8 pr-8 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
+                    <svg class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                    <button type="button" id="monSearchClear"
+                        class="hidden absolute right-2.5 top-2 text-gray-300 hover:text-gray-500 text-lg leading-none w-4 h-4">&times;</button>
                 </div>
 
-                <!-- Search + Filters -->
-                <div class="flex flex-wrap items-center gap-2">
-                    <div class="relative w-full sm:w-64 min-w-0">
-                        <input id="monSearch" type="text" placeholder="Search control no. / client / contact"
-                            class="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
-                        <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                        </svg>
-                        <button type="button" id="monSearchClear"
-                            class="hidden absolute right-2 top-1.5 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
-                    </div>
+                <button type="button" id="monFilterBtn"
+                    class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border bg-white text-gray-700 border-gray-300 hover:border-amber-500 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 5h18l-7 8v6l-4 2v-8L3 5z" />
+                    </svg>
+                    Filters
+                    <span id="monFilterBadge"
+                        class="hidden bg-amber-600 text-white rounded-full text-[10px] leading-none px-1.5 py-1"></span>
+                </button>
 
-                    <select id="monFilterMode"
-                        class="mon-filter py-1.5 pl-2 pr-6 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600">
-                        <option value="">All Modes</option>
-                        <option value="site_visit">Site Visit</option>
-                        <option value="ready_for_quotation">Ready for Quotation</option>
+                <div class="flex items-center gap-2 ml-auto">
+                    <button type="button" id="monClearAll"
+                        class="hidden text-xs text-gray-500 hover:text-amber-700 font-medium px-2 py-1.5">Clear
+                        all</button>
+                    <select id="fSort" class="mon-field" style="width:auto" title="Sort by">
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="client">Client (A–Z)</option>
+                        <option value="control">Control no.</option>
                     </select>
-
-                    <select id="monFilterClient"
-                        class="mon-filter py-1.5 pl-2 pr-6 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600">
-                        <option value="">All Client Status</option>
-                    </select>
-
-                    <select id="monFilterVisit"
-                        class="mon-filter py-1.5 pl-2 pr-6 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600">
-                        <option value="">All Site Visit Status</option>
-                    </select>
-
-                    <button type="button" id="monFilterReset"
-                        class="hidden text-xs text-amber-700 hover:underline px-1">Clear filters</button>
                 </div>
             </div>
 
-            <!-- Stage filter tabs -->
-            <div id="monTabs" class="flex items-center gap-1.5 mb-4 flex-wrap">
-                <button type="button" data-stage=""
-                    class="mon-tab px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5">
-                    All
-                    <span class="mon-tab-count inline-flex items-center justify-center min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[10px] font-bold bg-black/10">0</span>
-                </button>
-                <button type="button" data-stage="in_progress"
-                    class="mon-tab px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5">
-                    In Progress
-                    <span class="mon-tab-count inline-flex items-center justify-center min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[10px] font-bold bg-black/10">0</span>
-                </button>
-                <button type="button" data-stage="for_revision"
-                    class="mon-tab px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5">
-                    For Revision
-                    <span class="mon-tab-count inline-flex items-center justify-center min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[10px] font-bold bg-black/10">0</span>
-                </button>
-                <button type="button" data-stage="completed"
-                    class="mon-tab px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5">
-                    Fully Approved
-                    <span class="mon-tab-count inline-flex items-center justify-center min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[10px] font-bold bg-black/10">0</span>
-                </button>
+            <!-- Quick filters -->
+            <div class="flex flex-wrap items-center gap-1.5 mb-3">
+                <span class="mon-hint mr-1">Quick:</span>
+                <div id="monPresets" class="flex flex-wrap gap-1.5"></div>
             </div>
 
-            <!-- Table Card -->
+            <!-- Active filter pills -->
+            <div id="monPills" class="flex-wrap items-center gap-1.5 mb-3" style="display:none"></div>
+
+            <!-- Table: header 40px + 5 rows x 44px = 260px, the rest scrolls -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr class="bg-gray-50 border-b border-gray-200 text-left text-[10px] uppercase tracking-wide text-gray-500">
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Control No.</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Client</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Contact</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Mode</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Client Status</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Site Visit Status</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Current Stage</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Last Updated</th>
-                                <th class="px-4 py-2.5 font-semibold text-right whitespace-nowrap">Action</th>
+                <div class="mon-scroll overflow-auto" style="max-height: 260px;">
+                    <table class="w-full text-xs">
+                        <thead class="sticky top-0 z-10">
+                            <tr class="h-10 text-left text-[11px] uppercase tracking-wide text-gray-500">
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Control No.</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Client</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Contact No.</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Project</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Current Status</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Sales</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Designer</th>
+                                <th class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200">
+                                    Date Filed</th>
+                                <th
+                                    class="px-5 font-semibold whitespace-nowrap bg-gray-50 border-b border-gray-200 text-right">
+                                    Action</th>
                             </tr>
                         </thead>
                         <tbody id="monTbody" class="divide-y divide-gray-100"></tbody>
@@ -118,353 +176,577 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             </div>
 
             <p id="monCount" class="text-[11px] text-gray-400 mt-2.5"></p>
-        </div>
 
-        <!-- Toast container -->
-        <div id="crmToastContainer"
-            class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
-        </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+                <?php include ROOT_PATH . '/admin/ui-superad/page-2/monitoringcontain1.php'; ?>
+                <?php include ROOT_PATH . '/admin/ui-superad/page-2/monitoringcontain2.php'; ?>
+            </div>
 
+        </div>
     </main>
 
+    <!-- Filter modal -->
+    <div id="monModal" class="items-center justify-center p-4"
+        style="display:none; position:fixed; inset:0; z-index:9999;" role="dialog" aria-modal="true"
+        aria-labelledby="monModalTitle">
+        <div id="monModalBackdrop" class="absolute inset-0 bg-gray-900/40"></div>
+
+        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-3xl flex flex-col" style="max-height: 90vh;">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                    <h2 id="monModalTitle" class="text-gray-900 text-sm font-semibold">Filters</h2>
+                    <p class="mon-hint">Narrow down inquiries by status history and details</p>
+                </div>
+                <button type="button" id="monModalClose"
+                    class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-xl leading-none"
+                    aria-label="Close"><i class="fa-solid fa-circle-xmark" style="color: rgb(0, 0, 0);"></i></button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto mon-scroll">
+
+                <!-- Status history -->
+                <div class="p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+                        <div>
+                            <p class="mon-section-title">Status history</p>
+                            <p class="mon-hint">Show inquiries that have passed through the selected statuses</p>
+                        </div>
+                        <div id="monMatch"
+                            class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-[11px] font-medium">
+                            <button type="button" data-match="any" class="px-3 py-1.5">Any of</button>
+                            <button type="button" data-match="all" class="px-3 py-1.5 border-l border-gray-300">All
+                                of</button>
+                        </div>
+                    </div>
+                    <div id="monStatusList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                    </div>
+                </div>
+
+                <!-- Timing -->
+                <div class="p-5 border-t border-gray-100">
+                    <p class="mon-section-title">Current status &amp; timing</p>
+                    <p class="mon-hint mb-3">Status date: kung kailan nangyari ang napiling status. Kung walang napili,
+                        kahit anong status change sa range.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div><label class="mon-label" for="fCurrent">Current status</label>
+                            <select id="fCurrent" class="mon-field">
+                                <option value="">Any</option>
+                            </select>
+                        </div>
+                        <div><label class="mon-label" for="fSFrom">Status date from</label>
+                            <input id="fSFrom" type="date" class="mon-field">
+                        </div>
+                        <div><label class="mon-label" for="fSTo">Status date to</label>
+                            <input id="fSTo" type="date" class="mon-field">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Details -->
+                <div class="p-5 border-t border-gray-100">
+                    <p class="mon-section-title mb-3">Inquiry details</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div><label class="mon-label" for="fProject">Project</label>
+                            <select id="fProject" class="mon-field">
+                                <option value="">All projects</option>
+                            </select>
+                        </div>
+                        <div><label class="mon-label" for="fSales">Sales</label>
+                            <select id="fSales" class="mon-field">
+                                <option value="">All sales</option>
+                            </select>
+                        </div>
+                        <div><label class="mon-label" for="fDesigner">Designer</label>
+                            <select id="fDesigner" class="mon-field">
+                                <option value="">All designers</option>
+                                <option value="none">Unassigned</option>
+                            </select>
+                        </div>
+                        <div><label class="mon-label" for="fClient">Client status</label>
+                            <select id="fClient" class="mon-field">
+                                <option value="">Any</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="tentative">Tentative</option>
+                                <option value="no">Not proceeding</option>
+                                <option value="none">Not yet contacted</option>
+                            </select>
+                        </div>
+                        <div><label class="mon-label" for="fMode">Mode</label>
+                            <select id="fMode" class="mon-field">
+                                <option value="">Any</option>
+                                <option value="site_visit">Site visit</option>
+                                <option value="ready_for_quotation">Ready for quotation</option>
+                            </select>
+                        </div>
+                        <div><label class="mon-label" for="fFrom">Date filed from</label>
+                            <input id="fFrom" type="date" class="mon-field">
+                        </div>
+                        <div><label class="mon-label" for="fTo">Date filed to</label>
+                            <input id="fTo" type="date" class="mon-field">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div
+                class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl flex items-center justify-between">
+                <button type="button" id="monPanelClear"
+                    class="text-xs text-gray-500 hover:text-amber-700 font-medium">Reset filters</button>
+                <button type="button" id="monModalDone"
+                    class="text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors">Done</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function crmShowToast(message, type = 'success', duration = 4000) {
-            const container = document.getElementById('crmToastContainer');
-            const palette = type === 'success'
-                ? { wrap: 'bg-green-50 border-green-200 text-green-700', icon: 'bg-green-200 text-green-700', symbol: '✓' }
-                : { wrap: 'bg-red-50 border-red-200 text-red-700', icon: 'bg-red-200 text-red-700', symbol: '!' };
-
-            const toast = document.createElement('div');
-            toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm
-                ${palette.wrap}
-                translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
-
-            toast.innerHTML = `
-                <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${palette.icon}">${palette.symbol}</span>
-                <span class="flex-1 leading-relaxed">${message}</span>
-                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>
-            `;
-            container.appendChild(toast);
-            requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
-            const remove = () => {
-                toast.classList.add('translate-x-6', 'opacity-0', 'scale-95');
-                setTimeout(() => toast.remove(), 300);
-            };
-            toast.querySelector('button').addEventListener('click', remove);
-            if (duration > 0) setTimeout(remove, duration);
-        }
-
         const MON_AJAX_URL = <?= json_encode($monAjaxUrl) ?>;
         const MON_VIEW_URL = <?= json_encode($monViewUrl) ?>;
-        const MON_POLL_INTERVAL_MS = 8000;
+        const MON_VISIBLE_ROWS = 5;
 
-        let monSearchTerm = '';
-        let monStageFilter = ''; // default tab: "All"
-        let monModeFilter = '';
-        let monClientFilter = '';
-        let monVisitFilter = '';
-        let monLastSignature = '';
-        let monPollTimer = null;
+        const MON_BADGE = {
+            green: 'bg-green-50 text-green-700 ring-green-200',
+            blue: 'bg-blue-50 text-blue-700 ring-blue-200',
+            amber: 'bg-amber-50 text-amber-700 ring-amber-200',
+            red: 'bg-red-50 text-red-700 ring-red-200'
+        };
+        const MON_DOT = {
+            green: 'bg-green-500',
+            blue: 'bg-blue-500',
+            amber: 'bg-amber-500',
+            red: 'bg-red-500'
+        };
+
+        // Grouping ng status sa modal
+        const MON_GROUPS = [
+            ['Contacting & site visit', ['CONTACTING CLIENT', 'WAITING FOR CLIENT', 'WAITING FOR MEASUREMENT', 'REVISIT NEEDED', 'SITE VISIT DONE']],
+            ['2D & quotation', ['2D DESIGN', '2D & QUOTATION']],
+            ['Initial review', ['INITIAL FOR APPROVAL', 'INITIAL REVISION', 'INITIAL APPROVED', 'WAITING FOR 3D', '3D FOR APPROVAL', '3D REVISION']],
+            ['Customer', ['FOR CLIENT REVIEW', 'CUSTOMER REVISION', 'CUSTOMER APPROVED']],
+            ['Final', ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED']],
+            ['Closed', ['NOT PROCEEDING']]
+        ];
+
+        // Quick filters (history-based, "any of")
+        const MON_PRESETS = [
+            { name: 'Had a revision', statuses: ['INITIAL REVISION', 'CUSTOMER REVISION', '3D REVISION', 'FINAL REVISION'] },
+            { name: 'Reached customer review', statuses: ['FOR CLIENT REVIEW', 'CUSTOMER REVISION', 'CUSTOMER APPROVED'] },
+            { name: 'Reached final', statuses: ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED'] }
+        ];
+
+        // Filter state
+        const monF = {
+            q: '',
+            status: new Set(),
+            status_match: 'any',
+            current: '',
+            status_from: '', status_to: '',
+            project: '', sales: '', designer: '', client_status: '', mode: '',
+            from: '', to: '',
+            sort: 'newest'
+        };
+        // state key -> element id (lahat ng select/date inputs)
+        const MON_FIELDS = {
+            current: 'fCurrent', status_from: 'fSFrom', status_to: 'fSTo',
+            project: 'fProject', sales: 'fSales', designer: 'fDesigner',
+            client_status: 'fClient', mode: 'fMode',
+            from: 'fFrom', to: 'fTo', sort: 'fSort'
+        };
+        const MON_DEFAULTS = { sort: 'newest' };
+
+        let monStatuses = {};       // label -> color
+        let monLastCounts = null;
         let monSearchDebounce = null;
+        let monSelectedId = null;
+        let monReq = 0;
 
-        function monEscapeHtml(str) {
+        const $ = id => document.getElementById(id);
+
+        function monEsc(str) {
             const div = document.createElement('div');
             div.textContent = str ?? '';
             return div.innerHTML;
         }
-
-        function monFormatDate(value) {
-            if (!value) return '—';
+        function monVal(str) {
+            return str && String(str).trim() !== '' && str !== '—'
+                ? monEsc(str)
+                : '<span class="text-gray-300">—</span>';
+        }
+        function monDate(value) {
+            if (!value) return '<span class="text-gray-300">—</span>';
             const dt = new Date(value.replace(' ', 'T'));
-            if (isNaN(dt.getTime())) return value;
-            return dt.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+            if (isNaN(dt.getTime())) return monEsc(value);
+            return dt.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+        function monPretty(label) {
+            return label.toLowerCase().split(' ')
+                .map(w => /^\d/.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+        }
+        function monShortDate(v) {
+            if (!v) return '';
+            const dt = new Date(v + 'T00:00:00');
+            return isNaN(dt.getTime()) ? v : dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        function monRange(a, b) {
+            if (a && b) return `${monShortDate(a)} – ${monShortDate(b)}`;
+            if (a) return `from ${monShortDate(a)}`;
+            return `until ${monShortDate(b)}`;
         }
 
-        // Builds the list URL with the current search + filters.
-        function monBuildUrl(stage) {
-            const p = new URLSearchParams({
-                action: 'list',
-                q: monSearchTerm,
-                stage: stage,
-                mode: monModeFilter,
-                clientstatus: monClientFilter,
-                visitstatus: monVisitFilter,
+        // Ilan ang active filters (hindi kasama ang search at sort)
+        function monPanelFilterCount() {
+            let n = monF.status.size ? 1 : 0;
+            ['current', 'status_from', 'status_to', 'project', 'sales', 'designer', 'client_status', 'mode', 'from', 'to']
+                .forEach(k => { if (monF[k]) n++; });
+            return n;
+        }
+
+        // ── Modal ──
+        function monOpenModal() {
+            $('monModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            $('monModalClose').focus();
+        }
+        function monCloseModal() {
+            $('monModal').style.display = 'none';
+            document.body.style.overflow = '';
+            $('monFilterBtn').focus();
+        }
+        function monModalOpen() {
+            return $('monModal').style.display !== 'none';
+        }
+
+        // ── Table ──
+        function monRender(rows) {
+            const tbody = $('monTbody');
+            if (!rows.length) {
+                const msg = (monPanelFilterCount() || monF.q) ? 'No inquiries match the current filters.' : 'No inquiries yet.';
+                tbody.innerHTML = `<tr class="h-11"><td colspan="9" class="px-5 text-center text-gray-400">${msg}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = rows.map(r => `
+            <tr class="h-11 cursor-pointer transition-colors ${r.id === monSelectedId ? 'bg-amber-50' : 'hover:bg-amber-50/40'}"
+                data-id="${r.id}" onclick="monRowClick(${r.id})">
+                <td class="px-5 font-mono text-xs font-semibold text-amber-700 whitespace-nowrap">${monEsc(r.control_no)}</td>
+                <td class="px-5">
+                    <div class="max-w-[100px] truncate text-gray-800 font-medium" title="${monEsc(r.client_name)}">${monEsc(r.client_name)}</div>
+                </td>
+                <td class="px-5 text-gray-600 whitespace-nowrap">${monVal(r.contact_number)}</td>
+                <td class="px-5 text-gray-600 whitespace-nowrap capitalize">${monVal(r.project_type)}</td>
+                <td class="px-5 whitespace-nowrap">
+                    <span class="inline-block text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full ring-1 ${MON_BADGE[r.stage_color] || 'bg-gray-50 text-gray-600 ring-gray-200'}">${monEsc(r.stage)}</span>
+                </td>
+                <td class="px-5 text-gray-600 whitespace-nowrap capitalize">${monVal(r.sales_name)}</td>
+                <td class="px-5 text-gray-600 whitespace-nowrap capitalize">${monVal(r.designer_name)}</td>
+                <td class="px-5 text-gray-500 whitespace-nowrap">${monDate(r.created_at)}</td>
+                <td class="px-5 text-right whitespace-nowrap">
+                    <a href="${MON_VIEW_URL}?id=${r.id}" onclick="event.stopPropagation()"
+                        class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-colors">
+                        View
+                    </a>
+                </td>
+            </tr>
+        `).join('');
+        }
+
+        function monRowClick(id) {
+            monSelectedId = id;
+            document.querySelectorAll('#monTbody tr[data-id]').forEach(tr => {
+                const active = Number(tr.dataset.id) === id;
+                tr.classList.toggle('bg-amber-50', active);
+                tr.classList.toggle('hover:bg-amber-50/40', !active);
             });
-            return `${MON_AJAX_URL}?${p.toString()}`;
+            if (window.monBox1Show) window.monBox1Show(id);
+            if (window.monBox2Show) window.monBox2Show(id);
         }
 
-        function monHasActiveFilters() {
-            return !!(monModeFilter || monClientFilter || monVisitFilter);
+        // ── Status checklist (grouped) ──
+        function monBuildStatusList() {
+            const used = new Set();
+            const groups = MON_GROUPS.map(([title, labels]) => [title, labels.filter(l => l in monStatuses)]);
+            groups.forEach(([, ls]) => ls.forEach(l => used.add(l)));
+            const rest = Object.keys(monStatuses).filter(l => !used.has(l));
+            if (rest.length) groups.push(['Other', rest]);
+
+            $('monStatusList').innerHTML = groups.filter(([, ls]) => ls.length).map(([title, ls]) => `
+                <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">${monEsc(title)}</p>
+                    ${ls.map(l => `
+                    <label class="flex items-center gap-2 py-1 px-1.5 -mx-1.5 rounded-md hover:bg-gray-50 cursor-pointer text-xs text-gray-700" data-row="${monEsc(l)}">
+                        <input type="checkbox" value="${monEsc(l)}" class="accent-amber-600">
+                        <span class="w-1.5 h-1.5 rounded-full ${MON_DOT[monStatuses[l]] || 'bg-gray-400'}"></span>
+                        <span class="flex-1">${monEsc(monPretty(l))}</span>
+                        <span data-count class="text-[11px] text-gray-400"></span>
+                    </label>`).join('')}
+                </div>
+            `).join('');
+            monUpdateCounts(monLastCounts);
         }
 
-        function monTextOrDash(value) {
-            return value ? monEscapeHtml(value) : '<span class="text-gray-300">—</span>';
-        }
-
-        function monModeBadge(mode) {
-            const isReady = mode === 'ready_for_quotation';
-            const cls = isReady
-                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                : 'bg-gray-50 text-gray-600 border-gray-200';
-            const label = isReady ? 'Ready for Quotation' : 'Site Visit';
-            return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap ${cls}">${label}</span>`;
-        }
-
-        // Maps the row's stage_group (computed server-side) to a badge style.
-        function monStageBadge(row) {
-            const map = {
-                'in_progress': 'bg-amber-50 text-amber-700 border-amber-200',
-                'for_revision': 'bg-red-50 text-red-700 border-red-200',
-                'completed': 'bg-green-50 text-green-700 border-green-200',
-                'draft': 'bg-gray-50 text-gray-500 border-gray-200',
-            };
-            const dotMap = {
-                'in_progress': 'bg-amber-500',
-                'for_revision': 'bg-red-500',
-                'completed': 'bg-green-500',
-                'draft': 'bg-gray-400',
-            };
-            const cls = map[row.stage_group] || map['draft'];
-            const dot = dotMap[row.stage_group] || dotMap['draft'];
-            return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${cls}">
-                        <span class="w-1.5 h-1.5 rounded-full shrink-0 ${dot}"></span>${monEscapeHtml(row.stage_label)}
-                    </span>`;
-        }
-
-        // ── Tabs ──
-        function monInitTabs() {
-            document.querySelectorAll('.mon-tab').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    monStageFilter = btn.dataset.stage;
-                    monLastSignature = '';
-                    monRenderTabs();
-                    monFetchList();
-                });
-            });
-            monRenderTabs();
-        }
-
-        function monRenderTabs() {
-            document.querySelectorAll('.mon-tab').forEach(btn => {
-                const active = btn.dataset.stage === monStageFilter;
-                btn.classList.toggle('bg-amber-700', active);
-                btn.classList.toggle('text-white', active);
-                btn.classList.toggle('border-amber-700', active);
-                btn.classList.toggle('bg-white', !active);
-                btn.classList.toggle('text-gray-600', !active);
-                btn.classList.toggle('border-gray-300', !active);
-                btn.classList.toggle('hover:bg-gray-50', !active);
+        function monUpdateCounts(counts) {
+            monLastCounts = counts;
+            document.querySelectorAll('#monStatusList label[data-row]').forEach(row => {
+                const label = row.dataset.row;
+                const n = counts && counts[label] != null ? counts[label] : '';
+                row.querySelector('[data-count]').textContent = n;
+                const cb = row.querySelector('input');
+                row.style.opacity = (counts && n === 0 && !cb.checked) ? '0.45' : '';
             });
         }
 
-        // ── Filters (Mode / Client Status / Site Visit Status) ──
-        function monFillSelect(id, values) {
-            const sel = document.getElementById(id);
-            const keep = sel.value;
-            sel.insertAdjacentHTML('beforeend',
-                `<option value="__none__">(None)</option>` +
-                values.map(v => `<option value="${monEscapeHtml(v)}">${monEscapeHtml(v)}</option>`).join('')
-            );
-            sel.value = keep;
+        // ── Quick filters ──
+        function monPresetActive(p) {
+            return monF.status_match === 'any'
+                && monF.status.size === p.statuses.length
+                && p.statuses.every(s => monF.status.has(s));
+        }
+        function monRenderPresets() {
+            $('monPresets').innerHTML = MON_PRESETS.map((p, i) => {
+                const on = monPresetActive(p);
+                return `<button type="button" data-preset="${i}"
+                    class="text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors
+                    ${on ? 'bg-amber-600 border-amber-600 text-white' : 'bg-white border-gray-300 text-gray-600 hover:border-amber-400 hover:text-amber-700'}">
+                    ${monEsc(p.name)}</button>`;
+            }).join('');
         }
 
-        async function monLoadFilterOptions() {
+        // ── Active pills ──
+        function monRenderPills() {
+            const pills = [];
+            const selText = id => { const s = $(id); return s.options[s.selectedIndex] ? s.options[s.selectedIndex].text : ''; };
+
+            if (monF.status.size) {
+                const lead = monF.status.size > 1 ? `Passed through ${monF.status_match === 'all' ? 'all of' : 'any of'}:` : 'Passed through:';
+                pills.push({ lead });
+                monF.status.forEach(l => pills.push({ k: 'status', v: l, text: monPretty(l), color: monStatuses[l] }));
+            }
+            if (monF.current) pills.push({ k: 'current', text: 'Current: ' + monPretty(monF.current) });
+            if (monF.status_from || monF.status_to) pills.push({ k: 'status_range', text: 'Status date ' + monRange(monF.status_from, monF.status_to) });
+            if (monF.project) pills.push({ k: 'project', text: 'Project: ' + selText('fProject') });
+            if (monF.sales) pills.push({ k: 'sales', text: 'Sales: ' + selText('fSales') });
+            if (monF.designer) pills.push({ k: 'designer', text: 'Designer: ' + selText('fDesigner') });
+            if (monF.client_status) pills.push({ k: 'client_status', text: 'Client: ' + selText('fClient') });
+            if (monF.mode) pills.push({ k: 'mode', text: 'Mode: ' + selText('fMode') });
+            if (monF.from || monF.to) pills.push({ k: 'filed_range', text: 'Filed ' + monRange(monF.from, monF.to) });
+
+            const box = $('monPills');
+            if (!pills.length) {
+                box.style.display = 'none';
+                box.innerHTML = '';
+                return;
+            }
+            box.style.display = 'flex';
+            box.innerHTML = pills.map(p => {
+                if (p.lead) return `<span class="mon-hint mr-0.5">${monEsc(p.lead)}</span>`;
+                const dot = p.color ? `<span class="w-1.5 h-1.5 rounded-full ${MON_DOT[p.color] || 'bg-gray-400'}"></span>` : '';
+                return `<span class="inline-flex items-center gap-1.5 text-[11px] bg-amber-50 text-amber-800 border border-amber-200 rounded-full pl-2.5 pr-1 py-0.5">
+                    ${dot}${monEsc(p.text)}
+                    <button type="button" data-remove="${p.k}" data-val="${monEsc(p.v ?? '')}"
+                        class="w-4 h-4 leading-none text-amber-500 hover:text-amber-800 hover:bg-amber-100 rounded-full" aria-label="Remove">&times;</button>
+                </span>`;
+            }).join('');
+        }
+
+        // ── Sync UI galing sa state ──
+        function monSyncDateLimits() {
+            $('fTo').min = monF.from || '';
+            $('fFrom').max = monF.to || '';
+            $('fSTo').min = monF.status_from || '';
+            $('fSFrom').max = monF.status_to || '';
+        }
+
+        function monSyncUI() {
+            Object.entries(MON_FIELDS).forEach(([k, id]) => { $(id).value = monF[k]; });
+            document.querySelectorAll('#monStatusList input[type=checkbox]').forEach(cb => {
+                cb.checked = monF.status.has(cb.value);
+            });
+            document.querySelectorAll('#monMatch button').forEach(b => {
+                const on = b.dataset.match === monF.status_match;
+                b.classList.toggle('bg-amber-600', on);
+                b.classList.toggle('text-white', on);
+                b.classList.toggle('bg-white', !on);
+                b.classList.toggle('text-gray-600', !on);
+            });
+            monSyncDateLimits();
+            monRenderPills();
+            monRenderPresets();
+
+            const n = monPanelFilterCount();
+            const badge = $('monFilterBadge');
+            badge.textContent = n;
+            badge.classList.toggle('hidden', n === 0);
+            $('monClearAll').classList.toggle('hidden', n === 0 && !monF.q);
+
+            const btn = $('monFilterBtn');
+            btn.classList.toggle('border-amber-600', n > 0);
+            btn.classList.toggle('bg-amber-50', n > 0);
+        }
+
+        function monRefresh() {
+            monSyncUI();
+            monFetchList();
+        }
+
+        // ── Fetch ──
+        function monQueryString() {
+            const p = new URLSearchParams({ action: 'list', q: monF.q, sort: monF.sort });
+            if (monF.status.size) {
+                p.set('status', [...monF.status].join(','));
+                p.set('status_match', monF.status_match);
+            }
+            ['current', 'status_from', 'status_to', 'project', 'sales', 'designer', 'client_status', 'mode', 'from', 'to']
+                .forEach(k => { if (monF[k]) p.set(k, monF[k]); });
+            return p.toString();
+        }
+
+        async function monFetchList() {
+            const countEl = $('monCount');
+            const token = ++monReq;
+            try {
+                const res = await fetch(`${MON_AJAX_URL}?${monQueryString()}`);
+                const data = await res.json();
+                if (token !== monReq) return; // may mas bagong request na
+                if (!data.success) {
+                    countEl.textContent = data.message || 'Failed to load.';
+                    return;
+                }
+                monRender(data.rows);
+                monUpdateCounts(data.status_counts);
+
+                const n = data.count;
+                let text = `${n} ${n === 1 ? 'inquiry' : 'inquiries'} found`;
+                if (n !== data.total) text += ` (of ${data.total} matching the other filters)`;
+                if (n > MON_VISIBLE_ROWS) text += ` · Scroll to see more`;
+                countEl.textContent = text;
+
+                // Live count sa modal button
+                $('monModalDone').textContent = `Show ${n} ${n === 1 ? 'result' : 'results'}`;
+            } catch (e) {
+                if (token !== monReq) return;
+                console.error('monFetchList:', e);
+                countEl.textContent = 'Connection error while fetching inquiries.';
+            }
+        }
+
+        async function monLoadOptions() {
             try {
                 const res = await fetch(`${MON_AJAX_URL}?action=filter_options`);
                 const data = await res.json();
                 if (!data.success) return;
-                monFillSelect('monFilterClient', data.client_statuses);
-                monFillSelect('monFilterVisit', data.visit_statuses);
+
+                monStatuses = data.statuses || {};
+                Object.keys(monStatuses).forEach(l => $('fCurrent').add(new Option(monPretty(l), l)));
+                data.projects.forEach(p => $('fProject').add(new Option(p.charAt(0).toUpperCase() + p.slice(1), p)));
+                data.sales.forEach(s => $('fSales').add(new Option(s.name, s.id)));
+                data.designers.forEach(d => $('fDesigner').add(new Option(d.name, d.id)));
+
+                monBuildStatusList();
+                monSyncUI();
             } catch (e) {
-                console.error('monLoadFilterOptions:', e);
+                console.error('monLoadOptions:', e);
             }
         }
 
-        function monInitFilters() {
-            const bind = (id, setter) => {
-                document.getElementById(id).addEventListener('change', function () {
-                    setter(this.value);
-                    document.getElementById('monFilterReset').classList.toggle('hidden', !monHasActiveFilters());
-                    monLastSignature = '';
-                    monFetchList();
-                });
-            };
-            bind('monFilterMode', v => monModeFilter = v);
-            bind('monFilterClient', v => monClientFilter = v);
-            bind('monFilterVisit', v => monVisitFilter = v);
-
-            document.getElementById('monFilterReset').addEventListener('click', function () {
-                monModeFilter = monClientFilter = monVisitFilter = '';
-                ['monFilterMode', 'monFilterClient', 'monFilterVisit'].forEach(id => {
-                    document.getElementById(id).value = '';
-                });
-                this.classList.add('hidden');
-                monLastSignature = '';
-                monFetchList();
-            });
-
-            monLoadFilterOptions();
+        function monResetAll() {
+            monF.q = '';
+            monF.status.clear();
+            monF.status_match = 'any';
+            Object.keys(MON_FIELDS).forEach(k => { monF[k] = MON_DEFAULTS[k] ?? ''; });
+            $('monSearch').value = '';
+            $('monSearchClear').classList.add('hidden');
+            monRefresh();
         }
 
-        async function monFetchCounts() {
-            try {
-                const res = await fetch(monBuildUrl(''));
-                const data = await res.json();
-                if (!data.success) return;
+        // ── Events ──
+        const monInput = $('monSearch');
+        const monClear = $('monSearchClear');
 
-                const counts = {
-                    '': data.rows.length,
-                    'in_progress': 0,
-                    'for_revision': 0,
-                    'completed': 0,
-                };
-                data.rows.forEach(row => {
-                    if (counts[row.stage_group] !== undefined) counts[row.stage_group]++;
-                });
-
-                document.querySelectorAll('.mon-tab').forEach(btn => {
-                    const countEl = btn.querySelector('.mon-tab-count');
-                    if (countEl) countEl.textContent = counts[btn.dataset.stage] ?? 0;
-                });
-            } catch (e) {
-                console.error('monFetchCounts:', e);
-            }
-        }
-
-        // ── Skeleton / empty states ──
-        function monSkeletonRows(count = 5) {
-            const tbody = document.getElementById('monTbody');
-            tbody.innerHTML = Array.from({ length: count }).map(() => `
-                <tr>
-                    ${Array.from({ length: 9 }).map(() => `
-                        <td class="px-4 py-3"><div class="h-3 rounded bg-gray-100 animate-pulse"></div></td>
-                    `).join('')}
-                </tr>
-            `).join('');
-        }
-
-        function monEmptyState() {
-            const message = (monSearchTerm || monHasActiveFilters())
-                ? 'No records match your search or filters.'
-                : 'No records found.';
-            return `
-                <tr>
-                    <td colspan="9" class="p-0">
-                        <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                            <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p class="text-gray-400 text-xs">${message}</p>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function monRenderRows(rows) {
-            const tbody = document.getElementById('monTbody');
-
-            if (rows.length === 0) {
-                tbody.innerHTML = monEmptyState();
-                return;
-            }
-
-            tbody.innerHTML = rows.map(row => `
-                <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer" onclick="monGoToView(${row.inquiry_id})">
-                    <td class="px-4 py-2.5">
-                        <span class="font-mono text-[11px] font-semibold text-amber-700 whitespace-nowrap">${monEscapeHtml(row.control_no)}</span>
-                    </td>
-                    <td class="px-4 py-2.5 text-gray-800 whitespace-nowrap">${monEscapeHtml(row.client_name)}</td>
-                    <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${monEscapeHtml(row.contact_number)}</td>
-                    <td class="px-4 py-2.5">${monModeBadge(row.mode)}</td>
-                    <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">${monTextOrDash(row.clientstatus)}</td>
-                    <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">${monTextOrDash(row.visitstatus)}</td>
-                    <td class="px-4 py-2.5">${monStageBadge(row)}</td>
-                    <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${monFormatDate(row.last_updated)}</td>
-                    <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">
-                        <button type="button" onclick="monGoToView(${row.inquiry_id})"
-                            class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
-                            Track
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function monGoToView(inquiryId) {
-            window.location.href = `${MON_VIEW_URL}?id=${inquiryId}`;
-        }
-
-        async function monFetchList({ silent = false } = {}) {
-            if (!silent) monSkeletonRows();
-            try {
-                const res = await fetch(monBuildUrl(monStageFilter));
-                const data = await res.json();
-
-                if (!data.success) {
-                    if (!silent) crmShowToast('Failed to load records.', 'error');
-                    return;
-                }
-
-                const signature = JSON.stringify(data.rows.map(r => r.inquiry_id + ':' + r.stage_group + ':' + r.last_updated))
-                    + monStageFilter + monModeFilter + monClientFilter + monVisitFilter;
-                if (signature !== monLastSignature) {
-                    monRenderRows(data.rows);
-                    monLastSignature = signature;
-                }
-
-                document.getElementById('monCount').textContent =
-                    `${data.count} record${data.count === 1 ? '' : 's'} found`;
-
-                monFetchCounts();
-
-            } catch (e) {
-                console.error('monFetchList:', e);
-                if (!silent) crmShowToast('Connection error while fetching records.', 'error');
-            }
-        }
-
-        function monStartPolling() {
-            if (monPollTimer) clearInterval(monPollTimer);
-            monPollTimer = setInterval(() => monFetchList({ silent: true }), MON_POLL_INTERVAL_MS);
-        }
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                if (monPollTimer) clearInterval(monPollTimer);
-            } else {
-                monFetchList({ silent: true });
-                monStartPolling();
-            }
-        });
-
-        const monSearchInput = document.getElementById('monSearch');
-        const monSearchClear = document.getElementById('monSearchClear');
-
-        monSearchInput.addEventListener('input', function () {
-            monSearchClear.classList.toggle('hidden', this.value.length === 0);
+        monInput.addEventListener('input', function () {
+            monClear.classList.toggle('hidden', this.value.length === 0);
             clearTimeout(monSearchDebounce);
-            const value = this.value;
-            monSearchDebounce = setTimeout(() => {
-                monSearchTerm = value.trim();
-                monLastSignature = '';
-                monFetchList();
-            }, 350);
+            const v = this.value;
+            monSearchDebounce = setTimeout(() => { monF.q = v.trim(); monRefresh(); }, 350);
         });
 
-        monSearchClear.addEventListener('click', () => {
-            monSearchInput.value = '';
-            monSearchClear.classList.add('hidden');
-            monSearchTerm = '';
-            monLastSignature = '';
-            monFetchList();
-            monSearchInput.focus();
+        monClear.addEventListener('click', () => {
+            monInput.value = '';
+            monClear.classList.add('hidden');
+            monF.q = '';
+            monRefresh();
+            monInput.focus();
         });
 
-        monInitFilters();
-        monInitTabs();
-        monFetchList().then(monStartPolling);
+        // Modal open / close
+        $('monFilterBtn').addEventListener('click', monOpenModal);
+        $('monModalClose').addEventListener('click', monCloseModal);
+        $('monModalDone').addEventListener('click', monCloseModal);
+        $('monModalBackdrop').addEventListener('click', monCloseModal);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && monModalOpen()) monCloseModal();
+        });
+
+        $('monPanelClear').addEventListener('click', monResetAll);
+        $('monClearAll').addEventListener('click', monResetAll);
+
+        // Selects at date inputs
+        Object.entries(MON_FIELDS).forEach(([key, id]) => {
+            $(id).addEventListener('change', function () {
+                monF[key] = this.value;
+                monRefresh();
+            });
+        });
+
+        // Status checkboxes
+        $('monStatusList').addEventListener('change', e => {
+            const cb = e.target.closest('input[type=checkbox]');
+            if (!cb) return;
+            cb.checked ? monF.status.add(cb.value) : monF.status.delete(cb.value);
+            monRefresh();
+        });
+
+        // Any / All
+        $('monMatch').addEventListener('click', e => {
+            const b = e.target.closest('button[data-match]');
+            if (!b) return;
+            monF.status_match = b.dataset.match;
+            monRefresh();
+        });
+
+        // Quick filters
+        $('monPresets').addEventListener('click', e => {
+            const b = e.target.closest('button[data-preset]');
+            if (!b) return;
+            const p = MON_PRESETS[Number(b.dataset.preset)];
+            if (monPresetActive(p)) {
+                monF.status.clear();
+            } else {
+                monF.status = new Set(p.statuses);
+                monF.status_match = 'any';
+            }
+            monRefresh();
+        });
+
+        // Remove pill
+        $('monPills').addEventListener('click', e => {
+            const b = e.target.closest('button[data-remove]');
+            if (!b) return;
+            const k = b.dataset.remove;
+            if (k === 'status') monF.status.delete(b.dataset.val);
+            else if (k === 'status_range') { monF.status_from = ''; monF.status_to = ''; }
+            else if (k === 'filed_range') { monF.from = ''; monF.to = ''; }
+            else monF[k] = '';
+            monRefresh();
+        });
+
+        monSyncUI();
+        monLoadOptions();
+        monFetchList();
     </script>
+
 </body>
 
 </html>

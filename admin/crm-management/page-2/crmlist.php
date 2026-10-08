@@ -12,17 +12,113 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         <h1 class="text-gray-900 text-xl font-semibold">Sales &amp; Market List</h1>
     </div>
 
-    <!-- Search -->
-    <div class="relative w-full sm:w-64 mb-4">
-        <input id="crmListSearch" type="text" placeholder="Search control no. / client / contact"
-            class="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
-        <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-        </svg>
-        <button type="button" id="crmListSearchClear"
-            class="hidden absolute right-2 top-1.5 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
+    <!-- Search + Filters (same IDs as before, so your JS still works) -->
+    <div class="mb-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+
+        <!-- Row 1: search + clear -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3">
+            <div class="relative flex-1 sm:max-w-md">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                </svg>
+                <input id="crmListSearch" type="text" placeholder="Search control no., client or contact"
+                    class="w-full h-9 pl-9 pr-8 text-sm text-gray-800 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-lg
+                       focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                <button type="button" id="crmListSearchClear" aria-label="Clear search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full
+                       text-gray-400 hover:text-gray-600 hover:bg-gray-200 text-base leading-none">&times;</button>
+            </div>
+
+            <button type="button" id="crmFilterClear" class="hidden sm:ml-auto inline-flex items-center gap-1.5 h-9 px-3 text-xs font-medium text-amber-700 bg-amber-50
+                   border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear filters
+            </button>
+        </div>
+
+        <!-- Row 2: filters -->
+        <div
+            class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.6fr)] gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl">
+
+            <label class="block">
+                <span class="block mb-1 text-[11px] font-medium text-gray-500">Status</span>
+                <div class="relative">
+                    <select id="crmFilterStatus"
+                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
+                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                        <option value="">All status</option>
+                    </select>
+                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </label>
+
+            <label class="block">
+                <span class="block mb-1 text-[11px] font-medium text-gray-500">Designer</span>
+                <div class="relative">
+                    <select id="crmFilterDesigner"
+                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
+                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                        <option value="">All designers</option>
+                    </select>
+                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </label>
+
+            <label class="block">
+                <span class="block mb-1 text-[11px] font-medium text-gray-500">Project</span>
+                <div class="relative">
+                    <select id="crmFilterProject"
+                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
+                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                        <option value="">All projects</option>
+                    </select>
+                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </label>
+
+            <label class="block">
+                <span class="block mb-1 text-[11px] font-medium text-gray-500">Contract amount</span>
+                <div class="relative">
+                    <select id="crmFilterAmount"
+                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
+                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                        <option value="">Any</option>
+                        <option value="with">With amount</option>
+                        <option value="without">No amount yet</option>
+                    </select>
+                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </label>
+
+            <!-- Date range: one joined control instead of two separate boxes -->
+            <div class="col-span-2 md:col-span-4 xl:col-span-1">
+                <span class="block mb-1 text-[11px] font-medium text-gray-500">Date filed</span>
+                <div
+                    class="flex items-center h-9 bg-white border border-gray-200 rounded-lg hover:border-gray-300
+                        focus-within:ring-2 focus-within:ring-amber-100 focus-within:border-amber-600 transition-colors">
+                    <input id="crmFilterFrom" type="date" aria-label="Filed from"
+                        class="crm-filter flex-1 min-w-0 h-full px-2.5 text-sm text-gray-700 bg-transparent border-0 rounded-l-lg focus:outline-none">
+                    <span class="text-gray-300 text-sm select-none">–</span>
+                    <input id="crmFilterTo" type="date" aria-label="Filed to"
+                        class="crm-filter flex-1 min-w-0 h-full px-2.5 text-sm text-gray-700 bg-transparent border-0 rounded-r-lg focus:outline-none">
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Table Card (desktop / tablet) -->
@@ -228,6 +324,115 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     let crmSortKey = 'created_at';
     let crmSortDir = 'desc'; // 'asc' | 'desc'
 
+    // ═══════════════════════════════════════════════════════════
+    // FILTERS (client-side)
+    // ═══════════════════════════════════════════════════════════
+    const crmFilters = { status: '', designer: '', project: '', amount: '', from: '', to: '' };
+
+    function crmFiltersActive() {
+        return Object.values(crmFilters).some(v => v !== '');
+    }
+
+    function crmFilterSig() {
+        return JSON.stringify(crmFilters);
+    }
+
+    function crmFilteredRows(rows) {
+        return rows.filter(r => {
+            if (crmFilters.status && r.status !== crmFilters.status) return false;
+
+            if (crmFilters.designer === '__none__') {
+                if (r.designer_id) return false;
+            } else if (crmFilters.designer && String(r.designer_id) !== crmFilters.designer) {
+                return false;
+            }
+
+            if (crmFilters.project && (r.project_type || '') !== crmFilters.project) return false;
+
+            const hasAmount = Number(r.contract_amount) > 0;
+            if (crmFilters.amount === 'with' && !hasAmount) return false;
+            if (crmFilters.amount === 'without' && hasAmount) return false;
+
+            const day = (r.created_at || '').slice(0, 10); // YYYY-MM-DD
+            if (crmFilters.from && (!day || day < crmFilters.from)) return false;
+            if (crmFilters.to && (!day || day > crmFilters.to)) return false;
+
+            return true;
+        });
+    }
+
+    // Buuin ang options mula sa data. Hindi ire-rebuild kung walang nagbago,
+    // para hindi magsara ang dropdown habang nagpo-polling.
+    function crmFillSelect(id, firstLabel, items, extra = []) {
+        const sel = document.getElementById(id);
+        const sig = JSON.stringify([extra, items]);
+        if (sel.dataset.sig === sig) return;
+        sel.dataset.sig = sig;
+
+        const current = sel.value;
+        sel.innerHTML = '';
+        sel.add(new Option(firstLabel, ''));
+        extra.forEach(([v, t]) => sel.add(new Option(t, v)));
+        items.forEach(([v, t]) => sel.add(new Option(t, v)));
+
+        const stillExists = [...sel.options].some(o => o.value === current);
+        sel.value = stillExists ? current : '';
+    }
+
+    function crmPopulateFilterOptions(rows) {
+        const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+        crmFillSelect('crmFilterStatus', 'All status',
+            uniq(rows.map(r => r.status)).map(s => [s, s]));
+
+        crmFillSelect('crmFilterProject', 'All projects',
+            uniq(rows.map(r => r.project_type)).map(p => [p, p]));
+
+        const designers = new Map();
+        rows.forEach(r => {
+            if (r.designer_id) designers.set(String(r.designer_id), r.designer_name || ('#' + r.designer_id));
+        });
+        crmFillSelect('crmFilterDesigner', 'All designers',
+            [...designers.entries()].sort((a, b) => a[1].localeCompare(b[1])),
+            [['__none__', 'Unassigned']]);
+
+        // Kung nawala ang napiling value sa dropdown, i-sync ang state
+        crmFilters.status = document.getElementById('crmFilterStatus').value;
+        crmFilters.project = document.getElementById('crmFilterProject').value;
+        crmFilters.designer = document.getElementById('crmFilterDesigner').value;
+    }
+
+    function crmApplyFilters() {
+        crmFilters.status = document.getElementById('crmFilterStatus').value;
+        crmFilters.designer = document.getElementById('crmFilterDesigner').value;
+        crmFilters.project = document.getElementById('crmFilterProject').value;
+        crmFilters.amount = document.getElementById('crmFilterAmount').value;
+        crmFilters.from = document.getElementById('crmFilterFrom').value;
+        crmFilters.to = document.getElementById('crmFilterTo').value;
+
+        document.getElementById('crmFilterClear').classList.toggle('hidden', !crmFiltersActive());
+        crmListLastSignature = '';
+        crmRenderRows(crmListRawRows);
+    }
+
+    document.querySelectorAll('.crm-filter').forEach(el => {
+        el.addEventListener('change', crmApplyFilters);
+    });
+
+    document.getElementById('crmFilterClear').addEventListener('click', () => {
+        document.querySelectorAll('.crm-filter').forEach(el => { el.value = ''; });
+        crmApplyFilters();
+    });
+
+    function crmUpdateCount(shown, total) {
+        const label = total === 1 ? 'inquiry' : 'inquiries';
+        document.getElementById('crmListCount').textContent =
+            crmFiltersActive() ? `${shown} of ${total} ${label} shown` : `${total} ${label} found`;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════
     function crmEscapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str ?? '';
@@ -345,9 +550,10 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     }
 
     function crmEmptyState() {
-        const message = crmListSearchTerm
-            ? `No inquiries match "${crmEscapeHtml(crmListSearchTerm)}".`
-            : 'No inquiries yet.';
+        let message = 'No inquiries yet.';
+        if (crmListSearchTerm && crmFiltersActive()) message = `No inquiries match "${crmEscapeHtml(crmListSearchTerm)}" with the selected filters.`;
+        else if (crmListSearchTerm) message = `No inquiries match "${crmEscapeHtml(crmListSearchTerm)}".`;
+        else if (crmFiltersActive()) message = 'No inquiries match the selected filters.';
         return `
             <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
                 <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -386,9 +592,15 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         });
     }
 
-    function crmRenderRows(rows) {
+    // ═══════════════════════════════════════════════════════════
+    // RENDER + FETCH
+    // ═══════════════════════════════════════════════════════════
+    function crmRenderRows(allRows) {
         const tbody = document.getElementById('crmListTbody');
         const cardsWrap = document.getElementById('crmListCards');
+
+        const rows = crmFilteredRows(allRows);
+        crmUpdateCount(rows.length, allRows.length);
 
         if (rows.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" class="p-0">${crmEmptyState()}</td></tr>`;
@@ -458,15 +670,15 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                 return;
             }
 
-            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id)) + crmSortKey + crmSortDir;
             crmListRawRows = data.rows;
+            crmPopulateFilterOptions(data.rows);
+
+            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id))
+                + crmSortKey + crmSortDir + crmFilterSig();
             if (signature !== crmListLastSignature) {
                 crmRenderRows(data.rows);
                 crmListLastSignature = signature;
             }
-
-            document.getElementById('crmListCount').textContent =
-                `${data.count} inquiry${data.count === 1 ? '' : 'ies'} found`;
 
         } catch (e) {
             console.error('crmFetchList:', e);
@@ -488,6 +700,9 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         }
     });
 
+    // ═══════════════════════════════════════════════════════════
+    // SEARCH + SORT
+    // ═══════════════════════════════════════════════════════════
     const crmSearchInput = document.getElementById('crmListSearch');
     const crmSearchClear = document.getElementById('crmListSearchClear');
 

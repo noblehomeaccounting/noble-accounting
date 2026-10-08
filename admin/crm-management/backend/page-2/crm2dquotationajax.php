@@ -1,8 +1,7 @@
 <?php
 // crm2dquotationajax.php  — INITIAL step (walang contract dito; nasa Final na)
-// MULTI-ATTACHMENT VERSION: bawat slot (2D / Quotation / 3D) ay pwede nang maraming file.
-// Ang mga file ay nasa table `noblecrm_2dquotation_files`. Ang `*_path` column ay
-// pinapanatili bilang "first file" para hindi masira ang ibang pages (checkdesigner, final, atbp.).
+// + CUSTOMER REVIEW step (pagitan ng Initial approval at Final)
+
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -79,7 +78,8 @@ if ($action === 'save_contract_amount') {
 
 $stmt = $conn->prepare("
     SELECT id, control_no, client_name, status, mode, deadline,
-           design_progress, design_confirmed, design_confirmed_at, design_confirmed_by, clientstatus
+           design_progress, design_confirmed, design_confirmed_at, design_confirmed_by, clientstatus,
+           designer_id, sales_staff_id
     FROM noblecrminquiry
     WHERE id = ? AND {$ownerColumn} = ?
     LIMIT 1
@@ -362,8 +362,88 @@ function q2dCopySlotFiles(mysqli $conn, int $fromId, int $toId, string $slot): v
 }
 
 
-// Initial submissions → DESIGNER HEAD na ang magre-review (hindi na Superadmin).
-function q2dNotifyDesignerHeads(mysqli $conn, int $inquiryId, array $inquiry, int $senderId, bool $is3dOnly = false): void
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOMER REVIEW HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+// Handa na ba para sa customer? Lahat ng required slot ay Approved na ng Designer Head
+// at kumpleto (done) ang 2D at Quotation.
+function q2dIsReadyForCustomer(array $latest): bool
+{
+    if (($latest['status'] ?? '') !== 'Approved') {
+        return false;
+    }
+    if ((int) ($latest['design_2d_done'] ?? 0) !== 1 || (int) ($latest['quotation_done'] ?? 0) !== 1) {
+        return false;
+    }
+    if ((int) ($latest['include_3d'] ?? 0) === 1) {
+        // 3D kasabay ng 2D & Quotation sa main review
+        return ($latest['design_3d_review_status'] ?? '') === 'Approved';
+    }
+    // Standalone 3D — kailangang Approved na rin ang stage niya
+    return ($latest['design_3d_stage'] ?? 'Locked') === 'Approved';
+}
+
+// [slot => 'Okay'|'Revise'|null] — pinakabagong decision bawat slot (null = pending)
+function q2dCustomerDecisions(mysqli $conn, int $quotationId): array
+{
+    $out = ['2d' => null, 'quotation' => null, '3d' => null];
+    $stmt = $conn->prepare("
+        SELECT slot, decision FROM noblecrm_2dquotation_customer_review
+        WHERE quotation_id = ? ORDER BY id ASC
+    ");
+    $stmt->bind_param("i", $quotationId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) {
+        $out[$r['slot']] = $r['decision']; // huling row ang mananalo
+    }
+    $stmt->close();
+    return $out;
+}
+
+function q2dCustomerApproved(mysqli $conn, array $latest): bool
+{
+    if (!q2dIsReadyForCustomer($latest)) {
+        return false;
+    }
+    $d = q2dCustomerDecisions($conn, (int) $latest['id']);
+    return $d['2d'] === 'Okay' && $d['quotation'] === 'Okay' && $d['3d'] === 'Okay';
+}
+
+// Kopyahin ang customer "Okay" ng mga slot na carried-over sa bagong draft,
+// para hindi na ulit tanungin ang customer sa mga okay na.
+function q2dCopyCustomerOkay(mysqli $conn, int $fromId, int $toId, array $slots): void
+{
+    if (empty($slots)) {
+        return;
+    }
+    $decisions = q2dCustomerDecisions($conn, $fromId);
+
+    $stmt = $conn->prepare("
+        INSERT INTO noblecrm_2dquotation_customer_review
+            (quotation_id, inquiry_id, slot, decision, decided_by, decided_at)
+        SELECT ?, inquiry_id, slot, 'Okay', decided_by, decided_at
+        FROM noblecrm_2dquotation_customer_review
+        WHERE quotation_id = ? AND slot = ? AND decision = 'Okay'
+        ORDER BY id DESC LIMIT 1
+    ");
+    foreach ($slots as $s) {
+        if (($decisions[$s] ?? null) !== 'Okay') {
+            continue;
+        }
+        $stmt->bind_param("iis", $toId, $fromId, $s);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+function q2dDesignerHeadIds(mysqli $conn): array
 {
     $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ? AND position = ?");
     $role = ROLE_DESIGNER;
@@ -372,7 +452,34 @@ function q2dNotifyDesignerHeads(mysqli $conn, int $inquiryId, array $inquiry, in
     $stmt->execute();
     $heads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
+    return array_map(fn($h) => (int) $h['id'], $heads);
+}
 
+// Generic: magpadala ng notification sa listahan ng user ids (walang duplicate, hindi kasama ang sender).
+function q2dNotifyUsers(mysqli $conn, array $userIds, int $inquiryId, array $inquiry, int $senderId, string $message, string $link): void
+{
+    $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), fn($id) => $id > 0 && $id !== $senderId)));
+    if (empty($userIds)) {
+        return;
+    }
+
+    $controlNo = $inquiry['control_no'];
+    $stmt = $conn->prepare("
+        INSERT INTO noblenotification
+            (user_id, request_id, control_no, type, message, is_read, created_at, sender_id, link)
+        VALUES (?, ?, ?, 'crm_2dquotation', ?, 0, NOW(), ?, ?)
+    ");
+    $stmt->bind_param("iissis", $uid, $inquiryId, $controlNo, $message, $senderId, $link);
+    foreach ($userIds as $uid) {
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
+// Initial submissions → DESIGNER HEAD na ang magre-review (hindi na Superadmin).
+function q2dNotifyDesignerHeads(mysqli $conn, int $inquiryId, array $inquiry, int $senderId, bool $is3dOnly = false): void
+{
+    $heads = q2dDesignerHeadIds($conn);
     if (empty($heads)) {
         return;
     }
@@ -381,20 +488,8 @@ function q2dNotifyDesignerHeads(mysqli $conn, int $inquiryId, array $inquiry, in
         ? "New Initial 3D file submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})"
         : "New Initial 2D and Quotation submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})";
     $link = "/checkdesigner2dquotation?id={$inquiryId}";
-    $controlNo = $inquiry['control_no'];
 
-    $stmt = $conn->prepare("
-        INSERT INTO noblenotification
-            (user_id, request_id, control_no, type, message, is_read, created_at, sender_id, link)
-        VALUES (?, ?, ?, 'crm_2dquotation', ?, 0, NOW(), ?, ?)
-    ");
-    $stmt->bind_param("iissis", $headId, $inquiryId, $controlNo, $message, $senderId, $link);
-
-    foreach ($heads as $h) {
-        $headId = (int) $h['id'];
-        $stmt->execute();
-    }
-    $stmt->close();
+    q2dNotifyUsers($conn, $heads, $inquiryId, $inquiry, $senderId, $message, $link);
 }
 
 function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
@@ -448,7 +543,10 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
             $copySlots[] = 'quotation';
         }
 
-        if (($latest['design_3d_review_status'] ?? null) === 'Approved') {
+        // Standalone 3D na Approved na (stage) — dapat manatiling Approved kahit 2D/Quotation lang ang binabalik.
+        $stand3dApproved = (!$carryInclude3d && ($latest['design_3d_stage'] ?? 'Locked') === 'Approved');
+
+        if (($latest['design_3d_review_status'] ?? null) === 'Approved' || $stand3dApproved) {
             $carry3dDone = 1;
             $carry3dPath = $latest['design_3d_path'];
             $carry3dRole = $latest['design_3d_uploaded_role'];
@@ -458,6 +556,8 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
         }
         if ($carryInclude3d) {
             $carry3dStage = 'Draft';
+        } elseif ($stand3dApproved) {
+            $carry3dStage = 'Approved';
         }
     }
 
@@ -503,11 +603,13 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
     $newId = (int) $stmt->insert_id;
     $stmt->close();
 
-    // Kopyahin ang lahat ng files ng mga naka-Approved na slot papunta sa bagong draft.
+    // Kopyahin ang lahat ng files ng mga naka-Approved na slot papunta sa bagong draft,
+    // pati ang customer "Okay" ng parehong mga slot.
     if ($latest && $newId > 0) {
         foreach ($copySlots as $cs) {
             q2dCopySlotFiles($conn, (int) $latest['id'], $newId, $cs);
         }
+        q2dCopyCustomerOkay($conn, (int) $latest['id'], $newId, $copySlots);
     }
 
     return q2dGetEntryById($conn, $newId) ?: q2dGetLatestEntry($conn, $inquiryId);
@@ -613,7 +715,24 @@ function q2dResolveEditableEntry(mysqli $conn, int $inquiryId, string $slot, boo
     $latest = q2dGetLatestEntry($conn, $inquiryId);
 
     if ($slot === '3d') {
-        if (!$latest || ($latest['design_3d_stage'] ?? 'Locked') !== 'Draft') {
+        // Bundled 3D na ni-reject (Head o Customer) → gumawa ng bagong draft para doon i-upload ang bagong 3D.
+        if (
+            $latest && $latest['status'] === 'For Revision'
+            && (int) ($latest['include_3d'] ?? 0) === 1
+            && ($latest['design_3d_review_status'] ?? '') === 'For Revision'
+        ) {
+            if (!$create) {
+                return [null, 'Nothing to edit right now.'];
+            }
+            $draft = q2dGetOrCreateDraft($conn, $inquiryId);
+            if (($draft['design_3d_stage'] ?? 'Locked') !== 'Draft') {
+                return [null, '3D upload is not open right now.'];
+            }
+            return [$draft, ''];
+        }
+
+        // Standalone 3D → bukas kapag Draft o For Revision (galing sa customer/head).
+        if (!$latest || !in_array($latest['design_3d_stage'] ?? 'Locked', ['Draft', 'For Revision'], true)) {
             return [null, '3D upload is not open right now.'];
         }
         return [$latest, ''];
@@ -764,11 +883,14 @@ if ($action === 'state') {
     $revisionEntryRow = null;
     $design2dNeedsRevision = false;
     $quotationNeedsRevision = false;
+    $design3dNeedsRevision = false;
 
     if (!$activeDraftRow && !$completedRow && !empty($qHistory) && $qHistory[0]['status'] === 'For Revision') {
         $revisionEntryRow = $qHistory[0];
         $design2dNeedsRevision = ($revisionEntryRow['design_2d_review_status'] ?? 'For Revision') === 'For Revision';
         $quotationNeedsRevision = ($revisionEntryRow['quotation_review_status'] ?? 'For Revision') === 'For Revision';
+        $design3dNeedsRevision = (int) ($revisionEntryRow['include_3d'] ?? 0) === 1
+            && ($revisionEntryRow['design_3d_review_status'] ?? '') === 'For Revision';
     }
 
     $activeDraftJson = null;
@@ -804,8 +926,11 @@ if ($action === 'state') {
     $revisionEntryJson = null;
     if ($revisionEntryRow) {
         $revisionEntryJson = [
+            'source' => $revisionEntryRow['revision_source'] ?? 'Head', // 'Head' | 'Customer'
+            'include_3d' => (bool) ($revisionEntryRow['include_3d'] ?? 0),
             'design_2d_needs_revision' => $design2dNeedsRevision,
             'quotation_needs_revision' => $quotationNeedsRevision,
+            'design_3d_needs_revision' => $design3dNeedsRevision,
             'design_2d' => array_merge(
                 q2dSlotJson($conn, $revisionEntryRow, '2d', $filesMap),
                 ['remarks' => $revisionEntryRow['design_2d_remarks']]
@@ -813,6 +938,10 @@ if ($action === 'state') {
             'quotation' => array_merge(
                 q2dSlotJson($conn, $revisionEntryRow, 'quotation', $filesMap),
                 ['remarks' => $revisionEntryRow['quotation_remarks']]
+            ),
+            'design_3d' => array_merge(
+                q2dSlotJson($conn, $revisionEntryRow, '3d', $filesMap),
+                ['remarks' => $revisionEntryRow['design_3d_remarks'] ?? null]
             ),
         ];
     }
@@ -846,6 +975,7 @@ if ($action === 'state') {
             'status_label' => $statusLabel,
             'status_class' => $statusClass,
             'is_late' => (bool) ($entry['is_late'] ?? 0),
+            'revision_source' => $entry['revision_source'] ?? 'Head',
             'design_2d_remarks' => $entry['design_2d_remarks'] ?? null,
             'quotation_remarks' => $entry['quotation_remarks'] ?? null,
             'remarks' => $entry['remarks'] ?? null,
@@ -864,14 +994,10 @@ if ($action === 'state') {
 
     $isReadyForQuotation = ($inquiry['mode'] ?? 'site_visit') === 'ready_for_quotation';
 
+    // Progress tracker lang — hindi na gate ang customer confirmation dito.
     $step1Json = [
         'progress' => $isReadyForQuotation ? '100' : ($inquiry['design_progress'] ?? '0'),
-        'confirmed' => $isReadyForQuotation ? true : (bool) ($inquiry['design_confirmed'] ?? 0),
-        'confirmed_at' => (!$isReadyForQuotation && !empty($inquiry['design_confirmed_at']))
-            ? date('F d, Y g:i A', strtotime($inquiry['design_confirmed_at'])) : null,
-        'confirmed_by_name' => $isReadyForQuotation ? null : q2dAccountName($conn, $inquiry['design_confirmed_by'] ? (int) $inquiry['design_confirmed_by'] : null),
-        'client_status' => $inquiry['clientstatus'] ?? null,
-        'auto_confirmed' => $isReadyForQuotation,
+        'auto_confirmed' => $isReadyForQuotation, // read-only ang progress kapag ready_for_quotation
     ];
 
     $cuttingFeedback = [];
@@ -917,6 +1043,10 @@ if ($action === 'state') {
     $hasFinal = (bool) $finalStmt->get_result()->fetch_assoc();
     $finalStmt->close();
 
+    // Customer review status
+    $readyForCustomer = $latest ? q2dIsReadyForCustomer($latest) : false;
+    $customerApproved = $latest ? q2dCustomerApproved($conn, $latest) : false;
+
     q2dRespond(true, '', [
         'stage' => $latest['stage'] ?? 'Initial',
         'inquiry' => [
@@ -935,6 +1065,8 @@ if ($action === 'state') {
         'design_3d' => $design3dJson,
         'cutting_feedback' => $cuttingFeedback,
         'has_final' => $hasFinal,
+        'ready_for_customer' => $readyForCustomer,
+        'customer_approved' => $customerApproved,
         'server_time' => date('c'),
     ]);
 }
@@ -942,10 +1074,7 @@ if ($action === 'state') {
 if ($action === 'save_progress') {
     q2dRequireDesigner($isSales);
 
-    if ((int) ($inquiry['design_confirmed'] ?? 0) === 1) {
-        q2dRespond(false, 'This has already been confirmed by the customer.');
-    }
-
+    // Tracker lang ito ng 2D design (0/50/100) — hindi gate para sa pag-upload o pag-submit.
     $progress = $_POST['progress'] ?? '';
     if (!in_array($progress, ['0', '50', '100'], true)) {
         q2dRespond(false, 'Invalid progress value.');
@@ -960,28 +1089,10 @@ if ($action === 'save_progress') {
 }
 
 
+// Wala nang "Confirm Customer Approval" sa progress step.
+// Ang customer check ay nasa Customer Review, pagkatapos lang ma-approve ng Designer Head.
 if ($action === 'confirm_customer') {
-    q2dRequireDesigner($isSales);
-
-    if ((int) ($inquiry['design_confirmed'] ?? 0) === 1) {
-        q2dRespond(false, 'This has already been confirmed.');
-    }
-    if (($inquiry['design_progress'] ?? '0') !== '100') {
-        q2dRespond(false, 'Progress must be at 100% before confirming.');
-    }
-
-    $clientStatus = 'Client Review & Approval';
-
-    $stmt = $conn->prepare("
-        UPDATE noblecrminquiry
-        SET design_confirmed = 1, design_confirmed_at = NOW(), design_confirmed_by = ?, clientstatus = ?
-        WHERE id = ?
-    ");
-    $stmt->bind_param("isi", $currentUserId, $clientStatus, $inquiryId);
-    $stmt->execute();
-    $stmt->close();
-
-    q2dRespond(true, 'Confirmed by customer.');
+    q2dRespond(false, 'This step is no longer needed. Customer review happens after the Designer Head approves the files.');
 }
 
 
@@ -1103,7 +1214,7 @@ if ($action === 'unlock_slot') {
 
     if ($slot === '3d') {
         $latest = q2dGetLatestEntry($conn, $inquiryId);
-        if (!$latest || ($latest['design_3d_stage'] ?? 'Locked') !== 'Draft') {
+        if (!$latest || !in_array($latest['design_3d_stage'] ?? 'Locked', ['Draft', 'For Revision'], true)) {
             q2dRespond(false, 'Nothing to edit right now.');
         }
         $stmt = $conn->prepare("UPDATE noblecrm_2dquotation SET design_3d_done = 0 WHERE id = ?");
@@ -1150,7 +1261,10 @@ if ($action === 'submit_final') {
     $isLate = q2dIsPastDeadline($inquiry) ? 1 : 0;
 
     $newStatus = 'Waiting for Approval';
-    $new3dStage = $include3d ? 'Waiting for Approval' : 'Locked';
+    // Standalone 3D na Approved na (carried-over) → huwag i-lock ulit.
+    $new3dStage = $include3d
+        ? 'Waiting for Approval'
+        : (($draft['design_3d_stage'] ?? 'Locked') === 'Approved' ? 'Approved' : 'Locked');
 
     $stmt = $conn->prepare("
         UPDATE noblecrm_2dquotation
@@ -1158,6 +1272,12 @@ if ($action === 'submit_final') {
         WHERE id = ?
     ");
     $stmt->bind_param("ssii", $newStatus, $new3dStage, $isLate, $draft['id']);
+    $stmt->execute();
+    $stmt->close();
+
+    // Naisumite na ang 2D — itala ang progress bilang 100%.
+    $stmt = $conn->prepare("UPDATE noblecrminquiry SET design_progress = '100' WHERE id = ?");
+    $stmt->bind_param("i", $inquiryId);
     $stmt->execute();
     $stmt->close();
 
@@ -1178,7 +1298,7 @@ if ($action === 'submit_3d') {
     if ((int) ($latest['include_3d'] ?? 0) === 1) {
         q2dRespond(false, 'This submission already includes 3D in its main review.');
     }
-    if (($latest['design_3d_stage'] ?? 'Locked') !== 'Draft') {
+    if (!in_array($latest['design_3d_stage'] ?? 'Locked', ['Draft', 'For Revision'], true)) {
         q2dRespond(false, '3D upload is not open right now.');
     }
     if (!$latest['design_3d_done']) {
@@ -1194,6 +1314,176 @@ if ($action === 'submit_3d') {
     q2dNotifyDesignerHeads($conn, $inquiryId, $inquiry, $currentUserId, true);
 
     q2dRespond(true, 'Submitted for approval.');
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOMER REVIEW ACTIONS
+// ═══════════════════════════════════════════════════════════════
+
+if ($action === 'customer_state') {
+    $latest = q2dGetLatestEntry($conn, $inquiryId);
+    if (!$latest || !q2dIsReadyForCustomer($latest)) {
+        q2dRespond(false, 'The Designer Head has not approved all files yet.');
+    }
+
+    q2dBackfillEntry($conn, $latest);
+    $filesMap = q2dLoadFilesMap($conn, [$latest['id']]);
+    $decisions = q2dCustomerDecisions($conn, (int) $latest['id']);
+
+    $slots = [];
+    foreach (['2d' => '2D', 'quotation' => 'Quotation', '3d' => '3D'] as $s => $label) {
+        $slots[] = [
+            'slot' => $s,
+            'label' => $label,
+            'decision' => $decisions[$s],            // null = pending
+            'data' => q2dSlotJson($conn, $latest, $s, $filesMap),
+        ];
+    }
+
+    q2dRespond(true, '', [
+        'inquiry' => [
+            'control_no' => $inquiry['control_no'],
+            'client_name' => $inquiry['client_name'],
+        ],
+        'status' => q2dCustomerApproved($conn, $latest) ? 'Customer Approved' : 'Waiting for Customer',
+        'slots' => $slots,
+    ]);
+}
+
+
+if ($action === 'submit_customer_review') {
+    $latest = q2dGetLatestEntry($conn, $inquiryId);
+    if (!$latest || !q2dIsReadyForCustomer($latest)) {
+        q2dRespond(false, 'Not ready for customer review yet.');
+    }
+    if (q2dCustomerApproved($conn, $latest)) {
+        q2dRespond(false, 'The customer has already approved all files.', ['next' => 'final']);
+    }
+
+    // {"2d":{"decision":"Okay"},"quotation":{"decision":"Revise","remarks":"..."}, ...}
+    $payload = json_decode($_POST['decisions'] ?? '', true);
+    if (!is_array($payload)) {
+        q2dRespond(false, 'Invalid data.');
+    }
+
+    $current = q2dCustomerDecisions($conn, (int) $latest['id']);
+    $toSave = [];
+    foreach (['2d', 'quotation', '3d'] as $s) {
+        if ($current[$s] === 'Okay') {
+            continue; // okay na dati, skip
+        }
+        $d = $payload[$s]['decision'] ?? '';
+        if (!in_array($d, ['Okay', 'Revise'], true)) {
+            q2dRespond(false, 'Please choose Okay or Needs Revision for every file.');
+        }
+        $rm = trim((string) ($payload[$s]['remarks'] ?? ''));
+        if ($d === 'Revise' && $rm === '') {
+            q2dRespond(false, 'Remarks are required for files that need revision.');
+        }
+        $toSave[$s] = ['decision' => $d, 'remarks' => ($d === 'Revise' ? $rm : null)];
+    }
+
+    if (empty($toSave)) {
+        q2dRespond(false, 'Nothing to save.');
+    }
+
+    $entryId = (int) $latest['id'];
+    $include3d = (int) ($latest['include_3d'] ?? 0);
+    $anyRevise = false;
+    $reviseLabels = [];
+    $slotLabels = ['2d' => '2D', 'quotation' => 'Quotation', '3d' => '3D'];
+
+    $conn->begin_transaction();
+    try {
+        $ins = $conn->prepare("
+            INSERT INTO noblecrm_2dquotation_customer_review
+                (quotation_id, inquiry_id, slot, decision, remarks, decided_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        foreach ($toSave as $s => $v) {
+            $ins->bind_param("iisssi", $entryId, $inquiryId, $s, $v['decision'], $v['remarks'], $currentUserId);
+            $ins->execute();
+        }
+        $ins->close();
+
+        foreach ($toSave as $s => $v) {
+            if ($v['decision'] !== 'Revise') {
+                continue;
+            }
+            $anyRevise = true;
+            $reviseLabels[] = $slotLabels[$s];
+
+            if ($s === '2d' || $s === 'quotation' || ($s === '3d' && $include3d)) {
+                // Parehong state ng Head rejection → gagana na ang carry-over/re-upload flow.
+                $p = q2dSlotPrefix($s);
+                $stmt = $conn->prepare("
+                    UPDATE noblecrm_2dquotation
+                    SET status = 'For Revision', revision_source = 'Customer',
+                        {$p}review_status = 'For Revision', {$p}remarks = ?
+                    WHERE id = ?
+                ");
+                $stmt->bind_param("si", $v['remarks'], $entryId);
+                $stmt->execute();
+                $stmt->close();
+            } else {
+                // Standalone 3D → 3D lang ang babalik; hindi gagalawin ang status ng 2D/Quotation.
+                $stmt = $conn->prepare("
+                    UPDATE noblecrm_2dquotation
+                    SET design_3d_stage = 'For Revision', design_3d_done = 0,
+                        design_3d_review_status = 'For Revision', design_3d_remarks = ?
+                    WHERE id = ?
+                ");
+                $stmt->bind_param("si", $v['remarks'], $entryId);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        q2dRespond(false, 'Something went wrong. Please try again.');
+    }
+
+    $clientLine = "{$inquiry['client_name']} (Control No. {$inquiry['control_no']})";
+
+    if ($anyRevise) {
+        // Designer ang gagawa ng revision.
+        q2dNotifyUsers(
+            $conn,
+            [(int) ($inquiry['designer_id'] ?? 0)],
+            $inquiryId,
+            $inquiry,
+            $currentUserId,
+            'Customer requested revision (' . implode(', ', $reviseLabels) . ") for {$clientLine}",
+            "/crm2dquotation?id={$inquiryId}"
+        );
+        q2dRespond(true, 'Sent back for revision.', ['next' => 'revision']);
+    }
+
+    // Lahat Okay → ito na ang "customer confirmed" ng design (para sa ibang pages na gumagamit ng design_confirmed).
+    $clientStatus = 'Client Review & Approval';
+    $stmt = $conn->prepare("
+        UPDATE noblecrminquiry
+        SET design_confirmed = 1, design_confirmed_at = NOW(), design_confirmed_by = ?, clientstatus = ?
+        WHERE id = ?
+    ");
+    $stmt->bind_param("isi", $currentUserId, $clientStatus, $inquiryId);
+    $stmt->execute();
+    $stmt->close();
+
+    // Lahat Okay → i-notify ang Designer Heads at ang designer.
+    q2dNotifyUsers(
+        $conn,
+        array_merge(q2dDesignerHeadIds($conn), [(int) ($inquiry['designer_id'] ?? 0)]),
+        $inquiryId,
+        $inquiry,
+        $currentUserId,
+        "Customer approved all Initial files for {$clientLine}",
+        "/crm2dquotation?id={$inquiryId}"
+    );
+    q2dRespond(true, 'Customer approved all files.', ['next' => 'final']);
 }
 
 q2dRespond(false, 'Unknown action.');

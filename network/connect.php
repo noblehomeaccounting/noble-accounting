@@ -1,6 +1,5 @@
 <?php
 // connect.php
-
 require_once ROOT_PATH . '/vendor/autoload.php';
 Dotenv\Dotenv::createImmutable(ROOT_PATH)->safeLoad();
 
