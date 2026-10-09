@@ -597,7 +597,7 @@
                 const rowClass = isApproved ? 'bg-green-50 hover:bg-green-100' : isRejected ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50';
                 return `
                 <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-                    <td class="px-5 py-3 font-mono text-xs text-blue-500 underline cursor-pointer"
+                    <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
                         onclick="viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})">
                         ${row.control_no}
                     </td>
@@ -633,7 +633,7 @@
                     <div class="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5 ${barColor}"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between gap-2 mb-0.5">
-                            <span class="font-mono text-[10px] font-bold text-blue-500 truncate">${row.control_no}</span>
+                            <span class="font-mono text-[10px] font-bold text-blue-900 truncate">${row.control_no}</span>
                             <div class="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
                                 ${statusBadge(row.status)}
                                 ${(row.attachment_status ?? 'attached') === 'follow_up'

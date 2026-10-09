@@ -889,7 +889,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
           return `
 <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-    <td class="px-4 py-3 align-middle whitespace-nowrap font-mono text-xs text-blue-900 cursor-pointer underline"
+    <td class="px-4 py-3 align-middle whitespace-nowrap font-mono text-xs text-blue-900 cursor-pointer "
         onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})">
         ${highlight(row.voucher_control_no ?? '—', q)}
     </td>
@@ -1155,7 +1155,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     const isComplete = row.voucher_status === 'released';
                     return `
 <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${isComplete ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}">
-    <td class="px-5 py-3 font-mono text-xs text-blue-500 underline cursor-pointer"
+    <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
         onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})">${row.voucher_control_no ?? '—'}</td>
     <td class="px-5 py-3 text-gray-800 text-sm">${row.voucher_payee ?? '—'}</td>
     <td class="px-5 py-3 text-gray-600 text-sm">${row.purpose ?? '—'}</td>

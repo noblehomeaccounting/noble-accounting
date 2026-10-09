@@ -493,7 +493,7 @@ $position = $_SESSION['position'] ?? '';
                 const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
                 return `
                 <tr data-id="${row.id}" class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td class="px-5 py-3 font-mono text-xs text-blue-500 cursor-pointer underline"
+                    <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer "
                         onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})">
                         ${highlight(row.control_no, q)}
                     </td>

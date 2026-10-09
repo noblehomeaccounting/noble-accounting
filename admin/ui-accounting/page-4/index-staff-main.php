@@ -466,7 +466,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
                     return `
                     <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-                        <td class="px-5 py-3 font-mono text-xs text-blue-500 underline cursor-pointer"
+                        <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
                             onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'>
                             ${row.control_no}
                         </td>
