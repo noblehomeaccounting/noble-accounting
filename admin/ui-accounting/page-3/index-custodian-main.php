@@ -123,42 +123,42 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 <div class="hidden md:block overflow-x-auto">
                     <div class="max-h-[500px] overflow-y-auto scrollbar-thin">
                         <table class="table-fixed w-full text-sm">
-    <colgroup>
-        <col style="width:13%"> <!-- Voucher No. -->
-        <col style="width:13%"> <!-- Budget Request No. -->
-        <col style="width:8%">  <!-- Payee -->
-        <col style="width:9%">  <!-- Payment For -->
-        <col style="width:9%">  <!-- Category -->
-        <col style="width:8%">  <!-- Date -->
-        <col style="width:9%">  <!-- Total Amount -->
-        <col style="width:7%">  <!-- Approved By -->
-        <col style="width:7%">  <!-- Received By -->
-        <col style="width:10%"> <!-- Status -->
-        <col style="width:7%">  <!-- Action -->
-    </colgroup>
-    <thead class="sticky top-0 z-10">
-        <tr class="bg-gray-50 text-[10px] font-semibold text-black uppercase tracking-wide">
-            <th class="px-2 py-3 text-center align-middle">Voucher No.</th>
-            <th class="px-2 py-3 text-center align-middle">Budget Request No.</th>
-            <th class="px-2 py-3 text-center align-middle">Payee</th>
-            <th class="px-2 py-3 text-center align-middle">Payment For</th>
-            <th class="px-2 py-3 text-center align-middle">Category</th>
-            <th class="px-2 py-3 text-center align-middle">Date</th>
-            <th class="px-2 py-3 text-center align-middle">Total Amount</th>
-            <th class="px-2 py-3 text-center align-middle">Approved By</th>
-            <th class="px-2 py-3 text-center align-middle">Received By</th>
-            <th class="px-2 py-3 text-center align-middle">Status</th>
-            <th class="px-2 py-3 text-center align-middle">Action</th>
-        </tr>
-    </thead>
-    <tbody id="voucher-tbody">
-        <tr>
-            <td colspan="11" class="px-5 py-8 text-center text-gray-400 text-sm">
-                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
-            </td>
-        </tr>
-    </tbody>
-</table>
+                            <colgroup>
+                                <col style="width:13%"> <!-- Voucher No. -->
+                                <col style="width:13%"> <!-- Budget Request No. -->
+                                <col style="width:8%"> <!-- Payee -->
+                                <col style="width:9%"> <!-- Payment For -->
+                                <col style="width:9%"> <!-- Category -->
+                                <col style="width:8%"> <!-- Date -->
+                                <col style="width:9%"> <!-- Total Amount -->
+                                <col style="width:7%"> <!-- Approved By -->
+                                <col style="width:7%"> <!-- Received By -->
+                                <col style="width:10%"> <!-- Status -->
+                                <col style="width:7%"> <!-- Action -->
+                            </colgroup>
+                            <thead class="sticky top-0 z-10">
+                                <tr class="bg-gray-50 text-[10px] font-semibold text-black uppercase tracking-wide">
+                                    <th class="px-2 py-3 text-center align-middle">Voucher No.</th>
+                                    <th class="px-2 py-3 text-center align-middle">Budget Request No.</th>
+                                    <th class="px-2 py-3 text-center align-middle">Payee</th>
+                                    <th class="px-2 py-3 text-center align-middle">Payment For</th>
+                                    <th class="px-2 py-3 text-center align-middle">Category</th>
+                                    <th class="px-2 py-3 text-center align-middle">Date</th>
+                                    <th class="px-2 py-3 text-center align-middle">Total Amount</th>
+                                    <th class="px-2 py-3 text-center align-middle">Approved By</th>
+                                    <th class="px-2 py-3 text-center align-middle">Received By</th>
+                                    <th class="px-2 py-3 text-center align-middle">Status</th>
+                                    <th class="px-2 py-3 text-center align-middle">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="voucher-tbody">
+                                <tr>
+                                    <td colspan="11" class="px-5 py-8 text-center text-gray-400 text-sm">
+                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -608,13 +608,39 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
                         <!-- Project picker -->
                         <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                                Link to Project <span class="text-gray-300">(optional)</span>
-                            </label>
+                            <div class="flex items-center justify-between">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                    Link to Project <span class="text-gray-300">(optional)</span>
+                                </label>
+                                <button type="button" onclick="toggleNewProject()"
+                                    class="flex items-center gap-1 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition">
+                                    <i class="fa-solid fa-plus text-[9px]"></i> New project
+                                </button>
+                            </div>
+
                             <select id="conf-project-select"
                                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 transition-all">
                                 <option value="">— Select Project —</option>
                             </select>
+
+                            <!-- Inline create -->
+                            <div id="new-project-box"
+                                class="hidden mt-2 p-3 rounded-lg border border-orange-200 bg-orange-50/60 space-y-2">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-500">New project
+                                    name</label>
+                                <div class="flex gap-2">
+                                    <input id="new-project-name" type="text" placeholder="e.g. NOBLEHOME"
+                                        onkeydown="if(event.key==='Enter'){event.preventDefault();createProjectInline();}"
+                                        class="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white uppercase">
+                                    <button type="button" id="btn-create-project" onclick="createProjectInline()"
+                                        class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white text-xs font-semibold px-3 py-2 rounded-lg transition whitespace-nowrap">
+                                        <i class="fa-solid fa-plus text-[10px]"></i> Create
+                                    </button>
+                                </div>
+                                <p class="text-[10px] text-gray-400">
+                                    Gagawa ng bagong project (status: New) at awtomatikong pipiliin dito.
+                                </p>
+                            </div>
                         </div>
 
                         <hr class="border-gray-100">
@@ -887,7 +913,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 const isPending = !row.approver_name || (!row.receiver_name && !row.manual_receiver_name);
                 const rowClass = isComplete ? 'bg-green-50 hover:bg-green-100' : isPending ? 'bg-red-100 hover:bg-red-200' : 'hover:bg-gray-50';
 
-          return `
+                return `
 <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
     <td class="px-4 py-3 align-middle whitespace-nowrap font-mono text-xs text-blue-900 cursor-pointer "
         onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})">
@@ -1663,6 +1689,101 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 });
 
             document.getElementById('voucher-confirm-modal').classList.remove('hidden');
+        }
+
+        function toggleNewProject(forceOpen) {
+            const box = document.getElementById('new-project-box');
+            const open = forceOpen ?? box.classList.contains('hidden');
+            box.classList.toggle('hidden', !open);
+            if (open) {
+                const input = document.getElementById('new-project-name');
+                // I-prefill ng napiling department, dahil kailangang magkapareho ang pangalan nila
+                if (!input.value) input.value = document.getElementById('conf-second-no-select').value || '';
+                input.focus();
+            }
+        }
+
+        async function createProjectInline() {
+            const input = document.getElementById('new-project-name');
+            const btn = document.getElementById('btn-create-project');
+            const projectSel = document.getElementById('conf-project-select');
+            const name = input.value.trim().toUpperCase();
+
+            if (!name) {
+                input.classList.add('border-red-400');
+                input.focus();
+                return;
+            }
+            input.classList.remove('border-red-400');
+
+            // Kung existing na, piliin na lang
+            const existing = (window._allProjects ?? []).find(p => (p.project_name ?? '').toUpperCase() === name);
+            if (existing) {
+                projectSel.value = existing.id;
+                toggleNewProject(false);
+                updateProjectNotice();
+                showToast('Project already exists — selected it.');
+                return;
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Creating...';
+
+            try {
+                // 1. I-create ang project (parehong payload ng Project Monitor)
+                const res = await fetch('<?= BASE_URL ?>/saveproject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: null,
+                        project_name: name,
+                        job_order: '', project_scope: '', purchase_order: '',
+                        client_name: '', notice_to_proceed: '', contract_amount: '',
+                        billing_order_1: '', sales_person: '', billing_order_2: '',
+                        address: '', status: 'New'
+                    })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    showToast(data.error ?? 'Failed to create project.', 'error');
+                    return;
+                }
+
+                // 2. Idagdag din sa listahan ng Project Names (best-effort, hindi hinihintay)
+                fetch('<?= BASE_URL ?>/saveprojectname', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                }).catch(() => { });
+
+                // 3. I-refresh ang dropdown at piliin ang bagong project
+                const list = await (await fetch('<?= BASE_URL ?>/fetchprojects')).json();
+                window._allProjects = list;
+                projectSel.innerHTML = '<option value="">— Select Project —</option>';
+                list.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.project_name + (p.reference_no ? '  [' + p.reference_no + ']' : '');
+                    projectSel.appendChild(opt);
+                });
+
+                const created = list
+                    .filter(p => (p.project_name ?? '').toUpperCase() === name)
+                    .sort((a, b) => b.id - a.id)[0];
+                if (created) projectSel.value = created.id;
+
+                projectSel.classList.remove('border-red-400');
+                input.value = '';
+                toggleNewProject(false);
+                updateProjectNotice();
+                showToast('Project created & selected!');
+            } catch (err) {
+                showToast('Network error. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
         }
 
         function updateProjectNotice() {
