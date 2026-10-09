@@ -122,30 +122,43 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 <!-- Desktop Table (md and up) -->
                 <div class="hidden md:block overflow-x-auto">
                     <div class="max-h-[500px] overflow-y-auto scrollbar-thin">
-                        <table class="w-full text-sm">
-                            <thead class="sticky top-0 z-10">
-                                <tr class="bg-gray-50 text-[11px] font-semibold text-black uppercase tracking-widest">
-                                    <th class="px-5 py-3 text-left">Voucher No.</th>
-                                    <th class="px-5 py-3 text-left">Budget Request No.</th>
-                                    <th class="px-5 py-3 text-left">Payee</th>
-                                    <th class="px-5 py-3 text-left">Payment For</th>
-                                    <th class="px-5 py-3 text-left">Category</th>
-                                    <th class="px-5 py-3 text-left">Date</th>
-                                    <th class="px-5 py-3 text-left">Total Amount</th>
-                                    <th class="px-5 py-3 text-left">Approved By</th>
-                                    <th class="px-5 py-3 text-left">Received By</th>
-                                    <th class="px-5 py-3 text-left">Status</th>
-                                    <th class="px-5 py-3 text-left">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="voucher-tbody">
-                                <tr>
-                                    <td colspan="11" class="px-5 py-8 text-center text-gray-400 text-sm">
-                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <table class="table-fixed w-full text-sm">
+    <colgroup>
+        <col style="width:13%"> <!-- Voucher No. -->
+        <col style="width:13%"> <!-- Budget Request No. -->
+        <col style="width:8%">  <!-- Payee -->
+        <col style="width:9%">  <!-- Payment For -->
+        <col style="width:9%">  <!-- Category -->
+        <col style="width:8%">  <!-- Date -->
+        <col style="width:9%">  <!-- Total Amount -->
+        <col style="width:7%">  <!-- Approved By -->
+        <col style="width:7%">  <!-- Received By -->
+        <col style="width:10%"> <!-- Status -->
+        <col style="width:7%">  <!-- Action -->
+    </colgroup>
+    <thead class="sticky top-0 z-10">
+        <tr class="bg-gray-50 text-[10px] font-semibold text-black uppercase tracking-wide">
+            <th class="px-2 py-3 text-center align-middle">Voucher No.</th>
+            <th class="px-2 py-3 text-center align-middle">Budget Request No.</th>
+            <th class="px-2 py-3 text-center align-middle">Payee</th>
+            <th class="px-2 py-3 text-center align-middle">Payment For</th>
+            <th class="px-2 py-3 text-center align-middle">Category</th>
+            <th class="px-2 py-3 text-center align-middle">Date</th>
+            <th class="px-2 py-3 text-center align-middle">Total Amount</th>
+            <th class="px-2 py-3 text-center align-middle">Approved By</th>
+            <th class="px-2 py-3 text-center align-middle">Received By</th>
+            <th class="px-2 py-3 text-center align-middle">Status</th>
+            <th class="px-2 py-3 text-center align-middle">Action</th>
+        </tr>
+    </thead>
+    <tbody id="voucher-tbody">
+        <tr>
+            <td colspan="11" class="px-5 py-8 text-center text-gray-400 text-sm">
+                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
+            </td>
+        </tr>
+    </tbody>
+</table>
                     </div>
                 </div>
 
@@ -874,27 +887,27 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 const isPending = !row.approver_name || (!row.receiver_name && !row.manual_receiver_name);
                 const rowClass = isComplete ? 'bg-green-50 hover:bg-green-100' : isPending ? 'bg-red-100 hover:bg-red-200' : 'hover:bg-gray-50';
 
-                return `
+          return `
 <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-    <td class="px-5 py-3 font-mono text-xs text-blue-500 cursor-pointer underline"
+    <td class="px-4 py-3 align-middle whitespace-nowrap font-mono text-xs text-blue-900 cursor-pointer underline"
         onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})">
         ${highlight(row.voucher_control_no ?? '—', q)}
     </td>
-    <td class="px-5 py-3 font-mono text-xs text-gray-500">${highlight(row.budget_control_no, q)}</td>
-    <td class="px-5 py-3 text-gray-800">${highlight(row.voucher_payee ?? '—', q)}</td>
-    <td class="px-5 py-3 text-gray-600">${highlight(row.purpose, q)}</td>
-    <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
-    <td class="px-5 py-3 text-xs text-gray-400 font-mono">${row.date_requested}</td>
-    <td class="px-5 py-3 font-mono text-xs font-semibold ${isComplete ? 'text-green-600' : 'text-gray-700'}">
-        PhP ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+    <td class="px-4 py-3 align-middle whitespace-nowrap font-mono text-xs text-gray-500">${highlight(row.budget_control_no, q)}</td>
+    <td class="px-4 py-3 align-middle text-gray-800 text-xs min-w-[110px]">${highlight(row.voucher_payee ?? '—', q)}</td>
+    <td class="px-4 py-3 align-middle text-gray-600 text-xs min-w-[140px] max-w-[200px]">${highlight(row.purpose, q)}</td>
+    <td class="px-4 py-3 align-middle whitespace-nowrap text-xs">${categoryBadge(row.request_category, row.request_reference)}</td>
+    <td class="px-4 py-3 align-middle whitespace-nowrap text-xs text-gray-400 font-mono">${row.date_requested}</td>
+    <td class="px-4 py-3 align-middle whitespace-nowrap font-mono text-xs font-semibold ${isComplete ? 'text-green-600' : 'text-gray-700'}">
+        PHP ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
     </td>
-    <td class="px-5 py-3 text-sm text-gray-700">${highlight(row.approver_name ?? '—', q)}</td>
-    <td class="px-5 py-3 text-sm text-gray-700">${highlight(row.manual_receiver_name || row.receiver_name || '—', q)}</td>
-    <td class="px-5 py-3">${row.voucher_status ? statusBadge(row.voucher_status) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
-    <td class="px-5 py-3">
+    <td class="px-4 py-3 align-middle whitespace-nowrap text-xs text-gray-700">${highlight(row.approver_name ?? '—', q)}</td>
+    <td class="px-4 py-3 align-middle whitespace-nowrap text-xs text-gray-700">${highlight(row.manual_receiver_name || row.receiver_name || '—', q)}</td>
+    <td class="px-4 py-3 align-middle whitespace-nowrap">${row.voucher_status ? statusBadge(row.voucher_status) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
+    <td class="px-4 py-3 align-middle whitespace-nowrap text-center">
         <button onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-            class="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all">
-            <i class="fa-solid fa-receipt mr-1"></i>View
+            class="inline-flex items-center gap-1.5 whitespace-nowrap bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-all">
+           View
         </button>
     </td>
 </tr>`;
@@ -1190,7 +1203,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             PhP ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
         </div>
         <button onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-            class="bg-orange-500 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full whitespace-nowrap">
+            class="bg-orange-500 text-white text-xs font-semibold px-1 py-1.5 rounded-full whitespace-nowrap">
             <i class="fa-solid fa-receipt mr-1"></i>View
         </button>
     </div>

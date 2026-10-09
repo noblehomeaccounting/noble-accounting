@@ -50,6 +50,73 @@ if ($role === ROLE_SALES) {
     $pendStmt->close();
 }
 
+// Bilang ng approved na request na hindi pa nare-receive (para sa badge ng Acknowledge Request)
+$toReceiveCount = 0;
+if ($role === ROLE_ACCOUNTING && $isStaff) {
+    $recvStmt = $conn->prepare("
+        SELECT COUNT(*) FROM noblebudgetrequest
+        WHERE status = 'approved' AND (received_by IS NULL OR received_by = 0)
+    ");
+    $recvStmt->execute();
+    $recvStmt->bind_result($toReceiveCount);
+    $recvStmt->fetch();
+    $recvStmt->close();
+}
+
+// Bilang ng pending na budget request na naghihintay ng approval ng user (para sa badge ng Requests List)
+$requestPendingCount = 0;
+if ($role === ROLE_ACCOUNTING && $isHead) {
+    $reqStmt = $conn->prepare("SELECT COUNT(*) FROM noblebudgetrequest WHERE sent_to = ? AND status = 'pending'");
+    $reqStmt->bind_param("i", $user_id);
+    $reqStmt->execute();
+    $reqStmt->bind_result($requestPendingCount);
+    $reqStmt->fetch();
+    $reqStmt->close();
+}
+
+// Bilang ng na-receive na budget request na wala pang na-submit na cash voucher (para sa badge ng Cash Voucher Request)
+$toPrepareCount = 0;
+if ($role === ROLE_ACCOUNTING && ($isStaff || $isCustodian || $isCustooAssistant)) {
+    $prepStmt = $conn->prepare("
+        SELECT COUNT(*) FROM noblebudgetrequest b
+        WHERE b.received_by IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM noblevoucher v WHERE v.request_id = b.id
+          )
+    ");
+    $prepStmt->execute();
+    $prepStmt->bind_result($toPrepareCount);
+    $prepStmt->fetch();
+    $prepStmt->close();
+}
+
+// Bilang ng voucher na naka-submit na pero wala pang nag-prepare (para sa badge ng Approval Cash Voucher)
+$unpreparedVoucherCount = 0;
+if ($role === ROLE_ACCOUNTING && ($isStaff || $isCustodian || $isHead)) {
+    $vpStmt = $conn->prepare("
+        SELECT COUNT(*) FROM noblevoucher
+        WHERE status = 'voucher_approval'
+          AND (prepared_by IS NULL OR prepared_by = 0)
+    ");
+    $vpStmt->execute();
+    $vpStmt->bind_result($unpreparedVoucherCount);
+    $vpStmt->fetch();
+    $vpStmt->close();
+}
+
+// Bilang ng voucher na ready_to_release (para sa badge ng Cash Voucher Request ng Custodian Assistant)
+$toReleaseCount = 0;
+if ($role === ROLE_ACCOUNTING && $isCustooAssistant) {
+    $relStmt = $conn->prepare("
+        SELECT COUNT(*) FROM noblevoucher
+        WHERE status = 'ready_to_release'
+    ");
+    $relStmt->execute();
+    $relStmt->bind_result($toReleaseCount);
+    $relStmt->fetch();
+    $relStmt->close();
+}
+
 $roleColors = [
     ROLE_IT => '#2563EB', // blue
     ROLE_DESIGNER => '#0D9488', // teal
@@ -65,32 +132,32 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 ?>
 
 <style>
- nav,
-#sidebar-notif-list {
-    scrollbar-width: thin;
-    scrollbar-color: #d1d5db transparent;
-}
+    nav,
+    #sidebar-notif-list {
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
 
-nav::-webkit-scrollbar,
-#sidebar-notif-list::-webkit-scrollbar {
-    width: 4px;
-}
+    nav::-webkit-scrollbar,
+    #sidebar-notif-list::-webkit-scrollbar {
+        width: 4px;
+    }
 
-nav::-webkit-scrollbar-track,
-#sidebar-notif-list::-webkit-scrollbar-track {
-    background: transparent;
-}
+    nav::-webkit-scrollbar-track,
+    #sidebar-notif-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-nav::-webkit-scrollbar-thumb,
-#sidebar-notif-list::-webkit-scrollbar-thumb {
-    background-color: #d1d5db;
-    border-radius: 9999px;
-}
+    nav::-webkit-scrollbar-thumb,
+    #sidebar-notif-list::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 9999px;
+    }
 
-nav::-webkit-scrollbar-thumb:hover,
-#sidebar-notif-list::-webkit-scrollbar-thumb:hover {
-    background-color: #9ca3af;
-}
+    nav::-webkit-scrollbar-thumb:hover,
+    #sidebar-notif-list::-webkit-scrollbar-thumb:hover {
+        background-color: #9ca3af;
+    }
 
     /* ── Sidebar Desktop Transition ─────────────────────────── */
     #sidebar {
@@ -278,11 +345,19 @@ nav::-webkit-scrollbar-thumb:hover,
                     <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Dashboard</span>
                 </a>
+
                 <a href="<?= BASE_URL ?>/accounting" data-tooltip="Requests List"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accounting') ?>">
                     <i class="fa-solid fa-list-check w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Requests List</span>
+                    <span class="sidebar-label flex-1">Requests List</span>
+                    <?php if ($requestPendingCount > 0): ?>
+                        <span
+                            class="sidebar-label min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            <?= $requestPendingCount > 99 ? '99+' : (int) $requestPendingCount ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
+
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" data-tooltip="Petty Cash"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
                     <i class="fa-solid fa-coins w-4 text-center text-sm flex-shrink-0"></i>
@@ -340,19 +415,33 @@ nav::-webkit-scrollbar-thumb:hover,
             <?php if ($isStaff): ?>
                 <a href="<?= BASE_URL ?>/accountingstaffdashboard" data-tooltip="Dashboard Records"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaffdashboard') ?>">
-                    <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
+                    <i class="fa-solid fa-chart-column w-4 text-center text-sm flex-shrink-0"></i>
+
                     <span class="sidebar-label">Dashboard Records</span>
                 </a>
+
                 <a href="<?= BASE_URL ?>/accountingstaff" data-tooltip="Acknowledge Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaff') ?>">
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaff') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Acknowledge Request</span>
+                    <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Acknowledge Request</span>
+                    <?php if ($toReceiveCount > 0): ?>
+                        <span
+                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            <?= $toReceiveCount > 99 ? '99+' : (int) $toReceiveCount ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Cash Voucher Request</span>
+                    <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Cash Voucher Request</span>
+                    <?php if ($toPrepareCount > 0): ?>
+                        <span
+                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            <?= $toPrepareCount > 99 ? '99+' : (int) $toPrepareCount ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/projectmonitor" data-tooltip="Project Monitor"
@@ -362,9 +451,15 @@ nav::-webkit-scrollbar-thumb:hover,
                 </a>
 
                 <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
-                    class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
-                    <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Approval Cash Voucher</span>
+                    class="flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
+                    <i class="fa-solid fa-money-bills w-4 text-center text-sm flex-shrink-0" style="color: rgb(0, 0, 0); "></i>
+                    <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Approval Cash Voucher</span>
+                    <?php if ($unpreparedVoucherCount > 0): ?>
+                        <span
+                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            <?= $unpreparedVoucherCount > 99 ? '99+' : (int) $unpreparedVoucherCount ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
             <?php endif; ?>
 
@@ -409,9 +504,15 @@ nav::-webkit-scrollbar-thumb:hover,
                 </div>
 
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Cash Voucher Request</span>
+                    <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Cash Voucher Request</span>
+                    <?php if ($toReleaseCount > 0): ?>
+                        <span
+                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            <?= $toReleaseCount > 99 ? '99+' : (int) $toReleaseCount ?>
+                        </span>
+                    <?php endif; ?>
                 </a>
             <?php endif; ?>
 

@@ -23,14 +23,7 @@ function cutListRoleLabel(?string $role): string
     return '—';
 }
 
-// NOTE: notification_id / is_read are now pulled via correlated subqueries
-// instead of a LEFT JOIN. A quotation's inquiry can have more than one
-// noblenotification row for the same user (e.g. multiple status updates),
-// and a plain LEFT JOIN against a one-to-many table duplicates the parent
-// row once per match — that was the cause of "test3" (and any inquiry with
-// >1 notification) showing up twice/thrice in the list. Subqueries collapse
-// it back to exactly one row per quotation. Preference: an unread
-// notification if one exists, otherwise the most recent one.
+
 function cutListBaseQuery(): string
 {
     return "

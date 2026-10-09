@@ -57,24 +57,24 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             <!-- Scrollable Table -->
             <div class="overflow-x-auto">
                 <div class="max-h-[600px] overflow-y-auto scrollbar-thin">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-xs">
                         <thead class="sticky top-0 z-10">
-                            <tr class="bg-gray-50 text-sm font-semibold text-gray-800 uppercase">
-                                <th class="px-5 py-3 text-left">Control No.</th>
-                                <th class="px-5 py-3 text-left">Requestor</th>
-                                <th class="px-5 py-3 text-left">Purpose</th>
-                                <th class="px-5 py-3 text-left">Category</th>
-                                <th class="px-5 py-3 text-left">Date</th>
-                                <th class="px-5 py-3 text-left">Total</th>
-                                <th class="px-5 py-3 text-left">Approved By</th>
-                                <th class="px-5 py-3 text-left">Received By</th>
-                                <th class="px-5 py-3 text-left">Received At</th>
-                                <th class="px-5 py-3 text-left">Actions</th>
+                            <tr class="bg-gray-50 text-[11px] font-semibold text-gray-800 uppercase">
+                                <th class="px-3 py-2 text-left">Control No.</th>
+                                <th class="px-3 py-2 text-left">Requestor</th>
+                                <th class="px-3 py-2 text-left">Purpose</th>
+                                <th class="px-3 py-2 text-left">Category</th>
+                                <th class="px-3 py-2 text-left">Date</th>
+                                <th class="px-3 py-2 text-left">Total</th>
+                                <th class="px-3 py-2 text-left">Approved By</th>
+                                <th class="px-3 py-2 text-left">Received By</th>
+                                <th class="px-3 py-2 text-left">Received At</th>
+                                <th class="px-3 py-2 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="received-tbody">
                             <tr>
-                                <td colspan="8" class="px-5 py-8 text-center text-gray-400 text-md">
+                                <td colspan="10" class="px-3 py-6 text-center text-gray-400 text-xs">
                                     <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
                                 </td>
                             </tr>
@@ -327,7 +327,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const tbody = document.getElementById('received-tbody');
 
             if (!data.length) {
-                tbody.innerHTML = `<tr><td colspan="10" class="px-5 py-8 text-center text-gray-400">No received requests yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="px-3 py-6 text-center text-xs text-gray-400">No received requests yet.</td></tr>`;
                 return;
             }
 
@@ -345,23 +345,23 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
                 return `
 <tr class="border-t border-gray-100 transition-colors ${isSuccess ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}">
-    <td class="px-5 py-3 font-mono text-xs text-blue-500">${highlight(row.control_no, q)}</td>
-    <td class="px-5 py-3">
-        <p class="font-medium text-gray-800">${highlight(row.requestor_name, q)}</p>
-        <p class="text-[10px] text-gray-400">${row.sender_email ?? ''}</p>
+    <td class="px-3 py-2 font-mono text-[11px] text-blue-500">${highlight(row.control_no, q)}</td>
+    <td class="px-3 py-2">
+        <p class="text-xs font-medium text-gray-800">${highlight(row.requestor_name, q)}</p>
+        <p class="text-[9px] text-gray-400">${row.sender_email ?? ''}</p>
     </td>
-    <td class="px-5 py-3 text-gray-600">${highlight(row.purpose, q)}</td>
-    <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
-    <td class="px-5 py-3 text-xs text-gray-400 font-mono">${row.date_requested}</td>
-    <td class="px-5 py-3 font-mono text-xs font-semibold ${isSuccess ? 'text-green-600' : 'text-gray-700'}">
+    <td class="px-3 py-2 text-xs text-gray-600">${highlight(row.purpose, q)}</td>
+    <td class="px-3 py-2">${categoryBadge(row.request_category, row.request_reference)}</td>
+    <td class="px-3 py-2 text-[11px] text-gray-400 font-mono">${row.date_requested}</td>
+    <td class="px-3 py-2 font-mono text-[11px] font-semibold ${isSuccess ? 'text-green-600' : 'text-gray-700'}">
         ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
     </td>
-    <td class="px-5 py-3 text-sm text-gray-700">${highlight(row.approver_name ?? '—', q)}</td>
-    <td class="px-5 py-3 text-sm text-gray-700">${highlight(row.receiver_name ?? '—', q)}</td>
-    <td class="px-5 py-3 text-xs text-gray-400">${receivedAt}</td>
-    <td class="px-5 py-3">
+    <td class="px-3 py-2 text-xs text-gray-700">${highlight(row.approver_name ?? '—', q)}</td>
+    <td class="px-3 py-2 text-xs text-gray-700">${highlight(row.receiver_name ?? '—', q)}</td>
+    <td class="px-3 py-2 text-[11px] text-gray-400">${receivedAt}</td>
+    <td class="px-3 py-2">
         <button onclick='printRequest(${JSON.stringify(row).replace(/'/g, "\\'")})'
-            class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all">
+            class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
             <i class="fa-solid fa-print text-[10px]"></i> Print
         </button>
     </td>

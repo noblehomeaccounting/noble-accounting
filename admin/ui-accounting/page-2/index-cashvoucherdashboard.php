@@ -447,18 +447,27 @@ $position = $_SESSION['position'] ?? '';
             return result.trim() + ' Only';
         }
 
+        // "Preparing" = naka-submit na ang voucher pero wala pang nag-prepare
+        function voucherStatus(row) {
+            if (!row.voucher_status) return null;
+            if (row.voucher_status === 'voucher_approval' && !row.prepared_by) return 'preparing';
+            return row.voucher_status;
+        }
+
         function statusBadge(status) {
             const map = {
+                'preparing': 'bg-orange-100 text-orange-700',
                 'voucher_approval': 'bg-yellow-100 text-yellow-700',
                 'ready_to_release': 'bg-blue-100 text-blue-700',
                 'released': 'bg-green-100 text-green-700',
             };
             const label = {
+                'preparing': 'Preparing',
                 'voucher_approval': 'For Approval',
                 'ready_to_release': 'Ready to Release',
                 'released': 'Released',
             };
-            return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">${label[status] ?? status}</span>`;
+            return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">${label[status] ?? status}</span>`;
         }
 
         function highlight(text, q) {
@@ -495,7 +504,7 @@ $position = $_SESSION['position'] ?? '';
                     <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">
                         PHP ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                     </td>
-                    <td class="px-5 py-3">${row.voucher_status ? statusBadge(row.voucher_status) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
+                    <td class="px-5 py-3">${voucherStatus(row) ? statusBadge(voucherStatus(row)) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
                     <td class="px-5 py-3">
                         <button onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
                             class="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all">
@@ -508,12 +517,13 @@ $position = $_SESSION['position'] ?? '';
             cards.innerHTML = data.map(row => {
                 const items = row.items ?? [];
                 const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-                const isComplete = row.voucher_status === 'released';
-                const isPending = !row.voucher_status;
+                const st = voucherStatus(row);
+                const isComplete = st === 'released';
                 const barColor = isComplete ? 'bg-green-400'
-                    : row.voucher_status === 'voucher_approval' ? 'bg-yellow-400'
-                        : row.voucher_status === 'ready_to_release' ? 'bg-blue-400'
-                            : 'bg-gray-200';
+                    : st === 'preparing' ? 'bg-orange-400'
+                        : st === 'voucher_approval' ? 'bg-yellow-400'
+                            : st === 'ready_to_release' ? 'bg-blue-400'
+                                : 'bg-gray-200';
                 const rowBg = isComplete ? 'bg-green-50' : 'bg-white';
 
                 return `
@@ -523,7 +533,7 @@ $position = $_SESSION['position'] ?? '';
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between gap-2 mb-0.5">
                             <span class="font-mono text-[10px] font-bold text-blue-500 truncate">${highlight(row.control_no, q)}</span>
-                            ${row.voucher_status ? statusBadge(row.voucher_status) : '<span class="text-[9px] text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 flex-shrink-0">Not submitted</span>'}
+                            ${st ? statusBadge(st) : '<span class="text-[9px] text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 flex-shrink-0">Not submitted</span>'}
                         </div>
                         <div class="text-sm font-semibold text-gray-800 truncate leading-tight">${highlight(row.voucher_title ?? '—', q)}</div>
                         <div class="text-[11px] text-gray-500 truncate">${highlight(row.voucher_payee ?? '—', q)}</div>
@@ -667,159 +677,169 @@ $position = $_SESSION['position'] ?? '';
         }
 
         function buildActionBtn(row) {
-            if (POSITION === '<?= POSITION_STAFF ?>') {
-                if (!row.prepared_by) {
-                    return `<button onclick="markPrepared(${row.voucher_id})"
-                        class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
-                        <i class="fa-solid fa-pen-to-square mr-1"></i>Mark as Prepared
-                    </button>`;
-                }
-            } else if (POSITION === '<?= POSITION_HEAD ?>') {
-                if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
-                    if (!row.prepared_by) {
-                        return `<span class="flex items-center gap-2 text-xs text-red-500 font-semibold px-4 py-2 bg-red-50 rounded-lg border border-red-200">
-                            <i class="fa-solid fa-lock"></i>Waiting to be prepared
-                        </span>`;
-                    } else {
-                        return `<button onclick="markApproved(${row.voucher_id})"
-                            class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
-                            <i class="fa-solid fa-check mr-1"></i>Approve Voucher
-                        </button>`;
-                    }
-                }
-            }
-            if (row.voucher_status === 'released') {
-                return `<button onclick="printVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-                    class="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
-                    <i class="fa-solid fa-print mr-1"></i>Print Voucher
+    if (POSITION === '<?= POSITION_STAFF ?>') {
+        if (!row.prepared_by) {
+            return `<button onclick="markPrepared(${row.voucher_id})"
+                class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+                <i class="fa-solid fa-pen-to-square mr-1"></i>Mark as Prepared
+            </button>`;
+        }
+    } else if (POSITION === '<?= POSITION_HEAD ?>') {
+        if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
+            if (!row.prepared_by) {
+                return `<span class="flex items-center gap-2 text-xs text-red-500 font-semibold px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                    <i class="fa-solid fa-lock"></i>Waiting to be prepared
+                </span>`;
+            } else {
+                return `<button onclick="markApproved(${row.voucher_id})"
+                    class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+                    <i class="fa-solid fa-check mr-1"></i>Approve Voucher
                 </button>`;
-            } else if (row.voucher_status === 'ready_to_release') {
-                return `<span class="text-xs text-blue-500 px-4 py-2 font-medium flex items-center gap-2 bg-blue-50 rounded-lg border border-blue-200">
-                    <i class="fa-solid fa-box"></i>Ready to Release
-                </span>`;
-            } else if (row.voucher_status === 'voucher_approval') {
-                return `<span class="text-xs text-yellow-600 px-4 py-2 font-medium flex items-center gap-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <i class="fa-solid fa-clock"></i>Waiting for approval
-                </span>`;
             }
-            return '';
         }
+    }
 
-        function buildActionBtnMobile(row) {
-            if (POSITION === '<?= POSITION_STAFF ?>') {
-                if (!row.prepared_by) {
-                    return `<button onclick="markPrepared(${row.voucher_id})"
-                        class="w-full flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
-                        <i class="fa-solid fa-pen-to-square"></i>Mark as Prepared
-                    </button>`;
-                }
-            } else if (POSITION === '<?= POSITION_HEAD ?>') {
-                if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
-                    if (!row.prepared_by) {
-                        return `<span class="flex items-center justify-center gap-2 text-xs text-red-500 font-semibold py-2.5 bg-red-50 rounded-xl border border-red-200">
-                            <i class="fa-solid fa-lock"></i>Waiting to be prepared
-                        </span>`;
-                    } else {
-                        return `<button onclick="markApproved(${row.voucher_id})"
-                            class="w-full flex items-center justify-center gap-2 bg-green-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
-                            <i class="fa-solid fa-check"></i>Approve Voucher
-                        </button>`;
-                    }
-                }
-            }
-            if (row.voucher_status === 'released') {
-                return `<button onclick="printVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-                    class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
-                    <i class="fa-solid fa-print"></i>Print Voucher
+    if (row.voucher_status === 'released') {
+        return `<button onclick="printVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
+            class="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+            <i class="fa-solid fa-print mr-1"></i>Print Voucher
+        </button>`;
+    } else if (row.voucher_status === 'ready_to_release') {
+        return `<span class="text-xs text-blue-500 px-4 py-2 font-medium flex items-center gap-2 bg-blue-50 rounded-lg border border-blue-200">
+            <i class="fa-solid fa-box"></i>Ready to Release
+        </span>`;
+    } else if (voucherStatus(row) === 'preparing') {
+        return `<span class="text-xs text-orange-600 px-4 py-2 font-medium flex items-center gap-2 bg-orange-50 rounded-lg border border-orange-200">
+            <i class="fa-solid fa-pen-to-square"></i>Waiting to be prepared
+        </span>`;
+    } else if (row.voucher_status === 'voucher_approval') {
+        return `<span class="text-xs text-yellow-600 px-4 py-2 font-medium flex items-center gap-2 bg-yellow-50 rounded-lg border border-yellow-200">
+            <i class="fa-solid fa-clock"></i>Waiting for approval
+        </span>`;
+    }
+    return '';
+}
+
+function buildActionBtnMobile(row) {
+    if (POSITION === '<?= POSITION_STAFF ?>') {
+        if (!row.prepared_by) {
+            return `<button onclick="markPrepared(${row.voucher_id})"
+                class="w-full flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
+                <i class="fa-solid fa-pen-to-square"></i>Mark as Prepared
+            </button>`;
+        }
+    } else if (POSITION === '<?= POSITION_HEAD ?>') {
+        if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
+            if (!row.prepared_by) {
+                return `<span class="flex items-center justify-center gap-2 text-xs text-red-500 font-semibold py-2.5 bg-red-50 rounded-xl border border-red-200">
+                    <i class="fa-solid fa-lock"></i>Waiting to be prepared
+                </span>`;
+            } else {
+                return `<button onclick="markApproved(${row.voucher_id})"
+                    class="w-full flex items-center justify-center gap-2 bg-green-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
+                    <i class="fa-solid fa-check"></i>Approve Voucher
                 </button>`;
-            } else if (row.voucher_status === 'ready_to_release') {
-                return `<span class="flex items-center justify-center gap-2 text-xs text-blue-600 py-2.5 font-medium bg-blue-50 rounded-xl border border-blue-200">
-                    <i class="fa-solid fa-box"></i>Ready to Release
-                </span>`;
-            } else if (row.voucher_status === 'voucher_approval') {
-                return `<span class="flex items-center justify-center gap-2 text-xs text-yellow-600 py-2.5 font-medium bg-yellow-50 rounded-xl border border-yellow-200">
-                    <i class="fa-solid fa-clock"></i>Waiting for approval
-                </span>`;
             }
-            return '';
         }
+    }
 
-        function closeVoucherModal() {
-            document.getElementById('voucher-modal').classList.add('hidden');
-            currentRow = null;
-        }
+    if (row.voucher_status === 'released') {
+        return `<button onclick="printVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
+            class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
+            <i class="fa-solid fa-print"></i>Print Voucher
+        </button>`;
+    } else if (row.voucher_status === 'ready_to_release') {
+        return `<span class="flex items-center justify-center gap-2 text-xs text-blue-600 py-2.5 font-medium bg-blue-50 rounded-xl border border-blue-200">
+            <i class="fa-solid fa-box"></i>Ready to Release
+        </span>`;
+    } else if (voucherStatus(row) === 'preparing') {
+        return `<span class="flex items-center justify-center gap-2 text-xs text-orange-600 py-2.5 font-medium bg-orange-50 rounded-xl border border-orange-200">
+            <i class="fa-solid fa-pen-to-square"></i>Waiting to be prepared
+        </span>`;
+    } else if (row.voucher_status === 'voucher_approval') {
+        return `<span class="flex items-center justify-center gap-2 text-xs text-yellow-600 py-2.5 font-medium bg-yellow-50 rounded-xl border border-yellow-200">
+            <i class="fa-solid fa-clock"></i>Waiting for approval
+        </span>`;
+    }
+    return '';
+}
 
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !document.getElementById('voucher-modal').classList.contains('hidden')) {
-                closeVoucherModal();
-            }
-        });
+                function closeVoucherModal() {
+                    document.getElementById('voucher-modal').classList.add('hidden');
+                    currentRow = null;
+                }
 
-        function markPrepared(voucherId) {
-            fetch('<?= BASE_URL ?>/cashvoucherprepared', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ voucher_id: voucherId })
-            }).then(res => res.json()).then(data => {
-                if (data.success) { closeVoucherModal(); showToast('Voucher marked as prepared!'); previousCount = 0; fetchVouchers(); }
-                else showToast(data.error ?? 'Failed to mark as prepared.', 'error');
-            });
-        }
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && !document.getElementById('voucher-modal').classList.contains('hidden')) {
+                        closeVoucherModal();
+                    }
+                });
 
-        function markApproved(voucherId) {
-            fetch('<?= BASE_URL ?>/cashvoucherapproved', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ voucher_id: voucherId })
-            }).then(res => res.json()).then(data => {
-                if (data.success) { closeVoucherModal(); showToast('Voucher approved successfully!'); previousCount = 0; fetchVouchers(); }
-                else showToast(data.error ?? 'Failed.', 'error');
-            });
-        }
+                function markPrepared(voucherId) {
+                    fetch('<?= BASE_URL ?>/cashvoucherprepared', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ voucher_id: voucherId })
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) { closeVoucherModal(); showToast('Voucher marked as prepared!'); previousCount = 0; fetchVouchers(); }
+                        else showToast(data.error ?? 'Failed to mark as prepared.', 'error');
+                    });
+                }
 
-        function showToast(message, type = 'success') {
-            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
-            const toast = document.createElement('div');
-            toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${colors[type]} text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0 translate-y-2`;
-            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i> ${message}`;
-            document.body.appendChild(toast);
-            requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-2'));
-            setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-2'); setTimeout(() => toast.remove(), 300); }, 3000);
-        }
+                function markApproved(voucherId) {
+                    fetch('<?= BASE_URL ?>/cashvoucherapproved', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ voucher_id: voucherId })
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) { closeVoucherModal(); showToast('Voucher approved successfully!'); previousCount = 0; fetchVouchers(); }
+                        else showToast(data.error ?? 'Failed.', 'error');
+                    });
+                }
 
-        function printVoucher(row) {
-            const items = row.items ?? [];
-            let total = 0, itemRows = '', filled = 0;
-            items.forEach(item => {
-                if (!item.description) return;
-                filled++;
-                const amt = parseFloat(item.amount || 0);
-                total += amt;
-                itemRows += `<tr>
+                function showToast(message, type = 'success') {
+                    const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+                    const toast = document.createElement('div');
+                    toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${colors[type]} text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0 translate-y-2`;
+                    toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i> ${message}`;
+                    document.body.appendChild(toast);
+                    requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-2'));
+                    setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-2'); setTimeout(() => toast.remove(), 300); }, 3000);
+                }
+
+                function printVoucher(row) {
+                    const items = row.items ?? [];
+                    let total = 0, itemRows = '', filled = 0;
+                    items.forEach(item => {
+                        if (!item.description) return;
+                        filled++;
+                        const amt = parseFloat(item.amount || 0);
+                        total += amt;
+                        itemRows += `<tr>
                     <td style="text-align:center;border:1px solid #ccc;padding:5px;font-size:11px;">${filled}</td>
                     <td style="border:1px solid #ccc;padding:5px;font-size:11px;">${item.description}${item.purpose ? ' — ' + item.purpose : ''}</td>
                     <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;font-size:11px;">${amt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
                 </tr>`;
-            });
-            for (let e = filled; e < 5; e++) {
-                itemRows += `<tr>
+                    });
+                    for (let e = filled; e < 5; e++) {
+                        itemRows += `<tr>
                     <td style="text-align:center;border:1px solid #ccc;padding:5px;color:#ccc;font-size:11px;">${e + 1}</td>
                     <td style="border:1px solid #ccc;padding:5px;height:24px;"></td>
                     <td style="border:1px solid #ccc;padding:5px;"></td>
                 </tr>`;
-            }
+                    }
 
-            const preparedAt = row.prepared_at ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-            const approvedAt = row.approved_at ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-            const releasedAt = row.released_at ? new Date(String(row.released_at).replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-            const receiverName = row.manual_receiver_name || row.receiver_name || '';
-            const receivedAt = row.manual_receiver_date
-                ? new Date(row.manual_receiver_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                : row.received_at
-                    ? new Date(row.received_at.replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                    : '';
+                    const preparedAt = row.prepared_at ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    const approvedAt = row.approved_at ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    const releasedAt = row.released_at ? new Date(String(row.released_at).replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    const receiverName = row.manual_receiver_name || row.receiver_name || '';
+                    const receivedAt = row.manual_receiver_date
+                        ? new Date(row.manual_receiver_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : row.received_at
+                            ? new Date(row.received_at.replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+                            : '';
 
-            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+                    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
             <title>Cash Voucher - ${row.voucher_control_no ?? row.control_no}</title>
             <style>
                 *{box-sizing:border-box;}
@@ -950,80 +970,80 @@ $position = $_SESSION['position'] ?? '';
             <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
             </body></html>`;
 
-            const w = window.open('', '_blank');
-            w.document.write(html);
-            w.document.close();
-        }
+                    const w = window.open('', '_blank');
+                    w.document.write(html);
+                    w.document.close();
+                }
 
-        let previousCount = 0;
+                let previousCount = 0;
 
-        function fetchVouchers() {
-            fetch('<?= BASE_URL ?>/cashvoucherfetchall')
-                .then(res => res.json())
-                .then(data => {
-                    allData = data;  // tanggalin ang previousCount check
-                    const q = document.getElementById('search-input').value.toLowerCase();
-                    const filtered = q ? allData.filter(row =>
+                function fetchVouchers() {
+                    fetch('<?= BASE_URL ?>/cashvoucherfetchall')
+                        .then(res => res.json())
+                        .then(data => {
+                            allData = data;  // tanggalin ang previousCount check
+                            const q = document.getElementById('search-input').value.toLowerCase();
+                            const filtered = q ? allData.filter(row =>
+                                row.control_no?.toLowerCase().includes(q) ||
+                                row.voucher_title?.toLowerCase().includes(q) ||
+                                row.voucher_payee?.toLowerCase().includes(q) ||
+                                row.purpose?.toLowerCase().includes(q)
+                            ) : allData;
+                            renderTable(filtered, q);
+                            document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
+                        })
+                        .catch(err => console.error('Fetch error:', err));
+                }
+
+                document.getElementById('search-input').addEventListener('input', function () {
+                    const q = this.value.toLowerCase();
+                    const filtered = allData.filter(row =>
                         row.control_no?.toLowerCase().includes(q) ||
                         row.voucher_title?.toLowerCase().includes(q) ||
                         row.voucher_payee?.toLowerCase().includes(q) ||
                         row.purpose?.toLowerCase().includes(q)
-                    ) : allData;
+                    );
                     renderTable(filtered, q);
-                    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
-                })
-                .catch(err => console.error('Fetch error:', err));
-        }
+                });
 
-        document.getElementById('search-input').addEventListener('input', function () {
-            const q = this.value.toLowerCase();
-            const filtered = allData.filter(row =>
-                row.control_no?.toLowerCase().includes(q) ||
-                row.voucher_title?.toLowerCase().includes(q) ||
-                row.voucher_payee?.toLowerCase().includes(q) ||
-                row.purpose?.toLowerCase().includes(q)
-            );
-            renderTable(filtered, q);
-        });
-
-        function checkHighlight() {
-            const params = new URLSearchParams(window.location.search);
-            const highlightId = params.get('highlight');
-            if (!highlightId) return;
-            const interval = setInterval(() => {
-                const isMobile = window.innerWidth < 768;
-                const row = isMobile
-                    ? document.querySelector(`#voucher-cards div[data-id="${highlightId}"]`)
-                    : document.querySelector(`#voucher-tbody tr[data-id="${highlightId}"]`);
-                if (row) {
-                    clearInterval(interval);
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (!isMobile) {
-                        const firstCell = row.querySelector('td:first-child');
-                        if (firstCell) {
-                            const badge = document.createElement('span');
-                            badge.className = 'highlight-badge';
-                            firstCell.prepend(badge);
-                            setTimeout(() => badge.remove(), 5000);
+                function checkHighlight() {
+                    const params = new URLSearchParams(window.location.search);
+                    const highlightId = params.get('highlight');
+                    if (!highlightId) return;
+                    const interval = setInterval(() => {
+                        const isMobile = window.innerWidth < 768;
+                        const row = isMobile
+                            ? document.querySelector(`#voucher-cards div[data-id="${highlightId}"]`)
+                            : document.querySelector(`#voucher-tbody tr[data-id="${highlightId}"]`);
+                        if (row) {
+                            clearInterval(interval);
+                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            if (!isMobile) {
+                                const firstCell = row.querySelector('td:first-child');
+                                if (firstCell) {
+                                    const badge = document.createElement('span');
+                                    badge.className = 'highlight-badge';
+                                    firstCell.prepend(badge);
+                                    setTimeout(() => badge.remove(), 5000);
+                                }
+                            } else {
+                                let on = true;
+                                const flash = setInterval(() => { row.style.backgroundColor = on ? '#fecaca' : '#fee2e2'; on = !on; }, 300);
+                                setTimeout(() => { clearInterval(flash); row.style.backgroundColor = ''; }, 5000);
+                            }
                         }
-                    } else {
-                        let on = true;
-                        const flash = setInterval(() => { row.style.backgroundColor = on ? '#fecaca' : '#fee2e2'; on = !on; }, 300);
-                        setTimeout(() => { clearInterval(flash); row.style.backgroundColor = ''; }, 5000);
-                    }
+                    }, 200);
+                    setTimeout(() => clearInterval(interval), 5000);
                 }
-            }, 200);
-            setTimeout(() => clearInterval(interval), 5000);
-        }
 
 
 
-        fetchVouchers();
-        setTimeout(checkHighlight, 500);
-        setInterval(fetchVouchers, 5000);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') { previousCount = 0; fetchVouchers(); }
-        });
+                fetchVouchers();
+                setTimeout(checkHighlight, 500);
+                setInterval(fetchVouchers, 5000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') { previousCount = 0; fetchVouchers(); }
+                });
     </script>
 
 </body>
