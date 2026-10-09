@@ -126,8 +126,8 @@ if (!empty($_SESSION['logged_in'])) {
 
                 <!-- Welcome + features -->
                 <div class="flex-1 flex flex-col justify-center py-5">
-                    <h1 class="text-5xl xl:text-6xl font-extrabold tracking-tight leading-tight">
-                        Welcome <span class="text-[#ff9a1f]">Back!</span>
+                    <h1 class="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight">
+                        Your Workspace <span class="text-[#ff9a1f]">Awaits</span>
                     </h1>
                     <p class="mt-3 text-lg xl:text-xl text-gray-100 leading-snug max-w-md">
                         Access your admin dashboard and manage your accounting efficiently.
