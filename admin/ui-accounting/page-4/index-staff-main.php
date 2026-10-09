@@ -19,8 +19,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 </head>
 
 <body class="bg-slate-100">
- <main id="main-content"
-        class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
 
         <!-- Header -->
         <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
@@ -114,9 +113,9 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[460px] overflow-y-auto scrollbar-thin">
                 <table class="w-full text-sm">
-                    <thead>
+                    <thead class="sticky top-0 z-10 bg-gray-50">
                         <tr class="bg-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
                             <th class="px-5 py-3 text-left">Control No.</th>
                             <th class="px-5 py-3 text-left">Requestor</th>
