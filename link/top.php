@@ -3,7 +3,23 @@
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));
 }
+
+// Custom cursor, naka-embed sa mismong HTML para hindi na hinihintay ang image file sa bawat page
+$cursorFile = ROOT_PATH . '/icon/cur4.png';
+$cursorUri  = is_file($cursorFile)
+    ? 'data:image/png;base64,' . base64_encode(file_get_contents($cursorFile))
+    : '';
 ?>
+
+<?php if ($cursorUri !== ''): ?>
+<style>
+    *,
+    *::before,
+    *::after {
+        cursor: url('<?= $cursorUri ?>') 0 0, auto !important;
+    }
+</style>
+<?php endif; ?>
 
 <!-- link this page to cdn-->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -15,7 +31,7 @@ if (!defined('ROOT_PATH')) {
 <link rel="icon" type="image/png" href="<?= BASE_URL ?>/icon/logo.png">
 
 <style>
-     * {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
+    * {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
 </style>

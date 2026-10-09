@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['email']      = $account['email'];
             $_SESSION['role']       = $account['role'];
             $_SESSION['position']   = $account['position'];
-            $_SESSION['branch']     = $account['branch'];   // <-- IDINAGDAG
+            $_SESSION['branch']     = $account['branch'];
             $_SESSION['logged_in']  = true;
 
             $position = $account['position'] ?? '';
@@ -103,85 +103,193 @@ if (!empty($_SESSION['logged_in'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign in — Noble Accounting</title>
+    <title>Admin Login — Noblehome</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
 </head>
 
-<body class="min-h-screen flex items-center justify-center px-4 py-12 relative"
-    style="background-image: url('<?= BASE_URL ?>/icon/building2.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+<body class="min-h-screen m-0 bg-gray-50">
 
-    <!-- Overlay -->
-    <div class="absolute inset-0 bg-black/50 z-0"></div>
+    <div class="min-h-screen grid grid-cols-1 lg:grid-cols-2">
 
-    <div class="w-full max-w-md relative z-10">
+        <!-- LEFT: Brand panel -->
+        <div class="relative hidden lg:flex flex-col min-h-screen bg-cover bg-center text-white overflow-hidden"
+            style="background-image: url('<?= BASE_URL ?>/icon/building2.png');">
 
-        <!-- Brand -->
-        <div class="flex items-center justify-center gap-4 mb-8">
-            <div class="flex items-center justify-center w-14 h-14 rounded-lg shrink-0">
-                <img src="<?= BASE_URL ?>/icon/logo.png" class="object-contain bg-white rounded-md p-1" alt="error">
+            <!-- Dark overlay -->
+            <div class="absolute inset-0 bg-gradient-to-r from-black/85 via-black/65 to-black/40"></div>
+
+            <div class="relative z-10 flex flex-col flex-1 pt-12 px-16 xl:px-24">
+
+                <!-- Logo -->
+                <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome logo"
+                    class="w-48 h-auto object-contain self-start">
+
+                <!-- Welcome + features -->
+                <div class="flex-1 flex flex-col justify-center py-5">
+                    <h1 class="text-5xl xl:text-6xl font-extrabold tracking-tight leading-tight">
+                        Welcome <span class="text-[#ff9a1f]">Back!</span>
+                    </h1>
+                    <p class="mt-3 text-lg xl:text-xl text-gray-100 leading-snug max-w-md">
+                        Access your admin dashboard and manage your accounting efficiently.
+                    </p>
+
+                    <ul class="mt-8 space-y-3">
+                        <li class="flex items-center gap-5">
+                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-chart-simple"></i>
+                            </span>
+                            <span class="text-base">Manage Request</span>
+                        </li>
+                        <li class="flex items-center gap-5">
+                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-cube"></i>
+                            </span>
+                            <span class="text-base">Budget Request</span>
+                        </li>
+                        <li class="flex items-center gap-5">
+                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-users"></i>
+                            </span>
+                            <span class="text-base">User Management</span>
+                        </li>
+                        <li class="flex items-center gap-5">
+                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-gear"></i>
+                            </span>
+                            <span class="text-base">System Settings</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
-            <div class="w-px h-12 bg-white"></div>
-            <div class="">
-                <h1 class="text-xl font-bold tracking-wide text-white uppercase leading-tight">
-                    Noble<span class="text-yellow-500">Home</span> Accounting
-                </h1>
-                <p class="text-xs text-white tracking-widest uppercase mt-0.5">Management System</p>
+
+            <!-- Tagline bar -->
+            <div class="relative z-10 bg-black/70 px-16 xl:px-24 py-10">
+                <div class="w-12 h-1 bg-[#ff7a00] mb-6"></div>
+                <p class="text-sm tracking-[0.25em] uppercase leading-8 text-gray-100">
+                    Better management.<br>Easy to Manage.
+                </p>
             </div>
         </div>
 
-        <!-- Card -->
-        <div class="rounded shadow-sm px-8 py-10">
+        <!-- RIGHT: Login -->
+        <div class="relative flex items-center justify-center min-h-screen px-4 sm:px-8 py-10 overflow-hidden bg-gray-50">
 
-            <h2 class="text-lg font-medium text-white mb-1">Sign in to your account</h2>
-            <p class="text-sm text-gray-200 mb-6">Enter your credentials to continue.</p>
+            <!-- Orange shapes (top-right) -->
+            <div class="absolute -top-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-br from-orange-400 to-[#ff7a00]"></div>
+            <div class="absolute -top-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-b from-orange-300/70 to-orange-200/20"></div>
 
-            <?php if (!empty($error)): ?>
-                <div class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-3 mb-6">
-                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-200 text-red-700 font-bold text-xs shrink-0">!</span>
-                    <?= htmlspecialchars($error) ?>
-                </div>
-            <?php endif; ?>
+            <!-- Orange shapes (bottom-right) -->
+            <div class="absolute -bottom-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-tl from-orange-400 to-[#ff7a00]"></div>
+            <div class="absolute -bottom-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-t from-orange-300/70 to-orange-200/20"></div>
 
-            <form method="POST" action="">
+            <!-- Card -->
+            <div class="relative z-10 w-full max-w-[540px] px-8 sm:px-10 py-10">
 
-                <!-- Email -->
-                <div class="mb-5">
-                    <label for="email" class="block text-xs font-medium tracking-widest uppercase text-white mb-1.5">
-                        <i class="fa-solid fa-envelope mr-1"></i> Email
-                    </label>
-                    <input type="email" id="email" name="email" autocomplete="email" placeholder="yourname@noble.com"
-                        value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required
-                        class="w-full px-3 py-2.5 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-yellow-500 focus:bg-white transition placeholder-gray-400">
-                    <p class="text-[11px] text-gray-400 mt-1.5">Only <span class="text-yellow-400 font-medium">@noble.com</span> emails are accepted.</p>
+                <div class="flex justify-center">
+                    <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome logo" class="w-44 h-auto object-contain">
                 </div>
 
-                <!-- Password -->
-                <div class="mb-6">
-                    <label for="password" class="block text-xs font-medium tracking-widest uppercase text-white mb-1.5">
-                        <i class="fa-solid fa-key mr-1"></i> Password
-                    </label>
-                    <input type="password" id="password" name="password" autocomplete="current-password"
-                        placeholder="Enter password" required
-                        class="w-full px-3 py-2.5 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-yellow-500 focus:bg-white transition">
+                <h2 class="mt-6 text-center text-3xl font-extrabold tracking-tight text-gray-900">
+                    NOBLE<span class="text-[#ff9a1f]">HOME</span> ACCOUNTING
+                </h2>
+                <p class="mt-2 mb-7 text-center text-sm text-gray-500">Please sign in to access your admin account.</p>
+
+                <?php if (!empty($error)): ?>
+                    <div role="alert" class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">
+                        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-200 text-red-700 font-bold text-xs shrink-0">!</span>
+                        <?= htmlspecialchars($error) ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" action="">
+
+                    <!-- Email -->
+                    <div class="mb-5">
+                        <label for="email" class="block text-sm font-semibold text-gray-900 mb-2">Email Address</label>
+                        <div class="relative">
+                            <i class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
+                            <input type="email" id="email" name="email" autocomplete="email"
+                                placeholder="Enter your email address"
+                                value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required
+                                class="w-full h-12 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1.5">Only <span class="text-[#ff7a00] font-medium">@noble.com</span> emails are accepted.</p>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="mb-5">
+                        <label for="password" class="block text-sm font-semibold text-gray-900 mb-2">Password</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
+                            <input type="password" id="password" name="password" autocomplete="current-password"
+                                placeholder="Enter your password" required
+                                class="w-full h-12 pl-11 pr-12 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
+                            <button type="button" id="togglePassword" aria-label="Show password"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-gray-700 hover:text-gray-900 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ff7a00]">
+                                <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <button type="submit"
+                        class="w-full h-14 flex items-center justify-center gap-3 text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
+                        <i class="fa-solid fa-right-to-bracket"></i> Sign In
+                    </button>
+                </form>
+
+                <div class="flex items-center gap-4 mt-7 text-sm text-gray-500">
+                    <span class="flex-1 h-px bg-gray-200"></span>
+                    <span>NobleHome Admin Panel</span>
+                    <span class="flex-1 h-px bg-gray-200"></span>
                 </div>
-
-                <button type="submit"
-                    class="w-full py-2.5 text-sm font-medium tracking-widest uppercase text-white bg-yellow-700 rounded hover:bg-yellow-600 active:opacity-80 transition">
-                    Sign In
-                </button>
-
-            </form>
-
-            <div class="text-center text-xs text-white border-t border-gray-100 pt-5 mt-7">
-                &copy; <?= date('Y') ?> Noble Accounting. All rights reserved. Version 1.0
             </div>
-
-            <script>
-                sessionStorage.clear();
-            </script>
-
         </div>
+
     </div>
+
+    <script>
+        // Show / hide password
+        (function() {
+            var pwd = document.getElementById('password');
+            var btn = document.getElementById('togglePassword');
+            var icon = document.getElementById('eyeIcon');
+
+            btn.addEventListener('click', function() {
+                var show = pwd.type === 'password';
+                pwd.type = show ? 'text' : 'password';
+                icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+                btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        })();
+
+        // Remember me — email lang ang sine-save (hindi ang password)
+        (function() {
+            var emailInput = document.getElementById('email');
+            var remember = document.getElementById('remember');
+            var KEY = 'noble_remember_email';
+
+            try {
+                var saved = localStorage.getItem(KEY);
+                if (saved && !emailInput.value) {
+                    emailInput.value = saved;
+                    remember.checked = true;
+                }
+            } catch (e) {}
+
+            emailInput.form.addEventListener('submit', function() {
+                try {
+                    if (remember.checked) {
+                        localStorage.setItem(KEY, emailInput.value);
+                    } else {
+                        localStorage.removeItem(KEY);
+                    }
+                } catch (e) {}
+            });
+        })();
+
+        sessionStorage.clear();
+    </script>
 </body>
 
 </html>

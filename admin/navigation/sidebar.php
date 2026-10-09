@@ -132,6 +132,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 ?>
 
 <style>
+
     nav,
     #sidebar-notif-list {
         scrollbar-width: thin;

@@ -23,7 +23,7 @@ if ($inquiryId <= 0) {
     $qError = 'Missing or invalid inquiry reference.';
 } else {
     $stmt = $conn->prepare("
-        SELECT id, control_no, client_name, address, contact_number, status, deadline
+        SELECT id, control_no, client_name, address, contact_number, status
         FROM noblecrminquiry
         WHERE id = ? AND {$ownerColumn} = ?
         LIMIT 1
@@ -60,28 +60,6 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
 // ⚠️ verify this route matches your Initial page route
 $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
 
-$qDeadlineIsOverdue = false;
-if (empty($qError) && !empty($inquiry['deadline'])) {
-    $qLatestStmt = $conn->prepare("
-        SELECT status, is_late
-        FROM noblecrm_2dquotation_final
-        WHERE inquiry_id = ?
-        ORDER BY created_at DESC, id DESC
-        LIMIT 1
-    ");
-    $qLatestStmt->bind_param("i", $inquiryId);
-    $qLatestStmt->execute();
-    $qLatestEntry = $qLatestStmt->get_result()->fetch_assoc();
-    $qLatestStmt->close();
-
-    if ($qLatestEntry && in_array($qLatestEntry['status'], ['Approved', 'Waiting for Approval'], true)) {
-        $qDeadlineIsOverdue = (bool) ($qLatestEntry['is_late'] ?? 0);
-    } else {
-        $qDeadlineTs = strtotime($inquiry['deadline']);
-        $qDeadlineIsOverdue = $qDeadlineTs < strtotime('today');
-    }
-}
-
 ?>
 
 <!DOCTYPE html>
@@ -111,13 +89,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                             <span id="q2dStageBadge"
                                 class="hidden align-middle ml-2 text-[10px] font-semibold uppercase tracking-wide rounded-lg px-2 py-0.1 border border-green-600 text-white bg-green-700"></span>
                         </h1>
-                        <?php if (empty($qError) && !empty($inquiry['deadline'])): ?>
-                            <p
-                                class="text-xs font-medium mt-1.5 <?= $qDeadlineIsOverdue ? 'text-red-700' : 'text-gray-500' ?>">
-                                Deadline: <?= htmlspecialchars(date('F d, Y', strtotime($inquiry['deadline']))) ?>
-                                <?= $qDeadlineIsOverdue ? ' — overdue' : '' ?>
-                            </p>
-                        <?php endif; ?>
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="button" id="q2dFeedbackBtn" onclick="q2dToggleFeedbackSidebar()"
@@ -255,10 +226,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     Object.entries(extra).forEach(([k, v]) => fd.append(k, v));
                     const res = await fetch(Q2D_AJAX_URL, { method: 'POST', body: fd });
                     return res.json();
-                }
-
-                function q2dLateBadge() {
-                    return `<span class="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-red-700 text-red-700 ml-1">Late Submission</span>`;
                 }
 
                 const Q2D_UPLOAD_SVG = `<svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -438,7 +405,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         <p class="text-sm text-gray-800">
                             <strong class="uppercase tracking-wide text-[11px]">Final Status:</strong>
                             <span class="inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border ml-1 ${activeDraft.status_class}">${q2dEscapeHtml(activeDraft.status_label)}</span>
-                            ${activeDraft.is_late ? q2dLateBadge() : ''}
                         </p>
                     </div>
                     ${activeDraft.is_locked ? `
@@ -486,7 +452,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                     return `
     <div class="pt-3 border-t border-gray-300 flex items-center justify-end gap-3">
-        ${activeDraft.is_late ? `<p class="text-xs text-red-700 font-semibold">This will be recorded as a Late Submission.</p>` : ''}
         ${blockerMsg ? `<p class="text-xs text-gray-400">${blockerMsg}</p>` : ''}
         <button type="button" id="q2dSubmitBtn" onclick="q2dSubmitFinal()" ${allDone ? '' : 'disabled'}
             class="px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-green-600 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
@@ -772,7 +737,6 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                             <td class="px-4 py-2 border-r border-gray-200 text-gray-600 whitespace-nowrap">${entry.submitted_at ? q2dEscapeHtml(entry.submitted_at) : '—'}</td>
                             <td class="px-4 py-2 border-r border-gray-200">
                                 <span class="text-[11px] font-semibold uppercase tracking-wide ${entry.status_class}">${q2dEscapeHtml(entry.status_label)}</span>
-                                ${entry.is_late ? `<span class="block text-[10px] font-semibold uppercase text-red-700 mt-0.5">Late Submission</span>` : ''}
                             </td>
                             <td class="px-4 py-2 text-gray-600 max-w-[220px]">${remarksCell}</td>
                         </tr>
@@ -802,26 +766,16 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 function q2dInquirySummary(inquiry) {
                     const amount = inquiry.contract_amount;
                     const hasAmount = amount !== null && amount !== undefined && amount !== '' && Number(amount) > 0;
-const amountRow = `
-    <tr>
-        <td class="w-32 whitespace-nowrap bg-gray-50 font-semibold text-[10px] uppercase tracking-wider text-gray-500 px-4 py-2 border-r border-t border-gray-200">
-            Contract Amount
-        </td>
-        <td class="px-4 py-2 border-t border-gray-200 text-gray-900 font-semibold" colspan="3">
-            ${hasAmount ? q2dFormatCurrency(amount) : '<span class="text-gray-400 italic font-normal">Not yet set by Sales.</span>'}
-        </td>
-    </tr>
-`;
-                    const deadlineRow = inquiry.deadline ? `
+                    const amountRow = `
                         <tr>
-                            <td class="w-32 bg-gray-50 font-semibold text-[10px] uppercase tracking-wider text-gray-500 px-4 py-2.5 border-r border-t border-gray-200">
-                                Deadline
+                            <td class="w-32 whitespace-nowrap bg-gray-50 font-semibold text-[10px] uppercase tracking-wider text-gray-500 px-4 py-2 border-r border-t border-gray-200">
+                                Contract Amount
                             </td>
-                            <td class="px-4 py-2.5 border-t border-gray-200 ${inquiry.deadline_overdue ? 'text-red-700 font-semibold' : 'text-gray-900'}" colspan="3">
-                                ${q2dEscapeHtml(inquiry.deadline)}${inquiry.deadline_overdue ? ' — overdue' : ''}
+                            <td class="px-4 py-2 border-t border-gray-200 text-gray-900 font-semibold" colspan="3">
+                                ${hasAmount ? q2dFormatCurrency(amount) : '<span class="text-gray-400 italic font-normal">Not yet set by Sales.</span>'}
                             </td>
                         </tr>
-                    ` : '';
+                    `;
 
                     return `
                     <table class="w-full border border-gray-300 text-sm mb-6">
@@ -841,7 +795,6 @@ const amountRow = `
                                 </td>
                             </tr>
                             ${amountRow}
-                            ${deadlineRow}
                         </tbody>
                     </table>
                 `;

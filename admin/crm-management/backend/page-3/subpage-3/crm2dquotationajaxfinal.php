@@ -102,8 +102,12 @@ if (!in_array($inquiry['status'], ['In Progress', 'Approved', 'For Revision'], t
 }
 
 // shared helper — true kapag lagpas na sa deadline ng inquiry ngayong araw.
-function q2dIsPastDeadline(array $inquiry): bool
+// Deadline ay para sa INITIAL lang; ang Final ay walang deadline / late logic.
+function q2dIsPastDeadline(array $inquiry, bool $isFinal = false): bool
 {
+    if ($isFinal) {
+        return false;
+    }
     if (empty($inquiry['deadline'])) {
         return false;
     }
@@ -582,11 +586,13 @@ if ($action === 'state') {
             'status_label' => $statusLabel,
             'status_class' => $statusClass,
             'is_locked' => $isLocked,
-            // naka-save na (mula submit_final) kapag naka-lock na ito;
+            // Final = walang late logic. Initial: naka-save na kapag naka-lock;
             // habang Draft pa, live-compute batay sa kasalukuyang oras.
-            'is_late' => $isLocked
-                ? (bool) ($activeDraftRow['is_late'] ?? 0)
-                : q2dIsPastDeadline($inquiry),
+            'is_late' => $isFinal
+                ? false
+                : ($isLocked
+                    ? (bool) ($activeDraftRow['is_late'] ?? 0)
+                    : q2dIsPastDeadline($inquiry)),
             'both_done' => (bool) $activeDraftRow['design_2d_done'] && (bool) $activeDraftRow['quotation_done'],
             'design_2d' => [
                 'done' => (bool) $activeDraftRow['design_2d_done'],
@@ -650,7 +656,7 @@ if ($action === 'state') {
         ];
     }
 
-    $pastEntriesJson = array_map(function (array $entry): array {
+    $pastEntriesJson = array_map(function (array $entry) use ($isFinal): array {
         [$statusClass, $statusLabel] = q2dStatusStyle($entry['status']);
 
         $d2dReviewStatus = (!empty($entry['design_2d_review_status']) && $entry['design_2d_review_status'] !== 'Pending')
@@ -684,7 +690,7 @@ if ($action === 'state') {
             'status' => $entry['status'],
             'status_label' => $statusLabel,
             'status_class' => $statusClass,
-            'is_late' => (bool) ($entry['is_late'] ?? 0),
+            'is_late' => $isFinal ? false : (bool) ($entry['is_late'] ?? 0),
             'design_2d_remarks' => $entry['design_2d_remarks'] ?? null,
             'quotation_remarks' => $entry['quotation_remarks'] ?? null,
             'remarks' => $entry['remarks'] ?? null,
@@ -768,8 +774,9 @@ if ($action === 'state') {
         $stmt->close();
     }
 
+    // Deadline / overdue ay para sa INITIAL lang. Final = walang deadline.
     $qDeadlineOverdue = false;
-    if (!empty($inquiry['deadline'])) {
+    if (!$isFinal && !empty($inquiry['deadline'])) {
         if ($latest && in_array($latest['status'], ['Approved', 'Waiting for Approval'], true)) {
             $qDeadlineOverdue = (bool) ($latest['is_late'] ?? 0);
         } else {
@@ -784,7 +791,7 @@ if ($action === 'state') {
             'client_name' => $inquiry['client_name'],
             'contract_amount' => $inquiry['contract_amount'],
             'contract_file_url' => q2dUrl($inquiry['contract_file'] ?? null),
-            'deadline' => !empty($inquiry['deadline']) ? date('F d, Y', strtotime($inquiry['deadline'])) : null,
+            'deadline' => (!$isFinal && !empty($inquiry['deadline'])) ? date('F d, Y', strtotime($inquiry['deadline'])) : null,
             'deadline_overdue' => $qDeadlineOverdue,
         ],
         'is_sales' => $isSales,
@@ -1191,8 +1198,8 @@ if ($action === 'submit_final') {
         q2dRespond(false, 'The 3D File must be marked done before submitting, or turn off "Submit 3D together" to submit 2D and Quotation only.');
     }
 
-    // naka-lock na ang "late" status sa oras mismo ng pag-submit.
-    $isLate = q2dIsPastDeadline($inquiry) ? 1 : 0;
+    // Initial lang ang may late status (naka-lock sa oras ng pag-submit). Final = laging 0.
+    $isLate = q2dIsPastDeadline($inquiry, $isFinal) ? 1 : 0;
 
     $newStatus = 'Waiting for Approval';
     $new3dStage = $include3d ? 'Waiting for Approval' : 'Locked';
