@@ -284,8 +284,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                             <span
                                 class="text-[10px] font-bold uppercase tracking-widest text-gray-600 w-28">Payee</span>
                             <span class="text-gray-400 mr-2">:</span>
-                            <input id="v-payee"
-                                class="flex-1 border-b border-gray-400 text-sm pb-0.5 outline-none bg-transparent" />
+                            <input id="v-payee" autocomplete="off"
+                                class="w-full text-sm font-semibold text-gray-800 border-b border-gray-300 pb-0.5 outline-none bg-transparent" />
                         </div>
                         <div class="flex items-center gap-2">
                             <span
@@ -443,7 +443,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Payee</p>
-                            <input id="v-payee-m"
+                            <input id="v-payee-m" autocomplete="off"
                                 class="w-full text-sm font-semibold text-gray-800 border-b border-gray-300 pb-0.5 outline-none bg-transparent" />
                         </div>
                         <div>
@@ -1338,12 +1338,13 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const isStaff = POSITION === '<?= POSITION_STAFF ?>';
             const isSubmitted = !!row.voucher_status; // may status na = submitted na, dapat locked
             const canEditFields = isStaff && !isSubmitted;
+            const defaultPayee = row.voucher_payee || row.requestor_name || '';
 
             document.getElementById('v-control-no').textContent = row.voucher_control_no ?? row.control_no;
             document.getElementById('v-date').textContent = row.date_requested;
             document.getElementById('v-second-no').textContent = row.voucher_payment_method ?? '—';
             document.getElementById('v-title').textContent = row.voucher_title ?? '';
-            document.getElementById('v-payee').value = row.voucher_payee ?? '';
+            document.getElementById('v-payee').value = defaultPayee;
             document.getElementById('v-amount-words').value = numberToWords(total);
             document.getElementById('v-payment-method').value = row.voucher_payment_method ?? '';
             document.getElementById('v-payment-method-m').value = row.voucher_payment_method ?? '';
@@ -1516,7 +1517,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             document.getElementById('v-control-no-m').textContent = row.voucher_control_no ?? row.control_no;
             document.getElementById('v-date-m').textContent = row.date_requested;
             document.getElementById('v-second-no-m').textContent = row.voucher_payment_method ?? '—';
-            document.getElementById('v-payee-m').value = row.voucher_payee ?? '';
+            document.getElementById('v-payee-m').value = defaultPayee;
             document.getElementById('v-amount-words-m').value = numberToWords(total);
             document.getElementById('v-total-m').textContent = 'PhP ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
             document.getElementById('v-prepared-m').textContent = row.prepared_name ?? '';
