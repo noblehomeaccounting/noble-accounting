@@ -5,16 +5,17 @@ include ROOT_PATH . '/network/connect.php';
 
 $error = '';
 
-function getRouteFor($role, $position, $branch) {
+function getRouteFor($role, $position, $branch)
+{
     $isMainBranch = (strtolower(trim($branch)) === 'main branch'); // i-adjust base sa actual value sa DB mo
 
     if ($role === 'ACCOUNTING AND FINANCE DEPARTMENT') {
-        return match($position) {
-            'head'           => 'accounting',
-            'staff'          => 'accountingstaff',
-            'custodian'      => 'accountingcustodian',
+        return match ($position) {
+            'head' => 'accounting',
+            'staff' => 'accountingstaff',
+            'custodian' => 'accountingcustodian',
             'custoassistant' => 'accountingcustodianassistant',
-            default          => 'accounting',
+            default => 'accounting',
         };
     }
 
@@ -35,10 +36,10 @@ function getRouteFor($role, $position, $branch) {
     }
 
     $roleRoutes = [
-        'IT DEPARTMENT'                            => 'it',
-        'HUMAN RESOURCES DEPARTMENT'               => 'humanresource',
-        'OPERATIONS DEPARTMENT'                    => 'operation',
-        'GRAPHIC DESIGN DEPARTMENT'                => 'graphicdesign',
+        'IT DEPARTMENT' => 'it',
+        'HUMAN RESOURCES DEPARTMENT' => 'humanresource',
+        'OPERATIONS DEPARTMENT' => 'operation',
+        'GRAPHIC DESIGN DEPARTMENT' => 'graphicdesign',
     ];
 
     return $roleRoutes[$role] ?? 'loginadmin';
@@ -62,16 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($account && password_verify($password, $account['password'])) {
             $_SESSION['account_id'] = $account['id'];
-            $_SESSION['username']   = $account['name'];
-            $_SESSION['email']      = $account['email'];
-            $_SESSION['role']       = $account['role'];
-            $_SESSION['position']   = $account['position'];
-            $_SESSION['branch']     = $account['branch'];
-            $_SESSION['logged_in']  = true;
+            $_SESSION['username'] = $account['name'];
+            $_SESSION['email'] = $account['email'];
+            $_SESSION['role'] = $account['role'];
+            $_SESSION['position'] = $account['position'];
+            $_SESSION['branch'] = $account['branch'];
+            $_SESSION['logged_in'] = true;
 
             $position = $account['position'] ?? '';
-            $role     = $account['role'];
-            $branch   = $account['branch'] ?? '';
+            $role = $account['role'];
+            $branch = $account['branch'] ?? '';
 
             $route = getRouteFor($role, $position, $branch);
 
@@ -87,8 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Already logged in — redirect sa tamang page
 if (!empty($_SESSION['logged_in'])) {
     $position = $_SESSION['position'] ?? '';
-    $role     = $_SESSION['role'] ?? '';
-    $branch   = $_SESSION['branch'] ?? '';
+    $role = $_SESSION['role'] ?? '';
+    $branch = $_SESSION['branch'] ?? '';
 
     $route = getRouteFor($role, $position, $branch);
 
@@ -111,6 +112,7 @@ if (!empty($_SESSION['logged_in'])) {
 
     <div class="min-h-screen grid grid-cols-1 lg:grid-cols-2">
 
+        
         <!-- LEFT: Brand panel -->
         <div class="relative hidden lg:flex flex-col min-h-screen bg-cover bg-center text-white overflow-hidden"
             style="background-image: url('<?= BASE_URL ?>/icon/building2.png');">
@@ -121,42 +123,50 @@ if (!empty($_SESSION['logged_in'])) {
             <div class="relative z-10 flex flex-col flex-1 pt-12 px-16 xl:px-24">
 
                 <!-- Logo -->
-                <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome logo"
+                <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome logo"
                     class="w-48 h-auto object-contain self-start">
 
-                <!-- Welcome + features -->
+                <!-- Heading + features -->
                 <div class="flex-1 flex flex-col justify-center py-5">
                     <h1 class="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight">
-                        Your Workspace <span class="text-[#ff9a1f]">Awaits</span>
+                        Budget Request <span class="text-[#ff9a1f]">Management</span>
                     </h1>
+
                     <p class="mt-3 text-lg xl:text-xl text-gray-100 leading-snug max-w-md">
-                        Access your admin dashboard and manage your accounting efficiently.
+                        Streamline budget requests, track submissions, and manage approvals efficiently.
                     </p>
 
                     <ul class="mt-8 space-y-3">
                         <li class="flex items-center gap-5">
-                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
-                                <i class="fa-solid fa-chart-simple"></i>
+                            <span
+                                class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-file-circle-plus"></i>
                             </span>
-                            <span class="text-base">Manage Request</span>
+                            <span class="text-base">Budget Request Submission</span>
                         </li>
+
                         <li class="flex items-center gap-5">
-                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
-                                <i class="fa-solid fa-cube"></i>
+                            <span
+                                class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-list-check"></i>
                             </span>
-                            <span class="text-base">Budget Request</span>
+                            <span class="text-base">Request Tracking & Review</span>
                         </li>
+
                         <li class="flex items-center gap-5">
-                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
-                                <i class="fa-solid fa-users"></i>
+                            <span
+                                class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-file-circle-check"></i>
                             </span>
-                            <span class="text-base">User Management</span>
+                            <span class="text-base">Budget Approval Management</span>
                         </li>
+
                         <li class="flex items-center gap-5">
-                            <span class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
-                                <i class="fa-solid fa-gear"></i>
+                            <span
+                                class="w-14 h-14 rounded-xl bg-white/10 border border-white/10 backdrop-blur-sm flex items-center justify-center text-[#ff7a00] text-xl">
+                                <i class="fa-solid fa-chart-pie"></i>
                             </span>
-                            <span class="text-base">System Settings</span>
+                            <span class="text-base">Budget Monitoring & Reports</span>
                         </li>
                     </ul>
                 </div>
@@ -165,22 +175,33 @@ if (!empty($_SESSION['logged_in'])) {
             <!-- Tagline bar -->
             <div class="relative z-10 bg-black/70 px-16 xl:px-24 py-10">
                 <div class="w-12 h-1 bg-[#ff7a00] mb-6"></div>
+
                 <p class="text-sm tracking-[0.25em] uppercase leading-8 text-gray-100">
-                    Better management.<br>Easy to Manage.
+                    Smarter budgeting.<br>
+                    Better decisions.
                 </p>
             </div>
         </div>
+   
 
         <!-- RIGHT: Login -->
-        <div class="relative flex items-center justify-center min-h-screen px-4 sm:px-8 py-10 overflow-hidden bg-gray-50">
+        <div
+            class="relative flex items-center justify-center min-h-screen px-4 sm:px-8 py-10 overflow-hidden bg-gray-50">
 
             <!-- Orange shapes (top-right) -->
-            <div class="absolute -top-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-br from-orange-400 to-[#ff7a00]"></div>
-            <div class="absolute -top-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-b from-orange-300/70 to-orange-200/20"></div>
+            <div class="absolute -top-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-br from-orange-400 to-[#ff7a00]">
+            </div>
+            <div
+                class="absolute -top-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-b from-orange-300/70 to-orange-200/20">
+            </div>
 
             <!-- Orange shapes (bottom-right) -->
-            <div class="absolute -bottom-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-tl from-orange-400 to-[#ff7a00]"></div>
-            <div class="absolute -bottom-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-t from-orange-300/70 to-orange-200/20"></div>
+            <div
+                class="absolute -bottom-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-tl from-orange-400 to-[#ff7a00]">
+            </div>
+            <div
+                class="absolute -bottom-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-t from-orange-300/70 to-orange-200/20">
+            </div>
 
             <!-- Card -->
             <div class="relative z-10 w-full max-w-[540px] px-8 sm:px-10 py-10">
@@ -195,8 +216,10 @@ if (!empty($_SESSION['logged_in'])) {
                 <p class="mt-2 mb-7 text-center text-sm text-gray-500">Please sign in to access your admin account.</p>
 
                 <?php if (!empty($error)): ?>
-                    <div role="alert" class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">
-                        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-200 text-red-700 font-bold text-xs shrink-0">!</span>
+                    <div role="alert"
+                        class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-5">
+                        <span
+                            class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-200 text-red-700 font-bold text-xs shrink-0">!</span>
                         <?= htmlspecialchars($error) ?>
                     </div>
                 <?php endif; ?>
@@ -207,20 +230,23 @@ if (!empty($_SESSION['logged_in'])) {
                     <div class="mb-5">
                         <label for="email" class="block text-sm font-semibold text-gray-900 mb-2">Email Address</label>
                         <div class="relative">
-                            <i class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
+                            <i
+                                class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
                             <input type="email" id="email" name="email" autocomplete="email"
                                 placeholder="Enter your email address"
                                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required
                                 class="w-full h-12 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
                         </div>
-                        <p class="text-[11px] text-gray-400 mt-1.5">Only <span class="text-[#ff7a00] font-medium">@noble.com</span> emails are accepted.</p>
+                        <p class="text-[11px] text-gray-400 mt-1.5">Only <span
+                                class="text-[#ff7a00] font-medium">@noble.com</span> emails are accepted.</p>
                     </div>
 
                     <!-- Password -->
                     <div class="mb-5">
                         <label for="password" class="block text-sm font-semibold text-gray-900 mb-2">Password</label>
                         <div class="relative">
-                            <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
+                            <i
+                                class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
                             <input type="password" id="password" name="password" autocomplete="current-password"
                                 placeholder="Enter your password" required
                                 class="w-full h-12 pl-11 pr-12 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
@@ -250,12 +276,12 @@ if (!empty($_SESSION['logged_in'])) {
 
     <script>
         // Show / hide password
-        (function() {
+        (function () {
             var pwd = document.getElementById('password');
             var btn = document.getElementById('togglePassword');
             var icon = document.getElementById('eyeIcon');
 
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 var show = pwd.type === 'password';
                 pwd.type = show ? 'text' : 'password';
                 icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
@@ -264,7 +290,7 @@ if (!empty($_SESSION['logged_in'])) {
         })();
 
         // Remember me — email lang ang sine-save (hindi ang password)
-        (function() {
+        (function () {
             var emailInput = document.getElementById('email');
             var remember = document.getElementById('remember');
             var KEY = 'noble_remember_email';
@@ -275,16 +301,16 @@ if (!empty($_SESSION['logged_in'])) {
                     emailInput.value = saved;
                     remember.checked = true;
                 }
-            } catch (e) {}
+            } catch (e) { }
 
-            emailInput.form.addEventListener('submit', function() {
+            emailInput.form.addEventListener('submit', function () {
                 try {
                     if (remember.checked) {
                         localStorage.setItem(KEY, emailInput.value);
                     } else {
                         localStorage.removeItem(KEY);
                     }
-                } catch (e) {}
+                } catch (e) { }
             });
         })();
 
