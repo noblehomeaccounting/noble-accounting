@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'This email is already registered. Please sign in.';
 
         } else {
-            // ⬅ DITO ILAGAY — bago mag-generate ng token
+            // Rate limit — bago mag-generate ng token
             $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM nobleaccount WHERE email = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)");
             $stmt->bind_param("s", $email);
             $stmt->execute();
@@ -206,81 +206,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Create Account — NobleHome</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <style>
-        .card-glow {
+        .card-shadow {
             box-shadow:
-                0 0 0 1px rgba(217, 119, 6, 0.08),
-                0 20px 60px -10px rgba(0, 0, 0, 0.6),
-                0 0 80px -20px rgba(217, 119, 6, 0.05);
+                0 0 0 1px rgba(249, 115, 22, 0.15),
+                0 25px 60px -15px rgba(249, 115, 22, 0.25),
+                0 10px 30px -10px rgba(0, 0, 0, 0.15);
         }
 
-        .input-field {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: border-color 0.2s, background 0.2s;
+        .btn-orange {
+            background: linear-gradient(90deg, #f97316, #fb923c);
+            box-shadow: 0 8px 20px -6px rgba(249, 115, 22, 0.55);
+            transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
         }
 
-        .input-field:focus {
-            outline: none;
-            border-color: rgba(217, 119, 6, 0.5);
-            background: rgba(255, 255, 255, 0.06);
+        .btn-orange:hover {
+            filter: brightness(1.05);
+            box-shadow: 0 10px 24px -6px rgba(249, 115, 22, 0.65);
         }
 
-        .input-field::placeholder {
-            color: #525252;
-        }
-
-        .submit-btn {
-            background: linear-gradient(135deg, #d97706, #b45309);
-            transition: opacity 0.2s, transform 0.15s;
-        }
-
-        .submit-btn:hover {
-            opacity: 0.92;
-        }
-
-        .submit-btn:active {
+        .btn-orange:active {
             transform: scale(0.99);
         }
 
-        .submit-btn:disabled {
-            opacity: 0.5;
+        .btn-orange:focus-visible {
+            outline: 3px solid #fdba74;
+            outline-offset: 2px;
+        }
+
+        .btn-orange:disabled {
+            opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
 
-        .divider-line {
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+        .input-field {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            color: #171717;
+            transition: border-color .2s, box-shadow .2s;
         }
 
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .input-field:focus {
+            outline: none;
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
         }
 
-        .fade-up {
-            animation: fadeUp 0.5s ease forwards;
+        .input-field::placeholder {
+            color: #a3a3a3;
         }
 
-        .delay-1 {
-            animation-delay: 0.05s;
-            opacity: 0;
-        }
-
-        .delay-2 {
-            animation-delay: 0.15s;
-            opacity: 0;
-        }
-
-        .delay-3 {
-            animation-delay: 0.25s;
-            opacity: 0;
+        .dots {
+            background-image: radial-gradient(#fdba74 1.5px, transparent 1.5px);
+            background-size: 12px 12px;
         }
 
         @keyframes spin {
@@ -293,163 +271,275 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             animation: spin 0.7s linear infinite;
         }
 
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-up {
+            animation: fadeUp 0.5s ease both;
+        }
+
         @keyframes pulse-ring {
             0% {
-                box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4);
+                box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(217, 119, 6, 0);
+                box-shadow: 0 0 0 10px rgba(249, 115, 22, 0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(217, 119, 6, 0);
+                box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
             }
         }
 
         .pulse {
             animation: pulse-ring 2s infinite;
         }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .fade-up,
+            .spinner,
+            .pulse {
+                animation: none;
+            }
+        }
     </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center px-4 py-12 relative"
-    style="background-image: url('<?= BASE_URL ?>/icon/building2.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+<body class="min-h-screen bg-white text-neutral-900 antialiased">
 
-    <!-- Overlay -->
-    <div class="absolute inset-0 bg-black/50 z-0"></div>
-    
-    <div class="w-full max-w-sm relative z-10">
+    <div class="relative min-h-screen overflow-hidden"
+        style="background-image: url('<?= BASE_URL ?>/icon/building2.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
-        <!-- Brand -->
-        <div class="flex items-center justify-center gap-4 mb-8">
-            <div class="flex items-center justify-center w-14 h-14 rounded-lg shrink-0">
-                <img src="<?= BASE_URL ?>/icon/logo.png" class="object-contain bg-white rounded-md p-1" alt="error">
-            </div>
-            <div class="w-px h-12 bg-white"></div>
-            <div class="">
-                <h1 class="text-xl font-bold tracking-wide text-white uppercase leading-tight">
-                    Noble<span class="text-yellow-500">Home</span> Accounting
-                </h1>
-                <p class="text-xs text-white tracking-widest uppercase mt-0.5">Management System</p>
-            </div>
+        <!-- Dark fade overlay -->
+        <div class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/75 to-black/40"></div>
+
+        <!-- Orange blob decorations -->
+        <div class="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-orange-500 opacity-90 blur-[2px]"></div>
+        <div class="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-orange-200/70"></div>
+        <div class="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-orange-500 opacity-90"></div>
+        <div class="absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-orange-300/60"></div>
+
+        <!-- Secure access (top right) -->
+        <div class="absolute top-6 right-6 lg:right-10 z-20 hidden sm:flex items-center gap-4 text-sm text-neutral-200">
+            <span class="hidden md:block w-20 h-px bg-orange-400"></span>
+            <span>Secure Access</span>
+            <i class="fa-solid fa-shield-halved text-orange-500 text-lg"></i>
+            <span class="dots w-10 h-12 hidden lg:block"></span>
         </div>
 
-        <!-- Card -->
         <div
-            class="card-glow bg-neutral-900/80 backdrop-blur-sm border border-white/[0.06] rounded-2xl px-7 py-8 fade-up delay-2">
+            class="relative z-10 min-h-screen max-w-7xl mx-auto px-6 lg:px-10 py-10 grid lg:grid-cols-2 gap-10 items-center">
 
-            <?php if ($success === 'sent'): ?>
+            <!-- ========== LEFT: Welcome / Features ========== -->
+            <section class="hidden lg:flex flex-col justify-center pl-4 py-6">
 
-                <!-- Email sent -->
-                <div class="flex flex-col items-center text-center py-4">
-                    <div
-                        class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 pulse">
-                        <i class="fa-solid fa-envelope text-amber-400 text-xl"></i>
-                    </div>
-                    <h2 class="text-white text-base font-semibold mb-2">Check your email</h2>
-                    <p class="text-gray-400 text-sm leading-relaxed mb-4">
-                        A verification link was sent to<br>
-                        <span class="text-amber-400 font-medium"><?= htmlspecialchars($_POST['email']) ?></span>
+                <!-- Brand -->
+                <div class="flex items-center gap-6 mb-14">
+                    <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome logo"
+                        class="h-24 w-auto object-contain bg-white rounded-lg p-2">
+
+                    <div class="w-px h-16 bg-white/40"></div>
+
+                    <p class="text-xs text-neutral-300 tracking-[0.3em] leading-7 uppercase">
+                        Budget.<br>
+                        Planning.<br>
+                        Management.
                     </p>
-                    <p class="text-gray-400 text-xs leading-relaxed">
-                        Link expires in 24 hours. Check your spam folder if you don't see it.
+                </div>
+
+                <h1 class="text-5xl font-extrabold leading-tight text-white">
+                    <span class="text-orange-500">Create Your</span><br>
+                    Account
+                </h1>
+
+                <p class="mt-5 text-lg text-neutral-200 leading-relaxed max-w-md">
+                    Join NobleHome Accounting and manage budget requests, cash vouchers, CRM inquiries and quotations
+                    — all in one place.
+                </p>
+
+                <!-- Steps -->
+                <ul class="mt-10 space-y-5">
+                    <li class="flex items-center gap-4">
+                        <span
+                            class="w-14 h-14 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-user-pen"></i>
+                        </span>
+                        <div>
+                            <p class="font-semibold text-white">Enter your details</p>
+                            <p class="text-sm text-neutral-300">Provide your full name and email address</p>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <span
+                            class="w-14 h-14 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-envelope-circle-check"></i>
+                        </span>
+                        <div>
+                            <p class="font-semibold text-white">Verify your email</p>
+                            <p class="text-sm text-neutral-300">We'll send a verification link to your inbox</p>
+                        </div>
+                    </li>
+                    <li class="flex items-center gap-4">
+                        <span
+                            class="w-14 h-14 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </span>
+                        <div>
+                            <p class="font-semibold text-white">Sign in</p>
+                            <p class="text-sm text-neutral-300">Access the system once your account is verified</p>
+                        </div>
+                    </li>
+                </ul>
+                <div class="mt-12 flex items-center gap-4 text-xs text-neutral-300 tracking-[0.25em] uppercase">
+                    <span class="w-14 h-0.5 bg-orange-500"></span>
+                    NobleHome Accounting
+                </div>
+            </section>
+
+            <!-- ========== RIGHT: Register card ========== -->
+            <section class="flex justify-center lg:justify-end">
+                <div
+                    class="card-shadow fade-up w-full max-w-sm bg-white/95 backdrop-blur rounded-[1.5rem] border border-orange-100 px-6 sm:px-8 py-7">
+
+                    <!-- Logo -->
+                    <div class="flex justify-center mb-4">
+                        <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome logo"
+                            class="h-16 w-auto object-contain">
+                    </div>
+
+                    <?php if ($success === 'sent'): ?>
+
+                        <!-- Email sent -->
+                        <div class="flex flex-col items-center text-center py-4">
+                            <div
+                                class="w-14 h-14 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center mb-4 pulse">
+                                <i class="fa-solid fa-envelope text-orange-500 text-xl"></i>
+                            </div>
+                            <h2 class="text-neutral-900 text-xl font-bold mb-2">
+                                Check your <span class="text-orange-500">email</span>
+                            </h2>
+                            <p class="text-neutral-600 text-sm leading-relaxed mb-4">
+                                A verification link was sent to<br>
+                                <span class="text-orange-500 font-semibold"><?= htmlspecialchars($_POST['email']) ?></span>
+                            </p>
+                            <p class="text-neutral-500 text-xs leading-relaxed">
+                                Link expires in 24 hours. Check your spam folder if you don't see it.
+                            </p>
+                        </div>
+
+                    <?php elseif ($success === 'mail_error'): ?>
+
+                        <!-- Mail failed -->
+                        <div class="flex flex-col items-center text-center py-4">
+                            <div
+                                class="w-14 h-14 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+                            </div>
+                            <h2 class="text-neutral-900 text-xl font-bold mb-2">Email could not be sent</h2>
+                            <p class="text-neutral-600 text-sm leading-relaxed mb-5">
+                                Your account was created but we couldn't send the verification email. Please contact
+                                your administrator.
+                            </p>
+                            <a href="<?= BASE_URL ?>/register"
+                                class="font-semibold text-orange-500 text-sm hover:text-orange-600 transition-colors">
+                                ← Try again
+                            </a>
+                        </div>
+
+                    <?php else: ?>
+
+                        <!-- Form -->
+                        <div class="text-center mb-6">
+                            <h2 class="text-2xl font-bold text-neutral-900">
+                                Create <span class="text-orange-500">Account</span>
+                            </h2>
+                            <p class="mt-2 text-sm text-neutral-600 leading-relaxed">
+                                Enter your details and we'll send<br class="hidden sm:block"> you a verification link.
+                            </p>
+                        </div>
+
+                        <?php if ($error): ?>
+                            <div role="alert"
+                                class="mb-5 flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+                                <i class="fa-solid fa-circle-exclamation shrink-0 mt-0.5"></i>
+                                <span class="leading-relaxed"><?= htmlspecialchars($error) ?></span>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="space-y-4 mb-5">
+                            <div>
+                                <label for="inp-name"
+                                    class="block text-neutral-700 text-xs font-semibold mb-1.5 tracking-wide uppercase">
+                                    <i class="fa-solid fa-user pr-1 text-orange-500"></i>
+                                    Full Name
+                                </label>
+                                <input type="text" name="name" id="inp-name"
+                                    value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" placeholder="Juan dela Cruz"
+                                    class="input-field w-full text-sm rounded-xl px-4 py-3">
+                            </div>
+                            <div>
+                                <label for="inp-email"
+                                    class="block text-neutral-700 text-xs font-semibold mb-1.5 tracking-wide uppercase">
+                                    <i class="fa-solid fa-envelope pr-1 text-orange-500"></i>
+                                    Email Address
+                                </label>
+                                <input type="email" name="email" id="inp-email"
+                                    value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                                    placeholder="<?= $isLocalhost ? 'you@example.com' : 'you@' . $ALLOWED_DOMAIN ?>"
+                                    class="input-field w-full text-sm rounded-xl px-4 py-3">
+                            </div>
+                        </div>
+
+                        <button onclick="handleSubmit()" id="submitBtn"
+                            class="btn-orange w-full flex items-center justify-center gap-3 text-white text-base font-semibold py-3 px-4 rounded-xl">
+                            <i class="fa-solid fa-paper-plane text-sm"></i>
+                            <span id="btnText">Send Verification Link</span>
+                            <svg id="btnSpinner" class="hidden spinner w-5 h-5 text-white"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                                </circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                        </button>
+
+                    <?php endif; ?>
+
+                    <p class="text-center text-xs text-neutral-600 mt-5">
+                        Already have an account?
+                        <a href="<?= BASE_URL ?>/loginuser"
+                            class="font-semibold text-orange-500 hover:text-orange-600 transition-colors ml-1">Sign
+                            in</a>
                     </p>
-                </div>
 
-            <?php elseif ($success === 'mail_error'): ?>
-
-                <!-- Mail failed -->
-                <div class="flex flex-col items-center text-center py-4">
-                    <div
-                        class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
-                        <i class="fa-solid fa-triangle-exclamation text-red-400 text-xl"></i>
-                    </div>
-                    <h2 class="text-white text-base font-semibold mb-2">Email could not be sent</h2>
-                    <p class="text-neutral-500 text-sm leading-relaxed mb-5">
-                        Your account was created but we couldn't send the verification email. Please contact your
-                        administrator.
-                    </p>
-                    <a href="<?= BASE_URL ?>/register"
-                        class="text-amber-500 text-sm hover:text-amber-400 transition-colors">
-                        ← Try again
-                    </a>
-                </div>
-
-            <?php elseif (str_starts_with($success, 'dev:')): ?>
-
-                <!-- Dev mode / localhost -->
-                <?php $devLink = substr($success, 4); ?>
-                <div class="flex flex-col items-center text-center py-2">
-                    <div
-                        class="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
-                        <i class="fa-solid fa-flask text-emerald-400 text-xl"></i>
-                    </div>
-                    <h2 class="text-white text-base font-semibold mb-1">Localhost — dev mode</h2>
-                    <p class="text-neutral-500 text-sm leading-relaxed mb-4">PHPMailer skipped on localhost. Click below to
-                        verify:</p>
-                    <a href="<?= htmlspecialchars($devLink) ?>"
-                        class="w-full text-center bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 text-xs font-medium py-3 px-4 rounded-xl transition-colors break-all leading-relaxed">
-                        Verify account →
-                    </a>
-                </div>
-
-            <?php else: ?>
-
-                <!-- Form -->
-                <div class="mb-6">
-                    <h2 class="text-white text-base font-semibold mb-1">Create an account</h2>
-
-                </div>
-
-                <?php if ($error): ?>
-                    <div
-                        class="mb-5 flex items-start gap-2.5 bg-red-500/8 border border-red-500/15 text-red-400 text-sm rounded-xl px-4 py-3">
-                        <i class="fa-solid fa-circle-exclamation shrink-0 mt-0.5 text-xs"></i>
-                        <span class="leading-relaxed"><?= htmlspecialchars($error) ?></span>
-                    </div>
-                <?php endif; ?>
-
-                <div class="space-y-3 mb-5">
-                    <div>
-                        <label class="block text-white text-xs font-medium mb-1.5 tracking-wide uppercase">
-                            <i class="fa-solid fa-user pr-1"></i>
-                            Full Name</label>
-                        <input type="text" name="name" id="inp-name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>"
-                            placeholder="Juan dela Cruz" class="input-field w-full text-white text-sm rounded-xl px-4 py-3">
-                    </div>
-                    <div>
-                        <label class="block text-white text-xs font-medium mb-1.5 tracking-wide uppercase">
-                            <i class="fa-solid fa-envelope pr-1"></i>
-                            Email Address</label>
-                        <input type="email" name="email" id="inp-email"
-                            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
-                            placeholder="<?= $isLocalhost ? 'you@example.com' : 'you@' . $ALLOWED_DOMAIN ?>"
-                            class="input-field w-full text-white text-sm rounded-xl px-4 py-3">
+                    <!-- Footer divider -->
+                    <div class="flex items-center gap-3 mt-6 text-xs text-neutral-600">
+                        <span class="flex-1 h-px bg-neutral-200"></span>
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-lock text-neutral-500"></i>
+                            NobleHome Accounting
+                        </span>
+                        <span class="flex-1 h-px bg-neutral-200"></span>
                     </div>
                 </div>
-
-                <button onclick="handleSubmit()" id="submitBtn"
-                    class="submit-btn w-full flex items-center justify-center gap-2 text-white text-sm font-semibold py-3 px-4 rounded-xl">
-                    <i class="fa-solid fa-paper-plane text-xs"></i>
-                    <span id="btnText">Send Verification Link</span>
-                    <svg id="btnSpinner" class="hidden spinner w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                </button>
-
-            <?php endif; ?>
+            </section>
 
         </div>
 
-        <p class="text-center text-white text-xs mt-6 fade-up delay-3">
-            Already have an account?
-            <a href="<?= BASE_URL ?>/loginuser" class="text-yellow-500 hover:text-amber-400 transition-colors ml-1">Sign
-                in</a>
+        <!-- Copyright -->
+        <p class="absolute bottom-4 inset-x-0 z-10 text-center text-xs text-neutral-300">
+            &copy; <?= date('Y') ?> Noble Accounting. All rights reserved.
         </p>
-
     </div>
 
     <script>
@@ -478,7 +568,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Enter') handleSubmit();
+            if (e.key === 'Enter' && document.getElementById('submitBtn')) handleSubmit();
         });
     </script>
 
