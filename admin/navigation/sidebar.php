@@ -117,6 +117,16 @@ if ($role === ROLE_ACCOUNTING && $isCustooAssistant) {
     $relStmt->close();
 }
 
+// Bilang ng lahat ng request na naghihintay pa ng follow-up attachment (para sa badge ng Follow-ups)
+$followupWaitingCount = 0;
+if ($role === ROLE_ACCOUNTING && $isHead) {
+    $fuStmt = $conn->prepare("SELECT COUNT(*) FROM noblebudgetrequest WHERE attachment_status = 'follow_up'");
+    $fuStmt->execute();
+    $fuStmt->bind_result($followupWaitingCount);
+    $fuStmt->fetch();
+    $fuStmt->close();
+}
+
 $roleColors = [
     ROLE_IT => '#2563EB', // blue
     ROLE_DESIGNER => '#0D9488', // teal
@@ -131,8 +141,9 @@ $roleColors = [
 $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 ?>
 
-<style>
+<?php include ROOT_PATH . '/admin/navigation/sidebar-loading.php'; ?>
 
+<style>
     nav,
     #sidebar-notif-list {
         scrollbar-width: thin;
@@ -696,6 +707,25 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <i class="fa-solid fa-chevron-right text-[9px] opacity-40 transition-transform duration-200 sidebar-label"
                 id="sidebar-notif-chevron"></i>
         </button>
+
+        <div class="sidebar-section-label pt-4">
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Followups Requests </p>
+        </div>
+
+        <?php if (($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF]))): ?>
+           <a href="<?= BASE_URL ?>/accountingfollowups" data-tooltip="Follow-ups"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingfollowups') ?>">
+                    <i class="fa-solid fa-file-arrow-up w-4 text-center text-sm flex-shrink-0"></i>
+                    <span class="sidebar-label flex-1">Follow-ups</span>
+                    <?php if ($followupWaitingCount > 0): ?>
+                        <span
+                            class="sidebar-label min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            <?= $followupWaitingCount > 99 ? '99+' : (int) $followupWaitingCount ?>
+                        </span>
+                    <?php endif; ?>
+                </a>
+        <?php endif; ?>
+
 
         <div class="sidebar-section-label pt-4">
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Settings</p>

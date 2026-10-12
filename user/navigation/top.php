@@ -1,58 +1,171 @@
-<!-- top.php -->
-<div id="nh-loader" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white/10 backdrop-blur-sm">
-    <div class="flex items-center flex-wrap justify-center" id="loader-letters"></div>
+<?php
+// top.php (user navigation)
+
+// Bilang ng sariling request na wala pang na-upload na follow-up attachment
+$fuNavCount = 0;
+$fuNavUserId = intval($_SESSION['account_id'] ?? 0);
+if ($fuNavUserId && isset($conn)) {
+    $fuNavStmt = $conn->prepare("
+        SELECT COUNT(*) FROM noblebudgetrequest
+        WHERE user_id = ? AND attachment_status = 'follow_up'
+    ");
+    $fuNavStmt->bind_param("i", $fuNavUserId);
+    $fuNavStmt->execute();
+    $fuNavStmt->bind_result($fuNavCount);
+    $fuNavStmt->fetch();
+    $fuNavStmt->close();
+}
+?>
+<!-- ===== NH FILL LOADER ===== -->
+<div id="nh-loader" aria-label="Loading">
+    <svg viewBox="0 0 1930 1640" xmlns="http://www.w3.org/2000/svg" role="img">
+        <defs>
+            <clipPath id="nhShape">
+                <polygon
+                    points="70,695 962,70 1475,430 1475,280 1605,280 1605,530 1860,713 1787,820 962,232 145,802" />
+                <polygon
+                    points="265,830 338,775 786,1330 790,455 920,367 920,1568 793,1568 397,1060 397,1568 265,1568" />
+                <polygon points="410,722 702,518 706,1088" />
+                <polygon
+                    points="1005,347 1135,438 1135,950 1457,950 1457,668 1588,762 1588,1568 1457,1568 1457,1080 1135,1080 1135,1568 1005,1568" />
+            </clipPath>
+            <!-- rising liquid with wavy top -->
+            <clipPath id="nhLiquid">
+                <path
+                    d="M-400,0 q100,-45 200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 t200,0 V2000 H-400 Z">
+                    <animateTransform attributeName="transform" type="translate" additive="sum" dur="1.1s"
+                        repeatCount="indefinite" values="0 0; 400 0" />
+                </path>
+            </clipPath>
+        </defs>
+
+        <!-- empty logo (no solid color) -->
+        <g class="empty">
+            <polygon points="70,695 962,70 1475,430 1475,280 1605,280 1605,530 1860,713 1787,820 962,232 145,802" />
+            <polygon
+                points="265,830 338,775 786,1330 790,455 920,367 920,1568 793,1568 397,1060 397,1568 265,1568" />
+            <polygon points="410,722 702,518 706,1088" />
+            <polygon
+                points="1005,347 1135,438 1135,950 1457,950 1457,668 1588,762 1588,1568 1457,1568 1457,1080 1135,1080 1135,1568 1005,1568" />
+        </g>
+
+        <!-- colored logo, only visible where the liquid is -->
+        <g clip-path="url(#nhShape)">
+            <g clip-path="url(#nhLiquid)">
+                <rect x="0" y="0" width="1930" height="1640" class="o" />
+                <polygon class="d" points="410,722 702,518 706,1088" />
+                <polygon class="d"
+                    points="1005,347 1135,438 1135,950 1457,950 1457,668 1588,762 1588,1568 1457,1568 1457,1080 1135,1080 1135,1568 1005,1568" />
+            </g>
+        </g>
+    </svg>
 </div>
 
 <script>
-    const words = [
-        { letters: 'NOBLE', color: '#f97316', delay: 0 },
-        { letters: 'HOME', color: null, delay: 5 },
-        { letters: 'DEPOT', color: null, delay: 9 },
-    ];
-    const wrap = document.getElementById('loader-letters');
-    const isMobile = window.innerWidth < 768;
-    const fontSize = isMobile ? '1.6rem' : '2.5rem';
+    // Loader fill follows the real page-load progress
+    (function () {
+        var loader = document.getElementById('nh-loader');
+        var wave = document.querySelector('#nhLiquid path');
+        if (!loader || !wave) return;
 
-    words.forEach(({ letters, color, delay }, wordIndex) => {
-        letters.split('').forEach((ch, i) => {
-            const span = document.createElement('span');
-            span.textContent = ch;
-            span.style.cssText = `
-                font-size: ${fontSize}; font-weight: 600; letter-spacing: ${isMobile ? '1px' : '2px'};
-                color: ${color ?? '#111'}; opacity: 1;
-                animation: nhblink 2s infinite;
-                animation-delay: ${(delay + i) * 0.15}s;
-            `;
-            wrap.appendChild(span);
-        });
+        var EMPTY = 1750, FULL = -80;   // liquid Y position: empty -> full
+        var shown = 0, target = 0, done = false, start = Date.now();
 
-        if (wordIndex < words.length - 1) {
-            const space = document.createElement('span');
-            space.style.cssText = `display: inline-block; width: ${isMobile ? '6px' : '10px'};`;
-            wrap.appendChild(space);
+        function paint(p) {
+            wave.setAttribute('transform', 'translate(0 ' + (EMPTY + (FULL - EMPTY) * p / 100) + ')');
         }
-    });
+        function bump(p) { if (p > target) target = p; }
+        paint(0);
 
-    setTimeout(() => {
-        const loader = document.getElementById('nh-loader');
-        loader.style.transition = 'opacity 0.4s ease';
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 400);
-    }, 2000);
+        // 1) HTML still downloading: creep slowly up to 35%
+        var creep = setInterval(function () {
+            bump(Math.min(35, (Date.now() - start) / 40));
+        }, 100);
+
+        // 2) HTML parsed: 60%, then each image loaded adds up to 95%
+        function onReady() {
+            bump(60);
+            var imgs = Array.prototype.slice.call(document.images);
+            var total = imgs.length, loaded = 0;
+            if (!total) return;
+            function tick() { loaded++; bump(60 + 35 * loaded / total); }
+            imgs.forEach(function (img) {
+                if (img.complete) tick();
+                else {
+                    img.addEventListener('load', tick);
+                    img.addEventListener('error', tick);
+                }
+            });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onReady);
+        else onReady();
+
+        // 3) everything loaded: 100% then hide
+        function finish() { done = true; bump(100); }
+        window.addEventListener('load', finish);
+        setTimeout(finish, 15000); // safety: never block the page forever
+
+        // smooth the liquid toward the target
+        (function frame() {
+            shown += (target - shown) * 0.12;
+            if (done && target - shown < 0.5) shown = 100;
+            paint(shown);
+            if (shown >= 100) {
+                clearInterval(creep);
+                setTimeout(function () {
+                    loader.classList.add('nh-hide');
+                    setTimeout(function () { loader.remove(); }, 600);
+                }, 250);
+                return;
+            }
+            requestAnimationFrame(frame);
+        })();
+    })();
 </script>
+<!-- ===== END NH FILL LOADER ===== -->
 
 <style>
-    @keyframes nhblink {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.1;
-        }
+    /* ===== NH FILL LOADER ===== */
+    #nh-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: rgba(17, 17, 17, .55);
+        -webkit-backdrop-filter: blur(3px);
+        backdrop-filter: blur(3px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity .5s ease, visibility .5s ease;
     }
+
+    #nh-loader.nh-hide {
+        opacity: 0;
+        visibility: hidden
+    }
+
+    #nh-loader svg {
+        width: min(160px, 42vw);
+        height: auto;
+        overflow: hidden
+    }
+
+    #nh-loader .empty {
+        fill: rgba(255, 255, 255, .12);
+        stroke: rgba(255, 255, 255, .4);
+        stroke-width: 6;
+        stroke-linejoin: round
+    }
+
+    #nh-loader .o {
+        fill: #f79421
+    }
+
+    #nh-loader .d {
+        fill: #333
+    }
+
+    /* ===== END NH FILL LOADER ===== */
 
     /* Mobile sidebar slide-in */
     #mobile-sidebar {
@@ -63,69 +176,131 @@
     #mobile-sidebar.open {
         transform: translateX(0);
     }
+
+    /* ── Nav links: icon on top, label below, orange underline when active ── */
+    .nh-link {
+        position: relative;
+        white-space: nowrap;
+    }
+
+    .nh-link i.nh-ico {
+        font-size: 1.25rem;
+        line-height: 1;
+        transition: color .2s ease, transform .2s ease;
+    }
+
+    .nh-link:hover i.nh-ico {
+        transform: translateY(-1px);
+    }
+
+    .nh-link::after {
+        content: '';
+        position: absolute;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: -6px;
+        height: 3px;
+        border-radius: 999px;
+        background: #f97316;
+        transform: scaleX(0);
+        transform-origin: center;
+        transition: transform 0.2s ease;
+    }
+
+    @media (min-width: 1024px) {
+        .nh-link::after {
+            left: 1.25rem;
+            right: 1.25rem;
+        }
+    }
+
+    .nh-link:hover::after {
+        transform: scaleX(0.4);
+    }
+
+    .nh-link.active::after {
+        transform: scaleX(1);
+    }
 </style>
 
-<nav class="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none">
-    <div class="max-w-8xl mx-auto px-6 py-4 flex items-center justify-between">
+<nav class="fixed top-0 left-0 right-0 z-50 px-3 md:px-6 pt-3">
+    <div
+        class="relative max-w-[1400px] mx-auto bg-white rounded-xl shadow-[0_18px_40px_-14px_rgba(0,0,0,0.28)] flex items-stretch">
 
-        <!-- Logo + Brand -->
-        <a href="<?= BASE_URL ?>/" class="flex items-center gap-3">
-            <div class="w-9 h-9 shrink-0">
-                <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome Logo"
-                    class="w-full h-full object-contain bg-white rounded-full p-1">
-            </div>
-            <div class="w-px h-6 bg-white/40"></div>
-            <span class="text-white font-bold text-sm uppercase tracking-widest drop-shadow">
-                NobleHome <span class="text-orange-400">Request</span>
+        <!-- ── Section 1: Logo + Brand (orange bar on top) ── -->
+        <a href="<?= BASE_URL ?>/home1"
+            class="relative flex items-center gap-3 shrink-0 px-4 md:px-5 lg:px-8 py-3 md:py-4 md:border-r border-gray-200">
+
+            <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome Logo"
+                class="h-9 md:h-10 lg:h-12 w-auto object-contain">
+            <span class="md:hidden lg:block leading-none">
+                <span class="block font-bold text-sm lg:text-xl uppercase tracking-[0.1em] whitespace-nowrap">
+                    <span class="text-orange-500">Noble</span><span class="text-gray-800">Home</span>
+                </span>
+                <span
+                    class="block mt-1.5 text-[8px] lg:text-[10px] font-semibold uppercase tracking-[0.3em] text-gray-400 whitespace-nowrap">Request
+                    Portal</span>
             </span>
         </a>
 
-        <!-- Desktop nav links -->
-        <div class="hidden md:flex items-center gap-1">
+        <!-- ── Section 2: Desktop nav links (icon on top, label below) ── -->
+        <div class="hidden md:flex flex-1 items-center justify-center min-w-0 px-1 lg:px-4">
             <?php
             $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $basePath = parse_url(BASE_URL, PHP_URL_PATH) ?? '';
             $relativePath = $basePath ? str_replace($basePath, '', $currentPath) : $currentPath;
+            // 'badge' = ID ng badge element (o null kung walang badge)
             $navLinks = [
-                '/dashboard' => ['label' => 'Announcement', 'badge' => true],
-                '/requesthistory' => ['label' => 'My Requests', 'badge' => false],
-                '/myvouchers' => ['label' => 'My Vouchers', 'badge' => false],
-                '/rejectedrequests' => ['label' => 'Rejected Requests', 'badge' => false],
+                '/dashboard' => ['label' => 'Announcement', 'icon' => 'fa-solid fa-bullhorn', 'badge' => 'ann-nav-badge'],
+                '/requesthistory' => ['label' => 'My Requests', 'icon' => 'fa-regular fa-file-lines', 'badge' => null],
+                '/myvouchers' => ['label' => 'My Vouchers', 'icon' => 'fa-solid fa-ticket', 'badge' => null],
+                '/rejectedrequests' => ['label' => 'Rejected Requests', 'icon' => 'fa-solid fa-ban', 'badge' => null],
+                '/followupattachments' => ['label' => 'Follow-up Files', 'icon' => 'fa-solid fa-paperclip', 'badge' => 'fu-nav-badge'],
             ];
+            $i = 0;
             foreach ($navLinks as $path => $item):
                 $isActive = str_starts_with($relativePath, $path);
-                $activeClass = $isActive ? 'text-white border-b-2 border-white' : 'text-white/70 hover:text-white hover:bg-white/10';
+                $textClass = $isActive ? 'text-orange-500 font-semibold active' : 'text-gray-700 hover:text-orange-500 font-medium';
+                $icoClass = $isActive ? 'text-orange-500' : 'text-gray-600';
                 ?>
+                <?php if ($i > 0): ?>
+                    <span class="w-px h-9 bg-gray-200 self-center mt-4 shrink-0"></span>
+                <?php endif; ?>
                 <a href="<?= BASE_URL . $path ?>"
-                    class="<?= $activeClass ?> relative text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-all">
-                    <?= $item['label'] ?>
-                    <?php if ($item['badge']): ?>
-                        <span id="ann-nav-badge"
-                            class="hidden absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">0</span>
-                    <?php endif; ?>
+                    class="nh-link <?= $textClass ?> flex flex-col items-center gap-2 text-[12px] lg:text-[14px] px-3 lg:px-6 py-2 transition-colors">
+                    <span class="relative">
+                        <i class="nh-ico <?= $item['icon'] ?> <?= $icoClass ?>"></i>
+                        <?php if ($item['badge']): ?>
+                            <?php
+                            $isFu = $item['badge'] === 'fu-nav-badge';
+                            $badgeHidden = ($isFu && $fuNavCount > 0) ? '' : 'hidden';
+                            $badgeText = $isFu ? ($fuNavCount > 9 ? '9+' : (int) $fuNavCount) : 0;
+                            $badgeColor = $isFu ? 'bg-red-500' : 'bg-orange-500';
+                            ?>
+                            <span id="<?= $item['badge'] ?>"
+                                class="<?= $badgeHidden ?> absolute -top-2 -right-3 min-w-[16px] h-4 px-1 <?= $badgeColor ?> rounded-full text-[9px] text-white font-bold flex items-center justify-center"><?= $badgeText ?></span>
+                        <?php endif; ?>
+                    </span>
+                    <span><?= $item['label'] ?></span>
                 </a>
-            <?php endforeach; ?>
+                <?php $i++; endforeach; ?>
         </div>
 
-        <!-- Right side -->
-        <div class="flex items-center gap-2">
+        <!-- ── Section 3: Bell + User ── -->
+        <div class="flex items-center gap-1 lg:gap-3 ml-auto md:ml-0 px-3 lg:px-6 md:border-l border-gray-200 shrink-0">
 
-            <!-- Notif Bell (desktop only now) -->
+            <!-- Notif Bell (desktop only) -->
             <div class="relative hidden md:block" id="notif-wrapper">
                 <button onclick="toggleNotif()"
-                    class="relative text-white/70 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10 group">
-                    <i class="fa-solid fa-bell text-md"></i>
+                    class="relative text-gray-700 hover:text-orange-500 transition-colors w-11 h-11 flex items-center justify-center rounded-full hover:bg-orange-50"
+                    aria-label="Notifications">
+                    <i class="fa-solid fa-bell text-xl"></i>
                     <span id="notif-badge"
-                        class="hidden absolute top-1 right-1 w-4 h-4 bg-orange-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">0</span>
-                    <span
-                        class="absolute right-full top-1/2 -translate-y-1/2 ml-2 bg-gray-800 text-white text-[10px] font-medium px-2 py-1 rounded-md
-                        whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 hidden md:block">
-                        Notifications
-                    </span>
+                        class="hidden absolute top-0.5 right-0 w-5 h-5 bg-orange-500 rounded-full text-[10px] text-white font-bold flex items-center justify-center ring-2 ring-white">0</span>
                 </button>
                 <!-- Notif Dropdown -->
                 <div id="notif-dropdown"
-                    class="hidden absolute right-0 mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                    class="hidden absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
                         <span class="text-xs font-bold text-gray-700 uppercase tracking-widest">Notifications</span>
                         <button onclick="markAllRead()"
@@ -138,27 +313,30 @@
                 </div>
             </div>
 
-            <!-- Desktop user dropdown -->
+            <!-- Desktop user (avatar + name + View Profile + chevron) -->
             <div class="relative hidden md:block" id="user-dropdown-wrapper">
                 <button onclick="toggleDropdown()"
-                    class="flex items-center gap-2 text-white/80 hover:text-white hover:bg-white/10 px-3 py-2 rounded-lg transition-all">
+                    class="flex items-center gap-3 pl-1 pr-2 lg:pr-3 py-1.5 rounded-full hover:bg-orange-50 transition-colors text-left">
                     <div
-                        class="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0 overflow-hidden">
+                        class="w-11 h-11 rounded-full bg-orange-100 ring-2 ring-orange-500 ring-offset-2 ring-offset-white flex items-center justify-center shrink-0 overflow-hidden">
                         <?php if (!empty($_SESSION['picture'])): ?>
                             <img src="<?= htmlspecialchars($_SESSION['picture']) ?>" alt="avatar"
                                 class="w-full h-full object-cover" referrerpolicy="no-referrer">
                         <?php else: ?>
-                            <i class="fa-solid fa-user text-white text-[10px]"></i>
+                            <i class="fa-solid fa-user text-orange-500 text-sm"></i>
                         <?php endif; ?>
                     </div>
-                    <span class="text-xs font-semibold uppercase tracking-widest hidden sm:inline">
-                        <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
-                    </span>
-                    <i class="fa-solid fa-chevron-down text-[9px] opacity-60 transition-transform duration-200"
+                    <div class="hidden lg:block leading-tight min-w-0">
+                        <p class="text-[15px] font-semibold text-gray-800 max-w-[150px] truncate">
+                            <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
+                        </p>
+                        <p class="text-xs text-gray-400">View Profile</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-xs text-orange-500 transition-transform duration-200"
                         id="chevron-icon"></i>
                 </button>
                 <div id="user-dropdown"
-                    class="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible -translate-y-1 transition-all duration-200 z-50">
+                    class="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden opacity-0 invisible -translate-y-1 transition-all duration-200 z-50">
                     <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
                         <p class="text-xs font-bold text-gray-800 truncate">
                             <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
@@ -181,9 +359,9 @@
 
             <!-- Mobile hamburger -->
             <button onclick="toggleMobileSidebar()"
-                class="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-white hover:bg-white/10 transition-all"
-                id="hamburger-btn">
-                <i class="fa-solid fa-bars text-sm" id="hamburger-icon"></i>
+                class="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-gray-800 hover:bg-orange-50 hover:text-orange-500 transition-all"
+                id="hamburger-btn" aria-label="Menu">
+                <i class="fa-solid fa-bars text-lg" id="hamburger-icon"></i>
             </button>
         </div>
     </div>
@@ -243,14 +421,15 @@
     </div>
 
     <!-- Nav Links -->
-    <nav class="flex-1 px-3 py-4 space-y-1">
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Menu</p>
         <?php
         $mobileNavLinks = [
             '/dashboard' => ['label' => 'Announcement', 'icon' => 'fa-bullhorn'],
             '/requesthistory' => ['label' => 'My Requests', 'icon' => 'fa-file-lines'],
             '/myvouchers' => ['label' => 'My Vouchers', 'icon' => 'fa-ticket'],
-            '/rejectedrequests' => ['label' => 'Rejected Requests', 'icon' => 'fa-file-lines'],
+            '/rejectedrequests' => ['label' => 'Rejected Requests', 'icon' => 'fa-ban'],
+            '/followupattachments' => ['label' => 'Follow-up Files', 'icon' => 'fa-paperclip'],
         ];
         foreach ($mobileNavLinks as $path => $item):
             $isActive = str_starts_with($relativePath, $path);
@@ -266,6 +445,10 @@
                 <?php if ($path === '/dashboard'): ?>
                     <span id="mob-ann-badge"
                         class="hidden ml-auto bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+                <?php endif; ?>
+                <?php if ($path === '/followupattachments'): ?>
+                    <span id="mob-fu-badge"
+                        class="<?= $fuNavCount > 0 ? '' : 'hidden' ?> ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"><?= $fuNavCount > 9 ? '9+' : (int) $fuNavCount ?></span>
                 <?php endif; ?>
             </a>
         <?php endforeach; ?>
@@ -303,7 +486,7 @@
         sidebarOpen = true;
         document.getElementById('mobile-sidebar').classList.add('open');
         document.getElementById('mobile-overlay').classList.remove('hidden');
-        document.getElementById('hamburger-icon').className = 'fa-solid fa-xmark text-sm';
+        document.getElementById('hamburger-icon').className = 'fa-solid fa-xmark text-lg';
         document.body.style.overflow = 'hidden';
     }
 
@@ -311,7 +494,7 @@
         sidebarOpen = false;
         document.getElementById('mobile-sidebar').classList.remove('open');
         document.getElementById('mobile-overlay').classList.add('hidden');
-        document.getElementById('hamburger-icon').className = 'fa-solid fa-bars text-sm';
+        document.getElementById('hamburger-icon').className = 'fa-solid fa-bars text-lg';
         document.body.style.overflow = '';
     }
 
@@ -464,6 +647,17 @@
                 });
         });
     });
+
+    // ── Follow-up Badge ──────────────────────────────────
+    // Tinatawag ng follow-up page pagkatapos mag-upload para bumaba agad ang bilang
+    window.setFuBadge = function (n) {
+        ['fu-nav-badge', 'mob-fu-badge'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (n > 0) { el.textContent = n > 9 ? '9+' : n; el.classList.remove('hidden'); }
+            else el.classList.add('hidden');
+        });
+    };
 
     fetchNotifications();
     setInterval(fetchNotifications, 30000);

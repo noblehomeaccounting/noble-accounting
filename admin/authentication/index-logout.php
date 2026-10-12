@@ -8,7 +8,7 @@ session_destroy();
 <body>
 <script>
     sessionStorage.clear();
-    window.location.href = '<?= BASE_URL ?>/loginadmin';
+    window.location.href = '<?= BASE_URL ?>/adminhome';
 </script>
 </body>
 </html>

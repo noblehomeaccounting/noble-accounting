@@ -20,7 +20,7 @@ if (empty($_SESSION['logged_in'])) {
     style="background-image: url('<?= BASE_URL ?>/icon/building2.png'); background-size: cover; background-position: center; background-attachment: fixed;">
     <div class="fixed inset-0 bg-black/50 z-0 pointer-events-none"></div>
 
-    <div class="max-w-5xl mx-auto relative z-10">
+    <div class="max-w-5xl mx-auto relative z-10 mt-12">
         <h1 class="text-xl font-bold text-white">Rejected Requests</h1>
         <p class="text-sm text-gray-300 mb-4">Edit and resubmit</p>
         <div id="rej-list" class="space-y-3"></div>

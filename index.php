@@ -55,7 +55,9 @@ $adminRoutes = [
 
     // authentication admin
     'logout',                           
-    'loginadmin',                       
+    'loginadmin',   
+    
+    'adminhome',
 
     // annoucnement             
     'saveannouncement',             
@@ -80,7 +82,8 @@ $adminRoutes = [
     'it', 
 
     // accounting
-    'accounting',                       
+    'accounting',            
+    'accountingfollowups',           
     'download-pdfbudgetrequest',        
     'accountingdashboard',              
     'announcementdashboard',            
@@ -286,7 +289,10 @@ $routes = [
     'apilogin'                         => 'api/login.php',
     'apinoblerole'                     => 'api/noblerole.php',
 
-    'home'                             => 'user/authentication/index-login.php',
+
+    'home'                             => 'animation.php',
+    'adminhome'                        => 'admin/authentication/index-animation.php',
+    'home1'                            => 'user/authentication/index-login.php',
     'logout'                           => 'admin/authentication/index-logout.php',
     'loginadmin'                       => 'admin/authentication/index-login.php',
     'loginuser'                        => 'user/authentication/index-login.php',
@@ -304,6 +310,7 @@ $routes = [
 
     //user
     'myvouchers'                       => 'user/ui/index-my-vouchers.php',
+    'followupattachments'              => 'user/ui/index-followup-attachments.php',
     'fetchmyvouchers'                  => 'user/ui/backend/index-fetch-my-vouchers.php',
     'acceptvoucher'                    => 'user/ui/backend/index-accept-voucher.php',
     'fetchheads'                       => 'user/ui/backend/index-fetch-heads.php',
@@ -333,6 +340,7 @@ $routes = [
    
     // accounting
     'accounting'                       => 'admin/ui-accounting/page-1/index-accounting-main.php',
+    'accountingfollowups'              => 'admin/ui-accounting/page-1/index-accounting-followups.php',
     'download-pdfbudgetrequest'        => 'admin/ui-accounting/backend/backend-page1/download-pdfbudgetrequest.php',
     'accountingdashboard'              => 'admin/ui-accounting/page-1/index-accounting-dashboard.php',
     'announcementdashboard'            => 'admin/ui-accounting/page-1/index-accounting-dashboard.php',

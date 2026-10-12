@@ -180,6 +180,7 @@ if (!empty($_SESSION['logged_in'])) {
                     Smarter budgeting.<br>
                     Better decisions.
                 </p>
+                
             </div>
         </div>
    

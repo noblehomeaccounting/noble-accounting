@@ -1,5 +1,5 @@
 <?php
 
 session_destroy();
-header('Location: ' . BASE_URL . '/loginuser');
+header('Location: ' . BASE_URL . '/');
 exit;
