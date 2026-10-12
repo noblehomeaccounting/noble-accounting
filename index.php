@@ -316,6 +316,7 @@ $routes = [
     'fetchheads'                       => 'user/ui/backend/index-fetch-heads.php',
     'submitrequest'                    => 'user/ui/backend/index-submit-request.php',
     'fetchmyrequests'                  => 'user/ui/backend/index-fetch-my-requests.php',
+    'uploadfollowup'                   => 'user/ui/backend/index-followup-upload.php',
     'requesthistory'                   => 'user/ui/index-my-request-history.php',
     'dashboard'                        => 'user/ui/index-main-dashboard.php',
     'rejectedrequests'                 => 'user/ui/index-rejected-requests.php',
