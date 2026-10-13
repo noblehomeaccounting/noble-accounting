@@ -1346,4 +1346,8 @@
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') { fetchRequests(); fetchDates(); }
     });
+
+    setInterval(() => {
+        if (document.visibilityState === 'visible') fetchRequests();
+    }, 10000); // 10 segundo
 </script>

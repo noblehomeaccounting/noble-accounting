@@ -1004,6 +1004,10 @@ ${receiverSig
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') fetchApproved();
         });
+
+            setInterval(() => {
+        if (document.visibilityState === 'visible') fetchRequests();
+    }, 10000); // 10 segundo
     </script>
 </body>
 

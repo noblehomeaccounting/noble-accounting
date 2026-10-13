@@ -35,7 +35,7 @@ if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
     $cacheKey = "budget_requests_{$user_id}_all";
 }
 
-$cached = getCache($cacheKey, 60);
+$cached = getCache($cacheKey, 20);
 if ($cached !== false) {
     echo $cached;
     exit;

@@ -7,7 +7,7 @@ include ROOT_PATH . '/network/cache-helper.php';
 
 header('Content-Type: application/json');
 
-$cached = getCache('accounting_staff_list', 60); // 1 minute
+$cached = getCache('accounting_staff_list', 20); // 1 minute
 if ($cached !== false) {
     echo $cached;
     exit;

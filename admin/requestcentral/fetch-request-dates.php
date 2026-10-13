@@ -21,7 +21,7 @@ if (!$user_id) {
 }
 
 $cacheKey = "budget_request_dates_{$user_id}";
-$cached = getCache($cacheKey, 30);
+$cached = getCache($cacheKey, 20);
 if ($cached !== false) {
     echo $cached;
     exit;
