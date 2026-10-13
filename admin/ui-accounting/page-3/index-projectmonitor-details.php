@@ -102,7 +102,7 @@ if (!$project) {
             <!-- Header -->
             <div style="display:grid; grid-template-columns:1fr auto; background:#d97706;">
                 <div style="display:flex; align-items:center; gap:12px; padding:12px 16px;">
-                    <img src="<?= BASE_URL ?>/icon/logo.png"
+                    <img src="<?= BASE_URL ?>/icon/logo.webp"
                         style="width:52px; height:52px; object-fit:contain; background:white; border-radius:4px; padding:2px;">
                     <div>
                         <div

@@ -51,7 +51,7 @@ if ($checkResult->num_rows > 0) {
 }
 $stmtCheck->close();
 
-// Before the INSERT, fetch the custodian's active signature
+// Active signature ng nag-submit (staff = preparer)
 $stmtSig = $conn->prepare("SELECT path FROM noblesignature WHERE user_id = ? AND is_active = 1 LIMIT 1");
 $stmtSig->bind_param('i', $user_id);
 $stmtSig->execute();
@@ -59,10 +59,10 @@ $sigResult = $stmtSig->get_result();
 $sigPath = $sigResult->num_rows ? $sigResult->fetch_assoc()['path'] : null;
 $stmtSig->close();
 
-// Then add certified_signature to your INSERT:
+// prepared_* na ang gamit (dating certified_*)
 $stmt = $conn->prepare("INSERT INTO noblevoucher 
     (request_id, control_no, payee, address, purpose, title, second_no, payment_method,
-     certified_by, certified_at, certified_signature, created_at, status) 
+     prepared_by, prepared_at, prepared_signature, created_at, status) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), 'voucher_approval')");
 $stmt->bind_param(
     "isssssssis",
@@ -80,38 +80,39 @@ $stmt->bind_param(
 $success = $stmt->execute();
 $stmt->close();
 
-// Notify custoassistant
+// Notify HEAD
 if ($success) {
 
+    clearCache('cashvoucher_all');
     clearCache('custodian_received_requests');
     clearCache('staff_approved_requests');
     clearCache('staff_acknowledged_requests');
 
     $control_no = $row['control_no'];
-    $message = "Cash voucher for $control_no has been submitted and needs to be prepared. Check Approval Cash Voucher.";
+    $message = "Cash voucher for $control_no has been submitted and is ready for your approval. Check Approval Cash Voucher.";
+    $link = '/cashvoucherdashboard'; // page ng head
 
-    $assistants = $conn->query("
+    $heads = $conn->query("
         SELECT id FROM noblerole 
         WHERE role = 'ACCOUNTING AND FINANCE DEPARTMENT' 
         AND position = 'head'
     ");
 
-    while ($a = $assistants->fetch_assoc()) {
-        $aid = intval($a['id']);
-
-        $link = '/cashvoucherdashboard'; // ← page ng custoassistant
-
+    if ($heads) {
         $stmt2 = $conn->prepare("
-        INSERT INTO noblenotification (user_id, request_id, message, is_read, created_at, sender_id, link)
-        VALUES (?, ?, ?, 0, NOW(), ?, ?)
-    ");
-        $stmt2->bind_param("iisis", $aid, $request_id, $message, $user_id, $link);
-        $stmt2->execute();
+            INSERT INTO noblenotification (user_id, request_id, message, is_read, created_at, sender_id, link)
+            VALUES (?, ?, ?, 0, NOW(), ?, ?)
+        ");
+        while ($h = $heads->fetch_assoc()) {
+            $hid = intval($h['id']);
+            $stmt2->bind_param("iisis", $hid, $request_id, $message, $user_id, $link);
+            $stmt2->execute();
+        }
         $stmt2->close();
     }
 }
 
-// Save to Sheet Two (noblepettycashcustodiantwo) if department is provided
+// Save to Sheet Two (noblepettycashcustodiantwo) kung may department
 if ($success && $second_no) {
     $stmtDetails = $conn->prepare("SELECT date_requested, items FROM noblebudgetrequest WHERE id = ? LIMIT 1");
     $stmtDetails->bind_param('i', $request_id);
@@ -119,9 +120,9 @@ if ($success && $second_no) {
     $reqDetails = $stmtDetails->get_result()->fetch_assoc();
     $stmtDetails->close();
 
-    $items = json_decode($reqDetails['items'] ?? '[]', true);
+    $items = json_decode($reqDetails['items'] ?? '[]', true) ?: [];
 
-    // Build particulars from items
+    // Particulars galing sa items
     $particularsArr = [];
     foreach ($items as $item) {
         if (empty($item['description']))
@@ -130,13 +131,13 @@ if ($success && $second_no) {
     }
     $particulars = implode(', ', $particularsArr) ?: $purpose;
 
-    // Calculate total amount
+    // Total amount
     $total = array_sum(array_map(fn($i) => floatval($i['amount'] ?? 0), $items));
 
     $dateRequested = $reqDetails['date_requested'] ?? date('Y-m-d');
     $voucherControlNo = $row['control_no'];
 
-    // Get custodian name for inserted_by
+    // Pangalan ng nag-submit para sa inserted_by
     $stmtUser = $conn->prepare("SELECT name FROM nobleaccount WHERE id = ? LIMIT 1");
     $stmtUser->bind_param('i', $user_id);
     $stmtUser->execute();

@@ -56,7 +56,7 @@ $adminRoutes = [
     // authentication admin
     'logout',                           
     'loginadmin',   
-    
+    'sidebarpoll',
     'adminhome',
 
     // annoucnement             
@@ -117,6 +117,7 @@ $adminRoutes = [
     'accountingcustodian',              
     'accountingcustodiandashboard',     
     'fetchreceived',                    
+    'fetchreceiveddates',
     'submitrequestvoucher',             
     'accountingcustodianassistant',     
     'announcementcustodian',            
@@ -189,7 +190,7 @@ $adminRoutes = [
 
     // sale page 6
     'quotationpricelist',
-     'quotationpricelistajax',
+    'quotationpricelistajax',
 
     // graphic design
     'graphicdesign',
@@ -240,7 +241,8 @@ $adminRoutes = [
     
     'unauthorized',                    
     'fetchrequests',                   
-    'actionrequest',                   
+    'actionrequest',    
+    'fetchrequestdates' ,               
     'fetchnotifications',              
     'marknotificationsread',           
     'notificationstream',              
@@ -292,9 +294,14 @@ $routes = [
 
     'home'                             => 'animation.php',
     'adminhome'                        => 'admin/authentication/index-animation.php',
+    
+
     'home1'                            => 'user/authentication/index-login.php',
+
     'logout'                           => 'admin/authentication/index-logout.php',
     'loginadmin'                       => 'admin/authentication/index-login.php',
+    'sidebarpoll'                      => 'admin/navigation/sidebar-poll.php',
+
     'loginuser'                        => 'user/authentication/index-login.php',
     'callback'                         => 'user/authentication/index-callback.php',
     'userhome'                         => 'user/ui/index-main-page-1.php',
@@ -377,6 +384,7 @@ $routes = [
     'accountingcustodian'              => 'admin/ui-accounting/page-3/index-custodian-main.php',
     'accountingcustodiandashboard'     => 'admin/ui-accounting/page-3/index-custodian-dashboard.php',
     'fetchreceived'                    => 'admin/ui-accounting/backend/backend-custodian/index-custodian-fetch-received.php',
+    'fetchreceiveddates'                => 'admin/ui-accounting/backend/backend-custodian/index-custodian-fetch-received-dates.php',
     'submitrequestvoucher'             => 'admin/ui-accounting/backend/backend-custodian/index-custodian-submit-voucher.php',
     'savegeneralsheet'                 => 'admin/ui-accounting/backend/backend-custodian/index-custodian-pettycashsavegeneralsheet.php',
     'fetchgeneralsheet'                => 'admin/ui-accounting/backend/backend-custodian/index-custodian-pettycashfetchgeneralsheet.php',
@@ -496,6 +504,7 @@ $routes = [
 
     'unauthorized'                     => 'admin/authentication/index-unauthorized.php',
     'fetchrequests'                    => 'admin/requestcentral/fetch-requests.php',
+    'fetchrequestdates'                => 'admin/requestcentral/fetch-request-dates.php',
     'actionrequest'                    => 'admin/requestcentral/action-request.php',
     'fetchnotifications'               => 'admin/navigation/sidebar-fetch-notifications.php',
     'marknotificationsread'            => 'admin/navigation/sidebar-mark-notifications-read.php',

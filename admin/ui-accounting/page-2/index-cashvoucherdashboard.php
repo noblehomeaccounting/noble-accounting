@@ -94,7 +94,7 @@ $position = $_SESSION['position'] ?? '';
                 <!-- Header -->
                 <div class="grid grid-cols-[auto_1fr_auto] border-b-2 border-orange-400 items-center px-4 py-3 gap-4">
                     <div class="flex items-center gap-3">
-                        <img src="<?= BASE_URL ?>/icon/logo.png" alt="Logo" class="w-12 h-12 object-contain">
+                        <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo" class="w-12 h-12 object-contain">
                         <div>
                             <p class="font-bold text-sm uppercase">Noblehome Construction Corporation</p>
                             <p class="text-[10px] text-gray-500">1181 MC Premiere Bldg., EDSA Bldg., EDSA Balintawak
@@ -254,7 +254,7 @@ $position = $_SESSION['position'] ?? '';
                 <!-- Mobile Header -->
                 <div class="bg-orange-500 px-4 py-3 flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <img src="<?= BASE_URL ?>/icon/logo.png" alt="Logo"
+                        <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo"
                             class="w-8 h-8 object-contain bg-white rounded-lg p-0.5">
                         <div>
                             <p class="text-white font-bold text-xs uppercase leading-tight">Cash Voucher</p>
@@ -420,8 +420,29 @@ $position = $_SESSION['position'] ?? '';
 
     <script>
         const POSITION = '<?= htmlspecialchars($position) ?>';
+        const API = '<?= BASE_URL ?>';
+        // Tandaan: huwag mag-declare ng `esc` o `BASE_URL`; ginagamit na iyon ng sidebar script.
+
         let allData = [];
         let currentRow = null;
+        let lastText = '';
+
+        // ─── Helpers ─────────────────────────────────────────
+        const escHtml = s => String(s ?? '').replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        const fmtMoney = n => (parseFloat(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+        function fmtDate(str, month = 'short') {
+            if (!str) return '';
+            const d = new Date(String(str).replace(' ', 'T'));
+            if (isNaN(d)) return '';
+            return d.toLocaleDateString('en-PH', { year: 'numeric', month, day: 'numeric' });
+        }
+
+        function sumItems(items) {
+            return (items ?? []).reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        }
 
         function numberToWords(amount) {
             const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
@@ -467,17 +488,33 @@ $position = $_SESSION['position'] ?? '';
                 'ready_to_release': 'Ready to Release',
                 'released': 'Released',
             };
-            return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">${label[status] ?? status}</span>`;
+            return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">${escHtml(label[status] ?? status)}</span>`;
         }
 
+        // Naka-escape na ang text bago i-highlight
         function highlight(text, q) {
             if (!text) return '';
-            if (!q) return text;
-            const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            return String(text).replace(new RegExp(`(${escaped})`, 'gi'),
+            const safe = escHtml(text);
+            if (!q) return safe;
+            const escapedQ = escHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return safe.replace(new RegExp(`(${escapedQ})`, 'gi'),
                 '<mark class="bg-yellow-200 text-yellow-900 rounded px-0.5">$1</mark>');
         }
 
+        function matchesQuery(row, q) {
+            return row.control_no?.toLowerCase().includes(q) ||
+                row.voucher_title?.toLowerCase().includes(q) ||
+                row.voucher_payee?.toLowerCase().includes(q) ||
+                row.purpose?.toLowerCase().includes(q);
+        }
+
+        function sigImg(src) {
+            return src
+                ? `<img src="${escHtml(src)}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">`
+                : '';
+        }
+
+        // ─── Render list ─────────────────────────────────────
         function renderTable(data, q = '') {
             const tbody = document.getElementById('voucher-tbody');
             const cards = document.getElementById('voucher-cards');
@@ -489,34 +526,33 @@ $position = $_SESSION['position'] ?? '';
             }
 
             tbody.innerHTML = data.map(row => {
-                const items = row.items ?? [];
-                const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+                const id = Number(row.id);
+                const total = sumItems(row.items);
+                const st = voucherStatus(row);
                 return `
-                <tr data-id="${row.id}" class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer "
-                        onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})">
-                        ${highlight(row.control_no, q)}
-                    </td>
-                    <td class="px-5 py-3 text-xs text-gray-700">${highlight(row.voucher_title ?? '—', q)}</td>
-                    <td class="px-5 py-3 text-gray-800">${highlight(row.voucher_payee ?? '—', q)}</td>
-                    <td class="px-5 py-3 text-gray-600">${highlight(row.purpose, q)}</td>
-                    <td class="px-5 py-3 text-xs text-gray-400 font-mono">${row.date_requested}</td>
-                    <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">
-                        PHP ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td class="px-5 py-3">${voucherStatus(row) ? statusBadge(voucherStatus(row)) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
-                    <td class="px-5 py-3">
-                        <button onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-                            class="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all">
-                            <i class="fa-solid fa-receipt mr-1"></i>View
-                        </button>
-                    </td>
-                </tr>`;
+            <tr data-id="${id}" class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
+                    onclick="viewVoucherById(${id})">
+                    ${highlight(row.control_no, q)}
+                </td>
+                <td class="px-5 py-3 text-xs text-gray-700">${highlight(row.voucher_title ?? '—', q)}</td>
+                <td class="px-5 py-3 text-gray-800">${highlight(row.voucher_payee ?? '—', q)}</td>
+                <td class="px-5 py-3 text-gray-600">${highlight(row.purpose, q)}</td>
+                <td class="px-5 py-3 text-xs text-gray-400 font-mono">${escHtml(row.date_requested)}</td>
+                <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">PHP ${fmtMoney(total)}</td>
+                <td class="px-5 py-3">${st ? statusBadge(st) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
+                <td class="px-5 py-3">
+                    <button onclick="viewVoucherById(${id})"
+                        class="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all">
+                        <i class="fa-solid fa-receipt mr-1"></i>View
+                    </button>
+                </td>
+            </tr>`;
             }).join('');
 
             cards.innerHTML = data.map(row => {
-                const items = row.items ?? [];
-                const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+                const id = Number(row.id);
+                const total = sumItems(row.items);
                 const st = voucherStatus(row);
                 const isComplete = st === 'released';
                 const barColor = isComplete ? 'bg-green-400'
@@ -527,36 +563,42 @@ $position = $_SESSION['position'] ?? '';
                 const rowBg = isComplete ? 'bg-green-50' : 'bg-white';
 
                 return `
-                <div data-id="${row.id}"
-                    class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors ${rowBg} active:bg-gray-50">
-                    <div class="w-1 self-stretch rounded-full flex-shrink-0 ${barColor}"></div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2 mb-0.5">
-                            <span class="font-mono text-[10px] font-bold text-blue-500 truncate">${highlight(row.control_no, q)}</span>
-                            ${st ? statusBadge(st) : '<span class="text-[9px] text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 flex-shrink-0">Not submitted</span>'}
-                        </div>
-                        <div class="text-sm font-semibold text-gray-800 truncate leading-tight">${highlight(row.voucher_title ?? '—', q)}</div>
-                        <div class="text-[11px] text-gray-500 truncate">${highlight(row.voucher_payee ?? '—', q)}</div>
-                        <div class="text-[11px] text-gray-400 truncate">${highlight(row.purpose ?? '—', q)}</div>
-                        <div class="mt-1 text-[10px] text-gray-400 font-mono">${row.date_requested}</div>
+            <div data-id="${id}"
+                class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors ${rowBg} active:bg-gray-50">
+                <div class="w-1 self-stretch rounded-full flex-shrink-0 ${barColor}"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2 mb-0.5">
+                        <span class="font-mono text-[10px] font-bold text-blue-500 truncate">${highlight(row.control_no, q)}</span>
+                        ${st ? statusBadge(st) : '<span class="text-[9px] text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 flex-shrink-0">Not submitted</span>'}
                     </div>
-                    <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                        <div class="font-mono text-xs font-bold ${isComplete ? 'text-green-600' : 'text-gray-700'} text-right">
-                            PhP ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        </div>
-                        <button onclick="viewVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-                            class="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                            <i class="fa-solid fa-receipt mr-1"></i>View
-                        </button>
+                    <div class="text-sm font-semibold text-gray-800 truncate leading-tight">${highlight(row.voucher_title ?? '—', q)}</div>
+                    <div class="text-[11px] text-gray-500 truncate">${highlight(row.voucher_payee ?? '—', q)}</div>
+                    <div class="text-[11px] text-gray-400 truncate">${highlight(row.purpose ?? '—', q)}</div>
+                    <div class="mt-1 text-[10px] text-gray-400 font-mono">${escHtml(row.date_requested)}</div>
+                </div>
+                <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                    <div class="font-mono text-xs font-bold ${isComplete ? 'text-green-600' : 'text-gray-700'} text-right">
+                        PhP ${fmtMoney(total)}
                     </div>
-                </div>`;
+                    <button onclick="viewVoucherById(${id})"
+                        class="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-receipt mr-1"></i>View
+                    </button>
+                </div>
+            </div>`;
             }).join('');
+        }
+
+        // ─── View modal ──────────────────────────────────────
+        function viewVoucherById(id) {
+            const row = allData.find(r => r.id == id);
+            if (row) viewVoucher(row);
         }
 
         function viewVoucher(row) {
             currentRow = row;
             const items = row.items ?? [];
-            const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+            const total = sumItems(items);
 
             // ── Desktop fields ──
             document.getElementById('v-control-no').textContent = row.voucher_control_no ?? row.control_no;
@@ -567,41 +609,32 @@ $position = $_SESSION['position'] ?? '';
             document.getElementById('v-payment-method').textContent = row.voucher_payment_method ?? '';
             document.getElementById('v-purpose').textContent = row.voucher_purpose ?? '';
             document.getElementById('v-amount-words').textContent = numberToWords(total);
-            document.getElementById('v-total').textContent = 'PhP ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+            document.getElementById('v-total').textContent = 'PhP ' + fmtMoney(total);
 
             // Prepared
-            const prepSig = row.prepared_signature ?? '';
-            document.getElementById('v-prepared').innerHTML = prepSig
-                ? `<span class="relative inline-block"><img src="${prepSig}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">${row.prepared_name ?? ''}</span>`
-                : (row.prepared_name ?? '');
-            const preparedAtStr = row.prepared_at
-                ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+            document.getElementById('v-prepared').innerHTML = row.prepared_signature
+                ? `<span class="relative inline-block">${sigImg(row.prepared_signature)}${escHtml(row.prepared_name)}</span>`
+                : escHtml(row.prepared_name);
+            const preparedAtStr = fmtDate(row.prepared_at);
             document.getElementById('v-prepared-at').textContent = preparedAtStr;
 
-            // Approver (2nd column)
-            const apprSig = row.approver_signature ?? '';
-            document.getElementById('v-approver').innerHTML = apprSig
-                ? `<span class="relative inline-block"><img src="${apprSig}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">${row.approver_name ?? ''}</span>`
-                : (row.approver_name ?? '');
-            const approvedAtStr = row.approver_name && row.approved_at
-                ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+            // Approver
+            document.getElementById('v-approver').innerHTML = row.approver_signature
+                ? `<span class="relative inline-block">${sigImg(row.approver_signature)}${escHtml(row.approver_name)}</span>`
+                : escHtml(row.approver_name);
+            const approvedAtStr = row.approver_name && row.approved_at ? fmtDate(row.approved_at) : '';
             document.getElementById('v-approved-at').textContent = approvedAtStr;
 
-            // Released (3rd column, custodian assistant)
-            const relSig = row.released_signature ?? '';
-            document.getElementById('v-released').innerHTML = relSig
-                ? `<span class="relative inline-block"><img src="${relSig}" style="position:absolute;bottom:-50px;left:80px;transform:translateX(-50%);height:90px;max-width:160px;object-fit:contain;z-index:10;pointer-events:none;">${row.released_name ?? ''}</span>`
-                : (row.released_name ?? '');
-            const releasedAtStr = row.released_name && row.released_at
-                ? new Date(String(row.released_at).replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+            // Released
+            document.getElementById('v-released').innerHTML = row.released_signature
+                ? `<span class="relative inline-block">${sigImg(row.released_signature)}${escHtml(row.released_name)}</span>`
+                : escHtml(row.released_name);
+            const releasedAtStr = row.released_name && row.released_at ? fmtDate(row.released_at) : '';
             document.getElementById('v-released-at').textContent = releasedAtStr;
 
+            // Received
             const receiverName = row.manual_receiver_name || row.receiver_name || '';
-            const receivedAt = row.manual_receiver_date
-                ? new Date(row.manual_receiver_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                : row.received_at
-                    ? new Date(row.received_at.replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                    : '';
+            const receivedAt = row.manual_receiver_date ? fmtDate(row.manual_receiver_date) : fmtDate(row.received_at);
             document.getElementById('v-receiver').textContent = receiverName;
             document.getElementById('v-received-at').textContent = receivedAt;
 
@@ -610,26 +643,24 @@ $position = $_SESSION['position'] ?? '';
             items.forEach(item => {
                 if (!item.description) return;
                 filled++;
-                const amt = parseFloat(item.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
                 rows += `<tr class="border-t border-gray-200">
-                    <td class="px-3 py-2 text-center text-xs text-gray-400 border-r border-gray-200">${filled}</td>
-                    <td class="px-4 py-2 border-r border-gray-200 text-sm">${item.description}${item.purpose ? ' — ' + item.purpose : ''}</td>
-                    <td class="px-4 py-2 text-right font-mono text-sm">${amt}</td>
-                </tr>`;
+                <td class="px-3 py-2 text-center text-xs text-gray-400 border-r border-gray-200">${filled}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-sm">${escHtml(item.description)}${item.purpose ? ' — ' + escHtml(item.purpose) : ''}</td>
+                <td class="px-4 py-2 text-right font-mono text-sm">${fmtMoney(item.amount)}</td>
+            </tr>`;
             });
             for (let e = filled; e < 5; e++) {
                 rows += `<tr class="border-t border-gray-200">
-                    <td class="px-3 py-2 text-center text-xs text-gray-300 border-r border-gray-200">${e + 1}</td>
-                    <td class="px-4 py-2 border-r border-gray-200" style="height:28px;"></td>
-                    <td class="px-4 py-2"></td>
-                </tr>`;
+                <td class="px-3 py-2 text-center text-xs text-gray-300 border-r border-gray-200">${e + 1}</td>
+                <td class="px-4 py-2 border-r border-gray-200" style="height:28px;"></td>
+                <td class="px-4 py-2"></td>
+            </tr>`;
             }
             document.getElementById('v-items-tbody').innerHTML = rows;
 
-            // ── Desktop footer buttons ──
-            const footerBtns = document.getElementById('v-footer-btns');
+            // Desktop footer buttons
             const closeBtn = `<button onclick="closeVoucherModal()" class="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2 rounded transition-all border border-gray-200">Close</button>`;
-            footerBtns.innerHTML = closeBtn + buildActionBtn(row);
+            document.getElementById('v-footer-btns').innerHTML = closeBtn + buildActionBtn(row);
 
             // ── Mobile fields ──
             document.getElementById('v-title-m').textContent = row.voucher_title ?? '';
@@ -640,7 +671,7 @@ $position = $_SESSION['position'] ?? '';
             document.getElementById('v-payment-method-m').textContent = row.voucher_payment_method ?? '';
             document.getElementById('v-purpose-m').textContent = row.voucher_purpose ?? '';
             document.getElementById('v-amount-words-m').textContent = numberToWords(total);
-            document.getElementById('v-total-m').textContent = 'PhP ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+            document.getElementById('v-total-m').textContent = 'PhP ' + fmtMoney(total);
             document.getElementById('v-prepared-m').textContent = row.prepared_name ?? '';
             document.getElementById('v-prepared-at-m').textContent = preparedAtStr;
             document.getElementById('v-approver-m').textContent = row.approver_name ?? '';
@@ -651,399 +682,388 @@ $position = $_SESSION['position'] ?? '';
             document.getElementById('v-received-at-m').textContent = receivedAt;
 
             // Mobile items
-            const mobileItems = document.getElementById('v-items-mobile');
-            let mobileRows = '';
-            let mFilled = 0;
+            let mobileRows = '', mFilled = 0;
             items.forEach(item => {
                 if (!item.description) return;
                 mFilled++;
-                const amt = parseFloat(item.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
                 mobileRows += `
-                <div class="grid grid-cols-[32px_1fr_80px] px-3 py-2 items-start">
-                    <span class="text-[10px] text-gray-400 text-center">${mFilled}</span>
-                    <span class="text-xs text-gray-700">${item.description}${item.purpose ? ' — ' + item.purpose : ''}</span>
-                    <span class="text-xs font-mono text-right text-gray-800">${amt}</span>
-                </div>`;
+            <div class="grid grid-cols-[32px_1fr_80px] px-3 py-2 items-start">
+                <span class="text-[10px] text-gray-400 text-center">${mFilled}</span>
+                <span class="text-xs text-gray-700">${escHtml(item.description)}${item.purpose ? ' — ' + escHtml(item.purpose) : ''}</span>
+                <span class="text-xs font-mono text-right text-gray-800">${fmtMoney(item.amount)}</span>
+            </div>`;
             });
             if (!mFilled) mobileRows = `<div class="px-3 py-3 text-xs text-gray-400 text-center">No items.</div>`;
-            mobileItems.innerHTML = mobileRows;
+            document.getElementById('v-items-mobile').innerHTML = mobileRows;
 
-            // ── Mobile footer buttons ──
-            const mFooter = document.getElementById('v-footer-btns-m');
+            // Mobile footer buttons
             const mCloseBtn = `<button onclick="closeVoucherModal()" class="w-full text-sm text-gray-500 font-medium py-2.5 rounded-xl border border-gray-200 bg-white">Close</button>`;
-            mFooter.innerHTML = buildActionBtnMobile(row) + mCloseBtn;
+            document.getElementById('v-footer-btns-m').innerHTML = buildActionBtnMobile(row) + mCloseBtn;
 
             document.getElementById('voucher-modal').classList.remove('hidden');
         }
 
         function buildActionBtn(row) {
-    if (POSITION === '<?= POSITION_STAFF ?>') {
-        if (!row.prepared_by) {
-            return `<button onclick="markPrepared(${row.voucher_id})"
-                class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
-                <i class="fa-solid fa-pen-to-square mr-1"></i>Mark as Prepared
-            </button>`;
-        }
-    } else if (POSITION === '<?= POSITION_HEAD ?>') {
-        if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
-            if (!row.prepared_by) {
-                return `<span class="flex items-center gap-2 text-xs text-red-500 font-semibold px-4 py-2 bg-red-50 rounded-lg border border-red-200">
-                    <i class="fa-solid fa-lock"></i>Waiting to be prepared
-                </span>`;
-            } else {
-                return `<button onclick="markApproved(${row.voucher_id})"
+            const vid = Number(row.voucher_id);
+            if (POSITION === '<?= POSITION_STAFF ?>') {
+                if (!row.prepared_by) {
+                    return `<button onclick="markPrepared(${vid})"
+                    class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i>Mark as Prepared
+                </button>`;
+                }
+            } else if (POSITION === '<?= POSITION_HEAD ?>') {
+                if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
+                    if (!row.prepared_by) {
+                        return `<span class="flex items-center gap-2 text-xs text-red-500 font-semibold px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                        <i class="fa-solid fa-lock"></i>Waiting to be prepared
+                    </span>`;
+                    }
+                    return `<button onclick="markApproved(${vid})"
                     class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
                     <i class="fa-solid fa-check mr-1"></i>Approve Voucher
                 </button>`;
+                }
             }
-        }
-    }
 
-    if (row.voucher_status === 'released') {
-        return `<button onclick="printVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-            class="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
-            <i class="fa-solid fa-print mr-1"></i>Print Voucher
-        </button>`;
-    } else if (row.voucher_status === 'ready_to_release') {
-        return `<span class="text-xs text-blue-500 px-4 py-2 font-medium flex items-center gap-2 bg-blue-50 rounded-lg border border-blue-200">
-            <i class="fa-solid fa-box"></i>Ready to Release
-        </span>`;
-    } else if (voucherStatus(row) === 'preparing') {
-        return `<span class="text-xs text-orange-600 px-4 py-2 font-medium flex items-center gap-2 bg-orange-50 rounded-lg border border-orange-200">
-            <i class="fa-solid fa-pen-to-square"></i>Waiting to be prepared
-        </span>`;
-    } else if (row.voucher_status === 'voucher_approval') {
-        return `<span class="text-xs text-yellow-600 px-4 py-2 font-medium flex items-center gap-2 bg-yellow-50 rounded-lg border border-yellow-200">
-            <i class="fa-solid fa-clock"></i>Waiting for approval
-        </span>`;
-    }
-    return '';
-}
-
-function buildActionBtnMobile(row) {
-    if (POSITION === '<?= POSITION_STAFF ?>') {
-        if (!row.prepared_by) {
-            return `<button onclick="markPrepared(${row.voucher_id})"
-                class="w-full flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
-                <i class="fa-solid fa-pen-to-square"></i>Mark as Prepared
+            if (row.voucher_status === 'released') {
+                return `<button onclick="printVoucherById(${Number(row.id)})"
+                class="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+                <i class="fa-solid fa-print mr-1"></i>Print Voucher
             </button>`;
+            } else if (row.voucher_status === 'ready_to_release') {
+                return `<span class="text-xs text-blue-500 px-4 py-2 font-medium flex items-center gap-2 bg-blue-50 rounded-lg border border-blue-200">
+                <i class="fa-solid fa-box"></i>Ready to Release
+            </span>`;
+            } else if (voucherStatus(row) === 'preparing') {
+                return `<span class="text-xs text-orange-600 px-4 py-2 font-medium flex items-center gap-2 bg-orange-50 rounded-lg border border-orange-200">
+                <i class="fa-solid fa-pen-to-square"></i>Waiting to be prepared
+            </span>`;
+            } else if (row.voucher_status === 'voucher_approval') {
+                return `<span class="text-xs text-yellow-600 px-4 py-2 font-medium flex items-center gap-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                <i class="fa-solid fa-clock"></i>Waiting for approval
+            </span>`;
+            }
+            return '';
         }
-    } else if (POSITION === '<?= POSITION_HEAD ?>') {
-        if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
-            if (!row.prepared_by) {
-                return `<span class="flex items-center justify-center gap-2 text-xs text-red-500 font-semibold py-2.5 bg-red-50 rounded-xl border border-red-200">
-                    <i class="fa-solid fa-lock"></i>Waiting to be prepared
-                </span>`;
-            } else {
-                return `<button onclick="markApproved(${row.voucher_id})"
+
+        function buildActionBtnMobile(row) {
+            const vid = Number(row.voucher_id);
+            if (POSITION === '<?= POSITION_STAFF ?>') {
+                if (!row.prepared_by) {
+                    return `<button onclick="markPrepared(${vid})"
+                    class="w-full flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
+                    <i class="fa-solid fa-pen-to-square"></i>Mark as Prepared
+                </button>`;
+                }
+            } else if (POSITION === '<?= POSITION_HEAD ?>') {
+                if (row.voucher_status === 'voucher_approval' && !row.approved_by) {
+                    if (!row.prepared_by) {
+                        return `<span class="flex items-center justify-center gap-2 text-xs text-red-500 font-semibold py-2.5 bg-red-50 rounded-xl border border-red-200">
+                        <i class="fa-solid fa-lock"></i>Waiting to be prepared
+                    </span>`;
+                    }
+                    return `<button onclick="markApproved(${vid})"
                     class="w-full flex items-center justify-center gap-2 bg-green-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                     <i class="fa-solid fa-check"></i>Approve Voucher
                 </button>`;
+                }
             }
+
+            if (row.voucher_status === 'released') {
+                return `<button onclick="printVoucherById(${Number(row.id)})"
+                class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
+                <i class="fa-solid fa-print"></i>Print Voucher
+            </button>`;
+            } else if (row.voucher_status === 'ready_to_release') {
+                return `<span class="flex items-center justify-center gap-2 text-xs text-blue-600 py-2.5 font-medium bg-blue-50 rounded-xl border border-blue-200">
+                <i class="fa-solid fa-box"></i>Ready to Release
+            </span>`;
+            } else if (voucherStatus(row) === 'preparing') {
+                return `<span class="flex items-center justify-center gap-2 text-xs text-orange-600 py-2.5 font-medium bg-orange-50 rounded-xl border border-orange-200">
+                <i class="fa-solid fa-pen-to-square"></i>Waiting to be prepared
+            </span>`;
+            } else if (row.voucher_status === 'voucher_approval') {
+                return `<span class="flex items-center justify-center gap-2 text-xs text-yellow-600 py-2.5 font-medium bg-yellow-50 rounded-xl border border-yellow-200">
+                <i class="fa-solid fa-clock"></i>Waiting for approval
+            </span>`;
+            }
+            return '';
         }
-    }
 
-    if (row.voucher_status === 'released') {
-        return `<button onclick="printVoucher(${JSON.stringify(row).replace(/"/g, '&quot;')})"
-            class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
-            <i class="fa-solid fa-print"></i>Print Voucher
-        </button>`;
-    } else if (row.voucher_status === 'ready_to_release') {
-        return `<span class="flex items-center justify-center gap-2 text-xs text-blue-600 py-2.5 font-medium bg-blue-50 rounded-xl border border-blue-200">
-            <i class="fa-solid fa-box"></i>Ready to Release
-        </span>`;
-    } else if (voucherStatus(row) === 'preparing') {
-        return `<span class="flex items-center justify-center gap-2 text-xs text-orange-600 py-2.5 font-medium bg-orange-50 rounded-xl border border-orange-200">
-            <i class="fa-solid fa-pen-to-square"></i>Waiting to be prepared
-        </span>`;
-    } else if (row.voucher_status === 'voucher_approval') {
-        return `<span class="flex items-center justify-center gap-2 text-xs text-yellow-600 py-2.5 font-medium bg-yellow-50 rounded-xl border border-yellow-200">
-            <i class="fa-solid fa-clock"></i>Waiting for approval
-        </span>`;
-    }
-    return '';
-}
+        function closeVoucherModal() {
+            document.getElementById('voucher-modal').classList.add('hidden');
+            currentRow = null;
+        }
 
-                function closeVoucherModal() {
-                    document.getElementById('voucher-modal').classList.add('hidden');
-                    currentRow = null;
-                }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !document.getElementById('voucher-modal').classList.contains('hidden')) {
+                closeVoucherModal();
+            }
+        });
 
-                document.addEventListener('keydown', function (e) {
-                    if (e.key === 'Escape' && !document.getElementById('voucher-modal').classList.contains('hidden')) {
-                        closeVoucherModal();
-                    }
-                });
+        // ─── Actions ─────────────────────────────────────────
+        function markPrepared(voucherId) {
+            fetch(API + '/cashvoucherprepared', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voucher_id: voucherId })
+            }).then(res => res.json()).then(data => {
+                if (data.success) { closeVoucherModal(); showToast('Voucher marked as prepared!'); fetchVouchers(true); }
+                else showToast(data.error ?? data.message ?? 'Failed to mark as prepared.', 'error');
+            }).catch(() => showToast('Network error. Please try again.', 'error'));
+        }
 
-                function markPrepared(voucherId) {
-                    fetch('<?= BASE_URL ?>/cashvoucherprepared', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ voucher_id: voucherId })
-                    }).then(res => res.json()).then(data => {
-                        if (data.success) { closeVoucherModal(); showToast('Voucher marked as prepared!'); previousCount = 0; fetchVouchers(); }
-                        else showToast(data.error ?? 'Failed to mark as prepared.', 'error');
-                    });
-                }
+        function markApproved(voucherId) {
+            fetch(API + '/cashvoucherapproved', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voucher_id: voucherId })
+            }).then(res => res.json()).then(data => {
+                if (data.success) { closeVoucherModal(); showToast('Voucher approved successfully!'); fetchVouchers(true); }
+                else showToast(data.error ?? data.message ?? 'Failed.', 'error');
+            }).catch(() => showToast('Network error. Please try again.', 'error'));
+        }
 
-                function markApproved(voucherId) {
-                    fetch('<?= BASE_URL ?>/cashvoucherapproved', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ voucher_id: voucherId })
-                    }).then(res => res.json()).then(data => {
-                        if (data.success) { closeVoucherModal(); showToast('Voucher approved successfully!'); previousCount = 0; fetchVouchers(); }
-                        else showToast(data.error ?? 'Failed.', 'error');
-                    });
-                }
+        function showToast(message, type = 'success') {
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${colors[type] ?? colors.success} text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0 translate-y-2`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i> ${escHtml(message)}`;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-2'));
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-2'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
 
-                function showToast(message, type = 'success') {
-                    const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
-                    const toast = document.createElement('div');
-                    toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${colors[type]} text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0 translate-y-2`;
-                    toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i> ${message}`;
-                    document.body.appendChild(toast);
-                    requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-2'));
-                    setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-2'); setTimeout(() => toast.remove(), 300); }, 3000);
-                }
+        // ─── Print ───────────────────────────────────────────
+        function printVoucherById(id) {
+            const row = allData.find(r => r.id == id);
+            if (row) printVoucher(row);
+        }
 
-                function printVoucher(row) {
-                    const items = row.items ?? [];
-                    let total = 0, itemRows = '', filled = 0;
-                    items.forEach(item => {
-                        if (!item.description) return;
-                        filled++;
-                        const amt = parseFloat(item.amount || 0);
-                        total += amt;
-                        itemRows += `<tr>
-                    <td style="text-align:center;border:1px solid #ccc;padding:5px;font-size:11px;">${filled}</td>
-                    <td style="border:1px solid #ccc;padding:5px;font-size:11px;">${item.description}${item.purpose ? ' — ' + item.purpose : ''}</td>
-                    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;font-size:11px;">${amt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                </tr>`;
-                    });
-                    for (let e = filled; e < 5; e++) {
-                        itemRows += `<tr>
-                    <td style="text-align:center;border:1px solid #ccc;padding:5px;color:#ccc;font-size:11px;">${e + 1}</td>
-                    <td style="border:1px solid #ccc;padding:5px;height:24px;"></td>
-                    <td style="border:1px solid #ccc;padding:5px;"></td>
-                </tr>`;
-                    }
+        function printVoucher(row) {
+            const items = row.items ?? [];
+            const td = 'border:1px solid #ccc;padding:5px;font-size:11px;';
+            let total = 0, itemRows = '', filled = 0;
+            items.forEach(item => {
+                if (!item.description) return;
+                filled++;
+                const amt = parseFloat(item.amount || 0);
+                total += amt;
+                itemRows += `<tr>
+                <td style="text-align:center;${td}">${filled}</td>
+                <td style="${td}">${escHtml(item.description)}${item.purpose ? ' — ' + escHtml(item.purpose) : ''}</td>
+                <td style="text-align:right;${td}font-family:monospace;">${fmtMoney(amt)}</td>
+            </tr>`;
+            });
+            for (let e = filled; e < 5; e++) {
+                itemRows += `<tr>
+                <td style="text-align:center;${td}color:#ccc;">${e + 1}</td>
+                <td style="${td}height:24px;"></td>
+                <td style="${td}"></td>
+            </tr>`;
+            }
 
-                    const preparedAt = row.prepared_at ? new Date(row.prepared_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-                    const approvedAt = row.approved_at ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-                    const releasedAt = row.released_at ? new Date(String(row.released_at).replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-                    const receiverName = row.manual_receiver_name || row.receiver_name || '';
-                    const receivedAt = row.manual_receiver_date
-                        ? new Date(row.manual_receiver_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                        : row.received_at
-                            ? new Date(row.received_at.replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                            : '';
+            const preparedAt = fmtDate(row.prepared_at, 'long');
+            const approvedAt = fmtDate(row.approved_at, 'long');
+            const releasedAt = fmtDate(row.released_at, 'long');
+            const receiverName = row.manual_receiver_name || row.receiver_name || '';
+            const receivedAt = row.manual_receiver_date ? fmtDate(row.manual_receiver_date) : fmtDate(row.received_at);
+            const voucherNo = row.voucher_control_no ?? row.control_no;
 
-                    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-            <title>Cash Voucher - ${row.voucher_control_no ?? row.control_no}</title>
-            <style>
-                *{box-sizing:border-box;}
-                body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}
-                table{width:100%;border-collapse:collapse;}
-                .orange-bg{background:#f97316;color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-                @page{size:A4 portrait;margin:1cm;}
-            </style></head><body>
-            <div style="border:2px solid #f97316;border-radius:2px;">
-                <div style="display:grid;grid-template-columns:1fr auto;border-bottom:2px solid #f97316;">
-                    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;">
-                        <img src="<?= BASE_URL ?>/icon/logo.png" style="width:48px;height:48px;object-fit:contain;">
-                        <div>
-                            <div style="font-weight:bold;font-size:12px;text-transform:uppercase;">Noblehome Construction Corporation</div>
-                            <div style="font-size:9px;color:#666;margin-top:2px;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City</div>
-                            <div style="font-size:9px;color:#666;">noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</div>
-                        </div>
-                    </div>
-                    <div style="text-align:right;padding:10px 14px;border-left:1px solid #f97316;">
-                        <div style="font-weight:bold;font-size:16px;text-transform:uppercase;letter-spacing:2px;">Cash Voucher</div>
-                        <div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:6px;">${row.voucher_title ?? ''}</div>
-                        <table style="width:auto;margin-left:auto;">
-                            <tr>
-                                <td class="orange-bg" style="font-size:9px;font-weight:bold;padding:3px 10px;text-align:center;border-right:1px solid #ea6c00;">Voucher No.</td>
-                                <td class="orange-bg" style="font-size:9px;font-weight:bold;padding:3px 10px;text-align:center;">Date:</td>
-                            </tr>
-                            <tr>
-                                <td style="border:1px solid #d1d5db;font-family:monospace;font-size:10px;padding:4px 10px;text-align:center;background:#f9fafb;border-right:0;">${row.voucher_control_no ?? row.control_no}</td>
-                                <td style="border:1px solid #d1d5db;font-family:monospace;font-size:10px;padding:4px 10px;text-align:center;background:#f9fafb;">${row.date_requested}</td>
-                            </tr>
-                        </table>
+            const sigCell = (sig, name, when, last = false) => `
+            <div style="padding:10px 8px;${last ? '' : 'border-right:1px solid #e5e7eb;'}display:flex;flex-direction:column;">
+                <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
+                    ${sig ? `<img src="${escHtml(sig)}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
+                </div>
+                <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
+                    <div style="font-size:10px;font-weight:600;">${escHtml(name)}</div>
+                    <div style="font-size:9px;color:#888;">${escHtml(when)}</div>
+                </div>
+            </div>`;
+
+            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <title>Cash Voucher - ${escHtml(voucherNo)}</title>
+        <style>
+            *{box-sizing:border-box;}
+            body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}
+            table{width:100%;border-collapse:collapse;}
+            .orange-bg{background:#f97316;color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+            @page{size:A4 portrait;margin:1cm;}
+        </style></head><body>
+        <div style="border:2px solid #f97316;border-radius:2px;">
+            <div style="display:grid;grid-template-columns:1fr auto;border-bottom:2px solid #f97316;">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;">
+                    <img src="${API}/icon/logo.webp" style="width:48px;height:48px;object-fit:contain;">
+                    <div>
+                        <div style="font-weight:bold;font-size:12px;text-transform:uppercase;">Noblehome Construction Corporation</div>
+                        <div style="font-size:9px;color:#666;margin-top:2px;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City</div>
+                        <div style="font-size:9px;color:#666;">noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</div>
                     </div>
                 </div>
-                <div style="padding:10px 14px;border-bottom:1px solid #e5e7eb;">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:6px;">
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;width:90px;">Payee</span>
-                            <span style="color:#aaa;margin-right:4px;">:</span>
-                            <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;">${row.voucher_payee ?? ''}</span>
-                        </div>
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;white-space:nowrap;">Payment For</span>
-                            <span style="color:#aaa;margin:0 4px;">:</span>
-                            <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;">${row.voucher_purpose ?? ''}</span>
-                        </div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;width:90px;">Payment Method</span>
-                            <span style="color:#aaa;margin-right:4px;">:</span>
-                            <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;">${row.voucher_payment_method ?? ''}</span>
-                        </div>
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;white-space:nowrap;">Amount in Words</span>
-                            <span style="color:#aaa;margin:0 4px;">:</span>
-                            <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;font-style:italic;">${numberToWords(total)}</span>
-                        </div>
-                    </div>
-                </div>
-                <table style="border-collapse:collapse;">
-                    <thead>
-                        <tr class="orange-bg">
-                            <th style="width:40px;padding:6px;border:1px solid #ea6c00;text-align:center;font-size:10px;">No.</th>
-                            <th style="padding:6px;border:1px solid #ea6c00;text-align:center;font-size:10px;letter-spacing:3px;">P A R T I C U L A R S</th>
-                            <th style="width:130px;padding:6px;border:1px solid #ea6c00;text-align:center;font-size:10px;">Amount (P)</th>
+                <div style="text-align:right;padding:10px 14px;border-left:1px solid #f97316;">
+                    <div style="font-weight:bold;font-size:16px;text-transform:uppercase;letter-spacing:2px;">Cash Voucher</div>
+                    <div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:6px;">${escHtml(row.voucher_title)}</div>
+                    <table style="width:auto;margin-left:auto;">
+                        <tr>
+                            <td class="orange-bg" style="font-size:9px;font-weight:bold;padding:3px 10px;text-align:center;border-right:1px solid #ea6c00;">Voucher No.</td>
+                            <td class="orange-bg" style="font-size:9px;font-weight:bold;padding:3px 10px;text-align:center;">Date:</td>
                         </tr>
-                    </thead>
-                    <tbody>${itemRows}</tbody>
-                    <tfoot>
-                        <tr style="background:#fff7ed;border-top:2px solid #f97316;">
-                            <td colspan="3" style="border:1px solid #e5e7eb;padding:0;">
-                                <div style="display:flex;justify-content:space-between;padding:6px 12px;">
-                                    <div style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#888;">
-                                        Payment Method No.: <span style="font-family:monospace;font-size:10px;color:#374151;">${row.voucher_payment_method ?? '—'}</span>
-                                    </div>
-                                    <div style="font-weight:bold;font-size:11px;">Total Amount: <span style="font-family:monospace;">${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span></div>
-                                </div>
-                            </td>
+                        <tr>
+                            <td style="border:1px solid #d1d5db;font-family:monospace;font-size:10px;padding:4px 10px;text-align:center;background:#f9fafb;border-right:0;">${escHtml(voucherNo)}</td>
+                            <td style="border:1px solid #d1d5db;font-family:monospace;font-size:10px;padding:4px 10px;text-align:center;background:#f9fafb;">${escHtml(row.date_requested)}</td>
                         </tr>
-                    </tfoot>
-                </table>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:2px solid #f97316;">
-                    <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Prepared By</div>
-                    <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Approved By</div>
-                    <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Released By</div>
-                    <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;">Received By</div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid #e5e7eb;">
-                    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
-                        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
-                            ${row.prepared_signature ? `<img src="${row.prepared_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
-                        </div>
-                        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
-                            <div style="font-size:10px;font-weight:600;">${row.prepared_name ?? ''}</div>
-                            <div style="font-size:9px;color:#888;">${preparedAt}</div>
-                        </div>
-                    </div>
-                    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
-                        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
-                            ${row.approver_signature ? `<img src="${row.approver_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
-                        </div>
-                        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
-                            <div style="font-size:10px;font-weight:600;">${row.approver_name ?? ''}</div>
-                            <div style="font-size:9px;color:#888;">${approvedAt}</div>
-                        </div>
-                    </div>
-                    <div style="padding:10px 8px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;">
-                        <div style="height:65px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px;">
-                            ${row.released_signature ? `<img src="${row.released_signature}" style="max-height:65px;max-width:120px;object-fit:contain;">` : ''}
-                        </div>
-                        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
-                            <div style="font-size:10px;font-weight:600;">${row.released_name ?? ''}</div>
-                            <div style="font-size:9px;color:#888;">${releasedAt}</div>
-                        </div>
-                    </div>
-                    <div style="padding:10px 8px;display:flex;flex-direction:column;">
-                        <div style="height:65px;"></div>
-                        <div style="border-top:1px solid #999;padding-top:4px;text-align:center;">
-                            <div style="font-size:10px;font-weight:600;">${receiverName}</div>
-                            <div style="font-size:9px;color:#888;">${receivedAt}</div>
-                        </div>
-                    </div>
-                </div>
-                <div style="padding:8px 14px;">
-                    <span style="font-size:9px;font-style:italic;color:#888;">Received the above stated amount in full settlement.</span>
+                    </table>
                 </div>
             </div>
-            <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
-            </body></html>`;
+            <div style="padding:10px 14px;border-bottom:1px solid #e5e7eb;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:6px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;width:90px;">Payee</span>
+                        <span style="color:#aaa;margin-right:4px;">:</span>
+                        <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;">${escHtml(row.voucher_payee)}</span>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;white-space:nowrap;">Payment For</span>
+                        <span style="color:#aaa;margin:0 4px;">:</span>
+                        <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;">${escHtml(row.voucher_purpose)}</span>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;width:90px;">Payment Method</span>
+                        <span style="color:#aaa;margin-right:4px;">:</span>
+                        <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;">${escHtml(row.voucher_payment_method)}</span>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#555;white-space:nowrap;">Amount in Words</span>
+                        <span style="color:#aaa;margin:0 4px;">:</span>
+                        <span style="border-bottom:1px solid #aaa;flex:1;font-size:11px;font-style:italic;">${escHtml(numberToWords(total))}</span>
+                    </div>
+                </div>
+            </div>
+            <table style="border-collapse:collapse;">
+                <thead>
+                    <tr class="orange-bg">
+                        <th style="width:40px;padding:6px;border:1px solid #ea6c00;text-align:center;font-size:10px;">No.</th>
+                        <th style="padding:6px;border:1px solid #ea6c00;text-align:center;font-size:10px;letter-spacing:3px;">P A R T I C U L A R S</th>
+                        <th style="width:130px;padding:6px;border:1px solid #ea6c00;text-align:center;font-size:10px;">Amount (P)</th>
+                    </tr>
+                </thead>
+                <tbody>${itemRows}</tbody>
+                <tfoot>
+                    <tr style="background:#fff7ed;border-top:2px solid #f97316;">
+                        <td colspan="3" style="border:1px solid #e5e7eb;padding:0;">
+                            <div style="display:flex;justify-content:space-between;padding:6px 12px;">
+                                <div style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#888;">
+                                    Payment Method No.: <span style="font-family:monospace;font-size:10px;color:#374151;">${escHtml(row.voucher_payment_method ?? '—')}</span>
+                                </div>
+                                <div style="font-weight:bold;font-size:11px;">Total Amount: <span style="font-family:monospace;">${fmtMoney(total)}</span></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:2px solid #f97316;">
+                <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Prepared By</div>
+                <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Approved By</div>
+                <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;border-right:1px solid #ea6c00;">Released By</div>
+                <div class="orange-bg" style="font-size:9px;font-weight:bold;text-align:center;padding:5px;">Received By</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid #e5e7eb;">
+                ${sigCell(row.prepared_signature, row.prepared_name ?? '', preparedAt)}
+                ${sigCell(row.approver_signature, row.approver_name ?? '', approvedAt)}
+                ${sigCell(row.released_signature, row.released_name ?? '', releasedAt)}
+                ${sigCell('', receiverName, receivedAt, true)}
+            </div>
+            <div style="padding:8px 14px;">
+                <span style="font-size:9px;font-style:italic;color:#888;">Received the above stated amount in full settlement.</span>
+            </div>
+        </div>
+        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
+        </body></html>`;
 
-                    const w = window.open('', '_blank');
-                    w.document.write(html);
-                    w.document.close();
-                }
+            const w = window.open('', '_blank');
+            w.document.write(html);
+            w.document.close();
+        }
 
-                let previousCount = 0;
+        function fetchVouchers(force = false) {
+            return fetch(API + '/cashvoucherfetchall')
+                .then(res => {
+                    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
+                    if (res.status === 304) return null; // walang nagbago
+                    return res.text();
+                })
+                .then(text => {
+                    if (text === null) {
+                        if (force) rerender();
+                        return;
+                    }
+                    if (!force && text === lastText) return;
+                    let data;
+                    try { data = JSON.parse(text); } catch (e) { return; }
+                    if (!Array.isArray(data)) return;
+                    lastText = text;
+                    allData = data;
+                    rerender();
+                })
+                .catch(err => console.error('Fetch error:', err));
+        }
 
-                function fetchVouchers() {
-                    fetch('<?= BASE_URL ?>/cashvoucherfetchall')
-                        .then(res => res.json())
-                        .then(data => {
-                            allData = data;  // tanggalin ang previousCount check
-                            const q = document.getElementById('search-input').value.toLowerCase();
-                            const filtered = q ? allData.filter(row =>
-                                row.control_no?.toLowerCase().includes(q) ||
-                                row.voucher_title?.toLowerCase().includes(q) ||
-                                row.voucher_payee?.toLowerCase().includes(q) ||
-                                row.purpose?.toLowerCase().includes(q)
-                            ) : allData;
-                            renderTable(filtered, q);
-                            document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
-                        })
-                        .catch(err => console.error('Fetch error:', err));
-                }
+        function rerender() {
+            const q = document.getElementById('search-input').value.toLowerCase();
+            renderTable(q ? allData.filter(row => matchesQuery(row, q)) : allData, q);
+        }
 
-                document.getElementById('search-input').addEventListener('input', function () {
-                    const q = this.value.toLowerCase();
-                    const filtered = allData.filter(row =>
-                        row.control_no?.toLowerCase().includes(q) ||
-                        row.voucher_title?.toLowerCase().includes(q) ||
-                        row.voucher_payee?.toLowerCase().includes(q) ||
-                        row.purpose?.toLowerCase().includes(q)
-                    );
-                    renderTable(filtered, q);
-                });
+        document.getElementById('search-input').addEventListener('input', function () {
+            const q = this.value.toLowerCase();
+            renderTable(allData.filter(row => matchesQuery(row, q)), q);
+        });
 
-                function checkHighlight() {
-                    const params = new URLSearchParams(window.location.search);
-                    const highlightId = params.get('highlight');
-                    if (!highlightId) return;
-                    const interval = setInterval(() => {
-                        const isMobile = window.innerWidth < 768;
-                        const row = isMobile
-                            ? document.querySelector(`#voucher-cards div[data-id="${highlightId}"]`)
-                            : document.querySelector(`#voucher-tbody tr[data-id="${highlightId}"]`);
-                        if (row) {
-                            clearInterval(interval);
-                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            if (!isMobile) {
-                                const firstCell = row.querySelector('td:first-child');
-                                if (firstCell) {
-                                    const badge = document.createElement('span');
-                                    badge.className = 'highlight-badge';
-                                    firstCell.prepend(badge);
-                                    setTimeout(() => badge.remove(), 5000);
-                                }
-                            } else {
-                                let on = true;
-                                const flash = setInterval(() => { row.style.backgroundColor = on ? '#fecaca' : '#fee2e2'; on = !on; }, 300);
-                                setTimeout(() => { clearInterval(flash); row.style.backgroundColor = ''; }, 5000);
-                            }
+        // ─── Highlight (galing sa notification link) ─────────
+        function checkHighlight() {
+            const params = new URLSearchParams(window.location.search);
+            const highlightId = params.get('highlight');
+            if (!highlightId) return;
+            const interval = setInterval(() => {
+                const isMobile = window.innerWidth < 768;
+                const row = isMobile
+                    ? document.querySelector(`#voucher-cards div[data-id="${CSS.escape(highlightId)}"]`)
+                    : document.querySelector(`#voucher-tbody tr[data-id="${CSS.escape(highlightId)}"]`);
+                if (row) {
+                    clearInterval(interval);
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!isMobile) {
+                        const firstCell = row.querySelector('td:first-child');
+                        if (firstCell) {
+                            const badge = document.createElement('span');
+                            badge.className = 'highlight-badge';
+                            firstCell.prepend(badge);
+                            setTimeout(() => badge.remove(), 5000);
                         }
-                    }, 200);
-                    setTimeout(() => clearInterval(interval), 5000);
+                    } else {
+                        let on = true;
+                        const flash = setInterval(() => { row.style.backgroundColor = on ? '#fecaca' : '#fee2e2'; on = !on; }, 300);
+                        setTimeout(() => { clearInterval(flash); row.style.backgroundColor = ''; }, 5000);
+                    }
                 }
+            }, 200);
+            setTimeout(() => clearInterval(interval), 5000);
+        }
 
+        // ─── Init ────────────────────────────────────────────
+        fetchVouchers(true);
+        setTimeout(checkHighlight, 500);
 
+        // 15s, at tumatakbo lang kapag nakikita ang tab
+        setInterval(() => {
+            if (document.visibilityState === 'visible') fetchVouchers();
+        }, 15000);
 
-                fetchVouchers();
-                setTimeout(checkHighlight, 500);
-                setInterval(fetchVouchers, 5000);
-                document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') { previousCount = 0; fetchVouchers(); }
-                });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') fetchVouchers();
+        });
     </script>
 
 </body>

@@ -7,53 +7,57 @@ include ROOT_PATH . '/network/cache-helper.php';
 
 header('Content-Type: application/json');
 
-$body = json_decode(file_get_contents('php://input'), true);
-$id = intval($body['id'] ?? 0);
-$action = in_array($body['action'], ['approved', 'rejected']) ? $body['action'] : null;
+$body    = json_decode(file_get_contents('php://input'), true) ?? [];
+$id      = intval($body['id'] ?? 0);
+$action  = in_array($body['action'] ?? '', ['approved', 'rejected'], true) ? $body['action'] : null;
 $user_id = intval($_SESSION['account_id'] ?? 0);
 $comment = trim($body['comment'] ?? '');
 
 if (!$id || !$action || !$user_id) {
-    echo json_encode(['success' => false, 'error' => 'Invalid data']);
+    echo json_encode(['success' => false, 'message' => 'Invalid data']);
     exit;
 }
 
-// Sa approved block, kunin ang active signature
 if ($action === 'approved') {
-    $sigRow = $conn->query("SELECT path FROM noblesignature WHERE user_id = $user_id AND is_active = 1 LIMIT 1");
+    // Kunin ang active signature ng approver
+    $sigRow  = $conn->query("SELECT path FROM noblesignature WHERE user_id = $user_id AND is_active = 1 LIMIT 1");
     $sigPath = ($sigRow && $sigRow->num_rows) ? $sigRow->fetch_assoc()['path'] : null;
 
-    $stmt = $conn->prepare("UPDATE noblebudgetrequest 
+    $stmt = $conn->prepare("UPDATE noblebudgetrequest
         SET status = ?, approved_by = ?, approved_at = NOW(), reject_comment = NULL, approver_signature_path = ?
         WHERE id = ? AND sent_to = ?");
-    // "s" ang type para sa sigPath, hindi "i"
     $stmt->bind_param("sisii", $action, $user_id, $sigPath, $id, $user_id);
 } else {
-    $stmt = $conn->prepare("UPDATE noblebudgetrequest 
+    $stmt = $conn->prepare("UPDATE noblebudgetrequest
         SET status = ?, reject_comment = ?, approved_by = NULL, approved_at = NULL
         WHERE id = ? AND sent_to = ?");
     $stmt->bind_param("ssii", $action, $comment, $id, $user_id);
 }
 
-$success = $stmt->execute();
+$success  = $stmt->execute();
 $affected = $stmt->affected_rows;
 
-// Mag-notify sa lahat ng STAFF pagkatapos ng action
 if ($success && $affected > 0) {
 
-    clearCache("budget_requests_{$user_id}");
-
-    // ← user_id ang column, hindi sent_by
-    $req = $conn->query("SELECT control_no, user_id FROM noblebudgetrequest WHERE id = $id LIMIT 1");
-    $reqRow = $req->fetch_assoc();
-    $control_no = $reqRow['control_no'] ?? '';
+    // Kunin ang detalye ng request (kasama ang date_requested para sa cache key)
+    $req = $conn->query("SELECT control_no, user_id, date_requested FROM noblebudgetrequest WHERE id = $id LIMIT 1");
+    $reqRow       = $req ? $req->fetch_assoc() : [];
+    $control_no   = $reqRow['control_no'] ?? '';
     $requestor_id = intval($reqRow['user_id'] ?? 0);
+
+    // ── I-clear ang cache (exact keys, kasi md5 ang filename) ──
+    $reqMonth = substr($reqRow['date_requested'] ?? '', 0, 7); // YYYY-MM
+    if ($reqMonth) {
+        clearCache("budget_requests_{$user_id}_{$reqMonth}");
+    }
+    clearCache("budget_requests_{$user_id}_all");
+    clearCache("budget_request_dates_{$user_id}");
 
     $message = $action === 'approved'
         ? "Request $control_no has been approved."
         : "Request $control_no has been rejected. Reason: $comment";
 
-    // ← FIXED: $requestor_id na, hindi $requestor_account_id
+    // Notify ang requestor
     if ($requestor_id) {
         $stmtUserNotif = $conn->prepare("
             INSERT INTO nobleusernotification (user_id, request_id, message, is_read, created_at, sender_id)
@@ -63,33 +67,29 @@ if ($success && $affected > 0) {
         $stmtUserNotif->execute();
     }
 
-    // Existing — notify staff sa accounting
+    // Notify ang accounting staff
     $staffResult = $conn->query("
-        SELECT id FROM noblerole 
-        WHERE role = 'ACCOUNTING AND FINANCE DEPARTMENT' 
+        SELECT id FROM noblerole
+        WHERE role = 'ACCOUNTING AND FINANCE DEPARTMENT'
         AND position = 'staff'
     ");
 
-    while ($staff = $staffResult->fetch_assoc()) {
-        $staff_id = intval($staff['id']);
-        $link = '/accountingstaff'; // ← page ng staff
-
+    if ($staffResult) {
+        $link  = '/accountingstaff';
         $stmt2 = $conn->prepare("
             INSERT INTO noblenotification (user_id, request_id, message, is_read, created_at, sender_id, link)
             VALUES (?, ?, ?, 0, NOW(), ?, ?)
         ");
-        $stmt2->bind_param("iisis", $staff_id, $id, $message, $user_id, $link);
-        $stmt2->execute();
+        while ($staff = $staffResult->fetch_assoc()) {
+            $staff_id = intval($staff['id']);
+            $stmt2->bind_param("iisis", $staff_id, $id, $message, $user_id, $link);
+            $stmt2->execute();
+        }
     }
 }
 
 echo json_encode([
-    'success' => $success,
+    'success'  => $success && $affected > 0,
     'affected' => $affected,
-    'debug' => [
-        'user_id' => $user_id,
-        'id' => $id,
-        'action' => $action,
-        'comment' => $comment
-    ]
+    'message'  => ($success && $affected > 0) ? '' : 'Walang na-update. Maaaring hindi sa iyo ang request na ito.',
 ]);

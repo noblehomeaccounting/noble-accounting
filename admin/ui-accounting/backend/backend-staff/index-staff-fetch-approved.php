@@ -5,15 +5,44 @@ include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/network/cache-helper.php';
 
+session_write_close(); // bitawan ang session lock
+
+// gzip (JSON lumiliit nang 80-90%)
+if (!ob_start('ob_gzhandler')) {
+    ob_start();
+}
+
 header('Content-Type: application/json');
 
-$cached = getCache('staff_approved_requests', 60);
+// Ipinapadala ang JSON, o 304 (walang laman) kapag walang nagbago mula sa huling kuha ng browser.
+// May function_exists guard para hindi mag-conflict kung na-define na sa ibang file.
+if (!function_exists('sendJson')) {
+    function sendJson(string $json): void
+    {
+        $etag = '"' . md5($json) . '"';
+        header('ETag: ' . $etag);
+        header('Cache-Control: private, no-cache'); // laging magtanong sa server, pero pwedeng 304
+        if (str_contains($_SERVER['HTTP_IF_NONE_MATCH'] ?? '', $etag)) {
+            http_response_code(304);
+            return;
+        }
+        echo $json;
+    }
+}
+
+// ?_= (force) -> lampasan ang server cache (gamitin pagkatapos ng receive/submit)
+$force = isset($_GET['_']);
+
+$cached = $force ? false : getCache('staff_approved_requests', 60);
 if ($cached !== false) {
-    echo $cached;
+    sendJson($cached);
     exit;
 }
 
-// Approved pero hindi pa nareceive
+// Approved requests
+// TIP: kung "approved pero hindi pa nareceive" lang ang kailangan ng table, idagdag:
+//      AND b.received_by IS NULL
+//      (ihiwalay ang history/received sa ibang endpoint na may pagination)
 $result = $conn->query("SELECT b.*, 
     n.name as sender_name, 
     n.email as sender_email,
@@ -37,10 +66,12 @@ $result = $conn->query("SELECT b.*,
 $data = [];
 while ($row = $result->fetch_assoc()) {
     $row['items'] = json_decode($row['items'], true);
-    $row['attachments'] = json_decode($row['attachments'] ?? '[]', true); // ← dagdag ito
+    $row['attachments'] = json_decode($row['attachments'] ?? '[]', true);
     $data[] = $row;
 }
 
 $json = json_encode($data);
+
+
 setCache('staff_approved_requests', $json);
-echo $json;
+sendJson($json);

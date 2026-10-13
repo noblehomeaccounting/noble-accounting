@@ -301,7 +301,7 @@ $cutDetailUrl = BASE_URL . '/crmcuttinglistdetail';
                 <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer" onclick="cutListGoToDetail(${row.id})">
                     <td class="px-4 py-2.5 w-5">${cutListNewDot(row.is_read)}</td>
                     <td class="px-4 py-2.5">
-                        <span class="font-mono text-[11px] font-semibold text-amber-700">${cutListEscapeHtml(row.control_no)}</span>
+                        <span class="notranslate font-mono text-[11px] font-semibold text-amber-700">${cutListEscapeHtml(row.control_no)}</span>
                     </td>
                     <td class="px-4 py-2.5 text-gray-800 font-medium">${cutListText(row.client_name)}</td>
                     <td class="px-4 py-2.5 text-gray-600">${cutListText(row.branch)}</td>

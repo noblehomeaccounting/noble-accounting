@@ -143,7 +143,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             <div class="grid grid-cols-[1fr_auto] border-b-2 border-gray-800">
                 <div class="flex items-center gap-4 px-3 py-3 border-r-2 border-gray-800">
                     <div class="w-14 h-14 shrink-0">
-                        <img src="<?= BASE_URL ?>/icon/logo.png" alt="Logo" class="w-full h-full object-contain">
+                        <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo" class="w-full h-full object-contain">
                     </div>
                     <div class="w-px h-12 bg-gray-400"></div>
                     <div class="flex-1">
@@ -290,7 +290,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
     <script>
         // ─── State ───────────────────────────────────────────
         let allRequests = [];
-        let previousCount = 0;
+        let lastSig = '';          // ← pamalit sa previousCount
+        let isFetching = false;    // ← iwas sabay-sabay na request
         let calYear = new Date().getFullYear();
         let calMonth = new Date().getMonth();
         let selectedDate = null;
@@ -359,21 +360,21 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     : '';
 
                 cell.innerHTML = `
-                    <div class="flex items-start justify-between mb-1">
-                        <span class="text-xs font-semibold ${isToday ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center' : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-500'}">${day}</span>
-                        ${countBadge}
-                    </div>
-                    ${requests.length ? `
-                    <div class="flex flex-wrap gap-1 mt-1">${dots}</div>
-                    <div class="mt-1.5 space-y-0.5">
-                        ${requests.slice(0, 2).map(r => `
-                            <div class="text-[9px] truncate px-1.5 py-0.5 rounded font-medium
-                                ${r.receiver_name ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
-                                ${r.requestor_name}
-                            </div>`).join('')}
-                        ${requests.length > 2 ? `<div class="text-[9px] text-gray-400 px-1">+${requests.length - 2} more</div>` : ''}
-                    </div>` : ''}
-                `;
+            <div class="flex items-start justify-between mb-1">
+                <span class="text-xs font-semibold ${isToday ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center' : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-500'}">${day}</span>
+                ${countBadge}
+            </div>
+            ${requests.length ? `
+            <div class="flex flex-wrap gap-1 mt-1">${dots}</div>
+            <div class="mt-1.5 space-y-0.5">
+                ${requests.slice(0, 2).map(r => `
+                    <div class="text-[9px] truncate px-1.5 py-0.5 rounded font-medium
+                        ${r.receiver_name ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
+                        ${r.requestor_name}
+                    </div>`).join('')}
+                ${requests.length > 2 ? `<div class="text-[9px] text-gray-400 px-1">+${requests.length - 2} more</div>` : ''}
+            </div>` : ''}
+        `;
 
                 cell.onclick = () => openDayPanel(dateStr, requests);
                 grid.appendChild(cell);
@@ -435,7 +436,6 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     const items = row.items ?? [];
                     const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
-                    // PALITAN NG
                     const receivedAt = row.received_at
                         ? new Date(row.received_at.replace(' ', 'T')).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
                         + ' ' + new Date(row.received_at.replace(' ', 'T')).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
@@ -443,51 +443,51 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
                     const statusBadgeHtml = isReceived
                         ? `<div>
-        <span class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">Received</span>
-        <p class="text-[9px] text-gray-400 mt-0.5">${receivedAt}</p>
-       </div>`
+<span class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">Received</span>
+<p class="text-[9px] text-gray-400 mt-0.5">${receivedAt}</p>
+</div>`
                         : `<span class="bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">For Receive</span>`;
                     const actionHtml = isReceived
                         ? `<button onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'
-                            class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
-                            <i class="fa-solid fa-eye mr-1"></i>View
-                           </button>`
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+                    <i class="fa-solid fa-eye mr-1"></i>View
+                   </button>`
                         : `<div class="flex items-center gap-2">
-                            <button onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'
-                                class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
-                                <i class="fa-solid fa-eye mr-1"></i>View
-                            </button>
-                            <button onclick="markReceived(${row.id})"
-                                class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
-                                <i class="fa-solid fa-check mr-1"></i>Mark Received
-                            </button>
-                           </div>`;
+                    <button onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'
+                        class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+                        <i class="fa-solid fa-eye mr-1"></i>View
+                    </button>
+                    <button onclick="markReceived(${row.id})"
+                        class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+                        <i class="fa-solid fa-check mr-1"></i>Mark Received
+                    </button>
+                   </div>`;
 
                     return `
-                    <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-                        <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
-                            onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'>
-                            ${row.control_no}
-                        </td>
-                        <td class="px-5 py-3">
-                            <p class="font-medium text-gray-800">${row.requestor_name}</p>
-                            <p class="text-[10px] text-gray-400">${row.sender_email ?? ''}</p>
-                        </td>
-                        <td class="px-5 py-3 text-gray-600">${row.purpose}</td>
-                        <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">
-                            ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td class="px-5 py-3">
-                            <p class="text-sm text-gray-700">${row.approver_name ?? ''}</p>
-                            <p class="text-[10px] text-gray-400">${row.approved_at
+            <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
+                <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
+                    onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'>
+                    ${row.control_no}
+                </td>
+                <td class="px-5 py-3">
+                    <p class="font-medium text-gray-800">${row.requestor_name}</p>
+                    <p class="text-[10px] text-gray-400">${row.sender_email ?? ''}</p>
+                </td>
+                <td class="px-5 py-3 text-gray-600">${row.purpose}</td>
+                <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">
+                    ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </td>
+                <td class="px-5 py-3">
+                    <p class="text-sm text-gray-700">${row.approver_name ?? ''}</p>
+                    <p class="text-[10px] text-gray-400">${row.approved_at
                             ? new Date(row.approved_at.replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
                             + ' ' + new Date(row.approved_at.replace(' ', 'T')).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
                             : ''}</p>
-                        </td>
-                        <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
-                        <td class="px-5 py-3">${statusBadgeHtml}</td>
-                        <td class="px-5 py-3">${actionHtml}</td>
-                    </tr>`;
+                </td>
+                <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
+                <td class="px-5 py-3">${statusBadgeHtml}</td>
+                <td class="px-5 py-3">${actionHtml}</td>
+            </tr>`;
                 }).join('');
             }
 
@@ -501,7 +501,6 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             renderCalendar();
         }
 
-        // Dagdagan sa itaas ng fetchApproved function
         function categoryBadge(category, reference) {
             if (!category) return '<span class="text-gray-300 text-xs">—</span>';
             const map = {
@@ -512,18 +511,18 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const cfg = map[category] ?? { label: category, icon: 'fa-tag', color: 'bg-gray-100 text-gray-600 border-gray-200' };
             if (!reference) {
                 return `<span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.color}">
-                    <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
-                </span>`;
+            <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
+        </span>`;
             }
             const safeRef = reference.replace(/'/g, "\\'").replace(/`/g, '\\`');
             return `<div class="relative inline-block"
-        onmouseenter="showCatTooltip(event, '${cfg.label}', '${safeRef}')"
-        onmouseleave="hideCatTooltip()">
-        <span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold cursor-default ${cfg.color}">
-            <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
-            <i class="fa-solid fa-circle-info text-[8px] opacity-50"></i>
-        </span>
-    </div>`;
+onmouseenter="showCatTooltip(event, '${cfg.label}', '${safeRef}')"
+onmouseleave="hideCatTooltip()">
+<span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold cursor-default ${cfg.color}">
+    <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
+    <i class="fa-solid fa-circle-info text-[8px] opacity-50"></i>
+</span>
+</div>`;
         }
 
         function showCatTooltip(e, label, reference) {
@@ -547,15 +546,27 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         function hideCatTooltip() {
             document.getElementById('cat-tooltip').classList.add('hidden');
         }
+
         // ─── Fetch ───────────────────────────────────────────
-        function fetchApproved() {
-            fetch('<?= BASE_URL ?>/fetchapproved')
+        // force = true -> lampasan ang browser cache at server cache (gamit pagkatapos ng Mark Received)
+        function fetchApproved(force = false) {
+            if (isFetching && !force) return;
+            isFetching = true;
+
+            const url = '<?= BASE_URL ?>/fetchapproved' + (force ? '?_=' + Date.now() : '');
+
+            fetch(url, force ? { cache: 'no-store' } : {})
                 .then(res => res.json())
                 .then(data => {
-                    const countChanged = data.length !== previousCount;
+                    // Signature: nahuhuli ang pagbabago ng status, hindi lang ng bilang
+                    const sig = data.map(r =>
+                        r.id + '|' + (r.receiver_name ?? '') + '|' + (r.received_at ?? '') + '|' + (r.approved_at ?? '')
+                    ).join(',');
 
-                    if (countChanged || !highlightDone) {
-                        previousCount = data.length;
+                    const changed = sig !== lastSig;
+
+                    if (changed || force || !highlightDone) {
+                        lastSig = sig;
                         allRequests = data;
 
                         renderCalendar();
@@ -575,7 +586,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                         checkHighlight();
                     }
                 })
-                .catch(err => console.error('Fetch error:', err));
+                .catch(err => console.error('Fetch error:', err))
+                .finally(() => { isFetching = false; });
         }
 
         // ─── Mark Received ───────────────────────────────────
@@ -589,9 +601,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 .then(data => {
                     if (data.success) {
                         showToast('Request marked as received!', 'received');
-                        previousCount = 0;
-                        highlightDone = false; // ← dagdag ito
-                        fetchApproved();
+                        fetchApproved(true); // force: bypass browser + server cache
                     }
                 });
         }
@@ -616,15 +626,15 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     const amount = parseFloat(item.amount) || 0;
                     total += amount;
                     return `
-                    <tr class="border-t border-gray-200">
-                        <td class="px-3 py-2 text-center text-xs text-gray-400 font-mono border-r border-gray-200 w-10">${rowNum}</td>
-                        <td class="px-4 py-2 border-r border-gray-200 min-w-[180px]">${item.description || ''}</td>
-                        <td class="px-4 py-2 border-r border-gray-200 min-w-[150px]">${item.purpose || ''}</td>
-                        <td class="px-4 py-2 border-r border-gray-200 text-center w-24">${item.quantity || 0}</td>
-                        <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                        <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                        <td class="px-4 py-2 min-w-[120px]">${item.notes || ''}</td>
-                    </tr>`;
+            <tr class="border-t border-gray-200">
+                <td class="px-3 py-2 text-center text-xs text-gray-400 font-mono border-r border-gray-200 w-10">${rowNum}</td>
+                <td class="px-4 py-2 border-r border-gray-200 min-w-[180px]">${item.description || ''}</td>
+                <td class="px-4 py-2 border-r border-gray-200 min-w-[150px]">${item.purpose || ''}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-center w-24">${item.quantity || 0}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                <td class="px-4 py-2 min-w-[120px]">${item.notes || ''}</td>
+            </tr>`;
                 }).join('');
 
             document.getElementById('view-total').textContent = '₱ ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
@@ -646,14 +656,14 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const approverSig = row.approver_signature ?? '';
             document.getElementById('view-approved-by').innerHTML = approverName
                 ? `<div class="relative inline-block">
-        ${approverSig
+${approverSig
                     ? `<img src="<?= BASE_URL ?>/${approverSig}" 
-                   alt="Signature" 
-                   style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">`
+           alt="Signature" 
+           style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">`
                     : ''}
-        <p class="text-sm font-semibold text-gray-800">${approverName}</p>
-        <p class="text-[10px] text-gray-400">${approvedAt}</p>
-       </div>`
+<p class="text-sm font-semibold text-gray-800">${approverName}</p>
+<p class="text-[10px] text-gray-400">${approvedAt}</p>
+</div>`
                 : '';
 
             const receiverName = row.receiver_name ?? '';
@@ -664,15 +674,16 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const receiverSig = row.receiver_signature ?? '';
             document.getElementById('view-received-by').innerHTML = receiverName
                 ? `<div class="relative inline-block">
-        ${receiverSig
+${receiverSig
                     ? `<img src="<?= BASE_URL ?>/${receiverSig}" 
-                   alt="Signature" 
-                   style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">`
+           alt="Signature" 
+           style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">`
                     : ''}
-        <p class="text-sm font-semibold text-gray-800">${receiverName}</p>
-        <p class="text-[10px] text-gray-400">${receivedAt}</p>
-       </div>`
+<p class="text-sm font-semibold text-gray-800">${receiverName}</p>
+<p class="text-[10px] text-gray-400">${receivedAt}</p>
+</div>`
                 : '';
+
             // Attachments
             let attachments = [];
             try {
@@ -690,9 +701,9 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 badge.id = 'view-attachment-status-badge';
                 badge.className = 'flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-2 mx-6 mt-3';
                 badge.innerHTML = `
-        <i class="fa-solid fa-clock text-yellow-500 text-xs"></i>
-        <span class="text-xs font-semibold text-yellow-700">Attachment pending — requestor will follow up</span>
-    `;
+<i class="fa-solid fa-clock text-yellow-500 text-xs"></i>
+<span class="text-xs font-semibold text-yellow-700">Attachment pending — requestor will follow up</span>
+`;
                 document.getElementById('view-attachments').before(badge);
             }
             if (attachments.length) {
@@ -703,21 +714,21 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
                     if (isPdf) {
                         return `
-        <a href="${fullUrl}" target="_blank"
-            class="relative flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all bg-red-50 cursor-pointer gap-1">
-            <i class="fa-solid fa-file-pdf text-red-500 text-2xl"></i>
-            <span class="text-[9px] text-red-400 font-semibold uppercase tracking-wide">PDF</span>
-        </a>`;
+<a href="${fullUrl}" target="_blank"
+    class="relative flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all bg-red-50 cursor-pointer gap-1">
+    <i class="fa-solid fa-file-pdf text-red-500 text-2xl"></i>
+    <span class="text-[9px] text-red-400 font-semibold uppercase tracking-wide">PDF</span>
+</a>`;
                     }
 
                     return `
-    <div class="relative group/thumb cursor-pointer" onclick="openLightbox('${fullUrl}', event)">
-        <img src="${fullUrl}"
-            class="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all">
-        <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 rounded-lg transition-all flex items-center justify-center">
-            <i class="fa-solid fa-magnifying-glass text-white opacity-0 group-hover/thumb:opacity-100 transition-all text-xs"></i>
-        </div>
-    </div>`;
+<div class="relative group/thumb cursor-pointer" onclick="openLightbox('${fullUrl}', event)">
+<img src="${fullUrl}"
+    class="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all">
+<div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 rounded-lg transition-all flex items-center justify-center">
+    <i class="fa-solid fa-magnifying-glass text-white opacity-0 group-hover/thumb:opacity-100 transition-all text-xs"></i>
+</div>
+</div>`;
                 }).join('');
             } else {
                 attachSection.classList.add('hidden');
@@ -739,23 +750,23 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 const amount = parseFloat(item.amount || 0);
                 total += amount;
                 itemRows += `<tr>
-            <td style="text-align:center;border:1px solid #ccc;padding:5px;">${filledCount}</td>
-            <td style="border:1px solid #ccc;padding:5px;">${item.description || ''}</td>
-            <td style="border:1px solid #ccc;padding:5px;">${item.purpose || ''}</td>
-            <td style="text-align:center;border:1px solid #ccc;padding:5px;">${item.quantity || 0}</td>
-            <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-            <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-            <td style="border:1px solid #ccc;padding:5px;">${item.notes || ''}</td></tr>`;
+    <td style="text-align:center;border:1px solid #ccc;padding:5px;">${filledCount}</td>
+    <td style="border:1px solid #ccc;padding:5px;">${item.description || ''}</td>
+    <td style="border:1px solid #ccc;padding:5px;">${item.purpose || ''}</td>
+    <td style="text-align:center;border:1px solid #ccc;padding:5px;">${item.quantity || 0}</td>
+    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+    <td style="border:1px solid #ccc;padding:5px;">${item.notes || ''}</td></tr>`;
             });
             for (let e = filledCount; e < 5; e++) {
                 itemRows += `<tr>
-            <td style="text-align:center;border:1px solid #ccc;padding:5px;color:#ccc;">${e + 1}</td>
-            <td style="border:1px solid #ccc;padding:5px;height:22px;"></td>
-            <td style="border:1px solid #ccc;padding:5px;"></td>
-            <td style="text-align:center;border:1px solid #ccc;padding:5px;">0</td>
-            <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">0.00</td>
-            <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ 0.00</td>
-            <td style="border:1px solid #ccc;padding:5px;"></td></tr>`;
+    <td style="text-align:center;border:1px solid #ccc;padding:5px;color:#ccc;">${e + 1}</td>
+    <td style="border:1px solid #ccc;padding:5px;height:22px;"></td>
+    <td style="border:1px solid #ccc;padding:5px;"></td>
+    <td style="text-align:center;border:1px solid #ccc;padding:5px;">0</td>
+    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">0.00</td>
+    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ 0.00</td>
+    <td style="border:1px solid #ccc;padding:5px;"></td></tr>`;
             }
             const approverName = row.approver_name ?? '';
             const approvedAt = row.approved_at
@@ -771,40 +782,40 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const receiverSigPath = row.receiver_signature ? `<?= BASE_URL ?>/${row.receiver_signature}` : '';
 
             const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Budget Request - ${row.control_no}</title>
-    <style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}table{width:100%;border-collapse:collapse;}th{background:#f97316;color:white;padding:6px 8px;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.label{font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#555;}.control-box{background:#f97316;color:white;font-weight:bold;text-align:center;padding:4px 8px;font-size:9px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.sig-line{border-top:1px solid #999;margin-top:40px;}@page{size:A4 landscape;margin:1cm;}</style></head><body>
-    <div style="border:1px solid #111;">
-    <table style="border-bottom:1px solid #111;"><tr>
-    <td style="width:60%;border-right:1px solid #111;padding:10px;"><table><tr>
-    <td style="width:60px;"><img src="<?= BASE_URL ?>/icon/logo.png" style="width:50px;height:50px;object-fit:contain;"></td>
-    <td style="border-left:1px solid #aaa;padding-left:10px;"><strong style="font-size:11px;text-transform:uppercase;">Noblehome Construction Corporation</strong><br>
-    <span style="font-size:9px;color:#666;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City<br>noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</span></td></tr></table></td>
-    <td style="width:40%;padding:0;vertical-align:top;"><div style="font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:8px;border-bottom:1px solid #111;">Budget Request Form</div>
-    <table style="width:100%;"><tr>
-    <td style="width:50%;border-right:1px solid #111;padding:0;vertical-align:top;"><div class="control-box">Control No.</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.control_no}</div></td>
-    <td style="width:50%;padding:0;vertical-align:top;"><div class="control-box">Date</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.date_requested}</div></td>
-    </tr></table></td></tr></table>
-    <table style="border-bottom:1px solid #111;"><tr>
-    <td style="width:34%;border-right:1px solid #111;padding:8px;"><span class="label">Requestor Name:</span><span style="font-size:12px;margin-left:5px;">${row.requestor_name}</span></td>
-    <td style="width:33%;border-right:1px solid #111;padding:8px;"><span class="label">Purpose of Request:</span><span style="font-size:12px;margin-left:5px;">${row.purpose}</span></td>
-    <td style="width:33%;padding:8px;"><span class="label">Category:</span><span style="font-size:12px;margin-left:5px;">${row.request_category ? row.request_category.toUpperCase() : '—'}</span></td>
-    </tr></table>
-    <table style="border-collapse:collapse;width:100%;border-bottom:1px solid #111;"><thead><tr>
-    <th style="width:5%;border:1px solid #ea6c00;">No.</th><th style="border:1px solid #ea6c00;text-align:left;">Items / Description</th>
-    <th style="border:1px solid #ea6c00;text-align:left;">Purpose</th><th style="width:8%;border:1px solid #ea6c00;">Qty</th>
-    <th style="width:13%;border:1px solid #ea6c00;">Unit Price</th><th style="width:13%;border:1px solid #ea6c00;">Amount</th>
-    <th style="border:1px solid #ea6c00;text-align:left;">Notes</th></tr></thead>
-    <tbody>${itemRows}</tbody>
-    <tfoot><tr><td colspan="5" style="text-align:right;font-weight:bold;padding:6px;border:1px solid #ccc;font-size:10px;text-transform:uppercase;">Total:</td>
-    <td style="text-align:right;font-weight:bold;font-family:monospace;border:1px solid #ccc;padding:6px;">₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-    <td style="border:1px solid #ccc;"></td></tr></tfoot></table>
-    <table style="width:100%;"><tr>
-    <td style="width:50%;border-right:1px solid #111;padding:15px 20px;vertical-align:bottom;"><span class="label">Approved By:</span>
-    <div style="margin-top:20px;text-align:center;position:relative;">${approverSigPath ? `<img src="${approverSigPath}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}<strong style="font-size:12px;">${approverName}</strong><br><span style="font-size:9px;color:#888;">${approvedAt}</span></div>
-    <div class="sig-line"></div><div style="text-align:center;font-size:9px;text-transform:uppercase;color:#888;margin-top:3px;">Head</div></td>
-    <td style="width:50%;padding:15px 20px;vertical-align:bottom;"><span class="label">Received By:</span>
-    <div style="margin-top:20px;text-align:center;position:relative;">${receiverSigPath ? `<img src="${receiverSigPath}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}<strong style="font-size:12px;">${receiverName}</strong><br><span style="font-size:9px;color:#888;">${receivedAt}</span></div>
-    <div class="sig-line"></div><div style="text-align:center;font-size:9px;color:#888;margin-top:3px;">&nbsp;</div></td></tr></table>
-    </div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script></body></html>`;
+<style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}table{width:100%;border-collapse:collapse;}th{background:#f97316;color:white;padding:6px 8px;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.label{font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#555;}.control-box{background:#f97316;color:white;font-weight:bold;text-align:center;padding:4px 8px;font-size:9px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.sig-line{border-top:1px solid #999;margin-top:40px;}@page{size:A4 landscape;margin:1cm;}</style></head><body>
+<div style="border:1px solid #111;">
+<table style="border-bottom:1px solid #111;"><tr>
+<td style="width:60%;border-right:1px solid #111;padding:10px;"><table><tr>
+<td style="width:60px;"><img src="<?= BASE_URL ?>/icon/logo.webp" style="width:50px;height:50px;object-fit:contain;"></td>
+<td style="border-left:1px solid #aaa;padding-left:10px;"><strong style="font-size:11px;text-transform:uppercase;">Noblehome Construction Corporation</strong><br>
+<span style="font-size:9px;color:#666;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City<br>noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</span></td></tr></table></td>
+<td style="width:40%;padding:0;vertical-align:top;"><div style="font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:8px;border-bottom:1px solid #111;">Budget Request Form</div>
+<table style="width:100%;"><tr>
+<td style="width:50%;border-right:1px solid #111;padding:0;vertical-align:top;"><div class="control-box">Control No.</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.control_no}</div></td>
+<td style="width:50%;padding:0;vertical-align:top;"><div class="control-box">Date</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.date_requested}</div></td>
+</tr></table></td></tr></table>
+<table style="border-bottom:1px solid #111;"><tr>
+<td style="width:34%;border-right:1px solid #111;padding:8px;"><span class="label">Requestor Name:</span><span style="font-size:12px;margin-left:5px;">${row.requestor_name}</span></td>
+<td style="width:33%;border-right:1px solid #111;padding:8px;"><span class="label">Purpose of Request:</span><span style="font-size:12px;margin-left:5px;">${row.purpose}</span></td>
+<td style="width:33%;padding:8px;"><span class="label">Category:</span><span style="font-size:12px;margin-left:5px;">${row.request_category ? row.request_category.toUpperCase() : '—'}</span></td>
+</tr></table>
+<table style="border-collapse:collapse;width:100%;border-bottom:1px solid #111;"><thead><tr>
+<th style="width:5%;border:1px solid #ea6c00;">No.</th><th style="border:1px solid #ea6c00;text-align:left;">Items / Description</th>
+<th style="border:1px solid #ea6c00;text-align:left;">Purpose</th><th style="width:8%;border:1px solid #ea6c00;">Qty</th>
+<th style="width:13%;border:1px solid #ea6c00;">Unit Price</th><th style="width:13%;border:1px solid #ea6c00;">Amount</th>
+<th style="border:1px solid #ea6c00;text-align:left;">Notes</th></tr></thead>
+<tbody>${itemRows}</tbody>
+<tfoot><tr><td colspan="5" style="text-align:right;font-weight:bold;padding:6px;border:1px solid #ccc;font-size:10px;text-transform:uppercase;">Total:</td>
+<td style="text-align:right;font-weight:bold;font-family:monospace;border:1px solid #ccc;padding:6px;">₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+<td style="border:1px solid #ccc;"></td></tr></tfoot></table>
+<table style="width:100%;"><tr>
+<td style="width:50%;border-right:1px solid #111;padding:15px 20px;vertical-align:bottom;"><span class="label">Approved By:</span>
+<div style="margin-top:20px;text-align:center;position:relative;">${approverSigPath ? `<img src="${approverSigPath}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}<strong style="font-size:12px;">${approverName}</strong><br><span style="font-size:9px;color:#888;">${approvedAt}</span></div>
+<div class="sig-line"></div><div style="text-align:center;font-size:9px;text-transform:uppercase;color:#888;margin-top:3px;">Head</div></td>
+<td style="width:50%;padding:15px 20px;vertical-align:bottom;"><span class="label">Received By:</span>
+<div style="margin-top:20px;text-align:center;position:relative;">${receiverSigPath ? `<img src="${receiverSigPath}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}<strong style="font-size:12px;">${receiverName}</strong><br><span style="font-size:9px;color:#888;">${receivedAt}</span></div>
+<div class="sig-line"></div><div style="text-align:center;font-size:9px;color:#888;margin-top:3px;">&nbsp;</div></td></tr></table>
+</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script></body></html>`;
 
             const w = window.open('', '_blank');
             w.document.write(html);
@@ -879,17 +890,17 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     received ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" title="${received} received"></span>` : '',
                 ].join('');
                 return `
-                <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition group"
-                    onclick="jumpToDate('${date}')">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-regular fa-calendar text-gray-300 group-hover:text-orange-400 transition text-xs"></i>
-                        <span class="text-xs font-medium text-gray-700">${label}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        ${dots}
-                        <span class="text-[10px] font-bold text-orange-500 bg-orange-50 group-hover:bg-white border border-orange-200 rounded-full px-1.5 py-0.5 ml-1">${total}</span>
-                    </div>
-                </li>`;
+        <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition group"
+            onclick="jumpToDate('${date}')">
+            <div class="flex items-center gap-2">
+                <i class="fa-regular fa-calendar text-gray-300 group-hover:text-orange-400 transition text-xs"></i>
+                <span class="text-xs font-medium text-gray-700">${label}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                ${dots}
+                <span class="text-[10px] font-bold text-orange-500 bg-orange-50 group-hover:bg-white border border-orange-200 rounded-full px-1.5 py-0.5 ml-1">${total}</span>
+            </div>
+        </li>`;
             }).join('');
         }
 
@@ -928,7 +939,6 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         });
 
         // ─── Highlight (from ping/redirect) ──────────────────
-        // PALITAN ANG BUONG checkHighlight() ng:
         function checkHighlight() {
             const params = new URLSearchParams(window.location.search);
             const highlightId = params.get('highlight');
@@ -967,30 +977,32 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
         const style = document.createElement('style');
         style.textContent = `
-            @keyframes badgePulse {
-                0%   { transform: scale(1);   opacity: 1; }
-                50%  { transform: scale(1.4); opacity: 0.5; }
-                100% { transform: scale(1);   opacity: 1; }
-            }
-            .highlight-badge {
-                display: inline-block;
-                width: 10px; height: 10px;
-                background-color: #ef4444;
-                border-radius: 50%;
-                animation: badgePulse 0.8s ease-in-out 6;
-                margin-right: 6px;
-                vertical-align: middle;
-                flex-shrink: 0;
-            }
-        `;
+    @keyframes badgePulse {
+        0%   { transform: scale(1);   opacity: 1; }
+        50%  { transform: scale(1.4); opacity: 0.5; }
+        100% { transform: scale(1);   opacity: 1; }
+    }
+    .highlight-badge {
+        display: inline-block;
+        width: 10px; height: 10px;
+        background-color: #ef4444;
+        border-radius: 50%;
+        animation: badgePulse 0.8s ease-in-out 6;
+        margin-right: 6px;
+        vertical-align: middle;
+        flex-shrink: 0;
+    }
+`;
         document.head.appendChild(style);
 
         // ─── Init ────────────────────────────────────────────
         fetchApproved();
-        setInterval(fetchApproved, 5000);
+
+        // 30s na lang (dating 5s), at huwag mag-poll kapag nakatago ang tab
+        setInterval(() => { if (!document.hidden) fetchApproved(); }, 30000);
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') { previousCount = 0; fetchApproved(); }
+            if (document.visibilityState === 'visible') fetchApproved();
         });
     </script>
 </body>

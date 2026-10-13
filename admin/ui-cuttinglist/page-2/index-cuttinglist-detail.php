@@ -207,7 +207,7 @@ if ($recordId <= 0) {
         function cutRenderHeader(r) {
             document.getElementById('cutHeaderCard').innerHTML = `
                 <div class="mb-4">
-                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Control No. ${cutEscapeHtml(r.control_no)}</p>
+                    <p class="notranslate text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Control No. ${cutEscapeHtml(r.control_no)}</p>
                     <h1 class="text-gray-900 text-xl font-semibold flex items-center gap-2 flex-wrap">
                         <span>${cutEscapeHtml(r.client_name)}</span>
                         ${cutNtpBadge(r)}

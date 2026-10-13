@@ -431,7 +431,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             tbody.innerHTML = rows.map(r => `
             <tr class="h-11 cursor-pointer transition-colors ${r.id === monSelectedId ? 'bg-amber-50' : 'hover:bg-amber-50/40'}"
                 data-id="${r.id}" onclick="monRowClick(${r.id})">
-                <td class="px-5 font-mono text-xs font-semibold text-amber-700 whitespace-nowrap">${monEsc(r.control_no)}</td>
+                <td class="notranslate px-5 font-mono text-xs font-semibold text-amber-700 whitespace-nowrap">${monEsc(r.control_no)}</td>
                 <td class="px-5">
                     <div class="max-w-[100px] truncate text-gray-800 font-medium" title="${monEsc(r.client_name)}">${monEsc(r.client_name)}</div>
                 </td>

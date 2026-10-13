@@ -39,93 +39,9 @@ if ($sessionBranch !== '') {
     $branchCheckStmt->close();
 }
 
-// Bilang ng pending na inquiry ng sales user (para sa badge ng CRM List)
-$crmPendingCount = 0;
-if ($role === ROLE_SALES) {
-    $pendStmt = $conn->prepare("SELECT COUNT(*) FROM noblecrminquiry WHERE sales_staff_id = ? AND status = 'Pending'");
-    $pendStmt->bind_param("i", $user_id);
-    $pendStmt->execute();
-    $pendStmt->bind_result($crmPendingCount);
-    $pendStmt->fetch();
-    $pendStmt->close();
-}
-
-// Bilang ng approved na request na hindi pa nare-receive (para sa badge ng Acknowledge Request)
-$toReceiveCount = 0;
-if ($role === ROLE_ACCOUNTING && $isStaff) {
-    $recvStmt = $conn->prepare("
-        SELECT COUNT(*) FROM noblebudgetrequest
-        WHERE status = 'approved' AND (received_by IS NULL OR received_by = 0)
-    ");
-    $recvStmt->execute();
-    $recvStmt->bind_result($toReceiveCount);
-    $recvStmt->fetch();
-    $recvStmt->close();
-}
-
-// Bilang ng pending na budget request na naghihintay ng approval ng user (para sa badge ng Requests List)
-$requestPendingCount = 0;
-if ($role === ROLE_ACCOUNTING && $isHead) {
-    $reqStmt = $conn->prepare("SELECT COUNT(*) FROM noblebudgetrequest WHERE sent_to = ? AND status = 'pending'");
-    $reqStmt->bind_param("i", $user_id);
-    $reqStmt->execute();
-    $reqStmt->bind_result($requestPendingCount);
-    $reqStmt->fetch();
-    $reqStmt->close();
-}
-
-// Bilang ng na-receive na budget request na wala pang na-submit na cash voucher (para sa badge ng Cash Voucher Request)
-$toPrepareCount = 0;
-if ($role === ROLE_ACCOUNTING && ($isStaff || $isCustodian || $isCustooAssistant)) {
-    $prepStmt = $conn->prepare("
-        SELECT COUNT(*) FROM noblebudgetrequest b
-        WHERE b.received_by IS NOT NULL
-          AND NOT EXISTS (
-              SELECT 1 FROM noblevoucher v WHERE v.request_id = b.id
-          )
-    ");
-    $prepStmt->execute();
-    $prepStmt->bind_result($toPrepareCount);
-    $prepStmt->fetch();
-    $prepStmt->close();
-}
-
-// Bilang ng voucher na naka-submit na pero wala pang nag-prepare (para sa badge ng Approval Cash Voucher)
-$unpreparedVoucherCount = 0;
-if ($role === ROLE_ACCOUNTING && ($isStaff || $isCustodian || $isHead)) {
-    $vpStmt = $conn->prepare("
-        SELECT COUNT(*) FROM noblevoucher
-        WHERE status = 'voucher_approval'
-          AND (prepared_by IS NULL OR prepared_by = 0)
-    ");
-    $vpStmt->execute();
-    $vpStmt->bind_result($unpreparedVoucherCount);
-    $vpStmt->fetch();
-    $vpStmt->close();
-}
-
-// Bilang ng voucher na ready_to_release (para sa badge ng Cash Voucher Request ng Custodian Assistant)
-$toReleaseCount = 0;
-if ($role === ROLE_ACCOUNTING && $isCustooAssistant) {
-    $relStmt = $conn->prepare("
-        SELECT COUNT(*) FROM noblevoucher
-        WHERE status = 'ready_to_release'
-    ");
-    $relStmt->execute();
-    $relStmt->bind_result($toReleaseCount);
-    $relStmt->fetch();
-    $relStmt->close();
-}
-
-// Bilang ng lahat ng request na naghihintay pa ng follow-up attachment (para sa badge ng Follow-ups)
-$followupWaitingCount = 0;
-if ($role === ROLE_ACCOUNTING && $isHead) {
-    $fuStmt = $conn->prepare("SELECT COUNT(*) FROM noblebudgetrequest WHERE attachment_status = 'follow_up'");
-    $fuStmt->execute();
-    $fuStmt->bind_result($followupWaitingCount);
-    $fuStmt->fetch();
-    $fuStmt->close();
-}
+// ── Badge counts (iisang source: sidebar-counts.php) ─────────
+require_once ROOT_PATH . '/admin/navigation/sidebar-counts.php';
+$counts = getSidebarCounts($conn, $role, $position, $user_id);
 
 $roleColors = [
     ROLE_IT => '#2563EB', // blue
@@ -263,6 +179,25 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         transform: rotate(180deg);
     }
 
+    /* ── Badge pop animation kapag nagbago ang count ─────────── */
+    @keyframes badge-pop {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.35);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    [data-badge].badge-pop {
+        animation: badge-pop 0.35s ease;
+    }
+
     /* ── Mobile Drawer ───────────────────────────────────────── */
     #mobile-drawer {
         transform: translateX(-100%);
@@ -309,7 +244,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
     <div id="sidebar-logo-area" class="px-4 py-4 border-b border-gray-100 flex flex-col gap-2">
         <div id="sidebar-logo-row" class="flex items-center gap-2">
             <div class="flex flex-col items-center gap-1 flex-shrink-0">
-                <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome Logo" class="h-8 w-auto object-contain">
+                <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-8 w-auto object-contain">
                 <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar"
                     class="w-5 h-5 bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-all">
                     <i class="fa-solid fa-chevron-left text-[8px]"></i>
@@ -362,12 +297,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accounting') ?>">
                     <i class="fa-solid fa-list-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1">Requests List</span>
-                    <?php if ($requestPendingCount > 0): ?>
-                        <span
-                            class="sidebar-label min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            <?= $requestPendingCount > 99 ? '99+' : (int) $requestPendingCount ?>
-                        </span>
-                    <?php endif; ?>
+                    <?= sidebarBadge('requestPending', $counts['requestPending']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" data-tooltip="Petty Cash"
@@ -409,7 +339,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/cashvoucherdashboard') ?>">
                     <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Approval & Voucher</span>
+                    <span class="sidebar-label flex-1">Approval & Voucher</span>
+                    <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
                 </a>
 
                 <div class="sidebar-section-label pt-4">
@@ -436,24 +367,14 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaff') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Acknowledge Request</span>
-                    <?php if ($toReceiveCount > 0): ?>
-                        <span
-                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            <?= $toReceiveCount > 99 ? '99+' : (int) $toReceiveCount ?>
-                        </span>
-                    <?php endif; ?>
+                    <?= sidebarBadge('toReceive', $counts['toReceive']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
                     class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Cash Voucher Request</span>
-                    <?php if ($toPrepareCount > 0): ?>
-                        <span
-                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            <?= $toPrepareCount > 99 ? '99+' : (int) $toPrepareCount ?>
-                        </span>
-                    <?php endif; ?>
+                    <?= sidebarBadge('toPrepare', $counts['toPrepare']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/projectmonitor" data-tooltip="Project Monitor"
@@ -466,12 +387,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     class="flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
                     <i class="fa-solid fa-money-bills w-4 text-center text-sm flex-shrink-0" style="color: rgb(0, 0, 0); "></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Approval Cash Voucher</span>
-                    <?php if ($unpreparedVoucherCount > 0): ?>
-                        <span
-                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            <?= $unpreparedVoucherCount > 99 ? '99+' : (int) $unpreparedVoucherCount ?>
-                        </span>
-                    <?php endif; ?>
+                    <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
                 </a>
             <?php endif; ?>
 
@@ -484,7 +400,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Cash Voucher Request</span>
+                    <span class="sidebar-label flex-1">Cash Voucher Request</span>
+                    <?= sidebarBadge('toPrepare', $counts['toPrepare']) ?>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" data-tooltip="Petty Cash"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
@@ -505,7 +422,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
                     class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
                     <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label">Approval Cash Voucher</span>
+                    <span class="sidebar-label flex-1">Approval Cash Voucher</span>
+                    <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
                 </a>
             <?php endif; ?>
 
@@ -519,12 +437,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Cash Voucher Request</span>
-                    <?php if ($toReleaseCount > 0): ?>
-                        <span
-                            class="sidebar-label flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            <?= $toReleaseCount > 99 ? '99+' : (int) $toReleaseCount ?>
-                        </span>
-                    <?php endif; ?>
+                    <?= sidebarBadge('toRelease', $counts['toRelease']) ?>
                 </a>
             <?php endif; ?>
 
@@ -558,12 +471,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/crmsaleslist') ?>">
                 <i class="fa-solid fa-list-ol w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label flex-1">CRM List</span>
-                <?php if ($crmPendingCount > 0): ?>
-                    <span
-                        class="sidebar-label min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        <?= $crmPendingCount > 99 ? '99+' : (int) $crmPendingCount ?>
-                    </span>
-                <?php endif; ?>
+                <?= sidebarBadge('crmPending', $counts['crmPending']) ?>
             </a>
 
             <a href="<?= BASE_URL ?>/quotation" data-tooltip="Quotation"
@@ -709,21 +617,17 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         </button>
 
         <div class="sidebar-section-label pt-4">
-            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Followups Requests </p>
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Followups Requests
+            </p>
         </div>
 
         <?php if (($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF]))): ?>
-           <a href="<?= BASE_URL ?>/accountingfollowups" data-tooltip="Follow-ups"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingfollowups') ?>">
-                    <i class="fa-solid fa-file-arrow-up w-4 text-center text-sm flex-shrink-0"></i>
-                    <span class="sidebar-label flex-1">Follow-ups</span>
-                    <?php if ($followupWaitingCount > 0): ?>
-                        <span
-                            class="sidebar-label min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            <?= $followupWaitingCount > 99 ? '99+' : (int) $followupWaitingCount ?>
-                        </span>
-                    <?php endif; ?>
-                </a>
+            <a href="<?= BASE_URL ?>/accountingfollowups" data-tooltip="Follow-ups"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingfollowups') ?>">
+                <i class="fa-solid fa-file-arrow-up w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label flex-1">Follow-ups</span>
+                <?= sidebarBadge('followupWaiting', $counts['followupWaiting']) ?>
+            </a>
         <?php endif; ?>
 
 
@@ -731,7 +635,10 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Settings</p>
         </div>
 
-        <?php if (($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF])) || $role === ROLE_SUPERADMIN): ?>
+        <?php $translateVariant = 'desktop';
+        include ROOT_PATH . '/admin/navigation/settings/translate.php'; ?>
+
+        <?php if (($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF,])) || $role === ROLE_SUPERADMIN || $role === ROLE_CUTTING): ?>
 
             <a href="<?= BASE_URL ?>/accountingsignatured" data-tooltip="Signatured Request"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingsignatured') ?>">
@@ -798,7 +705,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <!-- Logo center -->
         <div class="flex items-center gap-2">
-            <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome Logo" class="h-7 w-auto object-contain">
+            <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-7 w-auto object-contain">
             <span class="text-sm font-bold text-gray-800">Noble<span class="text-amber-500">Home</span></span>
         </div>
 
@@ -830,7 +737,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
     <!-- Drawer Header -->
     <div class="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <div class="flex items-center gap-2.5">
-            <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome Logo" class="h-8 w-auto object-contain">
+            <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-8 w-auto object-contain">
             <span class="text-base font-bold text-gray-800 leading-tight">
                 Noble<span class="text-amber-500">Home</span><br>
                 <span class="text-gray-400 font-normal text-xs">Department</span>
@@ -896,7 +803,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <a href="<?= BASE_URL ?>/accounting" onclick="closeMobileDrawer()"
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accounting') ?>">
                     <i class="fa-solid fa-list-check w-4 text-center text-sm flex-shrink-0"></i>
-                    Requests List
+                    <span class="flex-1">Requests List</span>
+                    <?= sidebarBadge('requestPending', $counts['requestPending']) ?>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" onclick="closeMobileDrawer()"
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
@@ -914,7 +822,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <a href="<?= BASE_URL ?>/accountingstaff" onclick="closeMobileDrawer()"
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingstaff') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
-                    Acknowledge Request
+                    <span class="flex-1">Acknowledge Request</span>
+                    <?= sidebarBadge('toReceive', $counts['toReceive']) ?>
                 </a>
             <?php endif; ?>
 
@@ -927,7 +836,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <a href="<?= BASE_URL ?>/accountingcustodian" onclick="closeMobileDrawer()"
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
-                    Cash Voucher Request
+                    <span class="flex-1">Cash Voucher Request</span>
+                    <?= sidebarBadge('toPrepare', $counts['toPrepare']) ?>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" onclick="closeMobileDrawer()"
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
@@ -972,6 +882,13 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                 CRM Main
             </a>
+
+            <a href="<?= BASE_URL ?>/crmsaleslist" onclick="closeMobileDrawer()"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/crmsaleslist') ?>">
+                <i class="fa-solid fa-list-ol w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="flex-1">CRM List</span>
+                <?= sidebarBadge('crmPending', $counts['crmPending']) ?>
+            </a>
         <?php endif; ?>
 
         <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2 mt-4">Manage</p>
@@ -989,6 +906,12 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodianassistant') ?>">
                 <i class="fa-solid fa-bullhorn w-4 text-center text-sm flex-shrink-0"></i>
                 Insert-Announcement
+            </a>
+            <a href="<?= BASE_URL ?>/accountingcustodian" onclick="closeMobileDrawer()"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="flex-1">Cash Voucher Request</span>
+                <?= sidebarBadge('toRelease', $counts['toRelease']) ?>
             </a>
         <?php endif; ?>
 
@@ -1032,7 +955,8 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <a href="<?= BASE_URL ?>/cashvoucherdashboard" onclick="closeMobileDrawer()"
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
                 <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
-                Approval Cash Voucher
+                <span class="flex-1">Approval Cash Voucher</span>
+                <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
             </a>
         <?php endif; ?>
 
@@ -1041,6 +965,17 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/superad') ?>">
                 <i class="fa-solid fa-user-plus w-4 text-center text-sm flex-shrink-0"></i>
                 Manage Accounts
+            </a>
+        <?php endif; ?>
+
+        <?php if ($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF])): ?>
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2 mt-4">Followups Requests
+            </p>
+            <a href="<?= BASE_URL ?>/accountingfollowups" onclick="closeMobileDrawer()"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingfollowups') ?>">
+                <i class="fa-solid fa-file-arrow-up w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="flex-1">Follow-ups</span>
+                <?= sidebarBadge('followupWaiting', $counts['followupWaiting']) ?>
             </a>
         <?php endif; ?>
 
@@ -1100,256 +1035,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 <script>
     var CURRENT_USER_ID = <?= intval($_SESSION['account_id'] ?? 0) ?>;
 </script>
-<script src="<?= BASE_URL ?>/js/global-notif.js"></script>
 
-<script>
-    const BASE_URL = '<?= BASE_URL ?>';
+<script src="<?= BASE_URL ?>/js/global-notif.js?v=<?= time() ?>"></script>
 
-    // Auto-cleanup expired announcements — runs on every page load
-    fetch('<?= BASE_URL ?>/cleanupannouncements', { method: 'POST' });
-
-    setInterval(() => {
-        fetch('<?= BASE_URL ?>/cleanupannouncements', { method: 'POST' });
-    }, 3000);
-
-    // ── Mobile Drawer ─────────────────────────────────────────
-    function openMobileDrawer() {
-        document.getElementById('mobile-drawer').classList.add('open');
-        document.getElementById('mobile-overlay').classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeMobileDrawer() {
-        document.getElementById('mobile-drawer').classList.remove('open');
-        document.getElementById('mobile-overlay').classList.remove('open');
-        document.body.style.overflow = '';
-    }
-
-    // Close drawer on resize to desktop
-    window.addEventListener('resize', () => {
-        if (window.innerWidth >= 768) closeMobileDrawer();
-    });
-
-    // ── Desktop Sidebar Collapse ──────────────────────────────
-    const SIDEBAR_KEY = 'sidebar_collapsed';
-    let sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === 'true';
-
-    // User tooltip (desktop only)
-    const userTooltip = document.createElement('div');
-    userTooltip.id = 'user-tooltip';
-    userTooltip.className = 'fixed z-[9999] hidden pointer-events-none';
-    userTooltip.innerHTML = `
-        <div style="display:flex;align-items:center;gap:0;">
-            <div style="width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-right:6px solid #111827;flex-shrink:0;"></div>
-            <div style="background:#111827;color:white;border-radius:8px;padding:8px 12px;white-space:nowrap;">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:<?= $isOnline ? '#4ade80' : '#9ca3af' ?>;flex-shrink:0;"></span>
-                    <span style="font-size:11px;font-weight:600;color:<?= $isOnline ? '#4ade80' : '#9ca3af' ?>"><?= $isOnline ? 'Online' : 'Away' ?></span>
-                </div>
-                <p style="font-size:12px;font-weight:600;margin:0;"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?></p>
-                <p style="font-size:10px;color:#9ca3af;margin:2px 0 0;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></p>
-            </div>
-        </div>`;
-    document.body.appendChild(userTooltip);
-
-    const userBlock = document.getElementById('sidebar-user-block');
-    if (userBlock) {
-        userBlock.addEventListener('mouseenter', () => {
-            const rect = userBlock.getBoundingClientRect();
-            userTooltip.style.visibility = 'hidden';
-            userTooltip.classList.remove('hidden');
-            const tipHeight = userTooltip.offsetHeight;
-            let top = rect.top + (rect.height / 2) - (tipHeight / 2);
-            if (top + tipHeight > window.innerHeight - 20) top = rect.bottom - tipHeight;
-            userTooltip.style.left = (rect.right + 8) + 'px';
-            userTooltip.style.top = top + 'px';
-            userTooltip.style.visibility = 'visible';
-        });
-        userBlock.addEventListener('mouseleave', () => userTooltip.classList.add('hidden'));
-    }
-
-    function applySidebarState() {
-        const sidebar = document.getElementById('sidebar');
-        if (!sidebar) return;
-        sidebarCollapsed ? sidebar.classList.add('collapsed') : sidebar.classList.remove('collapsed');
-        const main = document.getElementById('main-content') || document.querySelector('main') || document.querySelector('.main-content');
-        if (main) {
-            // Desktop: shift main content; mobile: no margin (full width under top bar)
-            if (window.innerWidth >= 768) {
-                main.style.marginLeft = sidebarCollapsed ? '56px' : '224px';
-            } else {
-                main.style.marginLeft = '0';
-            }
-            main.style.transition = 'margin-left 0.25s ease';
-        }
-    }
-
-    function toggleSidebar() {
-        sidebarCollapsed = !sidebarCollapsed;
-        localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed);
-        applySidebarState();
-    }
-
-    // Apply on load + on resize
-    applySidebarState();
-    window.addEventListener('resize', applySidebarState);
-
-    // ── Heartbeat ─────────────────────────────────────────────
-    let notifPanelOpen = false;
-    let sidebarLastUnread = -1;
-
-    function sendHeartbeat() {
-        fetch('<?= BASE_URL ?>/heartbeat', { method: 'POST' })
-            .then(() => setDot(true))
-            .catch(() => setDot(false));
-    }
-
-    function setDot(online) {
-        document.querySelectorAll('#presence-dot').forEach(dot => {
-            dot.className = `absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 ${online ? 'bg-green-400' : 'bg-gray-300'} border-2 border-white rounded-full`;
-        });
-    }
-
-    sendHeartbeat();
-    setInterval(sendHeartbeat, 10_000);
-
-    // ── Notifications ─────────────────────────────────────────
-    function toggleSidebarNotif() {
-        notifPanelOpen = !notifPanelOpen;
-        const panel = document.getElementById('notif-panel');
-        const overlay = document.getElementById('notif-overlay');
-        const chevron = document.getElementById('sidebar-notif-chevron');
-
-        if (notifPanelOpen) {
-            panel.style.left = '0';
-            overlay.classList.remove('hidden');
-            if (chevron) chevron.classList.add('rotate-90');
-            // Close mobile drawer if open
-            closeMobileDrawer();
-        } else {
-            panel.style.left = '-420px';
-            overlay.classList.add('hidden');
-            if (chevron) chevron.classList.remove('rotate-90');
-        }
-    }
-
-
-    function sidebarFetchNotifications() {
-        fetch('<?= BASE_URL ?>/fetchnotifications')
-            .then(res => res.json())
-            .then(data => {
-                const badge = document.getElementById('sidebar-notif-badge');
-                const mobileBadge = document.getElementById('mobile-notif-badge');
-                const panelBadge = document.getElementById('notif-panel-badge');
-                const list = document.getElementById('sidebar-notif-list');
-                const unread = data.filter(n => n.is_read == 0);
-
-                if (unread.length > 0) {
-                    const count = unread.length > 9 ? '9+' : unread.length;
-                    [badge, mobileBadge].forEach(b => {
-                        if (b) { b.textContent = count; b.classList.remove('hidden'); }
-                    });
-                    panelBadge.textContent = count;
-                    panelBadge.classList.remove('hidden');
-                    if (sidebarLastUnread !== -1 && unread.length > sidebarLastUnread) sidebarPlaySound();
-                } else {
-                    [badge, mobileBadge].forEach(b => { if (b) b.classList.add('hidden'); });
-                    panelBadge.classList.add('hidden');
-                }
-                sidebarLastUnread = unread.length;
-
-                if (!data.length) {
-                    list.innerHTML = `<div class="px-4 py-8 text-center text-black text-[11px]">
-                        <i class="fa-regular fa-bell mb-2 block text-2xl"></i>No notifications</div>`;
-                    return;
-                }
-
-                list.innerHTML = data.map(n => {
-                    const isPing = n.message.includes('');
-                    const typeLabel = sidebarNotifTypeLabel(n.type);
-                    let message = n.message;
-                    if (n.control_no) {
-                        message = message.replace(n.control_no,
-                            `<span style="background:#fff3e0;color:#c2410c;font-weight:600;padding:1px 5px;border-radius:4px;font-size:10px;">${n.control_no}</span>`);
-                    }
-                    const requestDate = n.date_requested ?? '';
-                    return `
-<div onclick="sidebarClickNotif(${n.id}, '${n.link ?? ''}', ${n.request_id ?? 0}, '${requestDate}')"
-     class="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 ${n.is_read == 0
-                            ? (isPing ? 'bg-red-50 border-l-[3px] border-red-400' : 'bg-orange-50 border-l-[3px] border-orange-400')
-                            : 'border-l-[3px] border-transparent'}">
-    <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between gap-2">
-            <p class="text-xs font-semibold ${n.is_read == 0 ? 'text-gray-900' : 'text-gray-700'}">${n.control_no ?? ''}</p>
-            ${typeLabel ? `<span class="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${typeLabel === 'CRM' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}">${typeLabel}</span>` : ''}
-        </div>
-        ${n.sender_name ? `<p class="text-[10px] ${isPing ? 'text-red-400' : 'text-orange-400'} font-medium mt-0.5">${n.sender_name}</p>` : ''}
-        <p class="text-[11px] ${n.is_read == 0 ? 'text-gray-600' : 'text-gray-400'} leading-snug mt-0.5">${message}</p>
-        <p class="text-[10px] text-gray-400 mt-1">${sidebarTimeAgo(n.created_at)}</p>
-    </div>
-    ${n.is_read == 0 ? `<div class="w-2 h-2 ${isPing ? 'bg-red-500' : 'bg-orange-500'} rounded-full mt-1.5 shrink-0"></div>` : ''}
-</div>`;
-                }).join('');
-            })
-            .catch(err => console.error('Notif error:', err));
-    }
-
-    function sidebarNotifTypeLabel(type) {
-        if (type === 'crm_inquiry' || type === 'crm_2dquotation') return 'CRM';
-        if (type === 'budget') return 'Budget';
-        return null;
-    }
-
-    function sidebarClickNotif(id, link, requestId, requestDate) {
-        console.log('link:', link, 'requestId:', requestId);
-        fetch('<?= BASE_URL ?>/marknotificationsread', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
-        }).then(() => {
-            if (link) {
-                const separator = link.includes('?') ? '&' : '?';
-                let url = '<?= BASE_URL ?>' + link + separator + 'highlight=' + requestId;
-                if (requestDate) url += '&date=' + requestDate;
-                window.location.href = url;
-            } else {
-                sidebarFetchNotifications();
-            }
-        });
-    }
-
-    function sidebarMarkAllRead() {
-        fetch('<?= BASE_URL ?>/marknotificationsread', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: 0 })
-        }).then(() => sidebarFetchNotifications());
-    }
-
-    function sidebarTimeAgo(dateStr) {
-        const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-        if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        return Math.floor(diff / 86400) + 'd ago';
-    }
-
-    function sidebarPlaySound() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.3);
-        } catch (e) { }
-    }
-
-    sidebarFetchNotifications();
-    setInterval(sidebarFetchNotifications, 5000);
-</script>
+<?php include ROOT_PATH . '/admin/navigation/sidebar-script.php'; ?>

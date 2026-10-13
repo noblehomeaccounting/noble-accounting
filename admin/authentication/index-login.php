@@ -14,7 +14,7 @@ function getRouteFor($role, $position, $branch)
             'head' => 'accounting',
             'staff' => 'accountingstaff',
             'custodian' => 'accountingcustodian',
-            'custoassistant' => 'accountingcustodianassistant',
+            'custoassistant' => 'accountingcustodian',
             default => 'accounting',
         };
     }
@@ -123,7 +123,7 @@ if (!empty($_SESSION['logged_in'])) {
             <div class="relative z-10 flex flex-col flex-1 pt-12 px-16 xl:px-24">
 
                 <!-- Logo -->
-                <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome logo"
+                <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome logo"
                     class="w-48 h-auto object-contain self-start">
 
                 <!-- Heading + features -->
@@ -208,7 +208,7 @@ if (!empty($_SESSION['logged_in'])) {
             <div class="relative z-10 w-full max-w-[540px] px-8 sm:px-10 py-10">
 
                 <div class="flex justify-center">
-                    <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome logo" class="w-44 h-auto object-contain">
+                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Noblehome logo" class="w-44 h-auto object-contain">
                 </div>
 
                 <h2 class="mt-6 text-center text-3xl font-extrabold tracking-tight text-gray-900">

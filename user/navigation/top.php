@@ -231,7 +231,7 @@ if ($fuNavUserId && isset($conn)) {
         <a href="<?= BASE_URL ?>/home1"
             class="relative flex items-center gap-3 shrink-0 px-4 md:px-5 lg:px-8 py-3 md:py-4 md:border-r border-gray-200">
 
-            <img src="<?= BASE_URL ?>/icon/logo.png" alt="Noblehome Logo"
+            <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Noblehome Logo"
                 class="h-9 md:h-10 lg:h-12 w-auto object-contain">
             <span class="md:hidden lg:block leading-none">
                 <span class="block font-bold text-sm lg:text-xl uppercase tracking-[0.1em] whitespace-nowrap">
@@ -376,7 +376,7 @@ if ($fuNavUserId && isset($conn)) {
     <!-- Sidebar Header -->
     <div class="bg-orange-500 px-5 py-5 flex items-center justify-between">
         <div class="flex items-center gap-2">
-            <img src="<?= BASE_URL ?>/icon/logo.png" alt="Logo"
+            <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo"
                 class="w-8 h-8 object-contain bg-white rounded-full p-1">
             <div>
                 <p class="text-white font-bold text-sm leading-tight">NobleHome</p>

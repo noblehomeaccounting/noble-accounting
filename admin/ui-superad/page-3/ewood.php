@@ -17,38 +17,79 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM Monitoring</title>
+    <title>QR Approvals | Cutting Department</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
+    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden transition-all duration-300">
 
-        <div class="max-w-4xl mx-auto space-y-10">
+        <div class="max-w-6xl mx-auto">
 
-            <!-- ===================== PENDING ===================== -->
-            <div>
-                <div class="mb-5">
-                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Cutting Department</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">Pending QR Approvals</h1>
-                    <p class="text-gray-400 text-xs mt-1">Click a photo to enlarge, scan it with the WeChat app (Scan from Album/Photo), then Approve or send for Revision below.</p>
-                </div>
-
-                <div id="ewoodApprovalList" class="space-y-3"></div>
-                <p id="ewoodApprovalEmpty" class="hidden text-center text-gray-400 text-xs py-10">No approvals pending.</p>
+            <!-- ===================== HEADER ===================== -->
+            <div class="mb-3">
+                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Cutting Department</p>
+                <h1 class="text-gray-900 text-lg font-semibold">QR Approvals</h1>
+                <p class="text-gray-400 text-[11px] mt-0.5">Review the QR photos submitted by cutting, then approve them or send them back for revision.</p>
             </div>
 
-            <!-- ===================== APPROVED HISTORY ===================== -->
-            <div>
-                <div class="mb-5">
-                    <p class="text-green-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Cutting Department</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">Approved</h1>
-                    <p class="text-gray-400 text-xs mt-1">Everything you've already approved. Read-only.</p>
+            <!-- ===================== TABS + SEARCH ===================== -->
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <div class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+                    <button type="button" data-tab="pending" onclick="ewoodSwitchTab('pending')"
+                        class="ewood-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500 transition-all">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending
+                        <span id="ewoodPendingCount" class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold text-center">—</span>
+                    </button>
+                    <button type="button" data-tab="approved" onclick="ewoodSwitchTab('approved')"
+                        class="ewood-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500 transition-all">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Approved
+                        <span id="ewoodApprovedCount" class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold text-center">—</span>
+                    </button>
                 </div>
 
-                <div id="ewoodApprovedList" class="space-y-3"></div>
-                <p id="ewoodApprovedEmpty" class="hidden text-center text-gray-400 text-xs py-10">No approvals yet.</p>
+                <div class="relative ml-auto w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                    <input type="text" id="ewoodSearch" placeholder="Search control no. or client..."
+                        class="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none focus:border-amber-600 transition-colors">
+                </div>
+            </div>
+
+            <!-- ===================== PENDING PANEL ===================== -->
+            <div id="ewoodPanelPending">
+                <ol class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 px-1 text-[11px] text-gray-500">
+                    <li class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-amber-50 text-amber-700 text-[9px] font-bold flex items-center justify-center">1</span> Click the photo to enlarge or download</li>
+                    <li class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-amber-50 text-amber-700 text-[9px] font-bold flex items-center justify-center">2</span> Scan it with WeChat (Scan from Album/Photo)</li>
+                    <li class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-amber-50 text-amber-700 text-[9px] font-bold flex items-center justify-center">3</span> Approve, or send back for Revision</li>
+                </ol>
+
+                <div id="ewoodApprovalList" class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    <div class="col-span-full text-center text-gray-400 text-xs py-12">
+                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…
+                    </div>
+                </div>
+
+                <div id="ewoodApprovalEmpty" class="hidden bg-white border border-gray-200 rounded-xl text-center py-8">
+                    <i class="fa-regular fa-circle-check text-2xl text-green-400 mb-1.5"></i>
+                    <p class="ewood-empty-msg text-xs text-gray-500 font-medium">No approvals pending.</p>
+                </div>
+            </div>
+
+            <!-- ===================== APPROVED PANEL ===================== -->
+            <div id="ewoodPanelApproved" class="hidden">
+                <p class="text-gray-400 text-[11px] mb-3 px-1">Everything you've already approved. Read-only.</p>
+
+                <div id="ewoodApprovedList" class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    <div class="col-span-full text-center text-gray-400 text-xs py-12">
+                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…
+                    </div>
+                </div>
+
+                <div id="ewoodApprovedEmpty" class="hidden bg-white border border-gray-200 rounded-xl text-center py-8">
+                    <i class="fa-regular fa-folder-open text-2xl text-gray-300 mb-1.5"></i>
+                    <p class="ewood-empty-msg text-xs text-gray-500 font-medium">No approvals yet.</p>
+                </div>
             </div>
 
         </div>
@@ -76,22 +117,27 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 
     <!-- Revision reason modal (replaces window.prompt()) -->
     <div id="ewoodRejectModal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
-            <p class="text-sm font-semibold text-gray-800 mb-1">Reason for Revision</p>
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+            <div class="flex items-center gap-2.5 mb-1">
+                <span class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
+                    <i class="fa-solid fa-rotate-left text-xs"></i>
+                </span>
+                <p class="text-sm font-semibold text-gray-800">Reason for Revision</p>
+            </div>
             <p class="text-xs text-gray-400 mb-3">Let cutting know what to fix before resubmitting.</p>
             <textarea id="ewoodRejectRemarks" rows="3"
-                class="w-full text-xs border border-gray-200 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
+                class="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
                 placeholder="e.g. QR code unreadable, please reupload"></textarea>
             <p id="ewoodRejectError" class="hidden text-[11px] text-red-500 mt-1">A reason is required.</p>
             <div class="flex justify-end gap-2 mt-4">
                 <button type="button" onclick="ewoodRejectCloseModal()"
                     id="ewoodRejectCancelBtn"
-                    class="px-3 py-1.5 text-[11px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 rounded-2xl hover:bg-gray-100 transition-colors">
+                    class="px-3.5 py-2 text-[11px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
                     Cancel
                 </button>
                 <button type="button" onclick="ewoodRejectSubmit()"
                     id="ewoodRejectSubmitBtn"
-                    class="px-3 py-1.5 text-[11px] font-semibold text-white bg-red-600 rounded-2xl hover:bg-red-700 transition-colors">
+                    class="px-3.5 py-2 text-[11px] font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
                     Confirm Revision
                 </button>
             </div>
@@ -147,50 +193,96 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             return `${dd}/${mm}/${dt.getFullYear()} ${hh}:${mi}`;
         }
 
+        // ===================== TABS / SEARCH / COUNTS =====================
+
+        let ewoodActiveTab = 'pending';
+        const ewoodLoaded = { pending: false, approved: false };
+
+        function ewoodSwitchTab(tab) {
+            ewoodActiveTab = tab;
+            document.getElementById('ewoodPanelPending').classList.toggle('hidden', tab !== 'pending');
+            document.getElementById('ewoodPanelApproved').classList.toggle('hidden', tab !== 'approved');
+
+            document.querySelectorAll('.ewood-tab').forEach(btn => {
+                const active = btn.dataset.tab === tab;
+                const isPending = btn.dataset.tab === 'pending';
+                const on = isPending ? ['bg-amber-50', 'text-amber-700'] : ['bg-green-50', 'text-green-700'];
+                on.forEach(c => btn.classList.toggle(c, active));
+                btn.classList.toggle('text-gray-500', !active);
+            });
+        }
+
+        // Applies the search text to both lists, then refreshes counts and empty states.
+        function ewoodApplyFilter() {
+            const q = document.getElementById('ewoodSearch').value.trim().toLowerCase();
+
+            [
+                { key: 'pending', listId: 'ewoodApprovalList', emptyId: 'ewoodApprovalEmpty', emptyMsg: 'No approvals pending.', countId: 'ewoodPendingCount' },
+                { key: 'approved', listId: 'ewoodApprovedList', emptyId: 'ewoodApprovedEmpty', emptyMsg: 'No approvals yet.', countId: 'ewoodApprovedCount' },
+            ].forEach(cfg => {
+                const cards = document.querySelectorAll(`#${cfg.listId} .ewood-card`);
+                let visible = 0;
+                cards.forEach(card => {
+                    const show = !q || card.dataset.search.includes(q);
+                    card.classList.toggle('hidden', !show);
+                    if (show) visible++;
+                });
+
+                if (!ewoodLoaded[cfg.key]) return;
+
+                document.getElementById(cfg.countId).textContent = cards.length;
+
+                const empty = document.getElementById(cfg.emptyId);
+                empty.classList.toggle('hidden', visible > 0);
+                empty.querySelector('.ewood-empty-msg').textContent =
+                    cards.length === 0 ? cfg.emptyMsg : 'No results match your search.';
+            });
+        }
+
+        document.getElementById('ewoodSearch').addEventListener('input', ewoodApplyFilter);
+
+        function ewoodPhotoThumb(photo) {
+            if (!photo) {
+                return `<div class="w-20 h-20 shrink-0 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-300">
+                            <i class="fa-solid fa-qrcode text-2xl"></i>
+                        </div>`;
+            }
+            return `<a href="${photo}" target="_blank" rel="noopener noreferrer" class="group relative shrink-0 block w-20 h-20">
+                        <img src="${photo}" class="w-full h-full object-cover rounded-lg border border-gray-200" title="Click to enlarge / download">
+                        <span class="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/35 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </span>
+                    </a>`;
+        }
+
         // ===================== PENDING LIST =====================
 
         async function ewoodLoadApprovalList() {
             const list = document.getElementById('ewoodApprovalList');
-            const empty = document.getElementById('ewoodApprovalEmpty');
             try {
                 const res = await fetch(`${CUT_PROG_AJAX_URL}?action=pending_approval`);
                 const data = await res.json();
-                if (!data.success) { crmShowToast('Failed to load pending approvals.', 'error'); return; }
-
-                if (data.entries.length === 0) {
+                if (!data.success) {
                     list.innerHTML = '';
-                    empty.classList.remove('hidden');
+                    crmShowToast('Failed to load pending approvals.', 'error');
                     return;
                 }
-                empty.classList.add('hidden');
 
                 list.innerHTML = data.entries.map(entry => `
-                    <div id="ewoodApproval_${entry.id}" class="bg-white border border-gray-200 rounded-lg p-4">
-                        <div class="flex items-start gap-4">
-                            <a href="${entry.photos[0]}" target="_blank" rel="noopener noreferrer" class="shrink-0">
-                                <img src="${entry.photos[0]}" class="w-24 h-24 object-cover rounded border border-gray-200 hover:opacity-80 transition-opacity" title="Click to enlarge / download">
-                            </a>
+                    <div id="ewoodApproval_${entry.id}" data-search="${ewoodEscapeHtml((entry.control_no + ' ' + entry.client_name).toLowerCase())}"
+                        class="ewood-card bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-3 flex gap-3">
+                            ${ewoodPhotoThumb(entry.photos && entry.photos[0])}
                             <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between gap-2">
-                                    <p class="font-mono text-[11px] font-semibold text-amber-700 truncate">${ewoodEscapeHtml(entry.control_no)}</p>
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="notranslate font-mono text-[11px] font-semibold text-amber-700 truncate">${ewoodEscapeHtml(entry.control_no)}</p>
+                                        <p class="text-gray-900 text-sm font-semibold truncate mt-0.5">${ewoodEscapeHtml(entry.client_name)}</p>
+                                    </div>
                                     ${ewoodStatusBadge(entry.status)}
                                 </div>
-                                <p class="text-gray-800 text-xs font-medium truncate">${ewoodEscapeHtml(entry.client_name)}</p>
-                                <p class="text-gray-400 text-[10.5px] mt-0.5">Scan with the WeChat app, then Approve or send for Revision.</p>
-                                <div class="flex items-center gap-2 mt-2">
-                                    <button type="button" onclick="ewoodRejectEntry(${entry.id})"
-                                        id="ewoodRejectBtn_${entry.id}"
-                                        class="px-3 py-1.5 text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100 transition-colors">
-                                        Revision
-                                    </button>
-                                    <button type="button" onclick="ewoodConfirmApprove(${entry.id})"
-                                        id="ewoodApproveBtn_${entry.id}"
-                                        class="px-3 py-1.5 text-[11px] font-semibold text-white bg-green-600 rounded-2xl hover:bg-green-700 transition-colors">
-                                        Approve
-                                    </button>
-                                </div>
 
-                                <div class="mt-3 pt-3 border-t border-gray-100">
+                                <div class="mt-2 pt-2 border-t border-gray-100">
                                     <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Bill of Materials</p>
                                     <div id="ewoodBomList_${entry.id}" class="flex flex-wrap gap-1.5">
                                         <p class="text-gray-400 text-[10.5px]">Loading…</p>
@@ -198,13 +290,32 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                                 </div>
                             </div>
                         </div>
+                        <div class="mt-auto px-3 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+                            <p class="text-[11px] text-gray-400 hidden sm:block"><i class="fa-solid fa-qrcode mr-1"></i>Scan the QR, then decide.</p>
+                            <div class="flex items-center gap-2 ml-auto">
+                                <button type="button" onclick="ewoodRejectEntry(${entry.id})"
+                                    id="ewoodRejectBtn_${entry.id}"
+                                    class="px-3 py-1.5 text-[11px] font-semibold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                                    Revision
+                                </button>
+                                <button type="button" onclick="ewoodConfirmApprove(${entry.id})"
+                                    id="ewoodApproveBtn_${entry.id}"
+                                    class="px-3 py-1.5 text-[11px] font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+                                    Approve
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `).join('');
+
+                ewoodLoaded.pending = true;
+                ewoodApplyFilter();
 
                 // Load each entry's BOM list after the cards are in the DOM.
                 data.entries.forEach(entry => ewoodBomLoadList(entry.id, entry.quotation_id, 'ewoodBomList'));
             } catch (e) {
                 console.error(e);
+                list.innerHTML = '';
                 crmShowToast('Connection error while loading approvals.', 'error');
             }
         }
@@ -230,12 +341,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                     crmShowToast('Approved!', 'success');
                     const card = document.getElementById(`ewoodApproval_${progressId}`);
                     if (card) card.remove();
-                    // Reflect it immediately in the Approved container below.
+                    ewoodApplyFilter();
+                    // Reflect it immediately in the Approved tab.
                     ewoodLoadApprovedList();
-                    const list = document.getElementById('ewoodApprovalList');
-                    if (list && list.children.length === 0) {
-                        document.getElementById('ewoodApprovalEmpty').classList.remove('hidden');
-                    }
                 } else {
                     crmShowToast(data.message || 'Approval failed.', 'error');
                     approveBtn.disabled = false;
@@ -312,10 +420,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                     crmShowToast('Sent back for revision.', 'success');
                     const card = document.getElementById(`ewoodApproval_${progressId}`);
                     if (card) card.remove();
-                    const list = document.getElementById('ewoodApprovalList');
-                    if (list && list.children.length === 0) {
-                        document.getElementById('ewoodApprovalEmpty').classList.remove('hidden');
-                    }
+                    ewoodApplyFilter();
                     ewoodRejectCloseModal();
                 } else {
                     crmShowToast(data.message || 'Reject failed.', 'error');
@@ -338,41 +443,36 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 
         async function ewoodLoadApprovedList() {
             const list = document.getElementById('ewoodApprovedList');
-            const empty = document.getElementById('ewoodApprovedEmpty');
             try {
                 const res = await fetch(`${CUT_PROG_AJAX_URL}?action=approved_list`);
                 const data = await res.json();
-                if (!data.success) { crmShowToast('Failed to load approved history.', 'error'); return; }
-
-                if (data.entries.length === 0) {
+                if (!data.success) {
                     list.innerHTML = '';
-                    empty.classList.remove('hidden');
+                    crmShowToast('Failed to load approved history.', 'error');
                     return;
                 }
-                empty.classList.add('hidden');
 
                 list.innerHTML = data.entries.map(entry => `
-                    <div id="ewoodApproved_${entry.id}" class="bg-white border border-gray-200 rounded-lg p-4">
-                        <div class="flex items-start gap-4">
-                            <a href="${entry.photos[0] || '#'}" target="_blank" rel="noopener noreferrer" class="shrink-0">
-                                <img src="${entry.photos[0] || ''}" class="w-24 h-24 object-cover rounded border border-gray-200 hover:opacity-80 transition-opacity" title="Click to enlarge / download">
-                            </a>
+                    <div id="ewoodApproved_${entry.id}" data-search="${ewoodEscapeHtml((entry.control_no + ' ' + entry.client_name).toLowerCase())}"
+                        class="ewood-card bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-3 flex gap-3">
+                            ${ewoodPhotoThumb(entry.photos && entry.photos[0])}
                             <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between gap-2">
-                                    <p class="font-mono text-[11px] font-semibold text-amber-700 truncate">${ewoodEscapeHtml(entry.control_no)}</p>
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="notranslate font-mono text-[11px] font-semibold text-amber-700 truncate">${ewoodEscapeHtml(entry.control_no)}</p>
+                                        <p class="text-gray-900 text-sm font-semibold truncate mt-0.5">${ewoodEscapeHtml(entry.client_name)}</p>
+                                    </div>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap bg-green-50 text-green-700 border-green-200">
                                         <i class="fa-solid fa-circle-check"></i> QR Approved
                                     </span>
                                 </div>
-                                <p class="text-gray-800 text-xs font-medium truncate">${ewoodEscapeHtml(entry.client_name)}</p>
-                                <p class="text-gray-400 text-[10.5px] mt-0.5">
-                                    Approved ${ewoodFmtDateTime(entry.approved_at)}${entry.approved_by ? ' by ' + ewoodEscapeHtml(entry.approved_by) : ''}
-                                </p>
-                                <p class="text-gray-400 text-[10.5px] mt-1 flex items-center gap-1">
+
+                                <p class="text-gray-400 text-[11px] mt-2 flex items-center gap-1.5">
                                     <span class="font-semibold text-gray-500">Job Status:</span> ${ewoodStatusBadge(entry.status)}
                                 </p>
 
-                                <div class="mt-3 pt-3 border-t border-gray-100">
+                                <div class="mt-2 pt-2 border-t border-gray-100">
                                     <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Bill of Materials</p>
                                     <div id="ewoodBomListApproved_${entry.id}" class="flex flex-wrap gap-1.5">
                                         <p class="text-gray-400 text-[10.5px]">Loading…</p>
@@ -380,12 +480,20 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                                 </div>
                             </div>
                         </div>
+                        <div class="mt-auto px-3 py-2 bg-green-50/50 border-t border-gray-100 text-[11px] text-gray-500 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-green-600"></i>
+                            Approved ${ewoodFmtDateTime(entry.approved_at)}${entry.approved_by ? ' by <span class="font-semibold text-gray-600">' + ewoodEscapeHtml(entry.approved_by) + '</span>' : ''}
+                        </div>
                     </div>
                 `).join('');
+
+                ewoodLoaded.approved = true;
+                ewoodApplyFilter();
 
                 data.entries.forEach(entry => ewoodBomLoadList(entry.id, entry.quotation_id, 'ewoodBomListApproved'));
             } catch (e) {
                 console.error(e);
+                list.innerHTML = '';
                 crmShowToast('Connection error while loading approved history.', 'error');
             }
         }
@@ -597,6 +705,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             ewoodRejectCloseModal();
         });
 
+        ewoodSwitchTab('pending');
         ewoodLoadApprovalList();
         ewoodLoadApprovedList();
     </script>

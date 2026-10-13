@@ -157,7 +157,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     <div style="display:grid; grid-template-columns:1fr auto;">
                         <div
                             style="display:flex; align-items:center; gap:12px; padding:10px; border-right:1px solid #111;">
-                            <img src="<?= BASE_URL ?>/icon/logo.png"
+                            <img src="<?= BASE_URL ?>/icon/logo.webp"
                                 style="width:56px; height:56px; object-fit:contain;">
                             <div style="width:1px; height:48px; background:#9ca3af;"></div>
                             <div>

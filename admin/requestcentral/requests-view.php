@@ -126,7 +126,7 @@
         <div class="grid grid-cols-[1fr_auto] border-b-2 border-gray-800">
             <div class="flex items-center gap-4 px-3 py-3 border-r-2 border-gray-800">
                 <div class="w-14 h-14 shrink-0">
-                    <img src="<?= BASE_URL ?>/icon/logo.png" alt="Logo" class="w-full h-full object-contain">
+                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo" class="w-full h-full object-contain">
                 </div>
                 <div class="w-px h-12 bg-gray-400"></div>
                 <div class="flex-1">
@@ -256,7 +256,7 @@
         <!-- Mobile Header -->
         <div class="bg-orange-500 px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <img src="<?= BASE_URL ?>/icon/logo.png" alt="Logo"
+                <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo"
                     class="w-8 h-8 object-contain bg-white rounded-lg p-0.5">
                 <div>
                     <p class="text-white font-bold text-xs uppercase leading-tight">Budget Request Form</p>
@@ -418,25 +418,60 @@
 </div>
 
 <style>
-    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-    .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
-    .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 999px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+    }
 </style>
 
 <script>
+    // ═══════════════════════════════════════════════════════
+    //  requests-view.php: JAVASCRIPT (buong kapalit ng lumang <script>)
+    //  Mga pagbabago: fetch kada buwan, dates endpoint, escape (XSS),
+    //  viewRequestById (walang JSON sa onclick), walang dobleng fetch sa print.
+    //  Tandaan: huwag mag-declare ng `esc` o `BASE_URL`; ginagamit na iyon ng sidebar script.
+    // ═══════════════════════════════════════════════════════
+
+    const API = '<?= BASE_URL ?>';
+
+    const escHtml = s => String(s ?? '').replace(/[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const fmtMoney = n => (parseFloat(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+    function fmtDateTime(str) {
+        if (!str) return '';
+        const d = new Date(str);
+        return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' +
+            d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
     // ─── State ───────────────────────────────────────────
     let allRequests = [];
-    let previousCount = 0;
+    let allDatesCache = [];
+    let lastSig = '';
     let calYear = new Date().getFullYear();
     let calMonth = new Date().getMonth();
     let selectedDate = null;
     let rejectTargetId = null;
     let pingTargetRequestId = null;
+    let _highlightDone = false;
 
-    // ─── Calendar ────────────────────────────────────────
     const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+    // ─── Calendar ────────────────────────────────────────
     function renderCalendar() {
         document.getElementById('cal-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
         const grid = document.getElementById('calendar-grid');
@@ -454,13 +489,14 @@
             byDate[d].push(r);
         });
 
-        // Blank leading cells
         for (let i = 0; i < firstDay; i++) {
             const blank = document.createElement('div');
             blank.className = 'border-b border-r border-gray-100 bg-gray-50/30';
             blank.style.minHeight = isMobile ? '44px' : '90px';
             grid.appendChild(blank);
         }
+
+        const dotColors = { pending: 'bg-yellow-400', approved: 'bg-green-400', rejected: 'bg-red-400' };
 
         for (let day = 1; day <= daysInMonth; day++) {
             const mm = String(calMonth + 1).padStart(2, '0');
@@ -483,44 +519,32 @@
                 isSelected ? 'bg-orange-50 ring-2 ring-inset ring-orange-400' : '',
             ].join(' ');
 
-            const dotColors = {
-                pending:  'bg-yellow-400',
-                approved: 'bg-green-400',
-                rejected: 'bg-red-400',
-            };
-            const seenStatuses = [...new Set(requests.map(r => r.status ?? 'pending'))];
-
             if (isMobile) {
+                const seenStatuses = [...new Set(requests.map(r => r.status ?? 'pending'))];
                 const dayNumClass = isToday
                     ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold'
                     : isSun ? 'text-red-400 text-xs font-semibold'
-                    : isSat ? 'text-blue-400 text-xs font-semibold'
-                    : 'text-gray-600 text-xs font-semibold';
-
+                        : isSat ? 'text-blue-400 text-xs font-semibold'
+                            : 'text-gray-600 text-xs font-semibold';
                 const dots = seenStatuses.map(s =>
-                    `<span class="inline-block w-1.5 h-1.5 rounded-full ${dotColors[s] ?? 'bg-gray-300'}"></span>`
-                ).join('');
+                    `<span class="inline-block w-1.5 h-1.5 rounded-full ${dotColors[s] ?? 'bg-gray-300'}"></span>`).join('');
 
                 cell.innerHTML = `
                     <span class="${dayNumClass}">${day}</span>
                     ${hasRequests ? `
                     <div class="flex items-center justify-center gap-0.5 mt-0.5 flex-wrap">${dots}</div>
-                    <span class="text-[8px] font-bold text-orange-500 leading-tight">${requests.length}</span>
-                    ` : ''}`;
+                    <span class="text-[8px] font-bold text-orange-500 leading-tight">${requests.length}</span>` : ''}`;
             } else {
-                const pending  = requests.filter(r => r.status === 'pending').length;
+                const pending = requests.filter(r => r.status === 'pending').length;
                 const approved = requests.filter(r => r.status === 'approved').length;
                 const rejected = requests.filter(r => r.status === 'rejected').length;
-
                 const dots = [
-                    pending  ? `<span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>` : '',
+                    pending ? `<span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>` : '',
                     approved ? `<span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>` : '',
                     rejected ? `<span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>` : '',
                 ].join('');
-
                 const countBadge = hasRequests
                     ? `<span class="text-[10px] font-bold text-orange-500">${requests.length} req</span>` : '';
-
                 const dayNumClass = isToday
                     ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center'
                     : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-500';
@@ -536,9 +560,9 @@
                         ${requests.slice(0, 2).map(r => `
                             <div class="text-[9px] truncate px-1.5 py-0.5 rounded font-medium
                                 ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700'
-                                : r.status === 'approved' ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'}">
-                                ${r.requestor_name}
+                        : r.status === 'approved' ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'}">
+                                ${escHtml(r.requestor_name)}
                             </div>`).join('')}
                         ${requests.length > 2 ? `<div class="text-[9px] text-gray-400 px-1">+${requests.length - 2} more</div>` : ''}
                     </div>` : ''}`;
@@ -558,20 +582,21 @@
         }
     }
 
+    // Buwan-buwan na navigation: nagfe-fetch ng bagong buwan
     function prevMonth() {
         calMonth--;
         if (calMonth < 0) { calMonth = 11; calYear--; }
-        selectedDate = null; closeDayPanel(); renderCalendar();
+        selectedDate = null; closeDayPanel(); renderCalendar(); fetchRequests(true);
     }
     function nextMonth() {
         calMonth++;
         if (calMonth > 11) { calMonth = 0; calYear++; }
-        selectedDate = null; closeDayPanel(); renderCalendar();
+        selectedDate = null; closeDayPanel(); renderCalendar(); fetchRequests(true);
     }
     function goToday() {
         const now = new Date();
         calYear = now.getFullYear(); calMonth = now.getMonth();
-        selectedDate = null; closeDayPanel(); renderCalendar();
+        selectedDate = null; closeDayPanel(); renderCalendar(); fetchRequests(true);
     }
 
     // ─── Day Panel ───────────────────────────────────────
@@ -596,28 +621,28 @@
                 const isRejected = row.status === 'rejected';
                 const rowClass = isApproved ? 'bg-green-50 hover:bg-green-100' : isRejected ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50';
                 return `
-                <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-                    <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
-                        onclick="viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})">
-                        ${row.control_no}
+                <tr data-id="${Number(row.id)}" class="border-t border-gray-100 transition-colors ${rowClass}">
+                    <td class="notranslate px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
+                        onclick="viewRequestById(${Number(row.id)})">
+                        ${escHtml(row.control_no)}
                     </td>
                     <td class="px-5 py-3">
-                        <p class="font-medium text-gray-800">${row.requestor_name}</p>
-                        <p class="text-[10px] text-gray-400">${row.sender_email ?? ''}</p>
+                        <p class="font-medium text-gray-800">${escHtml(row.requestor_name)}</p>
+                        <p class="text-[10px] text-gray-400">${escHtml(row.sender_email ?? '')}</p>
                     </td>
-                    <td class="px-5 py-3 text-gray-600">${row.purpose}</td>
+                    <td class="px-5 py-3 text-gray-600">${escHtml(row.purpose)}</td>
                     <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
                     <td class="px-5 py-3 text-xs text-gray-500">${row.items?.filter(i => i.description?.trim()).length ?? 0} item(s)</td>
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             ${statusBadge(row.status)}
                             ${(row.attachment_status ?? 'attached') === 'follow_up'
-                                ? `<span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-600 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
+                        ? `<span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-600 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
                                     <i class="fa-solid fa-clock text-[8px]"></i> Attchmnt Pending
                                    </span>` : ''}
                         </div>
                     </td>
-                    <td class="px-5 py-3">${actionButtons(row.id, row.status, row)}</td>
+                    <td class="px-5 py-3">${actionButtons(row.id, row.status)}</td>
                 </tr>`;
             }).join('');
 
@@ -625,45 +650,46 @@
                 const isApproved = row.status === 'approved';
                 const isRejected = row.status === 'rejected';
                 const barColor = isApproved ? 'bg-green-400' : isRejected ? 'bg-red-400' : 'bg-yellow-400';
-                const rowBg   = isApproved ? 'bg-green-50' : isRejected ? 'bg-red-50' : 'bg-white';
+                const rowBg = isApproved ? 'bg-green-50' : isRejected ? 'bg-red-50' : 'bg-white';
                 const itemCount = row.items?.filter(i => i.description?.trim()).length ?? 0;
+                const id = Number(row.id);
 
                 return `
-                <div data-id="${row.id}" class="flex items-start gap-3 px-4 py-3 border-b border-gray-100 ${rowBg} active:bg-gray-50">
+                <div data-id="${id}" class="flex items-start gap-3 px-4 py-3 border-b border-gray-100 ${rowBg} active:bg-gray-50">
                     <div class="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5 ${barColor}"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between gap-2 mb-0.5">
-                            <span class="font-mono text-[10px] font-bold text-blue-900 truncate">${row.control_no}</span>
+                            <span class="font-mono text-[10px] font-bold text-blue-900 truncate">${escHtml(row.control_no)}</span>
                             <div class="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
                                 ${statusBadge(row.status)}
                                 ${(row.attachment_status ?? 'attached') === 'follow_up'
-                                    ? `<span class="inline-flex items-center gap-0.5 bg-yellow-100 text-yellow-600 text-[8px] font-semibold px-1.5 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
+                        ? `<span class="inline-flex items-center gap-0.5 bg-yellow-100 text-yellow-600 text-[8px] font-semibold px-1.5 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
                                         <i class="fa-solid fa-clock text-[7px]"></i>Attchmnt Pending
                                        </span>` : ''}
                             </div>
                         </div>
-                        <p class="text-sm font-semibold text-gray-800 truncate leading-tight">${row.requestor_name}</p>
-                        <p class="text-[11px] text-gray-500 truncate">${row.purpose}</p>
+                        <p class="text-sm font-semibold text-gray-800 truncate leading-tight">${escHtml(row.requestor_name)}</p>
+                        <p class="text-[11px] text-gray-500 truncate">${escHtml(row.purpose)}</p>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             ${categoryBadge(row.request_category, row.request_reference)}
                             <span class="text-[10px] text-gray-400">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-2 flex-wrap">
-                            <button onclick='viewRequest(${JSON.stringify(row).replace(/'/g, "\\'")})'
+                            <button onclick="viewRequestById(${id})"
                                 class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
                                 <i class="fa-solid fa-eye mr-1"></i>View
                             </button>
                             ${row.status === 'pending' ? `
-                            <button onclick="doAction(${row.id}, 'approved')"
+                            <button onclick="doAction(${id}, 'approved')"
                                 class="bg-green-500 hover:bg-green-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
                                 <i class="fa-solid fa-check mr-1"></i>Approve
                             </button>
-                            <button onclick="openRejectModal(${row.id})"
+                            <button onclick="openRejectModal(${id})"
                                 class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
                                 <i class="fa-solid fa-xmark mr-1"></i>Reject
                             </button>` : ''}
                             ${row.status === 'approved' ? `
-                            <button onclick="openPingModal(${row.id})"
+                            <button onclick="openPingModal(${id})"
                                 class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
                                 <i class="fa-solid fa-bell mr-1"></i>Ping
                             </button>` : ''}
@@ -683,21 +709,22 @@
         renderCalendar();
     }
 
-    // ─── Fetch ───────────────────────────────────────────
-    let _highlightDone = false;
-
-    function fetchRequests() {
-        fetch('<?= BASE_URL ?>/fetchrequests')
+    // ─── Fetch (kada buwan) ──────────────────────────────
+    // force = true: laging mag-render kahit pareho ang data
+    function fetchRequests(force = false) {
+        const month = calYear + '-' + String(calMonth + 1).padStart(2, '0');
+        return fetch(API + '/fetchrequests?month=' + month)
             .then(res => res.json())
             .then(data => {
-                if (data.length === previousCount && previousCount !== 0) return;
-                previousCount = data.length;
+                if (!Array.isArray(data)) return;
+                const sig = month + '|' + data.map(r =>
+                    r.id + r.status + (r.received_by ?? '') + (r.attachment_status ?? '')).join('|');
+                if (!force && sig === lastSig) return; // walang nagbago
+                lastSig = sig;
                 allRequests = data;
                 renderCalendar();
-                buildDatesDropdown();
                 if (selectedDate) {
-                    const filtered = allRequests.filter(r => r.date_requested?.startsWith(selectedDate));
-                    openDayPanel(selectedDate, filtered);
+                    openDayPanel(selectedDate, allRequests.filter(r => r.date_requested?.startsWith(selectedDate)));
                 }
                 document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
                 if (!_highlightDone) { _highlightDone = true; checkHighlight(); }
@@ -705,42 +732,56 @@
             .catch(err => console.error('Fetch error:', err));
     }
 
+    // Lahat ng petsa na may request (maliit na data lang)
+    function fetchDates() {
+        return fetch(API + '/fetchrequestdates')
+            .then(res => res.json())
+            .then(dates => {
+                if (!Array.isArray(dates)) return;
+                allDatesCache = dates;
+                document.getElementById('dates-dropdown-count').textContent =
+                    dates.length + ' date' + (dates.length !== 1 ? 's' : '');
+                renderDatesList(dates);
+            })
+            .catch(err => console.error('Dates error:', err));
+    }
+
     // ─── Shared Helpers ──────────────────────────────────
     function statusBadge(status) {
         const map = {
-            pending:  'bg-yellow-100 text-yellow-700',
+            pending: 'bg-yellow-100 text-yellow-700',
             approved: 'bg-green-300 text-green-900',
             rejected: 'bg-red-100 text-red-700',
         };
-        return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">${status}</span>`;
+        return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">${escHtml(status)}</span>`;
     }
 
     function categoryBadge(category, reference) {
         if (!category) return '<span class="text-gray-300 text-xs">—</span>';
         const map = {
             project: { label: 'Project', icon: 'fa-helmet-safety', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-            client:  { label: 'Client',  icon: 'fa-user-tie',      color: 'bg-purple-100 text-purple-700 border-purple-200' },
-            nhcc:    { label: 'NHCC',    icon: 'fa-building',       color: 'bg-orange-100 text-orange-700 border-orange-200' },
+            client: { label: 'Client', icon: 'fa-user-tie', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+            nhcc: { label: 'NHCC', icon: 'fa-building', color: 'bg-orange-100 text-orange-700 border-orange-200' },
         };
         const cfg = map[category] ?? { label: category, icon: 'fa-tag', color: 'bg-gray-100 text-gray-600 border-gray-200' };
         if (!reference) {
             return `<span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.color}">
-                        <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
+                        <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${escHtml(cfg.label)}
                     </span>`;
         }
-        const safeRef = reference.replace(/'/g, "\\'").replace(/`/g, '\\`');
-        return `<div class="relative inline-block"
-            onmouseenter="showCatTooltip(event, '${cfg.label}', '${safeRef}')"
+        return `<div class="relative inline-block" data-label="${escHtml(cfg.label)}" data-ref="${escHtml(reference)}"
+            onmouseenter="showCatTooltip(event, this.dataset.label, this.dataset.ref)"
             onmouseleave="hideCatTooltip()">
             <span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold cursor-default ${cfg.color}">
-                <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
+                <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${escHtml(cfg.label)}
                 <i class="fa-solid fa-circle-info text-[8px] opacity-50"></i>
             </span>
         </div>`;
     }
 
-    function actionButtons(id, status, row) {
-        const viewBtn = `<button onclick='viewRequest(${JSON.stringify(row).replace(/'/g, "\\'")})'
+    function actionButtons(id, status) {
+        id = Number(id);
+        const viewBtn = `<button onclick="viewRequestById(${id})"
             class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
             <i class="fa-solid fa-eye mr-1"></i>View
         </button>`;
@@ -766,7 +807,7 @@
     }
 
     function doAction(id, action, comment = '') {
-        fetch('<?= BASE_URL ?>/actionrequest', {
+        fetch(API + '/actionrequest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, action, comment })
@@ -775,10 +816,13 @@
             .then(data => {
                 if (data.success) {
                     showToast(action === 'approved' ? 'Request approved successfully!' : 'Request rejected.', action);
-                    previousCount = 0;
-                    fetchRequests();
+                    fetchRequests(true);
+                    fetchDates();
+                } else {
+                    showToast(data.message || 'Action failed.', 'rejected');
                 }
-            });
+            })
+            .catch(() => showToast('Network error. Please try again.', 'rejected'));
     }
 
     function showToast(message, type = 'approved') {
@@ -789,7 +833,7 @@
         const toast = document.createElement('div');
         toast.id = 'toast-notif';
         toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${color} text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0`;
-        toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+        toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${escHtml(message)}`;
         document.body.appendChild(toast);
         setTimeout(() => toast.classList.replace('opacity-0', 'opacity-100'), 10);
         setTimeout(() => {
@@ -828,16 +872,16 @@
         document.getElementById('ping-staff-list').innerHTML =
             '<p class="text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading staff...</p>';
         document.getElementById('ping-modal').classList.remove('hidden');
-        fetch('<?= BASE_URL ?>/pingrequest')
+        fetch(API + '/pingrequest')
             .then(res => res.json())
             .then(staff => {
                 document.getElementById('ping-staff-list').innerHTML = staff.length
                     ? staff.map(s => `
                         <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" value="${s.id}" class="ping-staff-check w-4 h-4 accent-blue-500">
+                            <input type="checkbox" value="${Number(s.id)}" class="ping-staff-check w-4 h-4 accent-blue-500">
                             <div>
-                                <p class="text-sm font-medium text-gray-800">${s.name}</p>
-                                <p class="text-[10px] text-gray-400">${s.email ?? ''}</p>
+                                <p class="text-sm font-medium text-gray-800">${escHtml(s.name)}</p>
+                                <p class="text-[10px] text-gray-400">${escHtml(s.email ?? '')}</p>
                             </div>
                         </label>`).join('')
                     : '<p class="text-xs text-gray-400">No staff found.</p>';
@@ -852,7 +896,7 @@
         if (!checked.length) { alert('Please select at least one staff to ping.'); return; }
         const staff_ids = checked.map(c => parseInt(c.value));
         const message = document.getElementById('ping-message').value.trim();
-        fetch('<?= BASE_URL ?>/pingrequest', {
+        fetch(API + '/pingrequest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ request_id: pingTargetRequestId, staff_ids, message })
@@ -864,50 +908,84 @@
     }
 
     // ─── View Modal ──────────────────────────────────────
+    function viewRequestById(id) {
+        const row = allRequests.find(r => r.id == id);
+        if (row) viewRequest(row);
+    }
+
+    function attachmentThumbs(attachments, size) {
+        // size: 'lg' (desktop) o 'sm' (mobile)
+        const box = size === 'lg' ? 'w-20 h-20' : 'w-16 h-16';
+        return attachments.map(path => {
+            const isPdf = String(path).toLowerCase().endsWith('.pdf');
+            const fullUrl = `${API}/${path}`;
+            if (isPdf) {
+                return `<a href="${escHtml(fullUrl)}" target="_blank" rel="noopener"
+                    class="flex flex-col items-center justify-center ${box} rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all bg-red-50 gap-1">
+                    <i class="fa-solid fa-file-pdf text-red-500 text-2xl"></i>
+                    <span class="text-[9px] text-red-400 font-semibold uppercase tracking-wide">PDF</span>
+                </a>`;
+            }
+            return `<div class="relative cursor-pointer" data-src="${escHtml(fullUrl)}" onclick="openLightbox(this.dataset.src)">
+                <img src="${escHtml(fullUrl)}" class="${box} object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all">
+            </div>`;
+        }).join('');
+    }
+
+    function sigBlock(name, signaturePath, when) {
+        if (!name) return '';
+        return `<div class="relative inline-block">
+            ${signaturePath ? `<img src="${escHtml(API + '/' + signaturePath)}" alt="Signature" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:80px;max-width:220px;z-index:10;pointer-events:none;">` : ''}
+            <p class="text-sm font-semibold text-gray-800">${escHtml(name)}</p>
+            <p class="text-[10px] text-gray-400">${escHtml(when)}</p>
+        </div>`;
+    }
+
     function viewRequest(row) {
-        // ── Desktop fields ──
+        const id = Number(row.id);
+        const items = (row.items ?? []).filter(i => i.description && i.description.trim() !== '');
+        const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+
+        let attachments = [];
+        try { const raw = row.attachments; attachments = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? []); } catch (e) { }
+
+        const approverName = row.approver_name ?? '';
+        const approvedAt = fmtDateTime(row.approved_at);
+        const receiverName = row.receiver_name ?? '';
+        const receivedAt = fmtDateTime(row.received_at);
+        const approverSig = row.status === 'approved' ? (row.approver_signature ?? '') : '';
+        const receiverSig = row.receiver_signature_path ?? '';
+        const isFollowUp = (row.attachment_status ?? 'attached') === 'follow_up';
+
+        // ── Desktop ──
         document.getElementById('view-control-no').textContent = row.control_no;
         document.getElementById('view-date').textContent = row.date_requested;
         document.getElementById('view-requestor').textContent = row.requestor_name;
         document.getElementById('view-purpose').textContent = row.purpose;
         document.getElementById('view-category').innerHTML = categoryBadge(row.request_category, row.request_reference);
 
-        const items = row.items ?? [];
-        let total = 0, rowNum = 0;
-        document.getElementById('view-items-tbody').innerHTML = items
-            .filter(item => item.description && item.description.trim() !== '')
-            .map(item => {
-                rowNum++;
-                const amount = parseFloat(item.amount) || 0;
-                total += amount;
-                return `
-                <tr class="border-t border-gray-200">
-                    <td class="px-3 py-2 text-center text-xs text-gray-400 font-mono border-r border-gray-200 w-10">${rowNum}</td>
-                    <td class="px-4 py-2 border-r border-gray-200 min-w-[180px]">${item.description || ''}</td>
-                    <td class="px-4 py-2 border-r border-gray-200 min-w-[150px]">${item.purpose || ''}</td>
-                    <td class="px-4 py-2 border-r border-gray-200 text-center w-24">${item.quantity || 0}</td>
-                    <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                    <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                    <td class="px-4 py-2 min-w-[120px]">${item.notes || ''}</td>
-                </tr>`;
-            }).join('');
-        document.getElementById('view-total').textContent = '₱ ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        document.getElementById('view-items-tbody').innerHTML = items.map((item, idx) => `
+            <tr class="border-t border-gray-200">
+                <td class="px-3 py-2 text-center text-xs text-gray-400 font-mono border-r border-gray-200 w-10">${idx + 1}</td>
+                <td class="px-4 py-2 border-r border-gray-200 min-w-[180px]">${escHtml(item.description)}</td>
+                <td class="px-4 py-2 border-r border-gray-200 min-w-[150px]">${escHtml(item.purpose)}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-center w-24">${escHtml(item.quantity || 0)}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">${fmtMoney(item.unit_price)}</td>
+                <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">₱ ${fmtMoney(item.amount)}</td>
+                <td class="px-4 py-2 min-w-[120px]">${escHtml(item.notes)}</td>
+            </tr>`).join('');
+        document.getElementById('view-total').textContent = '₱ ' + fmtMoney(total);
         document.getElementById('view-status-badge').innerHTML = statusBadge(row.status);
 
-        const rejectDiv = document.getElementById('view-reject-comment');
-        rejectDiv.innerHTML = (row.reject_comment && row.status === 'rejected')
+        document.getElementById('view-reject-comment').innerHTML = (row.reject_comment && row.status === 'rejected')
             ? `<div class="mt-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                <p class="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-1">Reason for Rejection:</p>
-               <p class="text-sm text-red-700">${row.reject_comment}</p></div>` : '';
+               <p class="text-sm text-red-700">${escHtml(row.reject_comment)}</p></div>` : '';
 
-        let attachments = [];
-        try { const raw = row.attachments; attachments = typeof raw === 'string' ? JSON.parse(raw) : (raw ?? []); } catch (e) { }
         const attachSec = document.getElementById('view-attachments');
-
         const oldBadge = document.getElementById('view-attachment-status-badge');
         if (oldBadge) oldBadge.remove();
-
-        if ((row.attachment_status ?? 'attached') === 'follow_up') {
+        if (isFollowUp) {
             const badge = document.createElement('div');
             badge.id = 'view-attachment-status-badge';
             badge.className = 'flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-2';
@@ -915,192 +993,112 @@
                 <span class="text-xs font-semibold text-yellow-700">Attachment pending — requestor will follow up</span>`;
             attachSec.parentElement.prepend(badge);
         }
-
         if (attachments.length) {
             attachSec.classList.remove('hidden');
-            document.getElementById('view-attachments-grid').innerHTML = attachments.map(path => {
-                const isPdf = path.toLowerCase().endsWith('.pdf');
-                const fullUrl = `<?= BASE_URL ?>/${path}`;
-                if (isPdf) {
-                    return `<a href="${fullUrl}" target="_blank"
-                        class="relative flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all bg-red-50 cursor-pointer gap-1">
-                        <i class="fa-solid fa-file-pdf text-red-500 text-2xl"></i>
-                        <span class="text-[9px] text-red-400 font-semibold uppercase tracking-wide">PDF</span>
-                    </a>`;
-                }
-                return `<div class="relative group/thumb cursor-pointer" onclick="openLightbox('${fullUrl}')">
-                    <img src="${fullUrl}" class="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all">
-                    <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 rounded-lg transition-all flex items-center justify-center">
-                        <i class="fa-solid fa-magnifying-glass text-white opacity-0 group-hover/thumb:opacity-100 transition-all text-xs"></i>
-                    </div>
-                </div>`;
-            }).join('');
+            document.getElementById('view-attachments-grid').innerHTML = attachmentThumbs(attachments, 'lg');
         } else {
             attachSec.classList.add('hidden');
         }
 
-        const approverName = row.approver_name ?? '';
-        const approvedAt = row.approved_at ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + new Date(row.approved_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-        const receiverName = row.receiver_name ?? '';
-        const receivedAt = row.received_at ? new Date(row.received_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + new Date(row.received_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+        document.getElementById('view-approved-by').innerHTML = sigBlock(approverName, approverSig, approvedAt);
+        document.getElementById('view-received-by').innerHTML = sigBlock(receiverName, receiverSig, receivedAt);
 
-        const approverSig = (row.status === 'approved') ? (row.approver_signature ?? '') : '';
-        document.getElementById('view-approved-by').innerHTML = approverName
-            ? `<div class="relative inline-block">
-        ${approverSig ? `<img src="<?= BASE_URL ?>/${approverSig}" alt="Signature" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:80px;max-width:220px;z-index:10;pointer-events:none;">` : ''}
-        <p class="text-sm font-semibold text-gray-800">${approverName}</p>
-        <p class="text-[10px] text-gray-400">${approvedAt}</p>
-       </div>` : '';
-
-        const receiverSig = row.receiver_signature_path ?? '';
-        document.getElementById('view-received-by').innerHTML = receiverName
-            ? `<div class="relative inline-block">
-        ${receiverSig ? `<img src="<?= BASE_URL ?>/${receiverSig}" alt="Signature" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:80px;max-width:220px;z-index:10;pointer-events:none;">` : ''}
-        <p class="text-sm font-semibold text-gray-800">${receiverName}</p>
-        <p class="text-[10px] text-gray-400">${receivedAt}</p>
-       </div>` : '';
-
-        const downloadBtn = document.getElementById('view-download-btn');
         const pdfBtn = (row.status === 'approved' && row.receiver_name)
-            ? `<button onclick="downloadPDF(${row.id})" class="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-md transition-all whitespace-nowrap">
+            ? `<button onclick="downloadPDF(${id})" class="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-md transition-all whitespace-nowrap">
                <i class="fa-solid fa-file-pdf text-[10px]"></i>Download PDF</button>` : '';
-        downloadBtn.innerHTML = `${pdfBtn}
-            <button onclick="printRequest(${row.id})" class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-md transition-all whitespace-nowrap">
+        document.getElementById('view-download-btn').innerHTML = `${pdfBtn}
+            <button onclick="printRequest(${id})" class="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-md transition-all whitespace-nowrap">
                 <i class="fa-solid fa-print text-[10px]"></i>Print</button>`;
 
-        // ══════════════════════════════════════════════════
-        // ── MOBILE fields sync ──
-        // ══════════════════════════════════════════════════
+        // ── Mobile ──
         document.getElementById('m-control-no').textContent = row.control_no;
         document.getElementById('m-date').textContent = row.date_requested;
         document.getElementById('m-requestor').textContent = row.requestor_name;
         document.getElementById('m-purpose').textContent = row.purpose;
         document.getElementById('m-category').innerHTML = categoryBadge(row.request_category, row.request_reference);
         document.getElementById('m-status-badge').innerHTML = statusBadge(row.status);
-        document.getElementById('m-total').textContent = '₱ ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        document.getElementById('m-total').textContent = '₱ ' + fmtMoney(total);
 
-        // Mobile items list
-        const mItemsList = document.getElementById('m-items-list');
-        let mRows = '';
-        let mFilled = 0;
-        (row.items ?? []).filter(i => i.description?.trim()).forEach(item => {
-            mFilled++;
-            const amt = parseFloat(item.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
-            mRows += `
+        document.getElementById('m-items-list').innerHTML = items.length
+            ? items.map((item, idx) => `
             <div class="grid grid-cols-[24px_1fr_50px_72px] px-3 py-2 gap-1 items-start">
-                <span class="text-[10px] text-gray-400 text-center mt-0.5">${mFilled}</span>
+                <span class="text-[10px] text-gray-400 text-center mt-0.5">${idx + 1}</span>
                 <div>
-                    <p class="text-xs font-medium text-gray-800 leading-tight">${item.description}</p>
-                    ${item.purpose ? `<p class="text-[10px] text-gray-400">${item.purpose}</p>` : ''}
-                    ${item.notes   ? `<p class="text-[10px] text-gray-400 italic">${item.notes}</p>`   : ''}
+                    <p class="text-xs font-medium text-gray-800 leading-tight">${escHtml(item.description)}</p>
+                    ${item.purpose ? `<p class="text-[10px] text-gray-400">${escHtml(item.purpose)}</p>` : ''}
+                    ${item.notes ? `<p class="text-[10px] text-gray-400 italic">${escHtml(item.notes)}</p>` : ''}
                 </div>
-                <span class="text-[10px] text-gray-600 text-right mt-0.5">${item.quantity ?? 0}</span>
-                <span class="text-[10px] font-mono font-semibold text-gray-800 text-right mt-0.5">₱${amt}</span>
-            </div>`;
-        });
-        if (!mFilled) mRows = `<div class="px-3 py-3 text-xs text-gray-400 text-center">No items.</div>`;
-        mItemsList.innerHTML = mRows;
+                <span class="text-[10px] text-gray-600 text-right mt-0.5">${escHtml(item.quantity ?? 0)}</span>
+                <span class="text-[10px] font-mono font-semibold text-gray-800 text-right mt-0.5">₱${fmtMoney(item.amount)}</span>
+            </div>`).join('')
+            : `<div class="px-3 py-3 text-xs text-gray-400 text-center">No items.</div>`;
 
-        // Mobile attachment pending badge
-        const mAttachStatus = document.getElementById('m-attachment-status');
-        if ((row.attachment_status ?? 'attached') === 'follow_up') {
-            mAttachStatus.classList.remove('hidden');
-        } else {
-            mAttachStatus.classList.add('hidden');
-        }
+        document.getElementById('m-attachment-status').classList.toggle('hidden', !isFollowUp);
 
-        // Mobile attachments
-        const mAttach     = document.getElementById('m-attachments');
-        const mAttachGrid = document.getElementById('m-attachments-grid');
+        const mAttach = document.getElementById('m-attachments');
         if (attachments.length) {
             mAttach.classList.remove('hidden');
-            mAttachGrid.innerHTML = attachments.map(path => {
-                const isPdf   = path.toLowerCase().endsWith('.pdf');
-                const fullUrl = `<?= BASE_URL ?>/${path}`;
-                if (isPdf) {
-                    return `<a href="${fullUrl}" target="_blank"
-                        class="flex flex-col items-center justify-center w-16 h-16 rounded-lg border border-gray-200 bg-red-50 gap-1">
-                        <i class="fa-solid fa-file-pdf text-red-500 text-xl"></i>
-                        <span class="text-[9px] text-red-400 font-semibold uppercase">PDF</span>
-                    </a>`;
-                }
-                return `<div class="cursor-pointer" onclick="openLightbox('${fullUrl}')">
-                    <img src="${fullUrl}" class="w-16 h-16 object-cover rounded-lg border border-gray-200">
-                </div>`;
-            }).join('');
+            document.getElementById('m-attachments-grid').innerHTML = attachmentThumbs(attachments, 'sm');
         } else {
             mAttach.classList.add('hidden');
         }
 
-        // Mobile reject comment
-        const mRejectDiv = document.getElementById('m-reject-comment');
-        mRejectDiv.innerHTML = (row.reject_comment && row.status === 'rejected')
+        document.getElementById('m-reject-comment').innerHTML = (row.reject_comment && row.status === 'rejected')
             ? `<div class="mx-4 my-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                <p class="text-[9px] font-bold uppercase tracking-widest text-red-500 mb-1">Reason for Rejection:</p>
-               <p class="text-xs text-red-700">${row.reject_comment}</p></div>` : '';
+               <p class="text-xs text-red-700">${escHtml(row.reject_comment)}</p></div>` : '';
 
-        // Mobile signatures
         document.getElementById('m-approved-by').innerHTML = approverName
-            ? `<p class="text-xs font-semibold text-gray-800">${approverName}</p>
-               <p class="text-[10px] text-gray-400">${approvedAt}</p>` : '<p class="text-[10px] text-gray-300">—</p>';
+            ? `<p class="text-xs font-semibold text-gray-800">${escHtml(approverName)}</p>
+               <p class="text-[10px] text-gray-400">${escHtml(approvedAt)}</p>` : '<p class="text-[10px] text-gray-300">—</p>';
         document.getElementById('m-received-by').innerHTML = receiverName
-            ? `<p class="text-xs font-semibold text-gray-800">${receiverName}</p>
-               <p class="text-[10px] text-gray-400">${receivedAt}</p>` : '<p class="text-[10px] text-gray-300">—</p>';
-
-        // Mobile action buttons
-        const mActionBtns = document.getElementById('m-action-btns');
-        const mCloseBtn = `<button onclick="closeViewModal()"
-            class="w-full text-sm text-gray-500 font-medium py-2.5 rounded-xl border border-gray-200 bg-white">Close</button>`;
+            ? `<p class="text-xs font-semibold text-gray-800">${escHtml(receiverName)}</p>
+               <p class="text-[10px] text-gray-400">${escHtml(receivedAt)}</p>` : '<p class="text-[10px] text-gray-300">—</p>';
 
         let mActionHtml = '';
-
         if (row.status === 'pending') {
             mActionHtml = `
-            <button onclick="doAction(${row.id}, 'approved'); closeViewModal();"
+            <button onclick="doAction(${id}, 'approved'); closeViewModal();"
                 class="w-full flex items-center justify-center gap-2 bg-green-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                 <i class="fa-solid fa-check"></i>Approve
             </button>
-            <button onclick="closeViewModal(); openRejectModal(${row.id});"
+            <button onclick="closeViewModal(); openRejectModal(${id});"
                 class="w-full flex items-center justify-center gap-2 bg-red-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                 <i class="fa-solid fa-xmark"></i>Reject
             </button>`;
         } else if (row.status === 'approved') {
             mActionHtml = `
-            <button onclick="closeViewModal(); openPingModal(${row.id});"
+            <button onclick="closeViewModal(); openPingModal(${id});"
                 class="w-full flex items-center justify-center gap-2 bg-blue-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                 <i class="fa-solid fa-bell"></i>Ping Staff
             </button>`;
         }
-
-        // Print button — laging nandoon
         mActionHtml += `
-        <button onclick="printRequest(${row.id})"
+        <button onclick="printRequest(${id})"
             class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
             <i class="fa-solid fa-print"></i>Print
         </button>`;
-
-        // Download PDF — kung approved at may receiver
         if (row.status === 'approved' && row.receiver_name) {
             mActionHtml = `
-            <button onclick="downloadPDF(${row.id})"
+            <button onclick="downloadPDF(${id})"
                 class="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                 <i class="fa-solid fa-file-pdf"></i>Download PDF
             </button>` + mActionHtml;
         }
-
-        mActionBtns.innerHTML = mActionHtml + mCloseBtn;
-        // ══════════════════════════════════════════════════
+        document.getElementById('m-action-btns').innerHTML = mActionHtml +
+            `<button onclick="closeViewModal()"
+                class="w-full text-sm text-gray-500 font-medium py-2.5 rounded-xl border border-gray-200 bg-white">Close</button>`;
 
         document.getElementById('view-modal').classList.remove('hidden');
     }
 
     function closeViewModal() { document.getElementById('view-modal').classList.add('hidden'); }
-    function downloadPDF(id) { window.open('<?= BASE_URL ?>/download-pdfbudgetrequest?id=' + id, '_blank'); }
+    function downloadPDF(id) { window.open(API + '/download-pdfbudgetrequest?id=' + encodeURIComponent(id), '_blank'); }
 
     function openLightbox(src) {
         document.getElementById('lightbox-img').src = src;
         document.getElementById('lightbox').classList.remove('hidden');
-        event.stopPropagation();
+        if (typeof event !== 'undefined' && event) event.stopPropagation();
     }
     function closeLightbox() {
         document.getElementById('lightbox').classList.add('hidden');
@@ -1108,108 +1106,86 @@
     }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
+    // ─── Print (walang bagong fetch; gamit ang naka-load na data) ─────
     function printRequest(id) {
-        fetch('<?= BASE_URL ?>/fetchrequests')
-            .then(res => res.json())
-            .then(data => {
-                const row = data.find(r => r.id == id);
-                if (!row) return;
-                const items = row.items ?? [];
-                let total = 0, itemRows = '', filledCount = 0;
-                items.forEach(item => {
-                    if (!item.description) return;
-                    filledCount++;
-                    const amount = parseFloat(item.amount || 0);
-                    total += amount;
-                    itemRows += `<tr>
-                        <td style="text-align:center;border:1px solid #ccc;padding:5px;">${filledCount}</td>
-                        <td style="border:1px solid #ccc;padding:5px;">${item.description || ''}</td>
-                        <td style="border:1px solid #ccc;padding:5px;">${item.purpose || ''}</td>
-                        <td style="text-align:center;border:1px solid #ccc;padding:5px;">${item.quantity || 0}</td>
-                        <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                        <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                        <td style="border:1px solid #ccc;padding:5px;">${item.notes || ''}</td></tr>`;
-                });
-                for (let e = filledCount; e < 5; e++) {
-                    itemRows += `<tr>
-                        <td style="text-align:center;border:1px solid #ccc;padding:5px;color:#ccc;">${e + 1}</td>
-                        <td style="border:1px solid #ccc;padding:5px;height:22px;"></td>
-                        <td style="border:1px solid #ccc;padding:5px;"></td>
-                        <td style="text-align:center;border:1px solid #ccc;padding:5px;">0</td>
-                        <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">0.00</td>
-                        <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ 0.00</td>
-                        <td style="border:1px solid #ccc;padding:5px;"></td></tr>`;
-                }
-                const approverName  = row.approver_name ?? '';
-                const approvedAt    = row.approved_at  ? new Date(row.approved_at).toLocaleDateString('en-PH',  { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + new Date(row.approved_at).toLocaleTimeString('en-PH',  { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-                const receiverName  = row.receiver_name ?? '';
-                const receivedAt    = row.received_at  ? new Date(row.received_at).toLocaleDateString('en-PH',  { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + new Date(row.received_at).toLocaleTimeString('en-PH',  { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-                const approverSigPath = (row.status === 'approved' && row.approver_signature) ? `<?= BASE_URL ?>/${row.approver_signature}` : '';
-                const receiverSigPath = row.receiver_signature_path ? `<?= BASE_URL ?>/${row.receiver_signature_path}` : '';
-                const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Budget Request - ${row.control_no}</title>
-                <style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}table{width:100%;border-collapse:collapse;}th{background:#f97316;color:white;padding:6px 8px;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.label{font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#555;}.control-box{background:#f97316;color:white;font-weight:bold;text-align:center;padding:4px 8px;font-size:9px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.sig-line{border-top:1px solid #999;margin-top:40px;}@page{size:A4 landscape;margin:1cm;}</style></head><body>
-                <div style="border:1px solid #111;">
-                <table style="border-bottom:1px solid #111;"><tr>
-                <td style="width:60%;border-right:1px solid #111;padding:10px;"><table><tr>
-                <td style="width:60px;"><img src="<?= BASE_URL ?>/icon/logo.png" style="width:50px;height:50px;object-fit:contain;"></td>
-                <td style="border-left:1px solid #aaa;padding-left:10px;"><strong style="font-size:11px;text-transform:uppercase;">Noblehome Construction Corporation</strong><br>
-                <span style="font-size:9px;color:#666;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City<br>noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</span></td></tr></table></td>
-                <td style="width:40%;padding:0;vertical-align:top;"><div style="font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:8px;border-bottom:1px solid #111;">Budget Request Form</div>
-                <table style="width:100%;"><tr>
-                <td style="width:50%;border-right:1px solid #111;padding:0;vertical-align:top;"><div class="control-box">Control No.</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.control_no}</div></td>
-                <td style="width:50%;padding:0;vertical-align:top;"><div class="control-box">Date</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.date_requested}</div></td>
-                </tr></table></td></tr></table>
-                <table style="border-bottom:1px solid #111;"><tr>
-                <td style="width:34%;border-right:1px solid #111;padding:8px;"><span class="label">Requestor Name:</span><span style="font-size:12px;margin-left:5px;">${row.requestor_name}</span></td>
-                <td style="width:33%;border-right:1px solid #111;padding:8px;"><span class="label">Purpose of Request:</span><span style="font-size:12px;margin-left:5px;">${row.purpose}</span></td>
-                <td style="width:33%;padding:8px;"><span class="label">Category:</span><span style="font-size:12px;margin-left:5px;">${row.request_category ? row.request_category.toUpperCase() : '—'}</span></td>
-                </tr></table>
-                <table style="border-collapse:collapse;width:100%;border-bottom:1px solid #111;"><thead><tr>
-                <th style="width:5%;border:1px solid #ea6c00;">No.</th><th style="border:1px solid #ea6c00;text-align:left;">Items / Description</th>
-                <th style="border:1px solid #ea6c00;text-align:left;">Purpose</th><th style="width:8%;border:1px solid #ea6c00;">Qty</th>
-                <th style="width:13%;border:1px solid #ea6c00;">Unit Price</th><th style="width:13%;border:1px solid #ea6c00;">Amount</th>
-                <th style="border:1px solid #ea6c00;text-align:left;">Notes</th></tr></thead>
-                <tbody>${itemRows}</tbody>
-                <tfoot><tr><td colspan="5" style="text-align:right;font-weight:bold;padding:6px;border:1px solid #ccc;font-size:10px;text-transform:uppercase;">Total:</td>
-                <td style="text-align:right;font-weight:bold;font-family:monospace;border:1px solid #ccc;padding:6px;">₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #ccc;"></td></tr></tfoot></table>
-                <table style="width:100%;"><tr>
-                <td style="width:50%;border-right:1px solid #111;padding:15px 20px;vertical-align:bottom;"><span class="label">Approved By:</span>
-                <div style="margin-top:20px;text-align:center;position:relative;">${approverSigPath ? `<img src="${approverSigPath}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}<strong style="font-size:12px;">${approverName}</strong><br><span style="font-size:9px;color:#888;">${approvedAt}</span></div>
-                <div class="sig-line"></div><div style="text-align:center;font-size:9px;text-transform:uppercase;color:#888;margin-top:3px;">Head</div></td>
-                <td style="width:50%;padding:15px 20px;vertical-align:bottom;"><span class="label">Received By:</span>
-                <div style="margin-top:20px;text-align:center;position:relative;">
-                ${receiverSigPath ? `<img src="${receiverSigPath}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}
-                <strong style="font-size:12px;">${receiverName}</strong><br>
-                <span style="font-size:9px;color:#888;">${receivedAt}</span></div>
-                <div class="sig-line"></div></td></tr></table>
-                </div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script></body></html>`;
-                const w = window.open('', '_blank');
-                w.document.write(html);
-                w.document.close();
-            });
+        const row = allRequests.find(r => r.id == id);
+        if (!row) return;
+
+        const items = (row.items ?? []).filter(i => i.description);
+        const total = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+        const td = 'border:1px solid #ccc;padding:5px;';
+
+        let itemRows = items.map((item, idx) => `<tr>
+            <td style="text-align:center;${td}">${idx + 1}</td>
+            <td style="${td}">${escHtml(item.description)}</td>
+            <td style="${td}">${escHtml(item.purpose)}</td>
+            <td style="text-align:center;${td}">${escHtml(item.quantity || 0)}</td>
+            <td style="text-align:right;${td}font-family:monospace;">${fmtMoney(item.unit_price)}</td>
+            <td style="text-align:right;${td}font-family:monospace;">₱ ${fmtMoney(item.amount)}</td>
+            <td style="${td}">${escHtml(item.notes)}</td></tr>`).join('');
+
+        for (let e = items.length; e < 5; e++) {
+            itemRows += `<tr>
+                <td style="text-align:center;${td}color:#ccc;">${e + 1}</td>
+                <td style="${td}height:22px;"></td><td style="${td}"></td>
+                <td style="text-align:center;${td}">0</td>
+                <td style="text-align:right;${td}font-family:monospace;">0.00</td>
+                <td style="text-align:right;${td}font-family:monospace;">₱ 0.00</td>
+                <td style="${td}"></td></tr>`;
+        }
+
+        const approverName = row.approver_name ?? '';
+        const receiverName = row.receiver_name ?? '';
+        const approvedAt = fmtDateTime(row.approved_at);
+        const receivedAt = fmtDateTime(row.received_at);
+        const approverSigPath = (row.status === 'approved' && row.approver_signature) ? `${API}/${row.approver_signature}` : '';
+        const receiverSigPath = row.receiver_signature_path ? `${API}/${row.receiver_signature_path}` : '';
+
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Budget Request - ${escHtml(row.control_no)}</title>
+        <style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}table{width:100%;border-collapse:collapse;}th{background:#f97316;color:white;padding:6px 8px;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.label{font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#555;}.control-box{background:#f97316;color:white;font-weight:bold;text-align:center;padding:4px 8px;font-size:9px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.sig-line{border-top:1px solid #999;margin-top:40px;}@page{size:A4 landscape;margin:1cm;}</style></head><body>
+        <div style="border:1px solid #111;">
+        <table style="border-bottom:1px solid #111;"><tr>
+        <td style="width:60%;border-right:1px solid #111;padding:10px;"><table><tr>
+        <td style="width:60px;"><img src="${API}/icon/logo.webp" style="width:50px;height:50px;object-fit:contain;"></td>
+        <td style="border-left:1px solid #aaa;padding-left:10px;"><strong style="font-size:11px;text-transform:uppercase;">Noblehome Construction Corporation</strong><br>
+        <span style="font-size:9px;color:#666;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City<br>noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</span></td></tr></table></td>
+        <td style="width:40%;padding:0;vertical-align:top;"><div style="font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:8px;border-bottom:1px solid #111;">Budget Request Form</div>
+        <table style="width:100%;"><tr>
+        <td style="width:50%;border-right:1px solid #111;padding:0;vertical-align:top;"><div class="control-box">Control No.</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${escHtml(row.control_no)}</div></td>
+        <td style="width:50%;padding:0;vertical-align:top;"><div class="control-box">Date</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${escHtml(row.date_requested)}</div></td>
+        </tr></table></td></tr></table>
+        <table style="border-bottom:1px solid #111;"><tr>
+        <td style="width:34%;border-right:1px solid #111;padding:8px;"><span class="label">Requestor Name:</span><span style="font-size:12px;margin-left:5px;">${escHtml(row.requestor_name)}</span></td>
+        <td style="width:33%;border-right:1px solid #111;padding:8px;"><span class="label">Purpose of Request:</span><span style="font-size:12px;margin-left:5px;">${escHtml(row.purpose)}</span></td>
+        <td style="width:33%;padding:8px;"><span class="label">Category:</span><span style="font-size:12px;margin-left:5px;">${row.request_category ? escHtml(row.request_category.toUpperCase()) : '—'}</span></td>
+        </tr></table>
+        <table style="border-collapse:collapse;width:100%;border-bottom:1px solid #111;"><thead><tr>
+        <th style="width:5%;border:1px solid #ea6c00;">No.</th><th style="border:1px solid #ea6c00;text-align:left;">Items / Description</th>
+        <th style="border:1px solid #ea6c00;text-align:left;">Purpose</th><th style="width:8%;border:1px solid #ea6c00;">Qty</th>
+        <th style="width:13%;border:1px solid #ea6c00;">Unit Price</th><th style="width:13%;border:1px solid #ea6c00;">Amount</th>
+        <th style="border:1px solid #ea6c00;text-align:left;">Notes</th></tr></thead>
+        <tbody>${itemRows}</tbody>
+        <tfoot><tr><td colspan="5" style="text-align:right;font-weight:bold;padding:6px;border:1px solid #ccc;font-size:10px;text-transform:uppercase;">Total:</td>
+        <td style="text-align:right;font-weight:bold;font-family:monospace;border:1px solid #ccc;padding:6px;">₱ ${fmtMoney(total)}</td>
+        <td style="border:1px solid #ccc;"></td></tr></tfoot></table>
+        <table style="width:100%;"><tr>
+        <td style="width:50%;border-right:1px solid #111;padding:15px 20px;vertical-align:bottom;"><span class="label">Approved By:</span>
+        <div style="margin-top:20px;text-align:center;position:relative;">${approverSigPath ? `<img src="${escHtml(approverSigPath)}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}<strong style="font-size:12px;">${escHtml(approverName)}</strong><br><span style="font-size:9px;color:#888;">${escHtml(approvedAt)}</span></div>
+        <div class="sig-line"></div><div style="text-align:center;font-size:9px;text-transform:uppercase;color:#888;margin-top:3px;">Head</div></td>
+        <td style="width:50%;padding:15px 20px;vertical-align:bottom;"><span class="label">Received By:</span>
+        <div style="margin-top:20px;text-align:center;position:relative;">
+        ${receiverSigPath ? `<img src="${escHtml(receiverSigPath)}" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:60px;max-width:180px;object-fit:contain;">` : ''}
+        <strong style="font-size:12px;">${escHtml(receiverName)}</strong><br>
+        <span style="font-size:9px;color:#888;">${escHtml(receivedAt)}</span></div>
+        <div class="sig-line"></div></td></tr></table>
+        </div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script></body></html>`;
+
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
     }
 
-    // ─── Dates Dropdown ─────────────────────────────────
-    let allDatesCache = [];
-
-    function buildDatesDropdown() {
-        const byDate = {};
-        allRequests.forEach(r => {
-            const d = r.date_requested ? r.date_requested.substring(0, 10) : null;
-            if (!d) return;
-            if (!byDate[d]) byDate[d] = { pending: 0, approved: 0, rejected: 0, total: 0 };
-            byDate[d][r.status] = (byDate[d][r.status] || 0) + 1;
-            byDate[d].total++;
-        });
-        allDatesCache = Object.entries(byDate)
-            .sort((a, b) => b[0].localeCompare(a[0]))
-            .map(([date, counts]) => ({ date, ...counts }));
-        document.getElementById('dates-dropdown-count').textContent =
-            allDatesCache.length + ' date' + (allDatesCache.length !== 1 ? 's' : '');
-        renderDatesList(allDatesCache);
-    }
-
+    // ─── Dates Dropdown ──────────────────────────────────
     function renderDatesList(dates) {
         const ul = document.getElementById('dates-list');
         if (!dates.length) {
@@ -1220,20 +1196,20 @@
             const d = new Date(date + 'T00:00:00');
             const label = d.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
             const dots = [
-                pending  ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400" title="${pending} pending"></span>`  : '',
+                pending ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400" title="${pending} pending"></span>` : '',
                 approved ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400"  title="${approved} approved"></span>` : '',
                 rejected ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-red-400"    title="${rejected} rejected"></span>` : '',
             ].join('');
             return `
             <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition group"
-                onclick="jumpToDate('${date}')">
+                data-date="${escHtml(date)}" onclick="jumpToDate(this.dataset.date)">
                 <div class="flex items-center gap-2">
                     <i class="fa-regular fa-calendar text-gray-300 group-hover:text-orange-400 transition text-xs"></i>
-                    <span class="text-xs font-medium text-gray-700">${label}</span>
+                    <span class="text-xs font-medium text-gray-700">${escHtml(label)}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
                     ${dots}
-                    <span class="text-[10px] font-bold text-orange-500 bg-orange-50 group-hover:bg-white border border-orange-200 rounded-full px-1.5 py-0.5 ml-1">${total}</span>
+                    <span class="text-[10px] font-bold text-orange-500 bg-orange-50 group-hover:bg-white border border-orange-200 rounded-full px-1.5 py-0.5 ml-1">${Number(total)}</span>
                 </div>
             </li>`;
         }).join('');
@@ -1257,21 +1233,26 @@
         renderDatesList(allDatesCache);
     }
 
+    // Lumipat sa buwan ng petsa, i-load ito, saka buksan ang araw
     function jumpToDate(dateStr) {
         document.getElementById('dates-dropdown').classList.add('hidden');
         const d = new Date(dateStr + 'T00:00:00');
         calYear = d.getFullYear(); calMonth = d.getMonth();
-        renderCalendar();
-        const requests = allRequests.filter(r => r.date_requested?.startsWith(dateStr));
-        openDayPanel(dateStr, requests);
-        document.getElementById('calendar-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        selectedDate = null;
+        fetchRequests(true).then(() => {
+            openDayPanel(dateStr, allRequests.filter(r => r.date_requested?.startsWith(dateStr)));
+            document.getElementById('calendar-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
     }
 
-    document.addEventListener('click', () => {
-        document.getElementById('dates-dropdown').classList.add('hidden');
+    // Isara lang ang dropdown kapag nag-click sa LABAS nito
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#dates-dropdown-wrap')) {
+            document.getElementById('dates-dropdown').classList.add('hidden');
+        }
     });
 
-    // ─── Highlight ───────────────────────────────────────
+    // ─── Highlight (galing sa notification link) ─────────
     const _highlightStyle = document.createElement('style');
     _highlightStyle.textContent = `
         @keyframes badgePulse { 0%{transform:scale(1);opacity:1;} 50%{transform:scale(1.4);opacity:0.5;} 100%{transform:scale(1);opacity:1;} }
@@ -1285,19 +1266,16 @@
         const jumpDate = params.get('date');
         if (!highlightId) return;
         if (jumpDate) {
-            const d = new Date(jumpDate + 'T00:00:00');
-            calYear = d.getFullYear(); calMonth = d.getMonth();
-            renderCalendar();
-            const requests = allRequests.filter(r => r.date_requested?.startsWith(jumpDate));
-            openDayPanel(jumpDate, requests);
+            // naka-load na ang buwan na ito (tingnan ang Init sa ibaba)
+            openDayPanel(jumpDate, allRequests.filter(r => r.date_requested?.startsWith(jumpDate)));
         }
         let tries = 0;
         const interval = setInterval(() => {
             tries++;
             const isMobile = window.innerWidth < 768;
             const row = isMobile
-                ? document.querySelector(`#day-requests-cards div[data-id="${highlightId}"]`)
-                : document.querySelector(`#day-requests-tbody tr[data-id="${highlightId}"]`);
+                ? document.querySelector(`#day-requests-cards div[data-id="${CSS.escape(highlightId)}"]`)
+                : document.querySelector(`#day-requests-tbody tr[data-id="${CSS.escape(highlightId)}"]`);
             if (row) {
                 clearInterval(interval);
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1352,8 +1330,20 @@
     function hideCatTooltip() { document.getElementById('cat-tooltip').classList.add('hidden'); }
 
     // ─── Init ────────────────────────────────────────────
-    fetchRequests();
+    // Kung may ?date= sa URL (galing sa notification), i-load agad ang buwan na iyon
+    (function () {
+        const jump = new URLSearchParams(window.location.search).get('date');
+        if (jump) {
+            const d = new Date(jump + 'T00:00:00');
+            if (!isNaN(d)) { calYear = d.getFullYear(); calMonth = d.getMonth(); }
+        }
+    })();
+
+    fetchRequests(true);
+    fetchDates();
+
+    // Pagbalik sa tab: i-refresh lang kapag may nagbago
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') { previousCount = 0; fetchRequests(); }
+        if (document.visibilityState === 'visible') { fetchRequests(); fetchDates(); }
     });
 </script>

@@ -14,3 +14,4 @@ const POSITION_STAFF    = 'staff';
 const POSITION_CUSTODIAN    = 'custodian';
 const POSITION_CUSTOASSISTANT = 'custoassistant';
 const POSITION_SUPERADMIN = 'superadmin';
+
