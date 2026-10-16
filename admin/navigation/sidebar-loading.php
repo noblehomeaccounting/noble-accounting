@@ -93,20 +93,34 @@ define('NH_LOADER_INCLUDED', true);
 </style>
 
 <script>
-    // Loader fill follows the real page-load progress
+    // Loader fill follows the real page-load progress.
+    // Hindi na naiipit: hindi na hinihintay ang lahat ng image/CDN (window.load),
+    // may max na oras, at gumagana kahit nasa background tab o pinindot ang Back.
     (function () {
         var loader = document.getElementById('nh-loader');
         var wave = document.querySelector('#nhLiquid path');
         if (!loader || !wave) return;
 
         var EMPTY = 1750, FULL = -80;   // liquid Y position: empty -> full
-        var shown = 0, target = 0, done = false, start = Date.now();
+        var shown = 0, target = 0, done = false, hidden = false, start = Date.now();
+        var MAX_WAIT = 6000;             // pinakamatagal na makikita ang loader (ms)
+        var AFTER_READY = 1500;          // palugit sa images pagkatapos ma-parse ang HTML (ms)
 
         function paint(p) {
             wave.setAttribute('transform', 'translate(0 ' + (EMPTY + (FULL - EMPTY) * p / 100) + ')');
         }
         function bump(p) { if (p > target) target = p; }
         paint(0);
+
+        // isang beses lang itatago; hindi umaasa sa requestAnimationFrame
+        function hide() {
+            if (hidden) return;
+            hidden = true;
+            clearInterval(creep);
+            paint(100);
+            loader.classList.add('nh-hide');
+            setTimeout(function () { if (loader.parentNode) loader.remove(); }, 600);
+        }
 
         // 1) HTML still downloading: creep slowly up to 35%
         var creep = setInterval(function () {
@@ -118,37 +132,46 @@ define('NH_LOADER_INCLUDED', true);
             bump(60);
             var imgs = Array.prototype.slice.call(document.images);
             var total = imgs.length, loaded = 0;
-            if (!total) return;
-            function tick() { loaded++; bump(60 + 35 * loaded / total); }
-            imgs.forEach(function (img) {
-                if (img.complete) tick();
-                else {
-                    img.addEventListener('load', tick);
-                    img.addEventListener('error', tick);
-                }
-            });
+            if (total) {
+                var tick = function () { loaded++; bump(60 + 35 * loaded / total); };
+                imgs.forEach(function (img) {
+                    if (img.complete) tick();
+                    else {
+                        img.addEventListener('load', tick);
+                        img.addEventListener('error', tick);
+                    }
+                });
+            }
+            // huwag hintayin ang mabagal na image/pirma/CDN nang matagal
+            setTimeout(finish, AFTER_READY);
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onReady);
         else onReady();
 
-        // 3) everything loaded: 100% then hide
-        function finish() { done = true; bump(100); }
+        // 3) everything loaded (o naubos ang palugit): 100% then hide
+        function finish() {
+            if (done) return;
+            done = true;
+            bump(100);
+            // kung nasa background ang tab, hindi tumatakbo ang animation — itago agad
+            if (document.hidden) return hide();
+            setTimeout(hide, 700);   // siguradong mawawala kahit tumigil ang animation
+        }
         window.addEventListener('load', finish);
-        setTimeout(finish, 15000); // safety: never block the page forever
+        setTimeout(finish, MAX_WAIT);
+        setTimeout(hide, MAX_WAIT + 1500);   // huling safety
+
+        // Back/Forward (bfcache) o bumalik sa tab: huwag ipakita ulit ang naiwang loader
+        window.addEventListener('pageshow', function (e) { if (e.persisted) hide(); });
+        document.addEventListener('visibilitychange', function () { if (!document.hidden && done) hide(); });
 
         // smooth the liquid toward the target
         (function frame() {
+            if (hidden) return;
             shown += (target - shown) * 0.12;
             if (done && target - shown < 0.5) shown = 100;
             paint(shown);
-            if (shown >= 100) {
-                clearInterval(creep);
-                setTimeout(function () {
-                    loader.classList.add('nh-hide');
-                    setTimeout(function () { loader.remove(); }, 600);
-                }, 250);
-                return;
-            }
+            if (shown >= 100) { setTimeout(hide, 250); return; }
             requestAnimationFrame(frame);
         })();
     })();
