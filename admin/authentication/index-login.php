@@ -19,6 +19,14 @@ function getRouteFor($role, $position, $branch)
         };
     }
 
+    if ($role === 'PURCHASE ORDER DEPARTMENT') {
+        return $isMainBranch ? 'purchaseorder' : 'crmpurchaseorder';
+    }
+
+    if ($role === 'PROJECT COORDINATOR DEPARTMENT') {
+        return $isMainBranch ? 'projectcoordinator' : 'crmprojectcoordinator';
+    }
+
     if ($role === 'SALES AND MARKETING DEPARTMENT') {
         return $isMainBranch ? 'salesmarket' : 'crmsales';
     }
@@ -37,7 +45,7 @@ function getRouteFor($role, $position, $branch)
 
     $roleRoutes = [
         'IT DEPARTMENT' => 'it',
-        'HUMAN RESOURCES DEPARTMENT' => 'humanresource',
+        'HUMAN RESOURCES DEPARTMENT' => 'hrprofile',
         'OPERATIONS DEPARTMENT' => 'operation',
         'GRAPHIC DESIGN DEPARTMENT' => 'graphicdesign',
     ];

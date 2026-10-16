@@ -260,7 +260,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         <div class="px-8 pt-7 pb-5">
             <div class="flex items-start justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <img src="<?= BASE_URL ?>/icon/logo.png" class="h-11 w-11 object-contain" alt="logo">
+                    <img src="<?= BASE_URL ?>/icon/logo.webp" class="h-11 w-11 object-contain" alt="logo">
                     <div>
                         <p class="text-amber-700 text-[11px] font-semibold tracking-[0.15em] uppercase mb-1">
                             CRM Inquiry Form

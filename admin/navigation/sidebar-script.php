@@ -4,6 +4,55 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g,
         c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+    // ── User Hover Card ───────────────────────────────────────
+    var userCardTimer;
+
+    function positionUserCard() {
+        var block = document.getElementById('sidebar-user-block');
+        var sidebar = document.getElementById('sidebar');
+        var card = document.getElementById('user-card');
+        if (!block || !sidebar || !card) return;
+
+        var b = block.getBoundingClientRect();
+        var s = sidebar.getBoundingClientRect();
+        card.style.left = (s.right + 8) + 'px';
+        card.style.bottom = Math.max(8, window.innerHeight - b.bottom) + 'px';
+    }
+
+    function showUserCard() {
+        clearTimeout(userCardTimer);
+        var card = document.getElementById('user-card');
+        if (!card) return;
+
+        var dot = document.getElementById('presence-dot');
+        var online = dot && dot.classList.contains('bg-green-400');
+
+        var cardDot = document.getElementById('user-card-dot');
+        var cardStatus = document.getElementById('user-card-status');
+        cardDot.className = 'w-2 h-2 rounded-full ' + (online ? 'bg-green-400' : 'bg-gray-300');
+        cardStatus.textContent = online ? 'Online' : 'Away';
+        cardStatus.className = 'text-[11px] font-semibold ' + (online ? 'text-green-500' : 'text-gray-400');
+
+        positionUserCard();
+        card.classList.add('show');
+    }
+
+    function hideUserCard() {
+        userCardTimer = setTimeout(function () {
+            var card = document.getElementById('user-card');
+            if (card) card.classList.remove('show');
+        }, 150);
+    }
+
+    function toggleUserCard() { // click: para sa touch devices lang
+        if (!window.matchMedia('(hover: none)').matches) return;
+        var card = document.getElementById('user-card');
+        if (!card) return;
+        card.classList.contains('show') ? card.classList.remove('show') : showUserCard();
+    }
+
+    window.addEventListener('resize', positionUserCard);
+
     // ── Mobile Drawer ─────────────────────────────────────────
     function openMobileDrawer() {
         document.getElementById('mobile-drawer').classList.add('open');
@@ -22,39 +71,6 @@
     // ── Desktop Sidebar Collapse ──────────────────────────────
     const SIDEBAR_KEY = 'sidebar_collapsed';
     let sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === 'true';
-
-    const userTooltip = document.createElement('div');
-    userTooltip.id = 'user-tooltip';
-    userTooltip.className = 'fixed z-[9999] hidden pointer-events-none';
-    userTooltip.innerHTML = `
-        <div style="display:flex;align-items:center;gap:0;">
-            <div style="width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-right:6px solid #111827;flex-shrink:0;"></div>
-            <div style="background:#111827;color:white;border-radius:8px;padding:8px 12px;white-space:nowrap;">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:<?= $isOnline ? '#4ade80' : '#9ca3af' ?>;flex-shrink:0;"></span>
-                    <span style="font-size:11px;font-weight:600;color:<?= $isOnline ? '#4ade80' : '#9ca3af' ?>"><?= $isOnline ? 'Online' : 'Away' ?></span>
-                </div>
-                <p style="font-size:12px;font-weight:600;margin:0;"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?></p>
-                <p style="font-size:10px;color:#9ca3af;margin:2px 0 0;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></p>
-            </div>
-        </div>`;
-    document.body.appendChild(userTooltip);
-
-    const userBlock = document.getElementById('sidebar-user-block');
-    if (userBlock) {
-        userBlock.addEventListener('mouseenter', () => {
-            const rect = userBlock.getBoundingClientRect();
-            userTooltip.style.visibility = 'hidden';
-            userTooltip.classList.remove('hidden');
-            const tipHeight = userTooltip.offsetHeight;
-            let top = rect.top + (rect.height / 2) - (tipHeight / 2);
-            if (top + tipHeight > window.innerHeight - 20) top = rect.bottom - tipHeight;
-            userTooltip.style.left = (rect.right + 8) + 'px';
-            userTooltip.style.top = top + 'px';
-            userTooltip.style.visibility = 'visible';
-        });
-        userBlock.addEventListener('mouseleave', () => userTooltip.classList.add('hidden'));
-    }
 
     function applySidebarState() {
         const sidebar = document.getElementById('sidebar');

@@ -175,6 +175,18 @@ function bomRenderHtml(array $bom): string
             : '')
         . '</div>';
 
+    // Purchase Order (PO) signature — filled in once PO receives the BOM
+    // (see purchaseorderajax.php).
+    $receivedSigUri = bomSignatureDataUri($bom['received_by_signature_path'] ?? null);
+    $receivedCell = '<div style="position:relative;height:46px;">'
+        . '<div style="position:relative;z-index:1;padding-top:26px;">' . bomEsc($bom['received_by']) . '</div>'
+        . ($receivedSigUri
+            ? '<div style="position:absolute;top:-6px;left:0;right:0;text-align:center;z-index:2;">'
+                . '<img src="' . $receivedSigUri . '" style="max-height:50px;max-width:160px;">'
+              . '</div>'
+            : '')
+        . '</div>';
+
     return '
     <html><head><meta charset="UTF-8"><style>
         @page { margin: 18px; }
@@ -251,7 +263,7 @@ td, th { border: 1px solid #000; padding: 7px 8px; vertical-align: middle; word-
         <tr>
             <td class="sig-name">' . $requestedCell . '</td>
             <td class="sig-name">' . bomEsc($bom['noted_by']) . '</td>
-            <td class="sig-name">' . bomEsc($bom['received_by']) . '</td>
+            <td class="sig-name">' . $receivedCell . '</td>
             <td class="sig-name">' . $approvedCell . '</td>
         </tr>
         <tr>

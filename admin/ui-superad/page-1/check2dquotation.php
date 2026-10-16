@@ -1,7 +1,5 @@
 <?php
 // check2dquotation.php
-// FINAL 2D & Quotation approval — SUPERADMIN only.
-// (Initial approval is now handled by the Designer Head: checkdesigner2dquotation.php)
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';

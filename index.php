@@ -58,6 +58,8 @@ $adminRoutes = [
     'loginadmin',   
     'sidebarpoll',
     'adminhome',
+    'verifyid',
+    'adminprofile',
 
     // annoucnement             
     'saveannouncement',             
@@ -89,7 +91,9 @@ $adminRoutes = [
     'announcementdashboard',            
     'announcement', 
     'accountingmonitoring', 
-    'accountinggraph',         
+    'accountinggraph',
+    'accountingpurchaseorder',  
+    'accountingpurchaseorderajax',
     'fetch-budget-graph-data',    
     'accountingsignatured',     
     'accountingtracking',     
@@ -107,7 +111,9 @@ $adminRoutes = [
 
     //staffaccounting
     'accountingstaff',                  
-    'accountingstaffdashboard',         
+    'accountingstaffdashboard',     
+    'accountingstaffpurchase',      
+    'accountingstaffpurchaseajax',  
     'fetchapproved',                    
     'markreceived',                     
     'fetchacknowledged',                
@@ -115,7 +121,9 @@ $adminRoutes = [
 
     // custodian
     'accountingcustodian',              
-    'accountingcustodiandashboard',     
+    'accountingcustodiandashboard',   
+    'accountingcustodianpurchaseorder',
+    'custodianpurchaseajax',            
     'fetchreceived',                    
     'fetchreceiveddates',
     'submitrequestvoucher',             
@@ -164,8 +172,29 @@ $adminRoutes = [
     'releasevoucher',                   
 
     // hr
-    'humanresourcerequest',    
-           
+    'humanresourcerequest',  
+    'hrprofile',  
+    'profileqrregen',
+    'hrannouncement',
+    'listaccount',
+    'payrollannouncement',
+    'profileajax', 
+    'profilelinkajax',     
+    'profileupdateajax',    
+    'profileofficialajax', 
+    'listaccountajax',
+
+    // purchase order
+    'crmpurchaseorder',
+    'purchaseorderajax',
+    'transmittal',
+    'transmittalajax',
+    'clientseries',
+    'clientseriesajax',
+    'transmittalsummary',
+    'transmittalsummaryajax',
+    'purchaserequest',
+    'purchaserequestajax',
 
     // operation
     'operation',                        
@@ -238,7 +267,10 @@ $adminRoutes = [
     // super admin backend page 3
     'crmwoodapprovalajax',
 
-    
+    // purchase order page 4
+    'purchaseorderapproval',
+    'purchaseorderapprovalajax',
+
     'unauthorized',                    
     'fetchrequests',                   
     'actionrequest',    
@@ -257,6 +289,9 @@ $adminRoutes = [
     'setactivesignature',
     'deletesignature',
     'updatesignature',
+
+    //profile
+    'profile',
 
     // crm management page 1
     'crmajax',
@@ -294,6 +329,7 @@ $routes = [
 
     'home'                             => 'animation.php',
     'adminhome'                        => 'admin/authentication/index-animation.php',
+    'adminprofile'                     => 'admin/navigation/ui-profile/adminprofile.php',
     
 
     'home1'                            => 'user/authentication/index-login.php',
@@ -309,6 +345,9 @@ $routes = [
     'verify'                           => 'user/authentication/index-verify.php',
     'logoutuser'                       => 'user/authentication/index-logout.php',
     'fetchannouncements'               => 'user/navigation/backend/backend-announcement/fetchannouncements.php',
+    'userprofile'                      => 'user/ui/index-userprofile.php',
+    'verifyid'                           => 'verifyview_id.php',
+
     'saveannouncement'                 => 'admin/announcementcentral/save-announcement.php',
     'deleteannouncement'               => 'admin/announcementcentral/deleteannouncement.php',
     'fetchannouncementsadmin'          => 'admin/announcementcentral/fetchannouncementsadmin.php',
@@ -349,17 +388,19 @@ $routes = [
     // accounting
     'accounting'                       => 'admin/ui-accounting/page-1/index-accounting-main.php',
     'accountingfollowups'              => 'admin/ui-accounting/page-1/index-accounting-followups.php',
-    'download-pdfbudgetrequest'        => 'admin/ui-accounting/backend/backend-page1/download-pdfbudgetrequest.php',
     'accountingdashboard'              => 'admin/ui-accounting/page-1/index-accounting-dashboard.php',
     'announcementdashboard'            => 'admin/ui-accounting/page-1/index-accounting-dashboard.php',
     'announcement'                     => 'admin/ui-accounting/page-1/index-accounting-announcement.php',
     'accountingmonitoring'             => 'admin/ui-accounting/page-1/index-accounting-monitoring.php',
     'accountinggraph'                  => 'admin/ui-accounting/page-1/index-accounting-graph.php',
-    'fetch-budget-graph-data'          => 'admin/ui-accounting/backend/backend-page1/fetch-budget-graph-data.php',
     'accountingsignatured'             => 'admin/ui-accounting/page-1/index-accounting-signatured.php',
     'accountingtracking'               => 'admin/ui-accounting/page-1/index-accounting-tracking.php',
     'accountinggeneralsheet'           => 'admin/ui-accounting/page-1/index-accounting-generalsheet.php',
     'accountingpettycash'              => 'admin/ui-accounting/page-1/index-accounting-pettycash.php',
+    'accountingpurchaseorder'          => 'admin/ui-accounting/page-1/index-accounting-purchaseorder.php',
+    'accountingpurchaseorderajax'      => 'admin/ui-accounting/backend/backend-page1/accountingpurchaseorderajax.php',
+    'download-pdfbudgetrequest'        => 'admin/ui-accounting/backend/backend-page1/download-pdfbudgetrequest.php',
+    'fetch-budget-graph-data'          => 'admin/ui-accounting/backend/backend-page1/fetch-budget-graph-data.php',
     'savenoblegeneralsheet'            => 'admin/ui-accounting/backend/backend-page1/noble-save-generalsheet.php',
     'fetchnoblegeneralsheet'           => 'admin/ui-accounting/backend/backend-page1/noble-fetch-generalsheet.php',
     'deletenoblegeneralsheet'          => 'admin/ui-accounting/backend/backend-page1/noble-delete-generalsheet.php',
@@ -374,6 +415,8 @@ $routes = [
     //staffaccounting
     'accountingstaff'                  => 'admin/ui-accounting/page-4/index-staff-main.php',
     'accountingstaffdashboard'         => 'admin/ui-accounting/page-4/index-staff-dashboard.php',
+    'accountingstaffpurchase'          => 'admin/ui-accounting/page-4/index-staff-purchase.php',
+    'accountingstaffpurchaseajax'      => 'admin/ui-accounting/backend/backend-staff/accountingstaffpurchaseajax.php',
     'fetchapproved'                    => 'admin/ui-accounting/backend/backend-staff/index-staff-fetch-approved.php',
     'markreceived'                     => 'admin/ui-accounting/backend/backend-staff/index-staff-mark-received.php',
     'fetchacknowledged'                => 'admin/ui-accounting/backend/backend-staff/index-staff-acknowledge.php',
@@ -383,12 +426,15 @@ $routes = [
     // custodian
     'accountingcustodian'              => 'admin/ui-accounting/page-3/index-custodian-main.php',
     'accountingcustodiandashboard'     => 'admin/ui-accounting/page-3/index-custodian-dashboard.php',
+    'accountingcustodianpurchaseorder' => 'admin/ui-accounting/page-3/index-custodian-purchaseorder.php',
+    'custodianpurchaseajax'            => 'admin/ui-accounting/backend/backend-custodian/custodianpurchaseajax.php',
     'fetchreceived'                    => 'admin/ui-accounting/backend/backend-custodian/index-custodian-fetch-received.php',
     'fetchreceiveddates'                => 'admin/ui-accounting/backend/backend-custodian/index-custodian-fetch-received-dates.php',
     'submitrequestvoucher'             => 'admin/ui-accounting/backend/backend-custodian/index-custodian-submit-voucher.php',
     'savegeneralsheet'                 => 'admin/ui-accounting/backend/backend-custodian/index-custodian-pettycashsavegeneralsheet.php',
     'fetchgeneralsheet'                => 'admin/ui-accounting/backend/backend-custodian/index-custodian-pettycashfetchgeneralsheet.php',
     'deletegeneralsheet'               => 'admin/ui-accounting/backend/backend-custodian/index-custodian-pettycashdeletegeneralsheet.php',
+    'accountingcustodianassistantpurchaseorder' => 'admin/ui-accounting/page-3/index-custodianassist-purchaseorder.php',
     'accountingcustodianassistant'     => 'admin/ui-accounting/page-3/index-custodianassist-main.php',
     'announcementcustodian'            => 'admin/ui-accounting/page-3/index-custodian-dashboard.php',
     'accountingcustodianpettycash'     => 'admin/ui-accounting/page-3/index-custodian-pettycash.php',
@@ -428,9 +474,33 @@ $routes = [
     'cashvoucherfetchall'              => 'admin/ui-accounting/backend/backend-cashvoucher/index-cashvoucherfetchall.php',
     'releasevoucher'                   => 'admin/ui-accounting/backend/backend-cashvoucher/index-cashreleasevoucher.php',
 
-    // hr
-    'humanresourcerequest'             => 'admin/ui-humanresource/humanresource-request.php',
+    // purchase order
+    'crmpurchaseorder'                 => 'admin/ui-po/page-1/index-purchaseorder-main.php',
+    'purchaserequest'                  => 'admin/ui-po/page-2/index-purchaserequest.php',
+    'transmittal'                      => 'admin/ui-po/page-3/transmittal.php',
+    'transmittalsummary'               => 'admin/ui-po/page-3/index-transmittalsummary.php',
+    'clientseries'                     => 'admin/ui-po/page-2/index-clientseries.php',
+    'transmittalajax'                  => 'admin/ui-po/backend/page-3/transmittalajax.php',
+    'transmittalsummaryajax'           => 'admin/ui-po/backend/page-3/transmittalsummaryajax.php',
+    'purchaseorderajax'                => 'admin/ui-po/backend/page-1/purchaseorderajax.php',
+    'purchaserequestajax'              => 'admin/ui-po/backend/page-2/purchaserequestajax.php',
+    'clientseriesajax'                 => 'admin/ui-po/backend/page-2/clientseriesajax.php',
 
+    // project coordinator
+    'projectcoordinator'                => 'admin/ui-projectcoordinator/page-1/index-projectcoordinator-main.php',
+
+    // hr
+    'humanresourcerequest'             => 'admin/ui-humanresource/page-1/humanresource-request.php',
+    'hrprofile'                        => 'admin/ui-humanresource/page-2/profileinsert.php',
+    'profileqrregen'                   => 'admin/ui-humanresource/page-2/profileqrregen.php',
+    'hrannouncement'                   => 'admin/ui-humanresource/page-3/hrannouncement.php',
+    'listaccount'                      => 'admin/ui-humanresource/page-5/listaccount.php',
+    'payrollannouncement'              => 'admin/ui-humanresource/page-4/payrollannouncement.php',
+    'profileajax'                      => 'admin/ui-humanresource/backend/page-1/profileajax.php',
+    'profilelinkajax'                  => 'admin/ui-humanresource/backend/page-1/profilelinkajax.php',
+    'profileupdateajax'                => 'admin/ui-humanresource/backend/page-1/profileupdateajax.php',
+    'profileofficialajax'              => 'admin/ui-humanresource/backend/page-1/profileofficialajax.php',
+    'listaccountajax'                  => 'admin/ui-humanresource/backend/page-5/listaccountajax.php',
 
     // operation
     'operation'                        => 'admin/ui-operation/index-operation-main.php',
@@ -502,6 +572,10 @@ $routes = [
     // super admin backend page 3
     'crmwoodapprovalajax'              => 'admin/ui-superad/backend/page-3/ewoodapprovalajax.php',
 
+    //super admin PurchaseOrder page 4
+    'purchaseorderapproval'            => 'admin/ui-superad/page-4/PurchaseOrder.php',
+    'purchaseorderapprovalajax'        => 'admin/ui-superad/backend/page-4/purchaseorderapprovalajax.php',
+
     'unauthorized'                     => 'admin/authentication/index-unauthorized.php',
     'fetchrequests'                    => 'admin/requestcentral/fetch-requests.php',
     'fetchrequestdates'                => 'admin/requestcentral/fetch-request-dates.php',
@@ -525,6 +599,9 @@ $routes = [
     'setactivesignature'               => 'admin/navigation/settings/backend/backend-signatured/set-active-signature.php',
     'deletesignature'                  => 'admin/navigation/settings/backend/backend-signatured/delete-signature.php',
     'updatesignature'                  => 'admin/navigation/settings/backend/backend-signatured/update-signature.php',
+
+    //profile
+    'profile'                          => 'admin/navigation/ui-profile/profile.php',
 
     // crm management page 1
     'crmajax'                          => 'admin/crm-management/backend/page-1/crm-options-ajax.php',

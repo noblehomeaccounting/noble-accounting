@@ -618,14 +618,15 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             // sigPath is expected to be a full URL (BASE_URL already applied
             // server-side); no BASE_URL prefix added here.
             const sigCell = (name, title, sigPath) => `
-                <td class="border border-gray-800 text-center align-bottom px-2 pt-8 pb-1.5 w-1/4">
-                    ${sigPath ? `<img src="${sigPath}" class="mx-auto max-h-9 max-w-[110px] -mb-1">` : ''}
-                    <p class="text-xs font-bold">${name ? ewoodEscapeHtml(name) : '&nbsp;'}</p>
-                    <p class="text-[9px] italic text-gray-600">${title ? ewoodEscapeHtml(title) : '&nbsp;'}</p>
-                </td>`;
+    <td class="relative border border-gray-800 text-center align-bottom px-2 pb-1.5 w-1/4 h-24">
+        ${sigPath ? `<img src="${sigPath}" alt="" class="pointer-events-none select-none absolute z-20 left-1/2 -translate-x-1/2 bottom-1 h-20 w-auto max-w-[95%] object-contain">` : ''}
+        <p class="text-xs font-bold">${name ? ewoodEscapeHtml(name) : '&nbsp;'}</p>
+        <p class="text-[9px] italic text-gray-600">${title ? ewoodEscapeHtml(title) : '&nbsp;'}</p>
+    </td>`;
 
             const requestedSigUrl = bom.requested_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.requested_by_signature_path)}` : null;
             const approvedSigUrl  = bom.approved_by_signature_path  ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.approved_by_signature_path)}`  : null;
+            const receivedSigUrl = bom.received_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.received_by_signature_path)}` : null;
 
             document.getElementById('ewoodBomViewBody').innerHTML = `
                 <table class="w-full border-collapse border-l-2 border-r-2 border-t-2 border-gray-800">
@@ -683,7 +684,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                     <tr>
                         ${sigCell(bom.requested_by, bom.requested_by_title, requestedSigUrl)}
                         ${sigCell(bom.noted_by, bom.noted_by_title, null)}
-                        ${sigCell(bom.received_by, bom.received_by_title, null)}
+                        ${sigCell(bom.received_by, bom.received_by_title, receivedSigUrl)}
                         ${sigCell(bom.approved_by, bom.approved_by_title, approvedSigUrl)}
                     </tr>
                     <tr><td colspan="4" class="text-center text-[8px] text-gray-500 py-1.5">PROPERTY OF NOBLEHOME CONSTRUCTION</td></tr>

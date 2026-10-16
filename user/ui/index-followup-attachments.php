@@ -31,6 +31,8 @@ if ($res) {
     }
 }
 
+$fuTotalAmount = array_sum(array_column($requests, 'total'));
+
 function followupCategoryLabel(?string $cat): string
 {
     return match ($cat) {
@@ -51,88 +53,163 @@ function followupCategoryLabel(?string $cat): string
     <?php include ROOT_PATH . '/link/top.php'; ?>
 
     <style>
-        /* Scrollable request list */
-        #fu-list {
+        /* Thin scrollbar */
+        .thin-scroll {
             scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, .5) transparent;
+            scrollbar-color: #fdba74 transparent;
         }
 
-        #fu-list::-webkit-scrollbar {
-            width: 6px;
+        .thin-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
         }
 
-        #fu-list::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .5);
-            border-radius: 9999px;
+        .thin-scroll::-webkit-scrollbar-thumb {
+            background: #fdba74;
+            border-radius: 999px;
         }
 
         /* Scrollable attachment preview inside the modal */
         #fu-preview {
             scrollbar-width: thin;
         }
+
+        /* sticky na table header */
+        .fu-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #fafafa;
+        }
     </style>
 </head>
 
 <body class="min-h-screen relative"
-    style="background-image: url('<?= BASE_URL ?>/icon/building2.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+    style="background-image: url('<?= BASE_URL ?>/icon/building2.png'); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;">
 
-    <div class="absolute inset-0 bg-black/50 z-0"></div>
+    <div class="fixed inset-0 bg-black/60 z-0"></div>
 
     <?php include ROOT_PATH . '/user/navigation/top.php'; ?>
 
-    <main class="relative z-20 max-w-5xl mx-auto px-4 pt-25 md:pt-28 pb-12">
+    <main class="relative z-20 max-w-6xl mx-auto px-3 md:px-6 pt-24 md:pt-32 pb-8">
 
-        <div class="mb-6">
-            <h1 class="text-xl md:text-2xl font-bold text-white">Follow-up Attachments</h1>
-            <p class="text-sm text-white mt-1">
-                Requests you submitted without an attachment. Upload your proof or photos here.
-            </p>
-        </div>
+        <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
 
-        <div id="fu-empty"
-            class="<?= $requests ? 'hidden' : '' ?> bg-white rounded-xl border border-gray-100 shadow-sm py-14 text-center">
-            <i class="fa-regular fa-circle-check text-4xl text-green-400 mb-3"></i>
-            <p class="text-sm font-semibold text-gray-700">You have nothing to upload.</p>
-            <p class="text-xs text-gray-400 mt-1">All your requests already have attachments.</p>
-        </div>
-
-        <div id="fu-list" class="space-y-3 max-h-[calc(100vh-15rem)] overflow-y-auto pr-1">
-            <?php foreach ($requests as $r): ?>
-                <div class="fu-card bg-white rounded-xl border border-gray-100 shadow-sm p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4 transition-opacity duration-300"
-                    data-id="<?= (int) $r['id'] ?>">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex flex-wrap items-center gap-2 mb-1">
-                            <span class="font-mono text-xs font-bold text-orange-600">
-                                <?= htmlspecialchars($r['control_no']) ?>
-                            </span>
-                            <span
-                                class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize">
-                                <?= htmlspecialchars($r['status'] ?? 'pending') ?>
-                            </span>
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">
-                                <?= followupCategoryLabel($r['request_category']) ?>
-                                <?php if (!empty($r['request_reference'])): ?>
-                                    · <?= htmlspecialchars($r['request_reference']) ?>
-                                <?php endif; ?>
-                            </span>
-                        </div>
-                        <p class="text-sm font-semibold text-gray-800 truncate">
-                            <?= htmlspecialchars($r['purpose']) ?>
-                        </p>
-                        <p class="text-xs text-gray-400 mt-0.5">
-                            <?= htmlspecialchars($r['requestor_name']) ?> ·
-                            <?= htmlspecialchars($r['date_requested']) ?> ·
-                            <?= (int) $r['item_count'] ?> item<?= $r['item_count'] == 1 ? '' : 's' ?> ·
-                            <span class="font-mono text-gray-600">₱ <?= number_format($r['total'], 2) ?></span>
-                        </p>
-                    </div>
-                    <button type="button"
-                        onclick="fuOpen(<?= (int) $r['id'] ?>, '<?= htmlspecialchars($r['control_no'], ENT_QUOTES) ?>')"
-                        class="shrink-0 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-all">
-                        <i class="fa-solid fa-cloud-arrow-up text-xs"></i> Upload attachment
-                    </button>
+            <!-- Header -->
+            <div class="flex flex-wrap items-start justify-between gap-4 px-6 pt-6 pb-5 border-b border-gray-200">
+                <div>
+                    <h1 class="text-lg font-semibold text-gray-900 tracking-tight">Follow-up Attachments</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">
+                        Requests you submitted without an attachment. Upload your proof or receipts here.
+                    </p>
                 </div>
-            <?php endforeach; ?>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Summary -->
+                    <div class="flex items-stretch divide-x divide-gray-200 rounded-lg border border-gray-200">
+                        <div class="px-4 py-2">
+                            <p class="text-[10px] font-medium uppercase tracking-wider text-gray-400">Awaiting Upload</p>
+                            <p class="text-sm font-semibold text-gray-900 tabular-nums" id="fu-count"><?= count($requests) ?></p>
+                        </div>
+                        <div class="px-4 py-2">
+                            <p class="text-[10px] font-medium uppercase tracking-wider text-gray-400">Total Amount</p>
+                            <p class="text-sm font-semibold text-gray-900 tabular-nums">₱ <?= number_format($fuTotalAmount, 2) ?></p>
+                        </div>
+                    </div>
+
+                    <?php if ($requests): ?>
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px] pointer-events-none"></i>
+                            <input type="text" id="fu-search" placeholder="Search"
+                                class="pl-8 pr-3 h-9 w-52 text-sm border border-gray-200 rounded-md outline-none focus:border-gray-400 transition-colors">
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Notice -->
+            <?php if ($requests): ?>
+                <div class="flex items-start gap-3 px-6 py-3 bg-amber-50/70 border-b border-amber-100 text-sm text-amber-800">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-amber-500"></i>
+                    <p>These requests still need supporting documents. Upload them so Accounting can process your request.</p>
+                </div>
+            <?php endif; ?>
+
+            <!-- Empty state -->
+            <div id="fu-empty" class="<?= $requests ? 'hidden' : '' ?> py-16 text-center">
+                <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-check text-green-600"></i>
+                </div>
+                <p class="text-sm font-semibold text-gray-800">You're all caught up</p>
+                <p class="text-sm text-gray-500 mt-0.5">All your requests already have attachments.</p>
+            </div>
+
+            <!-- Table -->
+            <div id="fu-table-wrap" class="<?= $requests ? '' : 'hidden' ?> thin-scroll overflow-auto max-h-[58vh]">
+                <table class="fu-table w-full text-sm min-w-[820px]">
+                    <thead>
+                        <tr class="text-[11px] font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            <th class="px-6 py-3 text-left">Control No.</th>
+                            <th class="px-6 py-3 text-left">Purpose</th>
+                            <th class="px-6 py-3 text-left">Category</th>
+                            <th class="px-6 py-3 text-right">Amount</th>
+                            <th class="px-6 py-3 text-left">Date</th>
+                            <th class="px-6 py-3 text-left">Status</th>
+                            <th class="px-6 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fu-list" class="divide-y divide-gray-100">
+                        <?php foreach ($requests as $r):
+                            $st = strtolower($r['status'] ?? 'pending');
+                            $dot = ['approved' => 'bg-green-600', 'rejected' => 'bg-red-500'][$st] ?? 'bg-amber-500';
+                            $dateLbl = !empty($r['date_requested']) ? date('M j, Y', strtotime($r['date_requested'])) : '—';
+                            $search = strtolower(($r['control_no'] ?? '') . ' ' . ($r['purpose'] ?? '') . ' ' . ($r['request_reference'] ?? ''));
+                            ?>
+                            <tr class="fu-card group hover:bg-gray-50 transition-all duration-300"
+                                data-id="<?= (int) $r['id'] ?>" data-search="<?= htmlspecialchars($search) ?>">
+                                <td class="px-6 py-3.5 font-mono text-[13px] font-medium text-gray-900 whitespace-nowrap">
+                                    <?= htmlspecialchars($r['control_no']) ?>
+                                </td>
+                                <td class="px-6 py-3.5 max-w-[260px]">
+                                    <p class="text-gray-900 truncate" title="<?= htmlspecialchars($r['purpose']) ?>"><?= htmlspecialchars($r['purpose']) ?></p>
+                                    <p class="text-xs text-gray-400"><?= (int) $r['item_count'] ?> item<?= $r['item_count'] == 1 ? '' : 's' ?></p>
+                                </td>
+                                <td class="px-6 py-3.5 max-w-[200px]">
+                                    <p class="text-gray-700"><?= followupCategoryLabel($r['request_category']) ?></p>
+                                    <?php if (!empty($r['request_reference'])): ?>
+                                        <p class="text-xs text-gray-400 truncate"><?= htmlspecialchars($r['request_reference']) ?></p>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="px-6 py-3.5 text-right tabular-nums font-medium text-gray-900 whitespace-nowrap">
+                                    ₱ <?= number_format($r['total'], 2) ?>
+                                </td>
+                                <td class="px-6 py-3.5 text-gray-500 whitespace-nowrap"><?= htmlspecialchars($dateLbl) ?></td>
+                                <td class="px-6 py-3.5 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-2 text-sm text-gray-700 capitalize">
+                                        <span class="w-1.5 h-1.5 rounded-full <?= $dot ?>"></span><?= htmlspecialchars($st) ?>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3.5 text-right whitespace-nowrap">
+                                    <button type="button"
+                                        onclick="fuOpen(<?= (int) $r['id'] ?>, '<?= htmlspecialchars($r['control_no'], ENT_QUOTES) ?>')"
+                                        class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-gray-900 hover:bg-[#e07b06] text-white text-[12px] font-medium transition-colors">
+                                        <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i> Upload
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <tr id="fu-no-match" class="hidden">
+                            <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-500">No requests match your search.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer -->
+            <div id="fu-footer" class="<?= $requests ? '' : 'hidden' ?> flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50/60 text-xs text-gray-500">
+                <span id="fu-result">Showing <?= count($requests) ?> of <?= count($requests) ?> requests</span>
+                <span class="hidden sm:inline">Images are converted to WebP automatically</span>
+            </div>
         </div>
     </main>
 
@@ -258,6 +335,24 @@ function followupCategoryLabel(?string $cat): string
             fuRender();
         }
 
+        // ── Search ───────────────────────────────────
+        function fuFilter() {
+            const input = document.getElementById('fu-search');
+            const q = (input ? input.value : '').trim().toLowerCase();
+            const rows = [...document.querySelectorAll('.fu-card')];
+            let shown = 0;
+            rows.forEach(tr => {
+                const ok = !q || tr.dataset.search.includes(q);
+                tr.classList.toggle('hidden', !ok);
+                if (ok) shown++;
+            });
+            const noMatch = document.getElementById('fu-no-match');
+            if (noMatch) noMatch.classList.toggle('hidden', !(rows.length && shown === 0));
+            const res = document.getElementById('fu-result');
+            if (res) res.textContent = 'Showing ' + shown + ' of ' + rows.length + ' request' + (rows.length !== 1 ? 's' : '');
+        }
+        document.getElementById('fu-search')?.addEventListener('input', fuFilter);
+
         // ── Submit ───────────────────────────────────
         function fuToast(msg, type = 'success') {
             const t = document.createElement('div');
@@ -303,8 +398,12 @@ function followupCategoryLabel(?string $cat): string
                             card.remove();
                             const remaining = document.querySelectorAll('.fu-card').length;
                             if (window.setFuBadge) setFuBadge(remaining);
+                            document.getElementById('fu-count').textContent = remaining;
+                            fuFilter();
                             if (!remaining) {
                                 document.getElementById('fu-empty').classList.remove('hidden');
+                                document.getElementById('fu-table-wrap').classList.add('hidden');
+                                document.getElementById('fu-footer').classList.add('hidden');
                             }
                         }, 300);
                     }

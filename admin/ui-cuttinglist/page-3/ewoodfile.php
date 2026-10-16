@@ -841,14 +841,15 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             }
 
             const sigCell = (name, title, sigPath) => `
-    <td class="relative border border-gray-800 text-center align-bottom px-2 pt-2 pb-1.5 w-1/4">
+    <td class="relative border border-gray-800 text-center align-bottom px-2 pb-1.5 w-1/4 h-24">
+        ${sigPath ? `<img src="${sigPath}" alt="" class="pointer-events-none select-none absolute z-20 left-1/2 -translate-x-1/2 bottom-1 h-20 w-auto max-w-[95%] object-contain">` : ''}
         <p class="text-xs font-bold">${name ? ewoodEscapeHtml(name) : '&nbsp;'}</p>
         <p class="text-[9px] italic text-gray-600">${title ? ewoodEscapeHtml(title) : '&nbsp;'}</p>
-        ${sigPath ? `<img src="${sigPath}" class="absolute z-10 left-1/2 -translate-x-1/2 bottom-1 max-h-32 max-w-[220px] object-contain">` : ''}
     </td>`;
 
             const requestedSigUrl = bom.requested_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.requested_by_signature_path)}` : null;
             const approvedSigUrl = bom.approved_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.approved_by_signature_path)}` : null;
+            const receivedSigUrl = bom.received_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.received_by_signature_path)}` : null;
 
             document.getElementById('ewoodBomViewBody').innerHTML = `
                 <table class="w-full border-collapse border-l-2 border-r-2 border-t-2 border-gray-800">
@@ -906,7 +907,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                     <tr>
                         ${sigCell(bom.requested_by, bom.requested_by_title, requestedSigUrl)}
                         ${sigCell(bom.noted_by, bom.noted_by_title, null)}
-                        ${sigCell(bom.received_by, bom.received_by_title, null)}
+                        ${sigCell(bom.received_by, bom.received_by_title, receivedSigUrl)}
                         ${sigCell(bom.approved_by, bom.approved_by_title, approvedSigUrl)}
                     </tr>
                     <tr><td colspan="4" class="text-center text-[8px] text-gray-500 py-1.5">PROPERTY OF NOBLEHOME CONSTRUCTION</td></tr>
