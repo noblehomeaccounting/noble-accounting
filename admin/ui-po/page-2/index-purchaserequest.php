@@ -37,7 +37,7 @@ if ($uid > 0) {
 $requester = null;
 $bomParam = intval($_GET['bom'] ?? 0);
 if ($bomParam > 0) {
-    $bq = $conn->prepare("SELECT id, bom_number, requested_by, requested_by_title, requested_by_signature_path
+    $bq = $conn->prepare("SELECT id, bom_number, client_name, requested_by, requested_by_title, requested_by_signature_path
                           FROM noblecrm_bom WHERE id = ? AND received_at IS NOT NULL LIMIT 1");
     $bq->bind_param('i', $bomParam);
     $bq->execute();
@@ -47,6 +47,7 @@ if ($bomParam > 0) {
         $requester = [
             'bom_id'     => (int) $bRow['id'],
             'bom_number' => $bRow['bom_number'],
+            'client'     => $bRow['client_name'],   // client ng BOM = client ng Purchase Request (hindi na tina-type)
             'name'       => $bRow['requested_by'],
             'sig'        => $bRow['requested_by_signature_path'],
             'paid_pr'    => null,
@@ -96,6 +97,8 @@ $signatories = [
             padding: 3px 5px; font: inherit; outline: none;
         }
         .pr-sheet input:focus, .pr-sheet textarea:focus { border-style: solid; border-color: #b45309; background: #fff; }
+        /* galing sa BOM — hindi na mababago */
+        .pr-sheet input[readonly] { background: #f3f4f6; border: 1px solid #e5e7eb; color: #111; font-weight: 700; cursor: not-allowed; }
         .pr-sig { position: relative; height: 54px; }
         .pr-sig img { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); height: 52px; width: auto; max-width: 90%; object-fit: contain; z-index: 2; pointer-events: none; }
         .pr-sig .nm { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-weight: 700; z-index: 1; }
@@ -504,7 +507,7 @@ $signatories = [
                 <table class="pr-mono" style="margin-top:-1px">
                     <tr>
                         <td style="width:18%;text-align:center;background:#eee">CLIENT</td>
-                        <td style="width:47%">${f('client', d.client, 'text', 'required placeholder="Client / project name"')}</td>
+                        <td style="width:47%">${f('client', edit && REQUESTER ? REQUESTER.client : d.client, 'text', 'readonly title="From the BOM"')}</td>
                         <td style="width:16%;background:#eee">REQUEST DATE:</td>
                         <td style="width:19%;text-align:right">${edit ? f('request_date', d.request_date || todayISO(), 'date') : esc(shortDate(d.request_date))}</td>
                     </tr>
@@ -701,7 +704,7 @@ $signatories = [
                 document.getElementById('prNewBtn').classList.toggle('hidden', m !== 'view');
                 document.getElementById('prSheetHint').innerHTML = m === 'edit'
                     ? (REQUESTER
-                        ? `<i class="fa-solid fa-pen text-amber-700 mr-1"></i>Requested by <b>${esc(REQUESTER.name)}</b> (from ${esc(REQUESTER.bom_number)}). Fill in the highlighted fields. <span id="prDraftTag" class="ml-1 text-gray-400"></span>`
+                        ? `<i class="fa-solid fa-pen text-amber-700 mr-1"></i>Client <b>${esc(REQUESTER.client)}</b> and requester <b>${esc(REQUESTER.name)}</b> come from ${esc(REQUESTER.bom_number)}. Fill in the highlighted fields. <span id="prDraftTag" class="ml-1 text-gray-400"></span>`
                         : '<i class="fa-solid fa-triangle-exclamation text-red-600 mr-1"></i>Open this form from a received BOM so the requester is filled in automatically.')
                     : (m === 'none' ? '' : '<i class="fa-solid fa-circle-check text-green-600 mr-1"></i>Submitted purchase request. Print or save it as PDF.');
             }
@@ -709,7 +712,7 @@ $signatories = [
             // ═════════════ DRAFT (hindi nare-reset ang ininput) ═════════════
             // Naka-save sa browser kada BOM; nawawala lang pagka-submit o pag pinindot ang Clear.
             const DRAFT_KEY = 'nh-pr-draft-' + (REQUESTER ? REQUESTER.bom_id : 'none');
-            const HEAD_FIELDS = ['client', 'project_scope', 'request_date', 'date_needed'];
+            const HEAD_FIELDS = ['project_scope', 'request_date', 'date_needed'];   // ang client ay laging galing sa BOM
             let draftTimer = null;
 
             function readDraft() {
@@ -822,10 +825,10 @@ $signatories = [
             document.getElementById('prSubmit').addEventListener('click', async function () {
                 const fd = new FormData();
                 const val = n => (sheet.querySelector(`[name="${n}"]`)?.value || '').trim();
-                if (!val('client')) { toast('Client is required.', 'error'); sheet.querySelector('[name="client"]').focus(); return; }
+                if (!val('client')) { toast('This BOM has no client name. Please check the BOM first.', 'error'); return; }
 
                 if (!REQUESTER) { toast('Open this form from a received BOM (Next: Purchase Request) so the requester is filled in.', 'error', 6000); return; }
-                ['client', 'project_scope', 'request_date', 'date_needed'].forEach(n => fd.append(n, val(n)));
+                ['project_scope', 'request_date', 'date_needed'].forEach(n => fd.append(n, val(n)));   // client: kukunin ng server sa BOM
                 fd.append('bom_id', REQUESTER.bom_id);
 
                 let count = 0;

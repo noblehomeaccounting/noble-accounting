@@ -96,23 +96,24 @@ if ($action === 'create') {
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') prOut(['success' => false, 'message' => 'Invalid request.']);
 
-    $client       = trim($_POST['client'] ?? '');
     $scope        = trim($_POST['project_scope'] ?? '');
     $requestDate  = trim($_POST['request_date'] ?? '');
     $dateNeeded   = trim($_POST['date_needed'] ?? '') ?: 'ASAP';
     $bomId        = intval($_POST['bom_id'] ?? 0);
 
-    if ($client === '') prOut(['success' => false, 'message' => 'Client is required.']);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $requestDate)) prOut(['success' => false, 'message' => 'Request date is invalid.']);
 
     // Requested by = ang gumawa ng BOM (na-receive na)
-    $rq = $conn->prepare("SELECT requested_by, requested_by_signature_path FROM noblecrm_bom
+    $rq = $conn->prepare("SELECT client_name, requested_by, requested_by_signature_path FROM noblecrm_bom
                           WHERE id = ? AND received_at IS NOT NULL LIMIT 1");
     $rq->bind_param('i', $bomId);
     $rq->execute();
     $rqRow = $rq->get_result()->fetch_assoc();
     $rq->close();
     if (!$rqRow) prOut(['success' => false, 'message' => 'Open this form from a received BOM so the requester can be filled in.']);
+    // Client = client ng BOM (hindi na tina-type, para pare-pareho sa BOM, PR at Transmittal)
+    $client = trim((string) ($rqRow['client_name'] ?? ''));
+    if ($client === '') prOut(['success' => false, 'message' => 'This BOM has no client name. Please check the BOM first.']);
     // Bawal nang gumawa ng bagong Purchase Request kapag PAID na ang PR ng BOM na ito
     $pd = $conn->prepare("SELECT req_no FROM noblepurchaserequest WHERE bom_id = ? AND paid_at IS NOT NULL LIMIT 1");
     $pd->bind_param('i', $bomId);

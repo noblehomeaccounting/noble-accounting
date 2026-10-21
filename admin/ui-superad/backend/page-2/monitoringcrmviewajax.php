@@ -130,6 +130,131 @@ function mvBuildCycle(array $q, string $stage, int $no, int $total, array $names
     return $out;
 }
 
+
+// ── Production → Purchasing → Delivery (pagkatapos ng Final Approval) ──
+// Bawat bahagi ay may sariling try/catch: kapag wala pa ang table, walang laman lang, hindi sira ang page.
+function mvSafe(callable $fn): array
+{
+    try {
+        return $fn();
+    } catch (Throwable $e) {
+        error_log('monitoringcrmviewajax production: ' . $e->getMessage());
+        return [];
+    }
+}
+function mvInts(array $rows, string $key): array
+{
+    return array_values(array_unique(array_map('intval', array_column($rows, $key))));
+}
+function mvProduction(mysqli $conn, int $inquiryId, array $names): array
+{
+    $qIds = mvSafe(fn() => mvInts(mvFetchAll($conn, "SELECT id FROM noblecrm_2dquotation WHERE inquiry_id = ?", [$inquiryId], 'i'), 'id'));
+    $out = ['deposit' => null, 'cutting' => [], 'boms' => [], 'prs' => [], 'transmittals' => [], 'drs' => []];
+    if (!$qIds) return $out;
+    $qIn = implode(',', $qIds);   // int lang, ligtas
+
+    // 0. Deposit & Notice to Proceed (Accounting) — galing sa pinakabagong 2D & Quotation
+    $out['deposit'] = mvSafe(function () use ($conn, $qIn, $names) {
+        $rows = mvFetchAll($conn, "
+            SELECT q.*, pm.name AS payment_method_name
+            FROM noblecrm_2dquotation q
+            LEFT JOIN noblecrm_paymentmethod pm ON pm.id = q.deposit_payment_method_id
+            WHERE q.id IN ($qIn)
+            ORDER BY (q.deposit_status = 'Notice to Proceed') DESC, q.id DESC LIMIT 1");
+        $q = $rows[0] ?? null;
+        if (!$q) return [];
+        return [
+            'status'         => $q['deposit_status'] ?: 'Hold',
+            'amount'         => $q['deposit_amount'] ?? null,
+            'payment_method' => $q['payment_method_name'] ?? null,
+            'slip'           => mvUrl($q['deposit_slip_path'] ?? ''),
+            'logged_by'      => $names[(int) ($q['deposit_uploaded_by'] ?? 0)] ?? null,
+            'logged_at'      => $q['deposit_uploaded_at'] ?? null,
+        ];
+    }) ?: null;
+
+    // 1. Cutting list
+    $out['cutting'] = mvSafe(function () use ($conn, $qIn, $names) {
+        $list = [];
+        foreach (mvFetchAll($conn, "SELECT * FROM noblecrm_cuttinglistprogression WHERE quotation_id IN ($qIn) ORDER BY id ASC") as $c) {
+            $list[] = [
+                'id'                => (int) $c['id'],
+                'status'            => $c['status'] ?? null,
+                'uploaded_at'       => mvPick($c, ['created_at', 'uploaded_at']),
+                'uploaded_by'       => $names[(int) ($c['uploaded_by'] ?? 0)] ?? null,
+                'photos'            => mvUrls(mvList($c['photos'] ?? '')),
+                'archive'           => mvUrl($c['archive_path'] ?? ''),
+                'archive_name'      => $c['archive_original_name'] ?? null,
+                'qr_approved'       => (int) ($c['qr_approved'] ?? 0) === 1,
+                'approved_at'       => $c['approved_at'] ?? null,
+                'approved_by'       => $names[(int) ($c['approved_by'] ?? 0)] ?? null,
+                'qr_rejected'       => (int) ($c['qr_rejected'] ?? 0) === 1,
+                'rejected_at'       => $c['rejected_at'] ?? null,
+                'rejected_by'       => $names[(int) ($c['rejected_by'] ?? 0)] ?? null,
+                'rejection_remarks' => $c['rejection_remarks'] ?? null,
+            ];
+        }
+        return $list;
+    });
+
+    // 2. BOM (hindi kasama ang TEMP na hindi pa na-save)
+    $boms = mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblecrm_bom WHERE quotation_id IN ($qIn) AND bom_number NOT LIKE 'TEMP-%' ORDER BY id ASC"));
+    $bomIds = mvInts($boms, 'id');
+    $bomItems = $bomIds ? mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblecrm_bom_items WHERE bom_id IN (" . implode(',', $bomIds) . ") ORDER BY item_no ASC")) : [];
+    foreach ($boms as $b) {
+        $out['boms'][] = [
+            'id' => (int) $b['id'], 'bom_number' => $b['bom_number'], 'date_submitted' => $b['date_submitted'] ?? null,
+            'date_needed' => $b['date_needed'] ?? null, 'general_scope' => $b['general_scope'] ?? null, 'created_at' => $b['created_at'] ?? null,
+            'requested_by' => $b['requested_by'] ?? null, 'approved_by' => $b['approved_by'] ?? null, 'approved_at' => $b['approved_at'] ?? null,
+            'received_by' => $b['received_by'] ?? null, 'received_at' => $b['received_at'] ?? null,
+            'items' => array_values(array_filter($bomItems, fn($i) => (int) $i['bom_id'] === (int) $b['id'])),
+        ];
+    }
+    if (!$bomIds) return $out;
+
+    // 3. Purchase request
+    $prs = mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepurchaserequest WHERE bom_id IN (" . implode(',', $bomIds) . ") ORDER BY id ASC"));
+    $prIds = mvInts($prs, 'id');
+    $prItems = $prIds ? mvSafe(fn() => mvFetchAll($conn, "SELECT pr_id, item_name, quantity, unit, price, amount FROM noblepurchaserequest_items WHERE pr_id IN (" . implode(',', $prIds) . ") ORDER BY item_no ASC")) : [];
+    foreach ($prs as $p) {
+        $keep = ['req_no', 'status', 'total_amount', 'request_date', 'date_needed', 'created_at', 'prepared_by', 'approved_by', 'approved_at',
+                 'rejected_at', 'rejection_remarks', 'reviewed_by', 'reviewed_at', 'staff_received_by', 'staff_received_at',
+                 'released_by', 'released_at', 'paid_at'];
+        $row = ['id' => (int) $p['id']];
+        foreach ($keep as $k) $row[$k] = $p[$k] ?? null;
+        $row['items'] = array_values(array_filter($prItems, fn($i) => (int) $i['pr_id'] === (int) $p['id']));
+        $out['prs'][] = $row;
+    }
+    if (!$prIds) return $out;
+
+    // 4. Transmittal
+    $trs = mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM nobletransmittal WHERE pr_id IN (" . implode(',', $prIds) . ") ORDER BY id ASC"));
+    $trIds = mvInts($trs, 'id');
+    $trItems = $trIds ? mvSafe(fn() => mvFetchAll($conn, "SELECT transmittal_id, serial_no, description, quantity FROM nobletransmittal_items WHERE transmittal_id IN (" . implode(',', $trIds) . ") ORDER BY item_no ASC")) : [];
+    foreach ($trs as $t) {
+        $out['transmittals'][] = [
+            'id' => (int) $t['id'], 'ref_no' => $t['ref_no'], 'transmittal_date' => $t['transmittal_date'] ?? null, 'created_at' => $t['created_at'] ?? null,
+            'project_name' => $t['project_name'] ?? null, 'particulars' => $t['particulars'] ?? null, 'delivery_mode' => $t['delivery_mode'] ?? null,
+            'issued_by' => $t['issued_by'] ?? null, 'received_by' => $t['received_by'] ?? null, 'delivered_at' => $t['delivered_at'] ?? null,
+            'items' => array_values(array_filter($trItems, fn($i) => (int) $i['transmittal_id'] === (int) $t['id'])),
+        ];
+    }
+    if (!$trIds) return $out;
+
+    // 5. Delivery receipt (Project Coordinator)
+    $drs = mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepc_dr WHERE transmittal_id IN (" . implode(',', $trIds) . ") ORDER BY id ASC"));
+    $drIds = mvInts($drs, 'id');
+    $drItems = $drIds ? mvSafe(fn() => mvFetchAll($conn, "SELECT dr_id, particular, size, qty, unit, amount FROM noblepc_dr_item WHERE dr_id IN (" . implode(',', $drIds) . ") ORDER BY item_no ASC")) : [];
+    foreach ($drs as $d) {
+        $out['drs'][] = [
+            'id' => (int) $d['id'], 'dr_no' => $d['dr_no'], 'dr_date' => $d['dr_date'] ?? null, 'scheduled_date' => $d['scheduled_date'] ?? null,
+            'prepared_by' => $d['prepared_by'] ?? null, 'created_at' => $d['created_at'] ?? null,
+            'items' => array_values(array_filter($drItems, fn($i) => (int) $i['dr_id'] === (int) $d['id'])),
+        ];
+    }
+    return $out;
+}
+
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 if ($action === 'timeline') {
@@ -227,6 +352,7 @@ if ($action === 'timeline') {
             'deadline'        => mvPick($inq, ['deadline_2d_quotation', 'deadline_2d', 'quotation_deadline', 'deadline']),
             'design_progress' => $designProgress,
             'cycles'          => $cycles,
+            'production'      => mvProduction($conn, $id, $names),
         ]);
     } catch (Throwable $e) {
         error_log('monitoringcrmviewajax timeline: ' . $e->getMessage());

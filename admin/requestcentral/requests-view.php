@@ -4,114 +4,143 @@
 
 ?>
 
-<div class="mb-6 flex items-center justify-between flex-wrap gap-4">
-    <div>
-        <h1 class="text-xl font-bold text-gray-800">Budget Requests</h1>
-        <p class="text-sm text-gray-400 mt-1">Requests sent to you for approval</p>
-    </div>
-    <div class="flex items-center gap-3 flex-wrap">
-        <div class="relative" id="dates-dropdown-wrap">
-            <button onclick="toggleDatesDropdown(event)"
-                class="flex items-center gap-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition shadow-sm">
-                <i class="fa-solid fa-calendar-days text-orange-400"></i>
-                <span class="hidden sm:inline">Dates with Requests</span>
-                <span class="sm:hidden">Dates</span>
-                <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2.5"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-            <div id="dates-dropdown"
-                class="hidden absolute left-0 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Dates with Requests</p>
-                    <span id="dates-dropdown-count" class="text-[10px] text-gray-400"></span>
-                </div>
-                <div class="px-3 py-2 border-b border-gray-100">
-                    <input type="text" id="dates-search" placeholder="Search date..." oninput="filterDatesDropdown()"
-                        class="w-full text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 transition">
-                </div>
-                <ul id="dates-list" class="max-h-64 overflow-y-auto py-1"></ul>
-            </div>
+<!-- ═══ HEADER ═══ -->
+<div class="mb-5 flex items-start sm:items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
         </div>
-        <button onclick="prevMonth()"
-            class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-500">
-            <i class="fa-solid fa-chevron-left text-xs"></i>
-        </button>
-        <span id="cal-label" class="text-sm font-semibold text-gray-700 min-w-[130px] text-center"></span>
-        <button onclick="nextMonth()"
-            class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-500">
-            <i class="fa-solid fa-chevron-right text-xs"></i>
-        </button>
-        <button onclick="goToday()"
-            class="text-xs font-semibold text-orange-500 border border-orange-200 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition">
-            Today
-        </button>
-        <div class="flex items-center gap-1.5 ml-2">
-            <span id="last-updated" class="text-[10px] text-gray-400 hidden sm:inline"></span>
-            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+        <div class="min-w-0">
+            <h1 class="text-xl font-bold text-gray-800 leading-tight">Budget Requests</h1>
+            <p class="text-sm text-gray-500">Requests sent to you for approval</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span id="last-updated">Live</span>
+    </div>
+</div>
+
+<!-- ═══ STAT CARDS (buwan na nakabukas) ═══ -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+        <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-layer-group"></i></div>
+        <div class="min-w-0">
+            <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">This month</p>
+            <p id="stat-total" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
+        </div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+        <div class="w-10 h-10 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div class="min-w-0">
+            <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">Pending</p>
+            <p id="stat-pending" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
+        </div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+        <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="min-w-0">
+            <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">Approved</p>
+            <p id="stat-approved" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
+        </div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+        <div class="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="min-w-0">
+            <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">Rejected</p>
+            <p id="stat-rejected" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
         </div>
     </div>
 </div>
 
-<!-- Calendar Grid -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-    <div class="grid grid-cols-7 border-b border-gray-100">
+<!-- ═══ CALENDAR CARD ═══ -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-5">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2">
+            <button onclick="prevMonth()" title="Previous month"
+                class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                <i class="fa-solid fa-chevron-left text-xs"></i>
+            </button>
+            <span id="cal-label" class="text-base font-bold text-gray-800 min-w-[140px] text-center"></span>
+            <button onclick="nextMonth()" title="Next month"
+                class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                <i class="fa-solid fa-chevron-right text-xs"></i>
+            </button>
+            <button onclick="goToday()"
+                class="ml-1 h-9 text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 px-3 rounded-lg transition">
+                Today
+            </button>
+        </div>
+
+        <div class="relative" id="dates-dropdown-wrap">
+            <button onclick="toggleDatesDropdown(event)"
+                class="h-9 flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 px-3 rounded-lg transition">
+                <i class="fa-solid fa-calendar-check text-amber-600"></i>
+                <span class="hidden sm:inline">Jump to date</span>
+                <span class="sm:hidden">Dates</span>
+                <i class="fa-solid fa-chevron-down text-[9px] text-gray-400"></i>
+            </button>
+            <div id="dates-dropdown"
+                class="hidden absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-xs font-bold text-gray-600 uppercase tracking-wide">Dates with requests</p>
+                    <span id="dates-dropdown-count" class="text-[10px] text-gray-400"></span>
+                </div>
+                <div class="px-3 py-2 border-b border-gray-100">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px]"></i>
+                        <input type="text" id="dates-search" placeholder="Search date..." oninput="filterDatesDropdown()"
+                            class="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition">
+                    </div>
+                </div>
+                <ul id="dates-list" class="max-h-64 overflow-y-auto py-1 scrollbar-thin"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekday header -->
+    <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
         <?php foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $d): ?>
-            <div
-                class="py-2.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest <?= $d === 'Sun' ? 'text-red-400' : ($d === 'Sat' ? 'text-blue-400' : '') ?>">
-                <?= $d ?>
+            <div class="py-2 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wide <?= $d === 'Sun' ? 'text-red-400' : ($d === 'Sat' ? 'text-blue-400' : 'text-gray-500') ?>">
+                <span class="sm:hidden"><?= substr($d, 0, 1) ?></span><span class="hidden sm:inline"><?= $d ?></span>
             </div>
         <?php endforeach; ?>
     </div>
     <div id="calendar-grid" class="grid grid-cols-7"></div>
-</div>
 
-<!-- Legend -->
-<div class="flex items-center gap-4 mb-6 px-1">
-    <div class="flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-        <span class="text-[11px] text-gray-500">Pending</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
-        <span class="text-[11px] text-gray-500">Approved</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>
-        <span class="text-[11px] text-gray-500">Rejected</span>
+    <!-- Legend -->
+    <div class="flex items-center gap-4 flex-wrap px-4 py-2.5 border-t border-gray-100 text-[11px] text-gray-500">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>Pending</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Approved</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>Rejected</span>
+        <span class="ml-auto hidden sm:inline text-gray-400">Click a day to see its requests</span>
     </div>
 </div>
 
-<!-- Day Detail Panel -->
-<div id="day-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-        <span id="day-panel-title" class="text-sm font-semibold text-gray-700"></span>
-        <button onclick="closeDayPanel()" class="text-gray-300 hover:text-gray-500 transition">
+<!-- ═══ DAY PANEL ═══ -->
+<div id="day-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                <i class="fa-regular fa-calendar"></i>
+            </div>
+            <div class="min-w-0">
+                <p id="day-panel-title" class="text-sm font-bold text-gray-800 truncate"></p>
+                <p id="day-panel-sub" class="text-[11px] text-gray-500 truncate"></p>
+            </div>
+        </div>
+        <button onclick="closeDayPanel()" title="Close"
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition shrink-0">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
 
-    <!-- Desktop table (md+) -->
-    <div class="hidden md:block overflow-x-auto max-h-[400px] overflow-y-auto scrollbar-thin">
-        <table class="w-full text-sm">
-            <thead class="sticky top-0 z-10">
-                <tr class="bg-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
-                    <th class="px-5 py-3 text-left">Control No.</th>
-                    <th class="px-5 py-3 text-left">Requestor</th>
-                    <th class="px-5 py-3 text-left">Purpose</th>
-                    <th class="px-5 py-3 text-left">Category</th>
-                    <th class="px-5 py-3 text-left">Items</th>
-                    <th class="px-5 py-3 text-left">Status</th>
-                    <th class="px-5 py-3 text-left">Action</th>
-                </tr>
-            </thead>
-            <tbody id="day-requests-tbody"></tbody>
-        </table>
-    </div>
+    <!-- Filter chips -->
+    <div id="day-filter" class="flex items-center gap-2 flex-wrap px-4 sm:px-5 py-2.5 border-b border-gray-100 bg-gray-50/60"></div>
 
-    <!-- Mobile cards (below md) -->
-    <div class="md:hidden max-h-[400px] overflow-y-auto scrollbar-thin" id="day-requests-cards"></div>
+    <!-- Card rows (desktop + mobile) -->
+    <div id="day-requests-cards" class="max-h-[520px] overflow-y-auto scrollbar-thin divide-y divide-gray-100"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -434,6 +463,14 @@
     .scrollbar-thin::-webkit-scrollbar-thumb:hover {
         background: #9ca3af;
     }
+
+    .day-chip { background: #fff; border-color: #e5e7eb; color: #4b5563; }
+    .day-chip:hover { border-color: #d97706; color: #b45309; }
+    .day-chip { cursor: pointer; }
+    .day-chip[data-empty="1"] { color: #9ca3af; border-style: dashed; }
+    .day-chip[data-active="1"] { background: #b45309; border-color: #b45309; color: #fff; }
+    @keyframes dayRowFlash { 0%,100% { background: transparent; } 50% { background: #fef3c7; } }
+    .day-row-flash { animation: dayRowFlash .6s ease-in-out 5; }
 </style>
 
 <script>
@@ -472,114 +509,100 @@
     const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     // ─── Calendar ────────────────────────────────────────
+    const STATUS_STYLE = {
+        pending:  { dot: 'bg-yellow-400', chip: 'bg-yellow-50 text-yellow-800 border-yellow-400', bar: 'bg-yellow-400' },
+        approved: { dot: 'bg-green-500',  chip: 'bg-green-50 text-green-800 border-green-500',    bar: 'bg-green-500' },
+        rejected: { dot: 'bg-red-400',    chip: 'bg-red-50 text-red-700 border-red-400',          bar: 'bg-red-400' },
+    };
+    const stStyle = s => STATUS_STYLE[s] ?? STATUS_STYLE.pending;
+
+    function updateStats() {
+        const c = { pending: 0, approved: 0, rejected: 0 };
+        allRequests.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
+        document.getElementById('stat-total').textContent = allRequests.length;
+        document.getElementById('stat-pending').textContent = c.pending;
+        document.getElementById('stat-approved').textContent = c.approved;
+        document.getElementById('stat-rejected').textContent = c.rejected;
+    }
+
     function renderCalendar() {
         document.getElementById('cal-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
+        updateStats();
         const grid = document.getElementById('calendar-grid');
         grid.innerHTML = '';
         const firstDay = new Date(calYear, calMonth, 1).getDay();
         const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
         const today = new Date();
         const isMobile = window.innerWidth < 768;
+        const cellH = isMobile ? '56px' : '104px';
 
         const byDate = {};
         allRequests.forEach(r => {
             const d = r.date_requested ? r.date_requested.substring(0, 10) : null;
             if (!d) return;
-            if (!byDate[d]) byDate[d] = [];
-            byDate[d].push(r);
+            (byDate[d] = byDate[d] || []).push(r);
         });
 
-        for (let i = 0; i < firstDay; i++) {
-            const blank = document.createElement('div');
-            blank.className = 'border-b border-r border-gray-100 bg-gray-50/30';
-            blank.style.minHeight = isMobile ? '44px' : '90px';
-            grid.appendChild(blank);
-        }
+        const blank = () => {
+            const b = document.createElement('div');
+            b.className = 'border-b border-r border-gray-100 bg-gray-50/60';
+            b.style.minHeight = cellH;
+            grid.appendChild(b);
+        };
 
-        const dotColors = { pending: 'bg-yellow-400', approved: 'bg-green-400', rejected: 'bg-red-400' };
+        for (let i = 0; i < firstDay; i++) blank();
 
         for (let day = 1; day <= daysInMonth; day++) {
-            const mm = String(calMonth + 1).padStart(2, '0');
-            const dd = String(day).padStart(2, '0');
-            const dateStr = `${calYear}-${mm}-${dd}`;
+            const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const requests = byDate[dateStr] ?? [];
-            const isToday = (today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === day);
+            const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === day;
             const isSelected = selectedDate === dateStr;
-            const dayOfWeek = (firstDay + day - 1) % 7;
-            const isSun = dayOfWeek === 0;
-            const isSat = dayOfWeek === 6;
-            const hasRequests = requests.length > 0;
+            const dow = (firstDay + day - 1) % 7;
+            const has = requests.length > 0;
+            const pend = requests.filter(r => r.status === 'pending').length;
 
             const cell = document.createElement('div');
-            cell.style.minHeight = isMobile ? '44px' : '90px';
+            cell.style.minHeight = cellH;
             cell.className = [
-                'border-b border-r border-gray-100 cursor-pointer transition-all duration-150 relative',
-                isMobile ? 'flex flex-col items-center justify-start pt-1.5 pb-1' : 'p-2',
-                hasRequests ? 'hover:bg-orange-50' : 'hover:bg-gray-50',
-                isSelected ? 'bg-orange-50 ring-2 ring-inset ring-orange-400' : '',
+                'border-b border-r border-gray-100 cursor-pointer transition-colors relative min-w-0',
+                isMobile ? 'flex flex-col items-center pt-1.5 pb-1 gap-1' : 'p-1.5 flex flex-col gap-1',
+                isSelected ? 'bg-amber-50 ring-2 ring-inset ring-amber-500' : (has ? 'hover:bg-amber-50/60' : 'hover:bg-gray-50'),
             ].join(' ');
 
+            const numCls = isToday
+                ? 'w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center'
+                : 'w-6 h-6 flex items-center justify-center ' + (dow === 0 ? 'text-red-400' : dow === 6 ? 'text-blue-400' : 'text-gray-700');
+
             if (isMobile) {
-                const seenStatuses = [...new Set(requests.map(r => r.status ?? 'pending'))];
-                const dayNumClass = isToday
-                    ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold'
-                    : isSun ? 'text-red-400 text-xs font-semibold'
-                        : isSat ? 'text-blue-400 text-xs font-semibold'
-                            : 'text-gray-600 text-xs font-semibold';
-                const dots = seenStatuses.map(s =>
-                    `<span class="inline-block w-1.5 h-1.5 rounded-full ${dotColors[s] ?? 'bg-gray-300'}"></span>`).join('');
-
+                const statuses = [...new Set(requests.map(r => r.status ?? 'pending'))];
                 cell.innerHTML = `
-                    <span class="${dayNumClass}">${day}</span>
-                    ${hasRequests ? `
-                    <div class="flex items-center justify-center gap-0.5 mt-0.5 flex-wrap">${dots}</div>
-                    <span class="text-[8px] font-bold text-orange-500 leading-tight">${requests.length}</span>` : ''}`;
+                    <span class="text-xs font-semibold ${numCls}">${day}</span>
+                    ${has ? `<div class="flex items-center gap-0.5">${statuses.map(s =>
+                        `<span class="w-1.5 h-1.5 rounded-full ${stStyle(s).dot}"></span>`).join('')}</div>
+                    <span class="text-[9px] font-bold text-amber-700 leading-none">${requests.length}</span>` : ''}`;
             } else {
-                const pending = requests.filter(r => r.status === 'pending').length;
-                const approved = requests.filter(r => r.status === 'approved').length;
-                const rejected = requests.filter(r => r.status === 'rejected').length;
-                const dots = [
-                    pending ? `<span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>` : '',
-                    approved ? `<span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>` : '',
-                    rejected ? `<span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>` : '',
-                ].join('');
-                const countBadge = hasRequests
-                    ? `<span class="text-[10px] font-bold text-orange-500">${requests.length} req</span>` : '';
-                const dayNumClass = isToday
-                    ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center'
-                    : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-500';
-
                 cell.innerHTML = `
-                    <div class="flex items-start justify-between mb-1">
-                        <span class="text-xs font-semibold ${dayNumClass}">${day}</span>
-                        ${countBadge}
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="text-xs font-semibold ${numCls}">${day}</span>
+                        ${has ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${pend ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}"
+                            title="${pend} pending">${requests.length}</span>` : ''}
                     </div>
-                    ${hasRequests ? `
-                    <div class="flex flex-wrap gap-1 mt-1">${dots}</div>
-                    <div class="mt-1.5 space-y-0.5">
+                    ${has ? `<div class="flex flex-col gap-0.5 min-w-0">
                         ${requests.slice(0, 2).map(r => `
-                            <div class="text-[9px] truncate px-1.5 py-0.5 rounded font-medium
-                                ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700'
-                        : r.status === 'approved' ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'}">
+                            <div class="text-[10px] leading-tight truncate pl-1.5 pr-1 py-0.5 rounded border-l-2 font-medium ${stStyle(r.status).chip}">
                                 ${escHtml(r.requestor_name)}
                             </div>`).join('')}
-                        ${requests.length > 2 ? `<div class="text-[9px] text-gray-400 px-1">+${requests.length - 2} more</div>` : ''}
+                        ${requests.length > 2 ? `<div class="text-[10px] text-gray-400 pl-1">+${requests.length - 2} more</div>` : ''}
                     </div>` : ''}`;
             }
 
-            cell.onclick = () => openDayPanel(dateStr, requests);
+            cell.onclick = () => { dayFilter = 'all'; openDayPanel(dateStr, requests); };
             grid.appendChild(cell);
         }
 
         const total = firstDay + daysInMonth;
         const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
-        for (let i = 0; i < trailing; i++) {
-            const blank = document.createElement('div');
-            blank.className = 'border-b border-r border-gray-100 bg-gray-50/30';
-            blank.style.minHeight = isMobile ? '44px' : '90px';
-            grid.appendChild(blank);
-        }
+        for (let i = 0; i < trailing; i++) blank();
     }
 
     // Buwan-buwan na navigation: nagfe-fetch ng bagong buwan
@@ -600,107 +623,88 @@
     }
 
     // ─── Day Panel ───────────────────────────────────────
-    function openDayPanel(dateStr, requests) {
+    let dayFilter = 'all';
+    let dayRequests = [];
+
+    function setDayFilter(f) {
+        dayFilter = f;
+        if (selectedDate) openDayPanel(selectedDate, dayRequests, true);
+    }
+
+    function dayRowHtml(row) {
+        const id = Number(row.id);
+        const itemCount = row.items?.filter(i => i.description?.trim()).length ?? 0;
+        const followUp = (row.attachment_status ?? 'attached') === 'follow_up';
+        return `
+        <div data-id="${id}" class="day-row flex items-stretch gap-3 px-4 sm:px-5 py-3.5 hover:bg-gray-50 transition-colors">
+            <div class="w-1 rounded-full shrink-0 ${stStyle(row.status).bar}"></div>
+            <div class="flex-1 min-w-0 flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="viewRequestById(${id})"
+                            class="notranslate font-mono text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 hover:bg-amber-100 transition">
+                            ${escHtml(row.control_no)}
+                        </button>
+                        ${statusBadge(row.status)}
+                        ${followUp ? `<span class="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
+                            <i class="fa-solid fa-paperclip text-[9px]"></i> Attachment pending</span>` : ''}
+                    </div>
+                    <p class="mt-1.5 text-sm font-semibold text-gray-800 truncate">${escHtml(row.requestor_name)}
+                        ${row.sender_email ? `<span class="font-normal text-[11px] text-gray-400 ml-1 hidden sm:inline">${escHtml(row.sender_email)}</span>` : ''}
+                    </p>
+                    <p class="text-[13px] text-gray-600 break-words line-clamp-2">${escHtml(row.purpose)}</p>
+                    <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                        ${categoryBadge(row.request_category, row.request_reference)}
+                        <span class="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                            <i class="fa-solid fa-list-ul text-[9px] text-gray-400"></i>${itemCount} item${itemCount !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                </div>
+                <div class="shrink-0">${actionButtons(id, row.status)}</div>
+            </div>
+        </div>`;
+    }
+
+    function openDayPanel(dateStr, requests, keepScroll = false) {
         selectedDate = dateStr;
+        dayRequests = requests;
         renderCalendar();
 
         const panel = document.getElementById('day-panel');
-        const title = document.getElementById('day-panel-title');
-        const tbody = document.getElementById('day-requests-tbody');
-        const mobileCards = document.getElementById('day-requests-cards');
-
+        const list = document.getElementById('day-requests-cards');
         const d = new Date(dateStr + 'T00:00:00');
-        title.textContent = d.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('day-panel-title').textContent =
+            d.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        if (!requests.length) {
-            tbody.innerHTML = `<tr><td colspan="7" class="px-5 py-8 text-center text-gray-400 text-sm">No requests on this day.</td></tr>`;
-            mobileCards.innerHTML = `<div class="px-4 py-8 text-center text-gray-400 text-sm">No requests on this day.</div>`;
-        } else {
-            tbody.innerHTML = requests.map(row => {
-                const isApproved = row.status === 'approved';
-                const isRejected = row.status === 'rejected';
-                const rowClass = isApproved ? 'bg-green-50 hover:bg-green-100' : isRejected ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50';
-                return `
-                <tr data-id="${Number(row.id)}" class="border-t border-gray-100 transition-colors ${rowClass}">
-                    <td class="notranslate px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
-                        onclick="viewRequestById(${Number(row.id)})">
-                        ${escHtml(row.control_no)}
-                    </td>
-                    <td class="px-5 py-3">
-                        <p class="font-medium text-gray-800">${escHtml(row.requestor_name)}</p>
-                        <p class="text-[10px] text-gray-400">${escHtml(row.sender_email ?? '')}</p>
-                    </td>
-                    <td class="px-5 py-3 text-gray-600">${escHtml(row.purpose)}</td>
-                    <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
-                    <td class="px-5 py-3 text-xs text-gray-500">${row.items?.filter(i => i.description?.trim()).length ?? 0} item(s)</td>
-                    <td class="px-5 py-3">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            ${statusBadge(row.status)}
-                            ${(row.attachment_status ?? 'attached') === 'follow_up'
-                        ? `<span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-600 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
-                                    <i class="fa-solid fa-clock text-[8px]"></i> Attchmnt Pending
-                                   </span>` : ''}
-                        </div>
-                    </td>
-                    <td class="px-5 py-3">${actionButtons(row.id, row.status)}</td>
-                </tr>`;
-            }).join('');
+        const cnt = { all: requests.length, pending: 0, approved: 0, rejected: 0 };
+        requests.forEach(r => { if (cnt[r.status] !== undefined) cnt[r.status]++; });
+        document.getElementById('day-panel-sub').textContent = requests.length
+            ? `${requests.length} request${requests.length !== 1 ? 's' : ''} · ${cnt.pending} pending`
+            : 'No requests';
 
-            mobileCards.innerHTML = requests.map(row => {
-                const isApproved = row.status === 'approved';
-                const isRejected = row.status === 'rejected';
-                const barColor = isApproved ? 'bg-green-400' : isRejected ? 'bg-red-400' : 'bg-yellow-400';
-                const rowBg = isApproved ? 'bg-green-50' : isRejected ? 'bg-red-50' : 'bg-white';
-                const itemCount = row.items?.filter(i => i.description?.trim()).length ?? 0;
-                const id = Number(row.id);
+        const chip = (key, label) => `
+            <button type="button" onclick="setDayFilter('${key}')" data-active="${dayFilter === key ? 1 : 0}" data-empty="${cnt[key] ? 0 : 1}"
+                class="day-chip text-[11px] font-semibold px-3 py-1 rounded-full border transition">
+                ${label} <span class="ml-0.5 opacity-70">${cnt[key]}</span>
+            </button>`;
+        const filterBar = document.getElementById('day-filter');
+        filterBar.innerHTML = requests.length
+            ? chip('all', 'All') + chip('pending', 'Pending') + chip('approved', 'Approved') + chip('rejected', 'Rejected')
+            : '';
+        filterBar.classList.toggle('hidden', !requests.length);
 
-                return `
-                <div data-id="${id}" class="flex items-start gap-3 px-4 py-3 border-b border-gray-100 ${rowBg} active:bg-gray-50">
-                    <div class="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5 ${barColor}"></div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2 mb-0.5">
-                            <span class="font-mono text-[10px] font-bold text-blue-900 truncate">${escHtml(row.control_no)}</span>
-                            <div class="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
-                                ${statusBadge(row.status)}
-                                ${(row.attachment_status ?? 'attached') === 'follow_up'
-                        ? `<span class="inline-flex items-center gap-0.5 bg-yellow-100 text-yellow-600 text-[8px] font-semibold px-1.5 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
-                                        <i class="fa-solid fa-clock text-[7px]"></i>Attchmnt Pending
-                                       </span>` : ''}
-                            </div>
-                        </div>
-                        <p class="text-sm font-semibold text-gray-800 truncate leading-tight">${escHtml(row.requestor_name)}</p>
-                        <p class="text-[11px] text-gray-500 truncate">${escHtml(row.purpose)}</p>
-                        <div class="flex items-center gap-2 mt-1 flex-wrap">
-                            ${categoryBadge(row.request_category, row.request_reference)}
-                            <span class="text-[10px] text-gray-400">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-2 flex-wrap">
-                            <button onclick="viewRequestById(${id})"
-                                class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
-                                <i class="fa-solid fa-eye mr-1"></i>View
-                            </button>
-                            ${row.status === 'pending' ? `
-                            <button onclick="doAction(${id}, 'approved')"
-                                class="bg-green-500 hover:bg-green-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
-                                <i class="fa-solid fa-check mr-1"></i>Approve
-                            </button>
-                            <button onclick="openRejectModal(${id})"
-                                class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
-                                <i class="fa-solid fa-xmark mr-1"></i>Reject
-                            </button>` : ''}
-                            ${row.status === 'approved' ? `
-                            <button onclick="openPingModal(${id})"
-                                class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all">
-                                <i class="fa-solid fa-bell mr-1"></i>Ping
-                            </button>` : ''}
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
-        }
+        const shown = dayFilter === 'all' ? requests : requests.filter(r => r.status === dayFilter);
+        list.innerHTML = shown.length ? shown.map(dayRowHtml).join('') : `
+            <div class="px-4 py-10 text-center">
+                <div class="w-12 h-12 mx-auto rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-2">
+                    <i class="fa-regular fa-calendar-xmark"></i></div>
+                <p class="text-sm text-gray-500">${dayFilter === 'all' ? 'No requests on this day.' : 'No ' + dayFilter + ' requests on this day.'}</p>
+                ${dayFilter !== 'all' && requests.length ? `<button type="button" onclick="setDayFilter('all')" class="mt-2 text-xs font-semibold text-amber-700 hover:underline">Show all ${requests.length}</button>` : ''}
+            </div>`;
 
+        const wasHidden = panel.classList.contains('hidden');
         panel.classList.remove('hidden');
-        setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        if (wasHidden && !keepScroll) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
 
     function closeDayPanel() {
@@ -750,10 +754,10 @@
     function statusBadge(status) {
         const map = {
             pending: 'bg-yellow-100 text-yellow-700',
-            approved: 'bg-green-300 text-green-900',
+            approved: 'bg-green-100 text-green-800',
             rejected: 'bg-red-100 text-red-700',
         };
-        return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">${escHtml(status)}</span>`;
+        return `<span class="${map[status] ?? 'bg-gray-100 text-gray-500'} text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">${escHtml(status)}</span>`;
     }
 
     function categoryBadge(category, reference) {
@@ -782,27 +786,27 @@
     function actionButtons(id, status) {
         id = Number(id);
         const viewBtn = `<button onclick="viewRequestById(${id})"
-            class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+            class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
             <i class="fa-solid fa-eye mr-1"></i>View
         </button>`;
         const pingBtn = `<button onclick="openPingModal(${id})"
-            class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+            class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
             <i class="fa-solid fa-bell mr-1"></i>Ping
         </button>`;
 
         if (status === 'pending') return `
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
             ${viewBtn}
             <button onclick="doAction(${id}, 'approved')"
-                class="bg-green-500 hover:bg-green-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+                class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
                 <i class="fa-solid fa-check mr-1"></i>Approve
             </button>
             <button onclick="openRejectModal(${id})"
-                class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
+                class="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
                 <i class="fa-solid fa-xmark mr-1"></i>Reject
             </button>
         </div>`;
-        if (status === 'approved') return `<div class="flex items-center gap-2">${viewBtn}${pingBtn}</div>`;
+        if (status === 'approved') return `<div class="flex items-center gap-2 flex-wrap">${viewBtn}${pingBtn}</div>`;
         return viewBtn;
     }
 
@@ -1197,19 +1201,19 @@
             const label = d.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
             const dots = [
                 pending ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400" title="${pending} pending"></span>` : '',
-                approved ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400"  title="${approved} approved"></span>` : '',
+                approved ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"  title="${approved} approved"></span>` : '',
                 rejected ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-red-400"    title="${rejected} rejected"></span>` : '',
             ].join('');
             return `
-            <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition group"
+            <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-amber-50 cursor-pointer transition group"
                 data-date="${escHtml(date)}" onclick="jumpToDate(this.dataset.date)">
                 <div class="flex items-center gap-2">
-                    <i class="fa-regular fa-calendar text-gray-300 group-hover:text-orange-400 transition text-xs"></i>
+                    <i class="fa-regular fa-calendar text-gray-300 group-hover:text-amber-600 transition text-xs"></i>
                     <span class="text-xs font-medium text-gray-700">${escHtml(label)}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
                     ${dots}
-                    <span class="text-[10px] font-bold text-orange-500 bg-orange-50 group-hover:bg-white border border-orange-200 rounded-full px-1.5 py-0.5 ml-1">${Number(total)}</span>
+                    <span class="text-[10px] font-bold text-amber-700 bg-amber-50 group-hover:bg-white border border-amber-200 rounded-full px-1.5 py-0.5 ml-1">${Number(total)}</span>
                 </div>
             </li>`;
         }).join('');
@@ -1238,7 +1242,7 @@
         document.getElementById('dates-dropdown').classList.add('hidden');
         const d = new Date(dateStr + 'T00:00:00');
         calYear = d.getFullYear(); calMonth = d.getMonth();
-        selectedDate = null;
+        selectedDate = null; dayFilter = 'all';
         fetchRequests(true).then(() => {
             openDayPanel(dateStr, allRequests.filter(r => r.date_requested?.startsWith(dateStr)));
             document.getElementById('calendar-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1266,32 +1270,19 @@
         const jumpDate = params.get('date');
         if (!highlightId) return;
         if (jumpDate) {
+            dayFilter = 'all';
             // naka-load na ang buwan na ito (tingnan ang Init sa ibaba)
             openDayPanel(jumpDate, allRequests.filter(r => r.date_requested?.startsWith(jumpDate)));
         }
         let tries = 0;
         const interval = setInterval(() => {
             tries++;
-            const isMobile = window.innerWidth < 768;
-            const row = isMobile
-                ? document.querySelector(`#day-requests-cards div[data-id="${CSS.escape(highlightId)}"]`)
-                : document.querySelector(`#day-requests-tbody tr[data-id="${CSS.escape(highlightId)}"]`);
+            const row = document.querySelector(`#day-requests-cards .day-row[data-id="${CSS.escape(highlightId)}"]`);
             if (row) {
                 clearInterval(interval);
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (!isMobile) {
-                    const firstTd = row.querySelector('td:first-child');
-                    if (firstTd) {
-                        const badge = document.createElement('span');
-                        badge.className = 'highlight-badge';
-                        firstTd.prepend(badge);
-                        setTimeout(() => badge.remove(), 5000);
-                    }
-                } else {
-                    let on = true;
-                    const flash = setInterval(() => { row.style.backgroundColor = on ? '#fecaca' : '#fee2e2'; on = !on; }, 300);
-                    setTimeout(() => { clearInterval(flash); row.style.backgroundColor = ''; }, 5000);
-                }
+                row.classList.add('day-row-flash');
+                setTimeout(() => row.classList.remove('day-row-flash'), 3200);
             }
             if (tries >= 25) clearInterval(interval);
         }, 200);

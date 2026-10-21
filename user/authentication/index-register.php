@@ -346,7 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Brand -->
                 <div class="flex items-center gap-6 mb-14">
-                    <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome logo"
+                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome logo"
                         class="h-24 w-auto object-contain bg-white rounded-lg p-2">
 
                     <div class="w-px h-16 bg-white/40"></div>
@@ -414,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <!-- Logo -->
                     <div class="flex justify-center mb-4">
-                        <img src="<?= BASE_URL ?>/icon/logo.png" alt="NobleHome logo"
+                        <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome logo"
                             class="h-16 w-auto object-contain">
                     </div>
 

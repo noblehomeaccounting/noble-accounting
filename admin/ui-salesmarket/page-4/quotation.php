@@ -239,6 +239,9 @@ $quotes = qRows($conn, 'SELECT q.*, COALESCE(SUM(i.material_total + i.labor_tota
                                     <td class="px-4 py-3 text-right tabular-nums text-slate-900"><?= peso($q['total']) ?>
                                     </td>
                                     <td class="whitespace-nowrap px-4 py-3 text-right">
+                                        <button type="button"
+                                            onclick="openPdfPreview(<?= e(json_encode(rtrim(BASE_URL, '/') . '/quotationpdf?id=' . (int) $q['id'])) ?>, <?= e(json_encode($q['client_name'])) ?>)"
+                                            class="mr-3 text-slate-700 underline hover:text-slate-900">View</button>
                                         <a href="<?= e($quoteBuilderUrl) ?>?id=<?= (int) $q['id'] ?>"
                                             class="text-slate-700 underline hover:text-slate-900">Open</a>
                                         <span class="ml-3"><?php qPostBtn(
@@ -257,6 +260,60 @@ $quotes = qRows($conn, 'SELECT q.*, COALESCE(SUM(i.material_total + i.labor_tota
         </div>
 
     </main>
+
+    <!-- ===================== PDF PREVIEW MODAL ===================== -->
+    <div id="pdfPreviewModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 p-3 md:p-6">
+        <div class="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-700">Quotation Preview</p>
+                    <p id="pdfPreviewTitle" class="truncate text-sm font-semibold text-slate-900"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a id="pdfPreviewOpen" href="#" target="_blank" rel="noopener"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                        <i class="fa-solid fa-up-right-from-square text-[10px]"></i> New tab
+                    </a>
+                    <a id="pdfPreviewDownload" href="#"
+                        class="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+                        <i class="fa-solid fa-download text-[10px]"></i> Download
+                    </a>
+                    <button type="button" onclick="closePdfPreview()" class="ml-1 text-2xl leading-none text-slate-400 hover:text-slate-600" aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="relative flex-1 bg-slate-100">
+                <div id="pdfPreviewLoading" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                    <i class="fa-solid fa-spinner fa-spin text-xl"></i> Generating PDF…
+                </div>
+                <iframe id="pdfPreviewFrame" title="Quotation PDF" class="relative h-full w-full border-0 opacity-0 transition-opacity"></iframe>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Preview ng PDF sa loob ng page (?view=1 = inline). Download = attachment.
+        function openPdfPreview(url, title) {
+            const m = document.getElementById('pdfPreviewModal');
+            const f = document.getElementById('pdfPreviewFrame');
+            const sep = url.includes('?') ? '&' : '?';
+            document.getElementById('pdfPreviewTitle').textContent = title || 'Quotation';
+            document.getElementById('pdfPreviewOpen').href = url + sep + 'view=1';
+            document.getElementById('pdfPreviewDownload').href = url;
+            document.getElementById('pdfPreviewLoading').classList.remove('hidden');
+            f.classList.add('opacity-0');
+            f.onload = () => { document.getElementById('pdfPreviewLoading').classList.add('hidden'); f.classList.remove('opacity-0'); };
+            f.src = url + sep + 'view=1&t=' + Date.now();   // laging bago (kasama ang huling edits)
+            m.classList.remove('hidden'); m.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+        function closePdfPreview() {
+            const m = document.getElementById('pdfPreviewModal');
+            m.classList.add('hidden'); m.classList.remove('flex');
+            document.getElementById('pdfPreviewFrame').src = 'about:blank';
+            document.body.style.overflow = '';
+        }
+        document.getElementById('pdfPreviewModal').addEventListener('click', e => { if (e.target.id === 'pdfPreviewModal') closePdfPreview(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('pdfPreviewModal').classList.contains('hidden')) closePdfPreview(); });
+    </script>
 </body>
 
 </html>

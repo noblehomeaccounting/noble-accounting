@@ -773,6 +773,23 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             </a>
         <?php endif; ?>
 
+        <?php if ($role === ROLE_PC): ?>
+            <?php if ($isMainBranch): ?>
+                <a href="<?= BASE_URL ?>/coordinator" data-tooltip="Coordinator"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/coordinator') ?>">
+                    <i class="fa-solid fa-file-signature w-4 text-center text-xs flex-shrink-0"></i>
+                    <span class="sidebar-label">Coordinator</span>
+                </a>
+            <?php endif; ?>
+
+            <a href="<?= BASE_URL ?>/clientseries" data-tooltip="Client Series"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/clientseries') ?>">
+                <i class="fa-solid fa-user-gear w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Client Series</span>
+            </a>
+
+        <?php endif; ?>
+
 
         <div class="sidebar-section-label pt-4">
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Notifications</p>

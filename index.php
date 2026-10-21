@@ -196,6 +196,11 @@ $adminRoutes = [
     'purchaserequest',
     'purchaserequestajax',
 
+    // project coordinator
+    'coordinator',
+    'coordinatorajax',
+    
+
     // operation
     'operation',                        
 
@@ -487,7 +492,8 @@ $routes = [
     'clientseriesajax'                 => 'admin/ui-po/backend/page-2/clientseriesajax.php',
 
     // project coordinator
-    'projectcoordinator'                => 'admin/ui-projectcoordinator/page-1/index-projectcoordinator-main.php',
+    'coordinator'                      => 'admin/ui-pc/page-1/coordinator.php',
+    'coordinatorajax'                  => 'admin/ui-pc/backend/page-1/coordinatorajax.php',
 
     // hr
     'humanresourcerequest'             => 'admin/ui-humanresource/page-1/humanresource-request.php',

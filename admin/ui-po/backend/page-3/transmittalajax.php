@@ -62,9 +62,11 @@ function trSigner(mysqli $conn, int $userId): array
 function trPaidPr(mysqli $conn, int $prId): ?array
 {
     $st = $conn->prepare("
-        SELECT p.id, p.req_no, p.bom_id, p.client, p.project_scope, p.paid_at,
+        SELECT p.id, p.req_no, p.bom_id, p.project_scope, p.paid_at,
+               COALESCE(NULLIF(b.client_name, ''), p.client) AS client,   -- client ng BOM (kapareho ng PR)
                (SELECT t.id FROM nobletransmittal t WHERE t.pr_id = p.id LIMIT 1) AS transmittal_id
         FROM noblepurchaserequest p
+        LEFT JOIN noblecrm_bom b ON b.id = p.bom_id
         WHERE p.id = ? AND p.status = 'Approved' AND p.paid_at IS NOT NULL
         LIMIT 1
     ");
@@ -148,7 +150,7 @@ if ($action === 'create') {
 
     $date      = trim($_POST['transmittal_date'] ?? '');
     $project   = trim($_POST['project_name'] ?? '');
-    $client    = trim($_POST['client_name'] ?? '');
+    $client    = trim((string) $pr['client']);   // galing sa BOM / Purchase Request, hindi na tina-type
     $company   = trim($_POST['client_company'] ?? '');
     $address   = trim($_POST['client_address'] ?? '');
     $subject   = trim($_POST['subject'] ?? '');
@@ -160,7 +162,8 @@ if ($action === 'create') {
     $sumRemarks  = mb_substr(trim($_POST['summary_remarks'] ?? ''), 0, 1000);
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) trOut(['success' => false, 'message' => 'Date is invalid.']);
-    if ($project === '' || $client === '') trOut(['success' => false, 'message' => 'Project name and client name are required.']);
+    if ($project === '') trOut(['success' => false, 'message' => 'Project name is required.']);
+    if ($client === '') trOut(['success' => false, 'message' => 'The purchase request has no client name.']);
     if ($particulars === '') trOut(['success' => false, 'message' => 'Particulars is required for the Summary of Transmittal.']);
 
     $items = [];

@@ -1,6 +1,5 @@
 <?php
-// quotationpdf.php  -  Export a quotation as a PDF (Itemized Cost Breakdown)
-// Route: quotationpdf?id=QUOTATION_ID
+// quotationpdf.php 
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
@@ -17,7 +16,7 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 
 // Company logo shown at the top of the PDF (PNG or JPG). Change the path if your logo is elsewhere.
-const QP_LOGO_PATH = '/assets/img/noblehome-logo.png';   // under ROOT_PATH
+const QP_LOGO_PATH = '/icon/logo.webp';   // under ROOT_PATH
 
 // -----------------------------------------------------------------------
 // Helpers
@@ -25,52 +24,91 @@ const QP_LOGO_PATH = '/assets/img/noblehome-logo.png';   // under ROOT_PATH
 
 function qpEsc($v): string
 {
-    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 }
 
 // Peso sign on the left, amount on the right (like the Excel accounting format).
 function qpMoney($n): string
 {
-    return '<div class="m"><span class="p">&#8369;</span>' . number_format((float)$n, 2) . '</div>';
+    return '<div class="m"><span class="p">&#8369;</span>' . number_format((float) $n, 2) . '</div>';
 }
 
 // The sheet shows measurements with 2 decimals; the full value is only used in the math.
 function qpMeas($n): string
 {
-    return ($n === null || $n === '') ? '' : number_format((float)$n, 2);
+    return ($n === null || $n === '') ? '' : number_format((float) $n, 2);
 }
 
 function qpQty($n): string
 {
-    return rtrim(rtrim(number_format((float)$n, 2, '.', ''), '0'), '.');
+    return rtrim(rtrim(number_format((float) $n, 2, '.', ''), '0'), '.');
 }
 
 // Same rule as qDiscountAmount() in quotation-helpers.php (this file does not include the helpers)
 function qpDiscountAmount(float $subtotal, ?string $type, $value): float
 {
-    $v = max(0.0, (float)$value);
-    if ($type === 'percent')    $d = $subtotal * min($v, 100) / 100;
-    elseif ($type === 'fixed')  $d = min($v, $subtotal);
-    else                        $d = 0.0;
+    $v = max(0.0, (float) $value);
+    if ($type === 'percent')
+        $d = $subtotal * min($v, 100) / 100;
+    elseif ($type === 'fixed')
+        $d = min($v, $subtotal);
+    else
+        $d = 0.0;
     return round($d, 2);
 }
 
-// Company logo as a data URI (dompdf runs with remote files disabled). Null if the file is missing.
+// Company logo as a data URI (dompdf runs with remote files disabled). Null if no logo is found.
+// Hinahanap sa QP_LOGO_PATH, tapos sa icon/logo (png/jpg/webp). Ang webp ay ginagawang PNG
+// dahil hindi lahat ng dompdf version ay nakakabasa ng webp; buo pa rin ang transparency.
 function qpLogoDataUri(): ?string
 {
-    $path = ROOT_PATH . QP_LOGO_PATH;
-    if (!is_file($path)) return null;
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path) ?: 'image/png';
-    return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+    foreach ([QP_LOGO_PATH, '/icon/logo.png', '/icon/logo.jpg', '/icon/logo.webp'] as $rel) {
+        $path = ROOT_PATH . $rel;
+        if (!is_file($path))
+            continue;
+
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path) ?: '';
+        if ($mime === 'image/webp') {
+            if (!function_exists('imagecreatefromwebp'))
+                continue;
+            $img = @imagecreatefromwebp($path);
+            if (!$img)
+                continue;
+            imagepalettetotruecolor($img);
+            // paliitin sa 300px para hindi bumigat ang PDF
+            $w = imagesx($img);
+            $h = imagesy($img);
+            $scale = min(1, 300 / max($w, $h));
+            $nw = max(1, (int) round($w * $scale));
+            $nh = max(1, (int) round($h * $scale));
+            $out = imagecreatetruecolor($nw, $nh);
+            imagealphablending($out, false);
+            imagesavealpha($out, true);
+            imagefill($out, 0, 0, imagecolorallocatealpha($out, 0, 0, 0, 127));
+            imagecopyresampled($out, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+            imagedestroy($img);
+            ob_start();
+            imagepng($out);
+            $png = ob_get_clean();
+            imagedestroy($out);
+            return 'data:image/png;base64,' . base64_encode($png);
+        }
+        if (in_array($mime, ['image/png', 'image/jpeg', 'image/gif'], true)) {
+            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+        }
+    }
+    return null;
 }
 
 // Section photo as a data URI (dompdf runs with remote files disabled).
 // Downscaled and flattened to JPEG so the PDF stays small.
 function qpImageDataUri(?string $name): ?string
 {
-    if (!$name) return null;
+    if (!$name)
+        return null;
     $path = ROOT_PATH . '/uploads/quotations/' . basename($name);
-    if (!is_file($path)) return null;
+    if (!is_file($path))
+        return null;
 
     $raw = file_get_contents($path);
 
@@ -80,8 +118,8 @@ function qpImageDataUri(?string $name): ?string
             $w = imagesx($img);
             $h = imagesy($img);
             $scale = min(1, 700 / max($w, $h));
-            $nw = max(1, (int)round($w * $scale));
-            $nh = max(1, (int)round($h * $scale));
+            $nw = max(1, (int) round($w * $scale));
+            $nh = max(1, (int) round($h * $scale));
 
             $canvas = imagecreatetruecolor($nw, $nh);
             imagefilledrectangle($canvas, 0, 0, $nw, $nh, imagecolorallocate($canvas, 255, 255, 255));
@@ -107,7 +145,8 @@ function qpFetch(mysqli $conn, int $qid): ?array
     $stmt->execute();
     $quote = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$quote) return null;
+    if (!$quote)
+        return null;
 
     $stmt = $conn->prepare('SELECT * FROM noblecrm_quotation_sections WHERE quotation_id = ? ORDER BY sort_order, id');
     $stmt->bind_param('i', $qid);
@@ -133,14 +172,14 @@ function qpFetch(mysqli $conn, int $qid): ?array
 // Column widths match the item table below (17% | 52% | 10% | 21%).
 function qpHeaderHtml(array $quote): string
 {
-    $logo     = qpLogoDataUri();
-    $logoHtml = $logo ? '<img src="' . $logo . '" width="80">' : '&nbsp;';
-    $date     = !empty($quote['quote_date']) ? date('j-M-y', strtotime($quote['quote_date'])) : '';
+    $logo = qpLogoDataUri();
+    $logoHtml = $logo ? '<img src="' . $logo . '" style="width:70px;height:auto;">' : '&nbsp;';
+    $date = !empty($quote['quote_date']) ? date('j-M-y', strtotime($quote['quote_date'])) : '';
 
-    $project  = qpEsc(mb_strtoupper((string)($quote['project_name'] ?? '')));
-    $client   = qpEsc((string)($quote['client_name'] ?? ''));
-    $location = qpEsc(mb_strtoupper((string)($quote['project_location'] ?? '')));
-    $scope    = qpEsc(mb_strtoupper((string)($quote['project_scope'] ?? '')));
+    $project = qpEsc(mb_strtoupper((string) ($quote['project_name'] ?? '')));
+    $client = qpEsc((string) ($quote['client_name'] ?? ''));
+    $location = qpEsc(mb_strtoupper((string) ($quote['project_location'] ?? '')));
+    $scope = qpEsc(mb_strtoupper((string) ($quote['project_scope'] ?? '')));
 
     return '
     <table class="top">
@@ -222,24 +261,30 @@ function qpFooterHtml(): string
 function qpBlockHtml(string $num, string $label, array $list): string
 {
     $ordered = [];
-    $seen    = [];
+    $seen = [];
     foreach ($list as $it) {
-        $g = $it['labor_type'] === 'group' ? (string)$it['group_name'] : '';
-        if ($g === '') { $ordered[] = $it; continue; }
-        if (isset($seen[$g])) continue;
+        $g = $it['labor_type'] === 'group' ? (string) $it['group_name'] : '';
+        if ($g === '') {
+            $ordered[] = $it;
+            continue;
+        }
+        if (isset($seen[$g]))
+            continue;
         $seen[$g] = true;
         foreach ($list as $m) {
-            if ($m['labor_type'] === 'group' && (string)$m['group_name'] === $g) $ordered[] = $m;
+            if ($m['labor_type'] === 'group' && (string) $m['group_name'] === $g)
+                $ordered[] = $m;
         }
     }
 
     $groups = [];
     foreach ($ordered as $it) {
-        if ($it['labor_type'] !== 'group') continue;
-        $g = (string)$it['group_name'];
-        $groups[$g]['size']  = ($groups[$g]['size'] ?? 0) + 1;
-        $groups[$g]['mat']   = ($groups[$g]['mat'] ?? 0) + (float)$it['material_total'];
-        $groups[$g]['labor'] = ($groups[$g]['labor'] ?? 0) + (float)$it['labor_total'];
+        if ($it['labor_type'] !== 'group')
+            continue;
+        $g = (string) $it['group_name'];
+        $groups[$g]['size'] = ($groups[$g]['size'] ?? 0) + 1;
+        $groups[$g]['mat'] = ($groups[$g]['mat'] ?? 0) + (float) $it['material_total'];
+        $groups[$g]['labor'] = ($groups[$g]['labor'] ?? 0) + (float) $it['labor_total'];
     }
 
     $out = '<tr><td class="c b">' . $num . '</td><td colspan="9" class="b">' . qpEsc($label) . '</td></tr>';
@@ -248,31 +293,31 @@ function qpBlockHtml(string $num, string $label, array $list): string
     $printed = [];
     foreach ($ordered as $it) {
         $k++;
-        $g       = $it['labor_type'] === 'group' ? (string)$it['group_name'] : '';
+        $g = $it['labor_type'] === 'group' ? (string) $it['group_name'] : '';
         $isGroup = $g !== '';
-        $first   = $isGroup && !isset($printed[$g]);
+        $first = $isGroup && !isset($printed[$g]);
         $printed[$g] = true;
 
         $out .= '<tr>'
-              . '<td class="c">' . $num . '.' . $k . '</td>'
-              . '<td colspan="2" class="c">' . qpEsc($it['description']) . '</td>'
-              . '<td class="c">' . ($it['uses_measurement'] ? qpMeas($it['measurement']) : '') . '</td>'
-              . '<td class="c">' . qpEsc($it['unit']) . '</td>'
-              . '<td class="c">' . qpQty($it['qty']) . '</td>'
-              . '<td>' . qpMoney($it['material_total']) . '</td>';
+            . '<td class="c">' . $num . '.' . $k . '</td>'
+            . '<td colspan="2" class="c">' . qpEsc($it['description']) . '</td>'
+            . '<td class="c">' . ($it['uses_measurement'] ? qpMeas($it['measurement']) : '') . '</td>'
+            . '<td class="c">' . qpEsc($it['unit']) . '</td>'
+            . '<td class="c">' . qpQty($it['qty']) . '</td>'
+            . '<td>' . qpMoney($it['material_total']) . '</td>';
 
         if (!$isGroup) {
-            $lab   = (float)$it['labor_total'];
-            $total = (float)$it['material_total'] + $lab;
+            $lab = (float) $it['labor_total'];
+            $total = (float) $it['material_total'] + $lab;
             $out .= '<td>' . ($lab > 0 ? qpMoney($lab) : '&nbsp;') . '</td>'
-                  . '<td>' . qpMoney($total) . '</td>'
-                  . '<td>' . qpMoney($total) . '</td>';
+                . '<td>' . qpMoney($total) . '</td>'
+                . '<td>' . qpMoney($total) . '</td>';
         } elseif ($first) {
-            $rs    = (int)$groups[$g]['size'];
+            $rs = (int) $groups[$g]['size'];
             $total = $groups[$g]['mat'] + $groups[$g]['labor'];
             $out .= '<td rowspan="' . $rs . '">' . qpMoney($groups[$g]['labor']) . '</td>'
-                  . '<td rowspan="' . $rs . '">' . qpMoney($total) . '</td>'
-                  . '<td rowspan="' . $rs . '">' . qpMoney($total) . '</td>';
+                . '<td rowspan="' . $rs . '">' . qpMoney($total) . '</td>'
+                . '<td rowspan="' . $rs . '">' . qpMoney($total) . '</td>';
         }
         $out .= '</tr>';
     }
@@ -281,51 +326,51 @@ function qpBlockHtml(string $num, string $label, array $list): string
 
 function qpRenderHtml(array $quote): string
 {
-    $body  = '';
+    $body = '';
     $grand = 0.0;
 
     foreach ($quote['sections'] as $si => $sec) {
-        $n     = $si + 1;
-        $its   = $quote['items'][$sec['id']] ?? [];
+        $n = $si + 1;
+        $its = $quote['items'][$sec['id']] ?? [];
         $mains = array_values(array_filter($its, fn($i) => $i['item_type'] === 'main'));
-        $accs  = array_values(array_filter($its, fn($i) => $i['item_type'] === 'accessory'));
+        $accs = array_values(array_filter($its, fn($i) => $i['item_type'] === 'accessory'));
 
         // Flat per-piece main items (drawer, sink: unit 'pc.') get their own DRAWER block below the
         // main items, same layout as accessory rows. Ang lm./sqm. main items ang naiiwan sa taas.
-        $pcs   = array_values(array_filter($mains, fn($i) => $i['unit'] === 'pc.'));
+        $pcs = array_values(array_filter($mains, fn($i) => $i['unit'] === 'pc.'));
         $mains = array_values(array_filter($mains, fn($i) => $i['unit'] !== 'pc.'));
 
         foreach ($its as $it) {
-            $grand += (float)$it['material_total'] + (float)$it['labor_total'];
+            $grand += (float) $it['material_total'] + (float) $it['labor_total'];
         }
 
         // Section title bar
         $body .= '<tr class="sec"><td colspan="10">' . qpEsc(mb_strtoupper($sec['title'])) . '</td></tr>';
 
         // Main items: item number and photo are merged down the main rows
-        $img      = qpImageDataUri($sec['image_path']);
-        $photo    = $img ? '<img src="' . $img . '" width="68">' : '&nbsp;';
+        $img = qpImageDataUri($sec['image_path']);
+        $photo = $img ? '<img src="' . $img . '" width="68">' : '&nbsp;';
         $mainRows = $mains ?: [null];
-        $span     = count($mainRows);
+        $span = count($mainRows);
 
         foreach ($mainRows as $mi => $it) {
             $body .= '<tr>';
             if ($mi === 0) {
                 $body .= '<td rowspan="' . $span . '" class="c b">' . $n . '.0</td>'
-                       . '<td rowspan="' . $span . '" class="c">' . $photo . '</td>';
+                    . '<td rowspan="' . $span . '" class="c">' . $photo . '</td>';
             }
             if ($it === null) {
                 $body .= '<td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>';
             } else {
-                $total = (float)$it['material_total'] + (float)$it['labor_total'];
+                $total = (float) $it['material_total'] + (float) $it['labor_total'];
                 $body .= '<td class="c">' . qpEsc($it['description']) . '</td>'
-                       . '<td class="c">' . qpMeas($it['measurement']) . '</td>'
-                       . '<td class="c">' . qpEsc($it['unit']) . '</td>'
-                       . '<td class="c">' . qpQty($it['qty']) . '</td>'
-                       . '<td>' . qpMoney($it['material_total']) . '</td>'
-                       . '<td>' . qpMoney($it['labor_total']) . '</td>'
-                       . '<td>' . qpMoney($total) . '</td>'
-                       . '<td>' . qpMoney($total) . '</td>';
+                    . '<td class="c">' . qpMeas($it['measurement']) . '</td>'
+                    . '<td class="c">' . qpEsc($it['unit']) . '</td>'
+                    . '<td class="c">' . qpQty($it['qty']) . '</td>'
+                    . '<td>' . qpMoney($it['material_total']) . '</td>'
+                    . '<td>' . qpMoney($it['labor_total']) . '</td>'
+                    . '<td>' . qpMoney($total) . '</td>'
+                    . '<td>' . qpMoney($total) . '</td>';
             }
             $body .= '</tr>';
         }
@@ -336,11 +381,15 @@ function qpRenderHtml(array $quote): string
         if ($pcs) {
             $allDrawer = true;
             foreach ($pcs as $p) {
-                if (stripos(ltrim((string)$p['description']), 'drawer') !== 0) { $allDrawer = false; break; }
+                if (stripos(ltrim((string) $p['description']), 'drawer') !== 0) {
+                    $allDrawer = false;
+                    break;
+                }
             }
             $blocks[] = [$allDrawer ? 'DRAWER' : 'DRAWER & OTHERS', $pcs];
         }
-        if ($accs) $blocks[] = ['ACCESSORIES', $accs];
+        if ($accs)
+            $blocks[] = ['ACCESSORIES', $accs];
 
         foreach ($blocks as $bi => [$label, $list]) {
             $body .= qpBlockHtml($n . '.' . ($bi + 1), $label, $list);
@@ -351,14 +400,14 @@ function qpRenderHtml(array $quote): string
         $body .= '<tr><td colspan="10" class="c" style="padding:14px;">No items.</td></tr>';
     }
 
-       $discount = qpDiscountAmount($grand, $quote['discount_type'] ?? 'none', $quote['discount_value'] ?? 0);
+    $discount = qpDiscountAmount($grand, $quote['discount_type'] ?? 'none', $quote['discount_value'] ?? 0);
 
     if ($discount > 0) {
         $pct = ($quote['discount_type'] ?? '') === 'percent'
-            ? ' (' . rtrim(rtrim(number_format((float)$quote['discount_value'], 2, '.', ''), '0'), '.') . '%)'
+            ? ' (' . rtrim(rtrim(number_format((float) $quote['discount_value'], 2, '.', ''), '0'), '.') . '%)'
             : '';
         $body .= '<tr><td colspan="9" class="r b">SUBTOTAL</td><td>' . qpMoney($grand) . '</td></tr>'
-               . '<tr><td colspan="9" class="r b">LESS: DISCOUNT' . $pct . '</td><td>' . qpMoney(-$discount) . '</td></tr>';
+            . '<tr><td colspan="9" class="r b">LESS: DISCOUNT' . $pct . '</td><td>' . qpMoney(-$discount) . '</td></tr>';
     }
 
     $body .= '<tr class="grand"><td colspan="9" class="r b">GRAND TOTAL</td><td>' . qpMoney($grand - $discount) . '</td></tr>';
@@ -378,7 +427,7 @@ function qpRenderHtml(array $quote): string
         /* header block */
         .top { border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000; }
         .top td { border: none; text-align: center; padding: 1px 4px; }
-        .top .logo { text-align: left; padding: 6px 0 4px 10px; }
+        .top .logo { text-align: left; vertical-align: middle; padding: 6px 0 6px 12px; }
         .top .t1 { font-size: 20px; font-weight: bold; padding-top: 6px; }
         .top .t2 { font-size: 12px; font-weight: bold; padding-top: 3px; white-space: nowrap; }
         .top .t3 { font-size: 7px; padding-bottom: 6px; }
@@ -439,7 +488,7 @@ function qpRenderHtml(array $quote): string
 // Action
 // -----------------------------------------------------------------------
 
-$qid   = (int)($_GET['id'] ?? 0);
+$qid = (int) ($_GET['id'] ?? 0);
 $quote = $qid > 0 ? qpFetch($conn, $qid) : null;
 
 if (!$quote) {
@@ -458,7 +507,11 @@ $dompdf->setPaper('legal', 'portrait');
 $dompdf->loadHtml(qpRenderHtml($quote));
 $dompdf->render();
 
-$safe     = trim(preg_replace('/[^A-Za-z0-9_-]+/', '-', $quote['client_name']), '-') ?: 'Client';
+$safe = trim(preg_replace('/[^A-Za-z0-9_-]+/', '-', $quote['client_name']), '-') ?: 'Client';
 $filename = 'Quotation-' . $safe . '-' . date('Ymd', strtotime($quote['quote_date'] ?: 'now')) . '.pdf';
-$dompdf->stream($filename, ['Attachment' => true]);
+// ?view=1 → ipakita sa browser (preview); kung wala → i-download
+$inline = isset($_GET['view']);
+if ($inline)
+    header('Cache-Control: no-store');
+$dompdf->stream($filename, ['Attachment' => !$inline]);
 exit;

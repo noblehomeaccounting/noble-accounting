@@ -27,6 +27,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             scrollbar-width: thin;
             scrollbar-color: #d1d5db transparent;
         }
+        /* napiling status card */
+        .chk2d-tab[data-active="1"] { border-color: #b45309; background: #fffbeb; box-shadow: 0 0 0 1px #b45309; }
     </style>
 </head>
 
@@ -36,66 +38,59 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
         <div class="max-w-6xl mx-auto">
 
-            <!-- Header -->
-            <div class="mb-3">
-                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management
-                </p>
-                <h1 class="text-gray-900 text-lg font-semibold flex items-center gap-2 flex-wrap">
-                    2D &amp; Quotation Approval
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] leading-none font-semibold uppercase tracking-wider border bg-green-50 text-green-700 border-green-200 shrink-0">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                        Final
-                    </span>
-                </h1>
-                <p class="text-gray-400 text-[11px] mt-0.5">Review the final 2D, quotation, and 3D files, then approve
-                    them or send them back for revision.</p>
+            <!-- ===================== HEADER ===================== -->
+            <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+                <div>
+                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management</p>
+                    <h1 class="text-gray-900 text-xl font-semibold flex items-center gap-2 flex-wrap">
+                        2D &amp; Quotation Approval
+                        <span class="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] leading-none font-semibold uppercase tracking-wider border bg-green-50 text-green-700 border-green-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Final
+                        </span>
+                    </h1>
+                    <p class="text-gray-400 text-xs mt-0.5">Check the final 2D, quotation and 3D files, then approve them or send them back for revision.</p>
+                </div>
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Updates automatically
+                </span>
             </div>
 
-            <!-- Toolbar: tabs + search -->
-            <div class="flex flex-wrap items-center gap-2 mb-3">
-                <div id="chk2dTabs"
-                    class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-                    <?php
-                    $tabs = [['', 'All'], ['Waiting for Approval', 'Queuing'], ['Approved', 'Approved'], ['For Revision', 'For Revision']];
-                    foreach ($tabs as [$val, $label]): ?>
-                        <button type="button" data-status="<?= htmlspecialchars($val) ?>"
-                            class="chk2d-tab inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors">
-                            <?= $label ?>
-                            <span
-                                class="chk2d-tab-count inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full text-[10px] font-bold">0</span>
-                        </button>
-                    <?php endforeach; ?>
-                </div>
+            <!-- ===================== STATUS CARDS (pindutin para i-filter) ===================== -->
+            <div id="chk2dTabs" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <?php
+                $tabs = [
+                    ['Waiting for Approval', 'Queuing',      'fa-hourglass-half', 'bg-amber-50 text-amber-700'],
+                    ['Approved',             'Approved',     'fa-circle-check',   'bg-green-50 text-green-600'],
+                    ['For Revision',         'For Revision', 'fa-rotate-left',    'bg-red-50 text-red-600'],
+                    ['',                     'All',          'fa-layer-group',    'bg-slate-100 text-slate-600'],
+                ];
+                foreach ($tabs as [$val, $label, $icon, $tone]): ?>
+                    <button type="button" data-status="<?= htmlspecialchars($val) ?>"
+                        class="chk2d-tab bg-white border border-gray-200 rounded-xl px-4 py-3.5 flex items-center gap-3 text-left hover:border-gray-300 transition-colors">
+                        <span class="w-10 h-10 rounded-xl <?= $tone ?> flex items-center justify-center shrink-0"><i class="fa-solid <?= $icon ?>"></i></span>
+                        <span class="min-w-0">
+                            <span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-400"><?= $label ?></span>
+                            <span class="chk2d-tab-count block text-xl font-bold text-gray-900 leading-tight tabular-nums">0</span>
+                        </span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
 
-                <div class="relative ml-auto w-full sm:w-64 min-w-0">
-                    <i
-                        class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
-                    <input id="chk2dSearch" type="text" placeholder="Search control no. / client / contact"
-                        class="w-full pl-8 pr-6 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white transition-colors">
+            <!-- ===================== SEARCH ===================== -->
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <p id="chk2dTabLabel" class="text-xs font-semibold text-gray-700"></p>
+                <div class="relative w-full sm:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                    <input id="chk2dSearch" type="text" placeholder="Search control no., client, contact"
+                        class="w-full pl-8 pr-7 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 transition-colors">
                     <button type="button" id="chk2dSearchClear"
-                        class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
+                        class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div id="chk2dTableWrap" class="overflow-auto max-h-[calc(100vh-13rem)]">
-                    <table class="min-w-full text-xs">
-                        <thead class="sticky top-0 z-10">
-                            <tr
-                                class="bg-gray-50 border-b border-gray-200 text-left text-[10px] uppercase tracking-wide text-gray-500">
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Submission</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Files</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Contract</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Submitted</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
-                                <th class="px-4 py-2.5 font-semibold text-right whitespace-nowrap">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="chk2dTbody" class="divide-y divide-gray-100"></tbody>
-                    </table>
-                </div>
+            <!-- ===================== LIST ===================== -->
+            <div id="chk2dTableWrap">
+                <div id="chk2dTbody" class="space-y-2"></div>
             </div>
 
             <p id="chk2dCount" class="text-[11px] text-gray-400 mt-2"></p>
@@ -153,7 +148,6 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         const CHK2D_AJAX_URL = <?= json_encode($chk2dAjaxUrl) ?>;
         const CHK2D_POLL_INTERVAL_MS = 8000;
         const CHK2D_VIEWED_KEY = 'chk2dViewedIds';
-        const CHK2D_COLS = 6;
 
         let chk2dSearchTerm = '';
         let chk2dStatusFilter = '';
@@ -245,19 +239,22 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         // One compact chip per file (replaces the three wide file columns).
+        const CHK2D_FILE_ICON = { '2D': 'fa-pen-ruler', 'Quote': 'fa-file-invoice-dollar', '3D': 'fa-cube' };
         function chk2dFileChip(label, path, uploaderName, uploaderRole, emptyTitle = 'No file') {
+            const icon = CHK2D_FILE_ICON[label] || 'fa-file-lines';
             if (!path) {
-                return `<span title="${chk2dEscapeHtml(emptyTitle)}" class="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-semibold border border-gray-200 bg-gray-50 text-gray-300">${label}</span>`;
+                return `<span title="${chk2dEscapeHtml(emptyTitle)}" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-dashed border-gray-200 text-gray-300">
+                    <i class="fa-solid ${icon} text-[10px]"></i>${label}</span>`;
             }
             const who = uploaderName ? `Uploaded by ${uploaderName}${uploaderRole ? ' (' + uploaderRole + ')' : ''}` : 'View file';
             return `<a href="${chk2dEscapeHtml(path)}" target="_blank" rel="noopener" title="${chk2dEscapeHtml(who)}"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
-                <i class="fa-solid fa-file-lines text-[9px]"></i>${label}</a>`;
+                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-gray-200 bg-white text-gray-700 hover:border-amber-400 hover:text-amber-800 hover:bg-amber-50 transition-colors">
+                <i class="fa-solid ${icon} text-[10px] text-amber-600"></i>${label}</a>`;
         }
 
         function chk2dFilesCell(row) {
             const show3d = row.include_3d || row.design_3d_stage !== 'Locked';
-            return `<div class="flex items-center gap-1">
+            return `<div class="flex flex-wrap items-center gap-1.5">
                 ${chk2dFileChip('2D', row.design_2d_path, row.design_2d_uploader_name, row.design_2d_uploaded_role)}
                 ${chk2dFileChip('Quote', row.quotation_path, row.quotation_uploader_name, row.quotation_uploaded_role)}
                 ${chk2dFileChip('3D', show3d ? row.design_3d_path : null, row.design_3d_uploader_name, row.design_3d_uploaded_role, show3d ? 'No file' : 'Not yet')}
@@ -279,20 +276,11 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
         function chk2dRenderTabs() {
             document.querySelectorAll('.chk2d-tab').forEach(btn => {
-                const active = btn.dataset.status === chk2dStatusFilter;
-                btn.classList.toggle('bg-amber-700', active);
-                btn.classList.toggle('text-white', active);
-                btn.classList.toggle('text-gray-500', !active);
-                btn.classList.toggle('hover:bg-gray-50', !active);
-
-                const count = btn.querySelector('.chk2d-tab-count');
-                if (count) {
-                    count.classList.toggle('bg-white/25', active);
-                    count.classList.toggle('text-white', active);
-                    count.classList.toggle('bg-gray-100', !active);
-                    count.classList.toggle('text-gray-600', !active);
-                }
+                btn.dataset.active = btn.dataset.status === chk2dStatusFilter ? '1' : '0';
             });
+            const names = { '': 'All submissions', 'Waiting for Approval': 'Queuing', 'Approved': 'Approved', 'For Revision': 'For revision' };
+            const el = document.getElementById('chk2dTabLabel');
+            if (el) el.textContent = names[chk2dStatusFilter] ?? '';
         }
 
         async function chk2dFetchCounts() {
@@ -312,28 +300,36 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         // ── table ──
-        function chk2dSkeletonRows(count = 5) {
+        function chk2dSkeletonRows(count = 4) {
             document.getElementById('chk2dTbody').innerHTML = Array.from({ length: count }).map(() => `
-                <tr>${Array.from({ length: CHK2D_COLS }).map(() => `<td class="px-4 py-3"><div class="h-3 rounded bg-gray-100 animate-pulse"></div></td>`).join('')}</tr>`).join('');
+                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
+                    <div class="flex-1 space-y-2"><div class="h-3 w-32 rounded bg-gray-100 animate-pulse"></div><div class="h-3 w-48 rounded bg-gray-100 animate-pulse"></div></div>
+                    <div class="h-8 w-24 rounded-lg bg-gray-100 animate-pulse"></div>
+                </div>`).join('');
         }
 
         function chk2dEmptyState() {
-            const message = chk2dSearchTerm ? `No submissions match "${chk2dEscapeHtml(chk2dSearchTerm)}".` : 'No submissions found.';
-            return `<tr><td colspan="${CHK2D_COLS}" class="p-0">
-                <div class="flex flex-col items-center justify-center gap-1.5 py-8 text-center">
-                    <i class="fa-regular fa-folder-open text-2xl text-gray-300"></i>
-                    <p class="text-gray-400 text-xs">${message}</p>
-                </div></td></tr>`;
+            const message = chk2dSearchTerm ? `No submissions match "${chk2dEscapeHtml(chk2dSearchTerm)}".`
+                : (chk2dStatusFilter === 'Waiting for Approval' ? 'Nothing in the queue. New final submissions will show up here.' : 'No submissions here.');
+            return `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 py-14 text-center">
+                    <i class="fa-regular fa-folder-open text-3xl text-gray-300"></i>
+                    <p class="text-gray-500 text-xs font-medium">${message}</p>
+                </div>`;
         }
 
         function chk2dActionButton(row) {
             if (row.review_target && row.review_target !== 'none') {
                 return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
-                    class="px-3 py-1 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-800 transition-colors whitespace-nowrap">Review</button>`;
+                    class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm transition-colors whitespace-nowrap">
+                    <i class="fa-solid fa-clipboard-check"></i> Review</button>`;
             }
             return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
-                class="px-3 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">View</button>`;
+                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors whitespace-nowrap">
+                View <i class="fa-solid fa-chevron-right text-[9px]"></i></button>`;
         }
+
+        // kulay ng gilid ng card ayon sa status
+        const CHK2D_BAR = { 'Approved': 'bg-green-500', 'For Revision': 'bg-red-500', 'Waiting for Approval': 'bg-amber-400' };
 
         function chk2dRenderRows(rows) {
             const tbody = document.getElementById('chk2dTbody');
@@ -346,29 +342,36 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             tbody.innerHTML = rows.map(row => {
                 const isViewed = viewed.has(row.id);
                 const isActive = chk2dCurrentId === row.id;
-
-                let rowBg = '';
-                if (isActive) rowBg = 'bg-amber-100';
-                else if (!isViewed) rowBg = 'bg-amber-50/30';
-
-                const accent = isActive ? 'border-l-4 border-l-amber-600 pl-3' : 'border-l-4 border-l-transparent pl-3';
-                const dot = isViewed ? '' : `<span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Not yet viewed"></span>`;
+                const bar = CHK2D_BAR[row.status] || 'bg-gray-300';
+                const ring = isActive ? 'border-amber-500 ring-2 ring-amber-200' : (isViewed ? 'border-gray-200 hover:border-gray-300' : 'border-amber-200 hover:border-amber-300');
+                const newTag = isViewed ? '' : `<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-500 text-white">New</span>`;
 
                 return `
-                <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer ${rowBg}" onclick="chk2dOpenPanel(${row.id})">
-                    <td class="pr-4 py-2 ${accent}">
-                        <div class="flex items-center gap-1.5">
-                            ${dot}
-                            <span class="font-mono text-[11px] font-semibold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>
+                <article class="relative bg-white border ${ring} rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-sm" onclick="chk2dOpenPanel(${row.id})">
+                    <span class="absolute left-0 top-0 bottom-0 w-1 ${bar}"></span>
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 pl-5 pr-4 py-4">
+                        <div class="min-w-0 flex-1 basis-[200px]">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono text-[11.5px] font-bold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>${newTag}
+                            </div>
+                            <p class="text-gray-900 text-sm font-semibold mt-0.5 truncate">${chk2dEscapeHtml(row.client_name)}</p>
+                            <p class="text-gray-400 text-[11px] mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>Submitted ${chk2dFormatDate(row.submitted_at)}</p>
                         </div>
-                        <p class="text-gray-800 text-xs mt-0.5 truncate max-w-[220px]">${chk2dEscapeHtml(row.client_name)}</p>
-                    </td>
-                    <td class="px-4 py-2 whitespace-nowrap" onclick="event.stopPropagation()">${chk2dFilesCell(row)}</td>
-                    <td class="px-4 py-2 text-gray-800 font-medium whitespace-nowrap">${chk2dFormatCurrency(row.contract_amount)}</td>
-                    <td class="px-4 py-2 text-gray-500 whitespace-nowrap">${chk2dFormatDate(row.submitted_at)}</td>
-                    <td class="px-4 py-2"><div class="flex flex-wrap items-center gap-1">${chk2dStatusBadgeWithRow(row)}</div></td>
-                    <td class="px-4 py-2 text-right" onclick="event.stopPropagation()">${chk2dActionButton(row)}</td>
-                </tr>`;
+                        <div class="basis-[210px]" onclick="event.stopPropagation()">
+                            <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Files</p>
+                            ${chk2dFilesCell(row)}
+                        </div>
+                        <div class="basis-[150px]">
+                            <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">Contract</p>
+                            <p class="text-gray-900 text-sm font-bold tabular-nums mt-0.5">${chk2dFormatCurrency(row.contract_amount)}</p>
+                        </div>
+                        <div class="basis-[120px]">
+                            <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p>
+                            <div class="flex flex-wrap items-center gap-1">${chk2dStatusBadgeWithRow(row)}</div>
+                        </div>
+                        <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${chk2dActionButton(row)}</div>
+                    </div>
+                </article>`;
             }).join('');
         }
 

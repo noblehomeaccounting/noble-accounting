@@ -39,6 +39,52 @@ const MON_STATUSES = [
     'FINAL FOR APPROVAL'      => 'blue',
     'FINAL REVISION'          => 'red',
     'FINAL APPROVED'          => 'green',
+    // ── Notice to Proceed → Delivery (galing sa accounting / production / purchasing) ──
+    'NOTICE TO PROCEED'       => 'green',
+    'CUTTING LIST UPLOADED'   => 'blue',
+    'CUTTING LIST REJECTED'   => 'red',
+    'CUTTING LIST APPROVED'   => 'green',
+    'BOM SUBMITTED'           => 'blue',
+    'BOM APPROVED'            => 'green',
+    'BOM RECEIVED'            => 'green',
+    'PR SUBMITTED'            => 'amber',
+    'PR RETURNED'             => 'red',
+    'PR APPROVED'             => 'green',
+    'PR REVIEWED'             => 'blue',
+    'PR RECEIVED BY ACCOUNTING' => 'blue',
+    'PR RELEASED'             => 'blue',
+    'PR PAID'                 => 'green',
+    'TRANSMITTAL ISSUED'      => 'amber',
+    'DELIVERED'               => 'green',
+    'DR CREATED'              => 'green',
+];
+
+// Mga status na galing sa production / purchasing (para sa divider sa Status History)
+const MON_PIPELINE = [
+    'NOTICE TO PROCEED', 'CUTTING LIST UPLOADED', 'CUTTING LIST REJECTED', 'CUTTING LIST APPROVED', 'BOM SUBMITTED', 'BOM APPROVED', 'BOM RECEIVED',
+    'PR SUBMITTED', 'PR RETURNED', 'PR APPROVED', 'PR REVIEWED', 'PR RECEIVED BY ACCOUNTING', 'PR RELEASED', 'PR PAID',
+    'TRANSMITTAL ISSUED', 'DELIVERED', 'DR CREATED',
+];
+
+// Ano ang susunod pagkatapos ng huling production / purchasing status: [note, expected next]
+const MON_PIPELINE_NEXT = [
+    'NOTICE TO PROCEED'         => ['Deposit received, production can start', 'Cutting List'],
+    'CUTTING LIST UPLOADED'     => ['Cutting list uploaded, waiting for QR approval', 'Cutting List Approval'],
+    'CUTTING LIST REJECTED'     => ['Cutting list was rejected, needs re-upload', 'Re-upload Cutting List'],
+    'CUTTING LIST APPROVED'     => ['Cutting list approved', 'BOM'],
+    'BOM SUBMITTED'             => ['BOM submitted, waiting for Superadmin approval', 'BOM Approval'],
+    'BOM APPROVED'              => ['BOM approved, waiting for Purchasing to receive it', 'Purchasing'],
+    'BOM RECEIVED'              => ['BOM received by Purchasing', 'Purchase Request'],
+    'PR SUBMITTED'              => ['Purchase request waiting for CEO approval', 'PR Approval'],
+    'PR RETURNED'               => ['Purchase request was returned by the CEO', 'New Purchase Request'],
+    'PR APPROVED'               => ['Purchase request approved, for Accounting review', 'Accounting Review'],
+    'PR REVIEWED'               => ['Reviewed by the Accounting Head', 'Accounting Staff'],
+    'PR RECEIVED BY ACCOUNTING' => ['Received by Accounting Staff', 'Release'],
+    'PR RELEASED'               => ['Budget released, waiting to be paid', 'Payment'],
+    'PR PAID'                   => ['Purchase request paid', 'Transmittal'],
+    'TRANSMITTAL ISSUED'        => ['Transmittal issued, for delivery', 'Delivery'],
+    'DELIVERED'                 => ['Items delivered to the client', 'Delivery Receipt'],
+    'DR CREATED'                => ['Delivery receipt prepared by the Project Coordinator', 'Site Coordination'],
 ];
 
 // Stage ng bawat inquiry. Returns [label, color, note, expected next].
@@ -191,7 +237,8 @@ function monHistoryData(mysqli $conn, array $ids): array
 {
     $out = [];
     foreach ($ids as $id) {
-        $out[(int) $id] = ['sv' => [], 'initials' => [], 'reviews' => [], 'finals' => []];
+        $out[(int) $id] = ['sv' => [], 'initials' => [], 'reviews' => [], 'finals' => [],
+                           'cutting' => [], 'boms' => [], 'prs' => [], 'trs' => [], 'drs' => []];
     }
     if (!$out) {
         return $out;
@@ -203,9 +250,47 @@ function monHistoryData(mysqli $conn, array $ids): array
         'initials' => "SELECT * FROM noblecrm_2dquotation WHERE inquiry_id IN ($in) AND stage = 'Initial' ORDER BY id ASC",
         'reviews'  => "SELECT inquiry_id, slot, decision, decided_at FROM noblecrm_2dquotation_customer_review WHERE inquiry_id IN ($in) ORDER BY id ASC",
         'finals'   => "SELECT * FROM noblecrm_2dquotation_final WHERE inquiry_id IN ($in) ORDER BY id ASC",
+
+        // ── Cutting list → Delivery (lahat naka-link sa inquiry sa pamamagitan ng 2D quotation) ──
+        'cutting'  => "SELECT q.inquiry_id, p.*, u.name AS uploaded_by_name, a.name AS approved_by_name, rj.name AS rejected_by_name
+                       FROM noblecrm_cuttinglistprogression p
+                       JOIN noblecrm_2dquotation q ON q.id = p.quotation_id
+                       LEFT JOIN noblerole u  ON u.id  = p.uploaded_by
+                       LEFT JOIN noblerole a  ON a.id  = p.approved_by
+                       LEFT JOIN noblerole rj ON rj.id = p.rejected_by
+                       WHERE q.inquiry_id IN ($in) ORDER BY p.id ASC",
+        'boms'     => "SELECT q.inquiry_id, b.id, b.bom_number, b.created_at, b.requested_by, b.approved_at, b.approved_by, b.received_at, b.received_by
+                       FROM noblecrm_bom b
+                       JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                       WHERE q.inquiry_id IN ($in) AND b.bom_number NOT LIKE 'TEMP-%' ORDER BY b.id ASC",
+        'prs'      => "SELECT q.inquiry_id, p.req_no, p.status, p.created_at, p.prepared_by, p.approved_at, p.approved_by,
+                              p.rejected_at, p.rejection_remarks, p.reviewed_at, p.reviewed_by, p.staff_received_at, p.staff_received_by,
+                              p.released_at, p.released_by, p.paid_at
+                       FROM noblepurchaserequest p
+                       JOIN noblecrm_bom b ON b.id = p.bom_id
+                       JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                       WHERE q.inquiry_id IN ($in) ORDER BY p.id ASC",
+        'trs'      => "SELECT q.inquiry_id, t.ref_no, t.created_at, t.issued_by, t.delivered_at, t.delivery_mode
+                       FROM nobletransmittal t
+                       JOIN noblepurchaserequest p ON p.id = t.pr_id
+                       JOIN noblecrm_bom b ON b.id = p.bom_id
+                       JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                       WHERE q.inquiry_id IN ($in) ORDER BY t.id ASC",
+        'drs'      => "SELECT q.inquiry_id, d.dr_no, d.created_at, d.prepared_by
+                       FROM noblepc_dr d
+                       JOIN nobletransmittal t ON t.id = d.transmittal_id
+                       JOIN noblepurchaserequest p ON p.id = t.pr_id
+                       JOIN noblecrm_bom b ON b.id = p.bom_id
+                       JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                       WHERE q.inquiry_id IN ($in) ORDER BY d.id ASC",
     ];
     foreach ($queries as $key => $sql) {
-        $res = $conn->query($sql);
+        // kapag wala pa ang table (hal. noblepc_dr), laktawan lang — huwag sirain ang buong monitoring
+        try {
+            $res = $conn->query($sql);
+        } catch (Throwable $e) {
+            $res = false;
+        }
         if (!$res) {
             continue;
         }
@@ -225,13 +310,21 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
 
     $ev = [];
     $seq = 0;
-    $add = function (string $label, string $color, ?string $time, string $note = '', ?string $sort = null) use (&$ev, &$seq) {
+    $add = function (string $label, string $color, ?string $time, string $note = '', ?string $sort = null, string $ref = '') use (&$ev, &$seq) {
         $key = $sort ?? $time;
         $ev[] = [
-            'label' => $label, 'color' => $color, 'time' => $time, 'note' => $note,
+            'label' => $label, 'color' => $color, 'time' => $time, 'note' => $note, 'ref' => $ref,
             '_sort' => $key ? (strtotime($key) ?: 0) : 0, '_seq' => $seq++,
         ];
     };
+    // production / purchasing event (laktaw kapag walang petsa)
+    $addP = function (string $label, ?string $time, string $note = '', string $ref = '') use ($add) {
+        if (empty($time)) return;
+        // DATE lang (walang oras) → dulo ng araw, para hindi mauna sa mga nangyari sa parehong araw
+        $sort = strlen($time) <= 10 ? $time . ' 23:59:59' : null;
+        $add($label, MON_STATUSES[$label] ?? 'blue', $time, $note, $sort, $ref);
+    };
+    $by = fn($name) => $name ? 'by ' . $name : '';
     $slotLabel = ['2d' => '2D', 'quotation' => 'Quotation', '3d' => '3D'];
     $readyMode = ($r['mode'] ?? 'site_visit') === 'ready_for_quotation';
 
@@ -321,12 +414,53 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         }
     }
 
+    // 6. Deposit (Accounting) → Notice to Proceed
+    foreach ($data['initials'] as $q) {
+        if (($q['deposit_status'] ?? '') === 'Notice to Proceed') {
+            $amt = isset($q['deposit_amount']) && $q['deposit_amount'] !== null ? 'Deposit ₱' . number_format((float) $q['deposit_amount'], 2) : 'Deposit received';
+            $addP('NOTICE TO PROCEED', $q['deposit_uploaded_at'] ?? null, $amt);
+        }
+    }
+
+    // 7. Cutting list → BOM → Purchase Request → Transmittal → Delivery Receipt
+    foreach ($data['cutting'] ?? [] as $c) {
+        $addP('CUTTING LIST UPLOADED', $c['created_at'] ?? ($c['uploaded_at'] ?? null), $by($c['uploaded_by_name'] ?? ''));
+        if ((int) ($c['qr_rejected'] ?? 0) === 1)
+            $addP('CUTTING LIST REJECTED', $c['rejected_at'] ?? null, trim($by($c['rejected_by_name'] ?? '') . (!empty($c['rejection_remarks']) ? ' — “' . $c['rejection_remarks'] . '”' : '')));
+        if ((int) ($c['qr_approved'] ?? 0) === 1)
+            $addP('CUTTING LIST APPROVED', $c['approved_at'] ?? null, $by($c['approved_by_name'] ?? ''));
+    }
+    foreach ($data['boms'] ?? [] as $b) {
+        $addP('BOM SUBMITTED', $b['created_at'], $by($b['requested_by']), $b['bom_number']);
+        $addP('BOM APPROVED', $b['approved_at'], $by($b['approved_by']), $b['bom_number']);
+        $addP('BOM RECEIVED', $b['received_at'], 'Received by Purchasing' . ($b['received_by'] ? ' · ' . $b['received_by'] : ''), $b['bom_number']);
+    }
+    foreach ($data['prs'] ?? [] as $p) {
+        $addP('PR SUBMITTED', $p['created_at'], 'Purchase request ' . $by($p['prepared_by']), $p['req_no']);
+        if (($p['status'] ?? '') === 'Rejected')
+            $addP('PR RETURNED', $p['rejected_at'], !empty($p['rejection_remarks']) ? '“' . $p['rejection_remarks'] . '”' : 'Returned by the CEO', $p['req_no']);
+        $addP('PR APPROVED', $p['approved_at'], $by($p['approved_by']), $p['req_no']);
+        $addP('PR REVIEWED', $p['reviewed_at'], 'Accounting Head ' . $by($p['reviewed_by']), $p['req_no']);
+        $addP('PR RECEIVED BY ACCOUNTING', $p['staff_received_at'], $by($p['staff_received_by']), $p['req_no']);
+        $addP('PR RELEASED', $p['released_at'], $by($p['released_by']), $p['req_no']);
+        $addP('PR PAID', $p['paid_at'], 'Paid stamp applied', $p['req_no']);
+    }
+    foreach ($data['trs'] ?? [] as $t) {
+        $addP('TRANSMITTAL ISSUED', $t['created_at'], $by($t['issued_by']), $t['ref_no']);
+        $addP('DELIVERED', $t['delivered_at'], 'Transmittal delivered' . ($t['delivery_mode'] ? ' via ' . $t['delivery_mode'] : ''), $t['ref_no']);
+    }
+    foreach ($data['drs'] ?? [] as $d) {
+        $addP('DR CREATED', $d['created_at'], $by($d['prepared_by']), 'DR# ' . $d['dr_no']);
+    }
+
     usort($ev, fn($a, $b) => [$a['_sort'], $a['_seq']] <=> [$b['_sort'], $b['_seq']]);
 
     // Kasalukuyang stage: kung iba sa huling event, idagdag bilang "ngayon".
+    // Kapag nasa production / purchasing na, ang huling event doon ang kasalukuyan.
     [$curLabel, $curColor, $curNote] = monStage($r);
     $last = count($ev) - 1;
-    if ($last < 0 || $ev[$last]['label'] !== $curLabel) {
+    $inPipeline = $last >= 0 && in_array($ev[$last]['label'], MON_PIPELINE, true);
+    if (!$inPipeline && ($last < 0 || $ev[$last]['label'] !== $curLabel)) {
         $ev[] = ['label' => $curLabel, 'color' => $curColor, 'time' => null, 'note' => $curNote, '_sort' => PHP_INT_MAX, '_seq' => $seq];
         $last++;
     }
@@ -334,6 +468,7 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         $e['current'] = ($i === $last);
         // ts = unix time ng event (para sa date filter); "ngayon" ang current na walang oras
         $e['ts'] = $e['_sort'] === PHP_INT_MAX ? time() : ($e['_sort'] ?: null);
+        $e['group'] = in_array($e['label'], MON_PIPELINE, true) ? 'pipeline' : 'crm';
         unset($e['_sort'], $e['_seq']);
     }
     unset($e);
@@ -537,6 +672,16 @@ if ($action === 'status_detail') {
     }
 
     [$label, $color, $note, $next] = monStage($r);
+
+    // Kapag nasa Cutting list → Delivery na, iyon ang ipapakita
+    $hist = monBuildHistory($conn, $r);
+    $cur = $hist[count($hist) - 1] ?? null;
+    if ($cur && ($cur['group'] ?? '') === 'pipeline') {
+        $label = $cur['label'];
+        $color = $cur['color'];
+        [$note, $next] = MON_PIPELINE_NEXT[$label] ?? [$cur['note'], '—'];
+        if (!empty($cur['ref'])) $note .= ' (' . $cur['ref'] . ')';
+    }
 
     monRespond(true, '', ['item' => [
         'id'          => (int) $r['id'],

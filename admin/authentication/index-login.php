@@ -24,7 +24,7 @@ function getRouteFor($role, $position, $branch)
     }
 
     if ($role === 'PROJECT COORDINATOR DEPARTMENT') {
-        return $isMainBranch ? 'projectcoordinator' : 'crmprojectcoordinator';
+        return $isMainBranch ? 'projectcoordinator' : 'coordinator';
     }
 
     if ($role === 'SALES AND MARKETING DEPARTMENT') {

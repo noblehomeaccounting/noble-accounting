@@ -57,6 +57,8 @@ if ($uid > 0) {
             padding: 2px 5px; font: inherit; outline: none; text-align: inherit;
         }
         .tr-sheet input:focus, .tr-sheet textarea:focus { border-style: solid; border-color: #b45309; background: #fff; }
+        /* galing sa BOM / Purchase Request — hindi na mababago */
+        .tr-sheet input[readonly] { background: #f3f4f6; border: 1px solid #e5e7eb; color: #111; font-weight: 700; cursor: not-allowed; }
         .tr-sig { position: relative; height: 56px; }
         .tr-sig img { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); height: 56px; width: auto; max-width: 90%; object-fit: contain; z-index: 2; pointer-events: none; }
         .tr-sig .nm { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-weight: 700; font-size: 12.5px; z-index: 1; }
@@ -324,8 +326,8 @@ if ($uid > 0) {
             function renderSheet(d, edit) {
                 const f = (name, val, extra = '') => edit ? `<input name="${name}" value="${esc(val ?? '')}" ${extra}>` : esc(val ?? '');
                 const sigImg = p => p ? `<img src="${BASE}/${esc(p)}" alt="">` : '';
-                const infoRow = (label, name, val) => `
-                    <tr><td class="lbl" style="width:24%">${label}</td><td class="ctr">${f(name, val, 'style="text-align:center"')}</td></tr>`;
+                const infoRow = (label, name, val, extra = '') => `
+                    <tr><td class="lbl" style="width:24%">${label}</td><td class="ctr">${f(name, val, 'style="text-align:center" ' + extra)}</td></tr>`;
 
                 document.getElementById('trSheet').innerHTML = `
                     <table><tr>
@@ -353,7 +355,7 @@ if ($uid > 0) {
 
                     <table class="bx bx-outer" style="margin-top:4px">
                         ${infoRow('PROJECT NAME:', 'project_name', d.project_name)}
-                        ${infoRow('CLIENT NAME:', 'client_name', d.client_name)}
+                        ${infoRow('CLIENT NAME:', 'client_name', d.client_name, 'readonly title="From the BOM / Purchase Request"')}
                         ${infoRow('CLIENT COMPANY:', 'client_company', d.client_company)}
                         ${infoRow('CLIENT ADRESS:', 'client_address', d.client_address)}
                         ${infoRow('SUBJECT / PURPOSE:', 'subject', d.subject)}
@@ -472,11 +474,12 @@ if ($uid > 0) {
                     };
                     const draft = readDraft();
                     const data0 = draft ? Object.assign(base, draft) : base;
+                    data0.client_name = d.pr.client;   // laging galing sa BOM / PR, kahit may lumang draft
                     renderSheet(data0, true);
                     Object.entries(SUM_IDS).forEach(([k, id]) => document.getElementById(id).value = data0[k] || '');
                     document.getElementById('trSumStatus').innerHTML = '<span class="text-gray-400">Goes to the summary as <b>For delivery</b> once saved</span>';
                     if (draft) toast('Your unsaved inputs were restored.');
-                    document.getElementById('trHint').innerHTML = `<i class="fa-solid fa-pen text-amber-700 mr-1"></i>From <b class="font-mono text-red-600">${esc(d.pr.req_no)}</b> (Paid). Fill in the highlighted fields.`;
+                    document.getElementById('trHint').innerHTML = `<i class="fa-solid fa-pen text-amber-700 mr-1"></i>From <b class="font-mono text-red-600">${esc(d.pr.req_no)}</b> (Paid). Client <b>${esc(d.pr.client)}</b> comes from the BOM. Fill in the highlighted fields.`;
                     setFormMode('edit');
                     history.replaceState(null, '', `${location.pathname}?pr=${prId}`);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -532,7 +535,7 @@ if ($uid > 0) {
             document.getElementById('trSubmit').addEventListener('click', () => {
                 if (!currentPr) return;
                 const d = collect();
-                if (!d.project_name || !d.client_name) { toast('Project name and client name are required.', 'error'); return; }
+                if (!d.project_name) { toast('Project name is required.', 'error'); return; }
                 if (!d.particulars) { toast('Particulars is required for the Summary of Transmittal.', 'error'); document.getElementById('trParticulars').focus(); return; }
                 const count = d.items.filter(i => i.description.trim()).length;
                 if (!count) { toast('Add at least one item.', 'error'); return; }

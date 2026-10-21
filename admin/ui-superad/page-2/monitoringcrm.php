@@ -327,6 +327,9 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             ['Initial review', ['INITIAL FOR APPROVAL', 'INITIAL REVISION', 'INITIAL APPROVED', 'WAITING FOR 3D', '3D FOR APPROVAL', '3D REVISION']],
             ['Customer', ['FOR CLIENT REVIEW', 'CUSTOMER REVISION', 'CUSTOMER APPROVED']],
             ['Final', ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED']],
+            ['Cutting list & BOM', ['CUTTING LIST UPLOADED', 'CUTTING LIST REJECTED', 'CUTTING LIST APPROVED', 'BOM SUBMITTED', 'BOM APPROVED', 'BOM RECEIVED']],
+            ['Purchase request', ['PR SUBMITTED', 'PR RETURNED', 'PR APPROVED', 'PR REVIEWED', 'PR RECEIVED BY ACCOUNTING', 'PR RELEASED', 'PR PAID']],
+            ['Delivery', ['TRANSMITTAL ISSUED', 'DELIVERED', 'DR CREATED']],
             ['Closed', ['NOT PROCEEDING']]
         ];
 
@@ -334,7 +337,9 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
         const MON_PRESETS = [
             { name: 'Had a revision', statuses: ['INITIAL REVISION', 'CUSTOMER REVISION', '3D REVISION', 'FINAL REVISION'] },
             { name: 'Reached customer review', statuses: ['FOR CLIENT REVIEW', 'CUSTOMER REVISION', 'CUSTOMER APPROVED'] },
-            { name: 'Reached final', statuses: ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED'] }
+            { name: 'Reached final', statuses: ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED'] },
+            { name: 'In production', statuses: ['CUTTING LIST UPLOADED', 'CUTTING LIST APPROVED', 'BOM SUBMITTED', 'BOM APPROVED', 'BOM RECEIVED'] },
+            { name: 'Delivered', statuses: ['DELIVERED', 'DR CREATED'] }
         ];
 
         // Filter state

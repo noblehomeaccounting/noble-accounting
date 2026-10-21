@@ -31,126 +31,69 @@ if ($recordId <= 0) {
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
+    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden transition-all duration-300">
 
-        <div class="acct-detail-doc max-w-3xl mx-auto">
+        <div class="max-w-6xl mx-auto">
 
-            <!-- Back link -->
+            <!-- Back -->
             <a href="<?= htmlspecialchars($acctListUrl) ?>"
-                class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-amber-700 mb-4 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to list
+                class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-amber-700 mb-3 transition-colors">
+                <i class="fa-solid fa-chevron-left text-[10px]"></i> Approved 2D &amp; Quotation
             </a>
 
-            <!-- Document Card -->
-            <div id="acctDetailCard" class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+            <!-- ===================== HEADER ===================== -->
+            <div id="acctDetailHeader" class="bg-white border border-gray-200 rounded-xl px-5 py-5 mb-4">
+                <div class="space-y-2">
+                    <div class="h-3 w-32 rounded bg-gray-100 animate-pulse"></div>
+                    <div class="h-6 w-64 rounded bg-gray-100 animate-pulse"></div>
+                    <div class="h-3 w-80 rounded bg-gray-100 animate-pulse"></div>
+                </div>
+            </div>
 
-                <!-- Document Header / Letterhead -->
-                <div class="px-8 pt-7 pb-5 bg-gradient-to-b from-amber-50/70 to-white">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex items-center gap-3.5">
-                            <img src="<?= BASE_URL ?>/icon/logo.png" class="h-12 w-12 object-contain drop-shadow-sm" alt="logo">
-                            <div>
-                                <p class="text-amber-700 text-[11px] font-bold tracking-[0.15em] uppercase mb-1">
-                                    Approved 2D &amp; Quotation
-                                </p>
-                                <h1 class="acct-detail-serif text-gray-900 text-[27px] leading-tight font-bold">
-                                    Submission Details
-                                </h1>
-                            </div>
+            <div id="acctDetailLoading" class="hidden"></div>
+
+            <!-- ===================== BODY: kaliwa = detalye, kanan = deposit ===================== -->
+            <div id="acctDetailContent" class="hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-4 items-start">
+
+                <div class="space-y-4 min-w-0">
+                    <!-- Client & project -->
+                    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                            <i class="fa-solid fa-user-tie text-amber-700 text-xs"></i>
+                            <p class="text-sm font-semibold text-gray-900">Client &amp; Project</p>
                         </div>
-                        <div class="text-right shrink-0 flex flex-col items-end gap-2">
-                            <div class="bg-white/80 border border-amber-100 rounded-lg px-3.5 py-2">
-                                <p class="text-[10px] text-amber-700/80 font-bold uppercase tracking-[0.15em] mb-1">Control No.</p>
-                                <p id="acctDetailControlNo" class="text-gray-900 font-mono font-bold text-sm">—</p>
+                        <dl id="acctDetailClientRows" class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 px-5 py-4"></dl>
+                    </section>
+
+                    <!-- Files -->
+                    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-folder-open text-amber-700 text-xs"></i>
+                                <p class="text-sm font-semibold text-gray-900">Approved Files</p>
                             </div>
-                            <div id="acctDetailDepositBadgeWrap"></div>
+                            <p id="acctDetailApprovedOn" class="text-[11px] text-gray-400"></p>
                         </div>
-                    </div>
+                        <div id="acctDetailFileRows" class="divide-y divide-gray-100"></div>
+                    </section>
                 </div>
 
-                <!-- Thick divider -->
-                <div class="h-[3px] bg-gray-900 mx-8"></div>
-
-                <!-- Document Meta Row -->
-                <div id="acctDetailMetaRow"
-                    class="px-8 py-3.5 border-b border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-y-1.5 gap-x-6 text-[12.5px]">
-                    <span class="flex items-center gap-1.5 text-gray-500">
-                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4" /></svg>
-                        Branch: <span id="acctDetailBranch" class="font-semibold text-gray-800">—</span>
-                    </span>
-                    <span class="flex items-center gap-1.5 text-gray-500">
-                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                        Sales Staff: <span id="acctDetailSalesStaff" class="font-semibold text-gray-800">—</span>
-                    </span>
-                    <span class="flex items-center gap-1.5 text-gray-500">
-                        <svg class="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                        Approved On: <span id="acctDetailApprovedOn" class="font-semibold text-gray-800">—</span>
-                    </span>
-                </div>
-
-                <!-- Body -->
-                <div class="px-8 py-6">
-                    <div id="acctDetailLoading" class="space-y-3 py-2">
-                        <?php for ($i = 0; $i < 8; $i++): ?>
-                            <div class="h-4 rounded bg-gray-100 animate-pulse"></div>
-                        <?php endfor; ?>
-                    </div>
-
-                    <div id="acctDetailContent" class="hidden space-y-7">
-
-                        <!-- Client & Project section -->
-                        <div>
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="w-1 h-3.5 bg-amber-600 rounded-full"></span>
-                                <p class="text-[11px] text-amber-700 font-bold tracking-[0.15em] uppercase">
-                                    Client &amp; Project
-                                </p>
+                <!-- Deposit / Notice to Proceed -->
+                <aside class="lg:sticky lg:top-6">
+                    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-money-bill-wave text-amber-700 text-xs"></i>
+                                <p class="text-sm font-semibold text-gray-900">Deposit &amp; Notice to Proceed</p>
                             </div>
-                            <div id="acctDetailClientRows" class="bg-gray-50/70 border border-gray-100 rounded-xl px-4"></div>
+                            <a href="<?= htmlspecialchars($acctPaymentMethodsUrl) ?>" target="_blank" rel="noopener"
+                                class="text-[11px] font-semibold text-gray-400 hover:text-amber-700" title="Manage payment methods">
+                                <i class="fa-solid fa-gear"></i>
+                            </a>
                         </div>
-
-                        <!-- Files section -->
-                        <div>
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="w-1 h-3.5 bg-amber-600 rounded-full"></span>
-                                <p class="text-[11px] text-amber-700 font-bold tracking-[0.15em] uppercase">
-                                    Files
-                                </p>
-                            </div>
-                            <div id="acctDetailFileRows" class="space-y-2.5"></div>
-                        </div>
-
-                        <!-- Deposit / Notice to Proceed section -->
-                        <div>
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-1 h-3.5 bg-amber-600 rounded-full"></span>
-                                    <p class="text-[11px] text-amber-700 font-bold tracking-[0.15em] uppercase">
-                                        Deposit &amp; Notice to Proceed
-                                    </p>
-                                </div>
-                                <a href="<?= htmlspecialchars($acctPaymentMethodsUrl) ?>" target="_blank" rel="noopener"
-                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-amber-700 transition-colors">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    Manage payment methods
-                                </a>
-                            </div>
-                            <div id="acctDetailDepositSection" class="border border-gray-100 rounded-xl overflow-hidden"></div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Document footer strip -->
-                <div class="px-8 py-3.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                    <p class="text-[11px] text-gray-500 italic">This record is maintained by the Accounting Department.</p>
-                    <p id="acctDetailFooterControlNo" class="text-[11px] text-gray-400 font-mono font-semibold">—</p>
-                </div>
+                        <div id="acctDetailDepositSection"></div>
+                    </section>
+                </aside>
             </div>
         </div>
 
@@ -158,36 +101,7 @@ if ($recordId <= 0) {
         <div id="crmToastContainer"
             class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
         </div>
-
     </main>
-
-    <style>
-        .acct-detail-doc .acct-detail-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
-            padding: 11px 0;
-            border-bottom: 1px solid #E5E7EB;
-            font-size: .8125rem;
-        }
-
-        .acct-detail-doc .acct-detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .acct-detail-doc .acct-detail-label {
-            color: #6B7280;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        .acct-detail-doc .acct-detail-value {
-            color: #111827;
-            font-weight: 600;
-            text-align: right;
-        }
-    </style>
 
     <script>
         function crmShowToast(message, type = 'success', duration = 4000) {
@@ -195,23 +109,16 @@ if ($recordId <= 0) {
             const palette = type === 'success'
                 ? { wrap: 'bg-green-50 border-green-200 text-green-700', icon: 'bg-green-200 text-green-700', symbol: '✓' }
                 : { wrap: 'bg-red-50 border-red-200 text-red-700', icon: 'bg-red-200 text-red-700', symbol: '!' };
-
             const toast = document.createElement('div');
-            toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm
-                ${palette.wrap}
-                translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
-
+            toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm ${palette.wrap} translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
             toast.innerHTML = `
                 <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${palette.icon}">${palette.symbol}</span>
-                <span class="flex-1 leading-relaxed">${message}</span>
-                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>
-            `;
+                <span class="flex-1 leading-relaxed"></span>
+                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>`;
+            toast.querySelector('.flex-1').textContent = message;
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
-            const remove = () => {
-                toast.classList.add('translate-x-6', 'opacity-0', 'scale-95');
-                setTimeout(() => toast.remove(), 300);
-            };
+            const remove = () => { toast.classList.add('translate-x-6', 'opacity-0', 'scale-95'); setTimeout(() => toast.remove(), 300); };
             toast.querySelector('button').addEventListener('click', remove);
             if (duration > 0) setTimeout(remove, duration);
         }
@@ -271,82 +178,76 @@ if ($recordId <= 0) {
             return '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+
+        const ACCT_PM_URL = <?= json_encode($acctPaymentMethodsUrl) ?>;
+
+        // isang detalye (label sa itaas, laman sa ibaba)
+        function acctDetailItem(label, value, wide = false) {
+            return `<div class="min-w-0 ${wide ? 'sm:col-span-2' : ''}">
+                <dt class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">${label}</dt>
+                <dd class="text-[13px] text-gray-800 font-medium mt-0.5 break-words">${value ?? '<span class="text-gray-300">—</span>'}</dd>
+            </div>`;
+        }
+        // hilera sa summary ng deposit
         function acctDetailRow(label, value) {
-            return `
-                <div class="acct-detail-row">
-                    <span class="acct-detail-label">${label}</span>
-                    <span class="acct-detail-value">${value}</span>
-                </div>
-            `;
+            return `<div class="flex items-start justify-between gap-3 py-2 text-[13px] border-b border-gray-100 last:border-b-0">
+                <span class="text-gray-500 whitespace-nowrap">${label}</span>
+                <span class="text-gray-900 font-semibold text-right break-words">${value}</span></div>`;
         }
 
-        // Small colored pill for a file's review status.
         function acctDetailReviewBadge(status) {
             const map = {
-                'Approved': 'bg-green-100 text-green-800 border-green-300',
-                'For Revision': 'bg-red-100 text-red-800 border-red-300',
-                'Pending': 'bg-gray-100 text-gray-600 border-gray-300',
+                'Approved': ['bg-green-50 text-green-700 border-green-200', 'fa-circle-check'],
+                'For Revision': ['bg-red-50 text-red-700 border-red-200', 'fa-rotate-left'],
+                'Pending': ['bg-gray-50 text-gray-500 border-gray-200', 'fa-clock'],
             };
-            const cls = map[status] || map['Pending'];
-            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${cls}">
-                        ${status === 'Approved' ? '<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
-                        ${acctDetailEscapeHtml(status || 'Pending')}
-                    </span>`;
+            const [cls, icon] = map[status] || map['Pending'];
+            return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border whitespace-nowrap ${cls}">
+                <i class="fa-solid ${icon} text-[9px]"></i>${acctDetailEscapeHtml(status || 'Pending')}</span>`;
         }
 
-        // PDF file icon used on each file card.
-        function acctDetailPdfIcon(hasFile) {
-            return `
-                <div class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${hasFile ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-300'}">
-                    <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-            `;
-        }
-
-        // One file card: icon, name, "View PDF" link, uploader (name +
-        // role), and the Approved/For Revision/Pending badge. Falls back to
-        // "No file uploaded" when the path is empty (e.g. 3D not submitted).
+        const ACCT_FILE_ICON = { '2D File': 'fa-pen-ruler', 'Quotation File': 'fa-file-invoice-dollar', '3D File': 'fa-cube' };
         function acctDetailFileCard(label, path, uploaderName, uploaderRole, reviewStatus) {
-            const link = path
-                ? `<a href="${acctDetailEscapeHtml(path)}" target="_blank" rel="noopener"
-                        class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px]">
-                        View PDF
-                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>`
-                : `<span class="text-gray-400 text-[13px]">No file uploaded</span>`;
-
-            const uploaderLine = path
-                ? `<p class="text-[11.5px] text-gray-500 mt-0.5">${acctDetailEscapeHtml(uploaderName || '—')} · ${acctDetailEscapeHtml(uploaderRole || '—')}</p>`
-                : '';
-
-            return `
-                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-white hover:border-amber-200 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 min-w-0">
-                        ${acctDetailPdfIcon(!!path)}
-                        <div class="min-w-0">
-                            <p class="text-[13px] font-bold text-gray-800">${acctDetailEscapeHtml(label)}</p>
-                            ${link}
-                            ${uploaderLine}
-                        </div>
-                    </div>
-                    ${acctDetailReviewBadge(reviewStatus)}
+            const icon = ACCT_FILE_ICON[label] || 'fa-file-lines';
+            return `<div class="flex items-center gap-3 px-5 py-3.5">
+                <span class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${path ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-300'}"><i class="fa-solid ${icon}"></i></span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[13px] font-semibold text-gray-900">${acctDetailEscapeHtml(label)}</p>
+                    <p class="text-[11px] text-gray-400 truncate">${path ? `${acctDetailEscapeHtml(uploaderName || '—')} · ${acctDetailEscapeHtml(uploaderRole || '—')}` : 'No file uploaded'}</p>
                 </div>
-            `;
+                ${acctDetailReviewBadge(reviewStatus)}
+                ${path ? `<a href="${acctDetailEscapeHtml(path)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-400 hover:text-amber-800 whitespace-nowrap">Open <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>` : ''}
+            </div>`;
         }
-
-        // ── Deposit / Notice to Proceed ──
 
         function acctDetailDepositBadge(status) {
             const isNtp = status === 'Notice to Proceed';
-            const cls = isNtp
-                ? 'bg-green-100 text-green-800 border-green-300'
-                : 'bg-amber-100 text-amber-800 border-amber-300';
-            return `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border whitespace-nowrap ${cls}">
-                        <span class="w-1.5 h-1.5 rounded-full shrink-0 ${isNtp ? 'bg-green-600' : 'bg-amber-600'}"></span>
-                        ${isNtp ? 'Notice to Proceed' : 'Hold'}
-                    </span>`;
+            return isNtp
+                ? `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-green-50 text-green-700 border-green-200"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Notice to Proceed</span>`
+                : `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Hold · waiting for deposit</span>`;
+        }
+
+        function acctDetailRenderHeader(r) {
+            const chip = (icon, text) => text ? `<span class="inline-flex items-center gap-1.5 text-xs text-gray-500"><i class="fa-solid ${icon} text-[10px] text-gray-400"></i>${text}</span>` : '';
+            document.getElementById('acctDetailHeader').innerHTML = `
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-mono text-xs font-bold text-amber-700">${acctDetailEscapeHtml(r.control_no ?? '—')}</p>
+                        <h1 class="text-gray-900 text-xl font-semibold mt-0.5 truncate">${acctDetailEscapeHtml(r.client_name)}</h1>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                            ${chip('fa-building', acctDetailEscapeHtml(acctDetailField(r, 'branch') ?? ''))}
+                            ${chip('fa-user', acctDetailEscapeHtml(acctDetailField(r, 'sales_staff_name') ?? ''))}
+                            ${chip('fa-circle-check', 'Approved ' + acctDetailFormatDateTimeLong(r.reviewed_at))}
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-start sm:items-end gap-2">
+                        <div class="text-left sm:text-right">
+                            <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Contract Amount</p>
+                            <p class="text-2xl font-bold text-gray-900 tabular-nums leading-tight">${acctDetailCurrency(acctDetailField(r, 'contract_amount'))}</p>
+                        </div>
+                        ${acctDetailDepositBadge(r.deposit_status)}
+                    </div>
+                </div>`;
         }
 
         async function acctDetailGetPaymentMethods() {
@@ -362,88 +263,92 @@ if ($recordId <= 0) {
             return acctDetailPaymentMethods;
         }
 
-        // Renders the badge next to the Control No., and the section body:
-        // upload form when still on Hold (and main status is fully
-        // Approved), or a read-only summary once Notice to Proceed.
-        async function acctDetailRenderDeposit(r) {
-            document.getElementById('acctDetailDepositBadgeWrap').innerHTML = acctDetailDepositBadge(r.deposit_status);
 
+        async function acctDetailRenderDeposit(r) {
             const section = document.getElementById('acctDetailDepositSection');
 
+            // ── tapos na: summary ──
             if (r.deposit_status === 'Notice to Proceed') {
                 const slipLink = r.deposit_slip_path
-                    ? `<a href="${acctDetailEscapeHtml(r.deposit_slip_path)}" target="_blank" rel="noopener"
-                            class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px]">
-                            View Deposit Slip
-                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>`
-                    : `<span class="text-gray-400 text-[13px]">No file</span>`;
-
+                    ? `<a href="${acctDetailEscapeHtml(r.deposit_slip_path)}" target="_blank" rel="noopener" class="text-amber-700 hover:underline">View slip <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>`
+                    : '<span class="text-gray-400">No file</span>';
                 section.innerHTML = `
-                    <div class="bg-green-50/40 px-4 py-4 space-y-1">
-                        ${acctDetailRow('Amount Deposited', acctDetailCurrency(r.deposit_amount))}
-                        ${acctDetailRow('Payment Method', acctDetailEscapeHtml(r.deposit_payment_method_name || '—'))}
-                        ${acctDetailRow('Deposit Slip', slipLink)}
-                        ${acctDetailRow('Logged By', `${acctDetailEscapeHtml(r.deposit_uploader_name || '—')} · ${acctDetailEscapeHtml(r.deposit_uploaded_role || '—')}`)}
-                        ${acctDetailRow('Logged On', acctDetailFormatDateTimeLong(r.deposit_uploaded_at))}
+                    <div class="px-5 py-4 bg-green-50/60 border-b border-green-100 flex items-center gap-3">
+                        <span class="w-9 h-9 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-check"></i></span>
+                        <div><p class="text-sm font-semibold text-green-800">Notice to Proceed given</p><p class="text-[11px] text-green-700">Cutting List, Operations and Design were notified.</p></div>
                     </div>
-                `;
+                    <div class="px-5 py-2">
+                        ${acctDetailRow('Amount deposited', `<span class="text-base">${acctDetailCurrency(r.deposit_amount)}</span>`)}
+                        ${acctDetailRow('Payment method', acctDetailEscapeHtml(r.deposit_payment_method_name || '—'))}
+                        ${acctDetailRow('Deposit slip', slipLink)}
+                        ${acctDetailRow('Logged by', `${acctDetailEscapeHtml(r.deposit_uploader_name || '—')} <span class="font-normal text-gray-400">· ${acctDetailEscapeHtml(r.deposit_uploaded_role || '—')}</span>`)}
+                        ${acctDetailRow('Logged on', acctDetailFormatDateTimeLong(r.deposit_uploaded_at))}
+                    </div>`;
                 return;
             }
 
-            // Still on Hold. If the main review isn't fully Approved yet
-            // (shouldn't normally happen on this page, but just in case),
-            // show an informational note instead of the form.
             if (r.status !== 'Approved') {
-                section.innerHTML = `
-                    <div class="px-4 py-5 text-center text-gray-400 text-xs">
-                        Deposit slip can be logged once all files are approved.
-                    </div>
-                `;
+                section.innerHTML = `<div class="px-5 py-8 text-center text-gray-400 text-xs">The deposit can be logged once all files are approved.</div>`;
                 return;
             }
 
+            // ── Hold: form ──
             const methods = await acctDetailGetPaymentMethods();
-            const optionsHtml = methods.length
-                ? methods.map(m => `<option value="${m.id}">${acctDetailEscapeHtml(m.name)}</option>`).join('')
-                : '';
-
+            const inp = 'w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white';
             section.innerHTML = `
-                <form id="acctDepositForm" class="px-4 py-4 space-y-3 bg-amber-50/30">
-                    <p class="text-[12px] text-gray-500">Log the deposit to move this submission to <span class="font-semibold text-gray-700">Notice to Proceed</span> — Cutting List, Operations, and Design will be notified.</p>
+                <form id="acctDepositForm" class="px-5 py-4 space-y-4" novalidate>
+                    <p class="text-xs text-gray-500 leading-relaxed">Log the client's deposit to give the <b class="text-gray-700">Notice to Proceed</b>. Cutting List, Operations and Design will be notified right away.</p>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">Amount Deposited</label>
-                            <input type="number" step="0.01" min="0.01" required id="acctDepositAmount" placeholder="0.00"
-                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white">
+                    <label class="block">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Amount deposited <span class="text-red-500">*</span></span>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                            <input type="number" step="0.01" min="0.01" id="acctDepositAmount" placeholder="0.00" class="${inp} pl-7 tabular-nums">
                         </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold text-gray-500 mb-1">Payment Method</label>
-                            <select id="acctDepositMethod" required
-                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white">
-                                <option value="" disabled selected>Select method</option>
-                                ${optionsHtml}
-                            </select>
-                            ${methods.length === 0 ? `<p class="text-[10.5px] text-red-500 mt-1">No payment methods set up yet — <a href="<?= htmlspecialchars($acctPaymentMethodsUrl) ?>" target="_blank" class="underline">add one</a>.</p>` : ''}
-                        </div>
-                    </div>
+                    </label>
+
+                    <label class="block">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Payment method <span class="text-red-500">*</span></span>
+                        <select id="acctDepositMethod" class="${inp}">
+                            <option value="" disabled selected>Select method</option>
+                            ${methods.map(m => `<option value="${m.id}">${acctDetailEscapeHtml(m.name)}</option>`).join('')}
+                        </select>
+                        ${methods.length === 0 ? `<span class="block text-[11px] text-red-500 mt-1">No payment methods yet — <a href="${ACCT_PM_URL}" target="_blank" class="underline">add one</a>.</span>` : ''}
+                    </label>
 
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">Deposit Slip (PDF, JPG, or PNG)</label>
-                        <input type="file" required id="acctDepositSlip" accept=".pdf,.jpg,.jpeg,.png"
-                            class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:bg-white file:text-xs file:font-medium file:text-gray-600 hover:file:bg-gray-50">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Deposit slip <span class="text-red-500">*</span></span>
+                        <label id="acctSlipDrop" class="flex items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3.5 cursor-pointer hover:border-amber-400 hover:bg-amber-50/40 transition-colors">
+                            <span class="w-9 h-9 rounded-lg bg-gray-50 text-gray-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                            <span class="min-w-0">
+                                <span id="acctSlipName" class="block text-xs font-semibold text-gray-700 truncate">Choose a file</span>
+                                <span class="block text-[10.5px] text-gray-400">PDF, JPG or PNG · up to 10MB</span>
+                            </span>
+                            <input type="file" id="acctDepositSlip" accept=".pdf,.jpg,.jpeg,.png" class="hidden">
+                        </label>
                     </div>
 
-                    <div class="flex justify-end">
-                        <button type="submit" id="acctDepositSubmitBtn"
-                            class="px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
-                            Mark as Notice to Proceed
-                        </button>
-                    </div>
-                </form>
-            `;
+                    <label class="flex items-start gap-2.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 cursor-pointer">
+                        <input type="checkbox" id="acctDepositConfirm" class="mt-0.5 w-4 h-4 accent-amber-700">
+                        <span class="text-[11px] text-amber-900 leading-relaxed">I checked the amount and the deposit slip. This gives the Notice to Proceed and can't be undone.</span>
+                    </label>
 
+                    <button type="submit" id="acctDepositSubmitBtn" disabled
+                        class="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+                        <i class="fa-solid fa-flag-checkered"></i> Mark as Notice to Proceed
+                    </button>
+                </form>`;
+
+            const slip = document.getElementById('acctDepositSlip');
+            slip.addEventListener('change', () => {
+                const f = slip.files[0];
+                document.getElementById('acctSlipName').textContent = f ? f.name : 'Choose a file';
+                document.getElementById('acctSlipDrop').classList.toggle('border-amber-400', !!f);
+                document.getElementById('acctSlipDrop').classList.toggle('bg-amber-50/40', !!f);
+            });
+            document.getElementById('acctDepositConfirm').addEventListener('change', e => {
+                document.getElementById('acctDepositSubmitBtn').disabled = !e.target.checked;
+            });
             document.getElementById('acctDepositForm').addEventListener('submit', acctDetailSubmitDeposit);
         }
 
@@ -472,7 +377,7 @@ if ($recordId <= 0) {
             const btn = document.getElementById('acctDepositSubmitBtn');
             acctDetailDepositSubmitting = true;
             btn.disabled = true;
-            btn.textContent = 'Saving…';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
 
             const formData = new FormData();
             formData.append('action', 'upload_deposit');
@@ -488,7 +393,7 @@ if ($recordId <= 0) {
                 if (!data.success) {
                     crmShowToast(data.message || 'Failed to save deposit details.', 'error');
                     btn.disabled = false;
-                    btn.textContent = 'Mark as Notice to Proceed';
+                    btn.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> Mark as Notice to Proceed';
                     acctDetailDepositSubmitting = false;
                     return;
                 }
@@ -501,94 +406,63 @@ if ($recordId <= 0) {
                 console.error('acctDetailSubmitDeposit:', e);
                 crmShowToast('Connection error. Please try again.', 'error');
                 btn.disabled = false;
-                btn.textContent = 'Mark as Notice to Proceed';
+                btn.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> Mark as Notice to Proceed';
                 acctDetailDepositSubmitting = false;
             }
         }
 
-        async function acctDetailLoad({ silent = false } = {}) {
-            const loading = document.getElementById('acctDetailLoading');
-            const content = document.getElementById('acctDetailContent');
 
+        async function acctDetailLoad({ silent = false } = {}) {
+            const content = document.getElementById('acctDetailContent');
             try {
-                // Same ajax action the list's modal used to call — this also marks the
-                // notification as read server-side.
+                // ito rin ang nagma-mark na read sa notification
                 const res = await fetch(`${ACCT_LIST_AJAX_URL}?action=detail&id=${ACCT_RECORD_ID}`);
                 const data = await res.json();
-
                 if (!data.success) {
-                    // Silent polls stay quiet on failure — the visible content already
-                    // on screen is left as-is instead of being replaced with an error.
                     if (!silent) {
-                        loading.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">${acctDetailEscapeHtml(data.message || 'Record not found.')}</p>`;
+                        document.getElementById('acctDetailHeader').innerHTML = `<p class="text-sm text-red-500 py-4 text-center">${acctDetailEscapeHtml(data.message || 'Record not found.')}</p>`;
                         crmShowToast(data.message || 'Record not found.', 'error');
                     }
                     return;
                 }
-
                 const r = data.record;
 
-                // Skip the re-render entirely if nothing meaningful changed since
-                // the last poll — avoids flashing/re-flowing the page every 8s.
-                // Don't skip while the deposit form is actively being filled in
-                // (deposit_status still 'Hold' means nothing server-side changed
-                // there, so a signature match is fine and won't wipe user input).
+                // walang binago → huwag i-render ulit (para hindi mabura ang tina-type sa form)
                 const signature = JSON.stringify([
                     r.design_2d_review_status, r.quotation_review_status, r.design_3d_review_status,
                     r.design_2d_path, r.quotation_path, r.design_3d_path,
-                    r.show_3d, r.status, r.reviewed_at,
-                    r.deposit_status, r.deposit_slip_path,
+                    r.show_3d, r.status, r.reviewed_at, r.deposit_status, r.deposit_slip_path,
                 ]);
-                if (silent && signature === acctDetailLastSignature) {
-                    return;
-                }
+                if (silent && signature === acctDetailLastSignature) return;
                 acctDetailLastSignature = signature;
 
-                // Header + meta row
-                document.getElementById('acctDetailControlNo').textContent = r.control_no ?? '—';
-                document.getElementById('acctDetailFooterControlNo').textContent = r.control_no ?? '—';
-                document.getElementById('acctDetailBranch').textContent = acctDetailField(r, 'branch') ?? '—';
-                document.getElementById('acctDetailSalesStaff').textContent = acctDetailField(r, 'sales_staff_name') ?? '—';
-                document.getElementById('acctDetailApprovedOn').textContent = acctDetailFormatDateTimeLong(r.reviewed_at);
+                acctDetailRenderHeader(r);
+                document.getElementById('acctDetailApprovedOn').textContent = r.reviewed_at ? 'Approved ' + acctDetailFormatDateTimeLong(r.reviewed_at) : '';
 
-                // Client & Project rows
-                const clientRows = [
-                    acctDetailRow('Client', acctDetailEscapeHtml(r.client_name)),
-                    acctDetailRow('Contact Number', acctDetailEscapeHtml(r.contact_number)),
-                    acctDetailRow('Address', acctDetailEscapeHtml(acctDetailField(r, 'address') ?? '—')),
-                    acctDetailRow('Project Type', acctDetailEscapeHtml(acctDetailField(r, 'project_type') ?? '—')),
-                    acctDetailRow('Scope of Project', acctDetailEscapeHtml(acctDetailField(r, 'project_scope') ?? '—')),
-                    acctDetailRow('Measuring Space', acctDetailEscapeHtml(acctDetailField(r, 'measuring_space') ?? '—')),
-                    acctDetailRow('Measurement Date &amp; Time', acctDetailFormatDateTimeLong(acctDetailField(r, 'measurement_datetime'))),
-                    acctDetailRow('Designer Assign', acctDetailEscapeHtml(acctDetailField(r, 'designer_name') ?? '—')),
-                    acctDetailRow('Contract Amount', acctDetailCurrency(acctDetailField(r, 'contract_amount'))),
+                const esc = v => v === null ? null : acctDetailEscapeHtml(v);
+                document.getElementById('acctDetailClientRows').innerHTML = [
+                    acctDetailItem('Client', esc(r.client_name)),
+                    acctDetailItem('Contact number', esc(acctDetailField(r, 'contact_number'))),
+                    acctDetailItem('Address', esc(acctDetailField(r, 'address')), true),
+                    acctDetailItem('Project type', esc(acctDetailField(r, 'project_type'))),
+                    acctDetailItem('Scope of project', esc(acctDetailField(r, 'project_scope'))),
+                    acctDetailItem('Measuring space', esc(acctDetailField(r, 'measuring_space'))),
+                    acctDetailItem('Measurement date &amp; time', acctDetailField(r, 'measurement_datetime') ? acctDetailFormatDateTimeLong(r.measurement_datetime) : null),
+                    acctDetailItem('Designer', esc(acctDetailField(r, 'designer_name'))),
+                    acctDetailItem('Sales staff', esc(acctDetailField(r, 'sales_staff_name'))),
                 ].join('');
-                document.getElementById('acctDetailClientRows').innerHTML = clientRows;
 
-                // File cards — 2D and Quotation always shown; 3D only when
-                // relevant (bundled with this approval, or unlocked via the
-                // sequential flow), same "show_3d" rule the backend computes.
-                const fileCards = [
+                document.getElementById('acctDetailFileRows').innerHTML = [
                     acctDetailFileCard('2D File', r.design_2d_path, r.design_2d_uploader_name, r.design_2d_uploaded_role, r.design_2d_review_status),
                     acctDetailFileCard('Quotation File', r.quotation_path, r.quotation_uploader_name, r.quotation_uploaded_role, r.quotation_review_status),
-                    r.show_3d
-                        ? acctDetailFileCard('3D File', r.design_3d_path, r.design_3d_uploader_name, r.design_3d_uploaded_role, r.design_3d_review_status)
-                        : '',
+                    r.show_3d ? acctDetailFileCard('3D File', r.design_3d_path, r.design_3d_uploader_name, r.design_3d_uploaded_role, r.design_3d_review_status) : '',
                 ].join('');
-                document.getElementById('acctDetailFileRows').innerHTML = fileCards;
 
-                // Deposit / Notice to Proceed
                 await acctDetailRenderDeposit(r);
-
-                loading.classList.add('hidden');
                 content.classList.remove('hidden');
-
             } catch (e) {
                 console.error('acctDetailLoad:', e);
-                if (!silent) {
-                    loading.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">Connection error. Please try again.</p>`;
-                    crmShowToast('Connection error while loading the record.', 'error');
-                }
+                if (!silent) crmShowToast('Connection error while loading the record.', 'error');
             }
         }
 

@@ -56,13 +56,31 @@ $box2Url = BASE_URL . '/monitoringcrmajax';
             });
         }
 
+        // naghihiwalay sa CRM at sa Cutting list → Delivery
+        function divider(text) {
+            return `
+            <li class="relative ml-4 pb-4">
+                <span class="absolute -left-[22px] top-0.5 w-3 h-3 rounded-sm bg-gray-800 ring-4 ring-white"></span>
+                <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">${esc(text)}</p>
+            </li>`;
+        }
+        // DATE lang (walang oras) → petsa lang ang ipapakita
+        function fmtWhen(v) {
+            if (v && String(v).length <= 10) {
+                const dt = new Date(v + 'T00:00:00');
+                return isNaN(dt.getTime()) ? esc(v) : dt.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+            return fmtDateTime(v);
+        }
+
         function item(e) {
-            const time = e.time ? fmtDateTime(e.time) : (e.current ? 'Now' : '');
+            const time = e.time ? fmtWhen(e.time) : (e.current ? 'Now' : '');
             return `
             <li class="relative ml-4 pb-5 last:pb-0">
                 <span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-white ${DOT[e.color] || 'bg-gray-400'}"></span>
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border ${BADGE[e.color] || 'bg-gray-50 text-gray-600 border-gray-200'}">${esc(e.label)}</span>
+                    ${e.ref ? `<span class="font-mono text-[10.5px] font-semibold text-gray-500">${esc(e.ref)}</span>` : ''}
                     ${e.current ? '<span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Current</span>' : ''}
                 </div>
                 ${time ? `<p class="text-[11px] text-gray-400 mt-1">${time}</p>` : ''}
@@ -91,7 +109,12 @@ $box2Url = BASE_URL . '/monitoringcrmajax';
                 }
 
                 label.textContent = data.control_no;
-                body.innerHTML = `<ol class="relative border-l border-gray-200 ml-1.5">${data.events.map(item).join('')}</ol>`;
+                let shown = false;
+                const html = data.events.map(e => {
+                    const head = (e.group === 'pipeline' && !shown) ? (shown = true, divider('Notice to Proceed → Delivery')) : '';
+                    return head + item(e);
+                }).join('');
+                body.innerHTML = `<ol class="relative border-l border-gray-200 ml-1.5">${html}</ol>`;
                 body.scrollTop = body.scrollHeight; // dalhin sa kasalukuyang status (nasa ibaba)
             } catch (e) {
                 if (token !== reqToken) return;
