@@ -109,9 +109,11 @@ $box2Url = BASE_URL . '/monitoringcrmajax';
                 }
 
                 label.textContent = data.control_no;
-                let shown = false;
+                let shown = false, shownOps = false;
                 const html = data.events.map(e => {
-                    const head = (e.group === 'pipeline' && !shown) ? (shown = true, divider('Notice to Proceed → Delivery')) : '';
+                    let head = '';
+                    if (e.group === 'pipeline' && !shown) { shown = true; head = divider('Notice to Proceed → Delivery'); }
+                    if (e.group === 'ops' && !shownOps) { shownOps = true; head = divider('Operations → Turnover'); }
                     return head + item(e);
                 }).join('');
                 body.innerHTML = `<ol class="relative border-l border-gray-200 ml-1.5">${html}</ol>`;

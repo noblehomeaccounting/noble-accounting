@@ -1341,4 +1341,48 @@
     setInterval(() => {
         if (document.visibilityState === 'visible') fetchRequests();
     }, 10000); // 10 segundo
-</script>
+
+        // ─── Highlight ng huling pinindot na row ─────────────
+        // Kapag pinindot ang kahit anong bahagi ng row (View, Approve, atbp.),
+        // mananatili itong naka-highlight hanggang may ibang pindutin.
+        (function () {
+            const KEY = 'brv-picked';
+            const SEL = '#day-requests-cards .day-row';
+            let picked = null;
+            try { picked = sessionStorage.getItem(KEY); } catch (e) { }
+
+            if (!document.getElementById('nh-picked-style')) {
+                const st = document.createElement('style');
+                st.id = 'nh-picked-style';
+                st.textContent = `
+                    [data-picked="1"] { position: relative; background: #fffbeb !important;
+                        box-shadow: inset 3px 0 0 #d97706, inset 0 0 0 1px #fcd34d; }
+                    [data-picked="1"]:hover { background: #fef3c7 !important; }
+                    [data-picked="1"]::after { content: 'Last opened'; position: absolute; top: 3px; right: 10px;
+                        font-size: 9px; font-weight: 700; letter-spacing: .02em; color: #92400e;
+                        background: #fde68a; border-radius: 9999px; padding: 1px 7px; pointer-events: none; }`;
+                document.head.appendChild(st);
+            }
+
+            function apply() {
+                document.querySelectorAll(SEL).forEach(el => {
+                    const on = picked !== null && String(el.dataset.id) === picked;
+                    const v = on ? '1' : '0';
+                    if (el.dataset.picked !== v) el.dataset.picked = v;
+                });
+            }
+
+            // capture: mauuna ito bago buksan ang modal
+            document.addEventListener('click', e => {
+                const row = e.target.closest(SEL);
+                if (!row || row.dataset.id === undefined) return;
+                picked = String(row.dataset.id);
+                try { sessionStorage.setItem(KEY, picked); } catch (err) { }
+                apply();
+            }, true);
+
+            // I-apply ulit tuwing magre-render ang listahan (auto-refresh, filter, ibang buwan)
+            new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
+            apply();
+        })();
+    </script>

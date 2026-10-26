@@ -329,7 +329,10 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             ['Final', ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED']],
             ['Cutting list & BOM', ['CUTTING LIST UPLOADED', 'CUTTING LIST REJECTED', 'CUTTING LIST APPROVED', 'BOM SUBMITTED', 'BOM APPROVED', 'BOM RECEIVED']],
             ['Purchase request', ['PR SUBMITTED', 'PR RETURNED', 'PR APPROVED', 'PR REVIEWED', 'PR RECEIVED BY ACCOUNTING', 'PR RELEASED', 'PR PAID']],
-            ['Delivery', ['TRANSMITTAL ISSUED', 'DELIVERED', 'DR CREATED']],
+            ['Delivery', ['TRANSMITTAL ISSUED', 'DELIVERED', 'DR CREATED', 'DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED']],
+            ['Labor & timeline', ['FOREMAN ASSIGNED', 'LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET']],
+            ['Progress billing', ['BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED', 'BILLING APPROVED', 'FULLY BILLED']],
+            ['Punch list & turnover', ['PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'TURNED OVER']],
             ['Closed', ['NOT PROCEEDING']]
         ];
 
@@ -339,7 +342,11 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             { name: 'Reached customer review', statuses: ['FOR CLIENT REVIEW', 'CUSTOMER REVISION', 'CUSTOMER APPROVED'] },
             { name: 'Reached final', statuses: ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION', 'FINAL APPROVED'] },
             { name: 'In production', statuses: ['CUTTING LIST UPLOADED', 'CUTTING LIST APPROVED', 'BOM SUBMITTED', 'BOM APPROVED', 'BOM RECEIVED'] },
-            { name: 'Delivered', statuses: ['DELIVERED', 'DR CREATED'] }
+            { name: 'Delivered', statuses: ['DELIVERED', 'DR CREATED'] },
+            { name: 'In operations', statuses: ['DR APPROVED', 'FOREMAN ASSIGNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET'] },
+            { name: 'Billing', statuses: ['BILLING SUBMITTED', 'BILLING NOTED', 'BILLING APPROVED'] },
+            { name: 'Had a return', statuses: ['DR RETURNED', 'LABOR QUOTE RETURNED', 'BILLING RETURNED', 'TURNOVER RETURNED'] },
+            { name: 'Turned over', statuses: ['TURNED OVER'] }
         ];
 
         // Filter state

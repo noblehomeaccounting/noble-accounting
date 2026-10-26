@@ -101,6 +101,10 @@ $adminRoutes = [
     'accountingpettycash',  
     'accountingpettycashtwo',   
     'fetchnoblepettycashdepartment',
+    'fetchnoblepettycashdepartment',
+    'savenoblegeneralsheet',
+    'fetchnoblegeneralsheet',
+    'deletenoblegeneralsheet',
 
     // crm accounting page 1
     'crmaccounting',
@@ -108,6 +112,8 @@ $adminRoutes = [
     'accountingcrmdetail',
     'accountingpaymentmethodsajax',
     'accountingpaymentmethods',
+    'accountingbilling',
+    'accountingbillingajax',
 
     //staffaccounting
     'accountingstaff',                  
@@ -162,7 +168,8 @@ $adminRoutes = [
     'saveprojectexpense',               
     'deleteprojectexpense',             
     'exportprojectexcel',               
-    'saveincomeloss',                   
+    'saveincomeloss',         
+    'accountingcustodianassistantpurchaseorder',          
 
     //cashvoucher
     'cashvoucherdashboard',             
@@ -199,8 +206,15 @@ $adminRoutes = [
     // project coordinator
     'coordinator',
     'coordinatorajax',
+    'coordinatorlabor',
+    'coordinatorlaborajax',
+    'coordinatortimeline',
+    'coordinatortimelineajax',
+    'coordinatorbilling',
+    'coordinatorbillingajax',
+    'coordinatorturnover',
+    'coordinatorturnoverajax',
     
-
     // operation
     'operation',                        
 
@@ -254,27 +268,23 @@ $adminRoutes = [
     
     // super admin page 1
     'crm-main',
-
-    // super admin backend page 1
     'check2dquotationajax',
-
-    // super admin page 2
     'monitoring',
     'monitoringcrmview',
-
-    // super admin backend page 2
     'monitoringcrmajax',
     'monitoringcrmviewajax',
-
-    // super admin page 3
     'crmewoodapproval',
-
-    // super admin backend page 3
     'crmwoodapprovalajax',
-
-    // purchase order page 4
     'purchaseorderapproval',
     'purchaseorderapprovalajax',
+    'superadmin-dr',
+    'superadmindrajax',
+    'superadminlabor',
+    'superadminlaborajax',
+    'superadminbilling',
+    'superadminbillingajax',
+    'superadminturnover',
+    'superadminturnoverajax',
 
     'unauthorized',                    
     'fetchrequests',                   
@@ -416,6 +426,9 @@ $routes = [
     'accountingcrmdetail'              => 'admin/ui-accounting/page-1/index-accounting-crmdetail.php',
     'accountingpaymentmethods'         => 'admin/ui-accounting/page-1/index-accounting-paymentmethods.php',
     'accountingpaymentmethodsajax'     => 'admin/ui-accounting/backend/backend-page1/index-accounting-paymentmethodsajax.php',
+    'accountingbilling'                => 'admin/ui-accounting/page-1/accounting-billing.php',
+    'accountingbillingajax'            => 'admin/ui-accounting/backend/backend-page1/accountingbillingajax.php',
+    
     
     //staffaccounting
     'accountingstaff'                  => 'admin/ui-accounting/page-4/index-staff-main.php',
@@ -494,6 +507,15 @@ $routes = [
     // project coordinator
     'coordinator'                      => 'admin/ui-pc/page-1/coordinator.php',
     'coordinatorajax'                  => 'admin/ui-pc/backend/page-1/coordinatorajax.php',
+    'coordinatorlabor'                 => 'admin/ui-pc/page-2/coordinator-labor.php',
+    'coordinatorlaborajax'             => 'admin/ui-pc/backend/page-2/coordinatorlaborajax.php',
+    'coordinatortimeline'              => 'admin/ui-pc/page-3/coordinator-timeline.php',
+    'coordinatortimelineajax'          => 'admin/ui-pc/backend/page-3/coordinatortimelineajax.php',
+    'coordinatorbilling'               => 'admin/ui-pc/page-4/coordinator-billing.php',
+    'coordinatorbillingajax'           => 'admin/ui-pc/backend/page-4/coordinatorbillingajax.php',
+    'coordinatorturnover'              => 'admin/ui-pc/page-5/coordinator-turnover.php',
+    'coordinatorturnoverajax'          => 'admin/ui-pc/backend/page-5/coordinatorturnoverajax.php',
+
 
     // hr
     'humanresourcerequest'             => 'admin/ui-humanresource/page-1/humanresource-request.php',
@@ -558,29 +580,26 @@ $routes = [
     'bomajax'                          => 'admin/ui-cuttinglist/backend/page-3/bomajax.php',
     'crmewoodajax'                     => 'admin/ui-cuttinglist/backend/page-3/cuttinglistprogressionajax.php',
 
-    // super admin page 1
+    // super admin
     'crm-main'                         => 'admin/ui-superad/page-1/check2dquotation.php',
-
-    // super admin backend page 1
     'check2dquotationajax'             => 'admin/ui-superad/backend/page-1/check2dquotationajax.php',
-
-    // super admin page 2
     'monitoring'                       => 'admin/ui-superad/page-2/monitoringcrm.php',
     'monitoringcrmview'                => 'admin/ui-superad/page-2/monitoringcrmview.php',
-    
-    // super admin backend page 2
     'monitoringcrmajax'                => 'admin/ui-superad/backend/page-2/monitoringcrmajax.php',
     'monitoringcrmviewajax'            => 'admin/ui-superad/backend/page-2/monitoringcrmviewajax.php',
-
-    // super admin page 3
     'crmewoodapproval'                 => 'admin/ui-superad/page-3/ewood.php',
-
-    // super admin backend page 3
     'crmwoodapprovalajax'              => 'admin/ui-superad/backend/page-3/ewoodapprovalajax.php',
-
-    //super admin PurchaseOrder page 4
     'purchaseorderapproval'            => 'admin/ui-superad/page-4/PurchaseOrder.php',
     'purchaseorderapprovalajax'        => 'admin/ui-superad/backend/page-4/purchaseorderapprovalajax.php',
+    'superadmin-dr'                  => 'admin/ui-superad/page-5/superadmin-dr.php',
+    'superadmindrajax'               => 'admin/ui-superad/backend/page-5/superadmindrajax.php',
+    'superadminlabor'                 => 'admin/ui-superad/page-6/superadmin-labor.php',
+    'superadminlaborajax'             => 'admin/ui-superad/backend/page-6/superadminlaborajax.php',
+    'superadminbilling'               => 'admin/ui-superad/page-7/superadmin-billing.php',
+    'superadminbillingajax'           => 'admin/ui-superad/backend/page-7/superadminbillingajax.php',
+    'superadminturnover'              => 'admin/ui-superad/page-8/superadmin-turnover.php',
+    'superadminturnoverajax'          => 'admin/ui-superad/backend/page-8/superadminturnoverajax.php',
+
 
     'unauthorized'                     => 'admin/authentication/index-unauthorized.php',
     'fetchrequests'                    => 'admin/requestcentral/fetch-requests.php',

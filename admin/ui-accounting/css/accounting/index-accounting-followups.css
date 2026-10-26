@@ -1,0 +1,30 @@
+/* index-accounting-followups.css — styles ng index-accounting-followups.php */
+
+.fu-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+.fu-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.fu-scroll::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 9999px;
+}
+
+.fu-tab {
+    background: #fff;
+    border-color: #e5e7eb;
+}
+
+.fu-tab:hover {
+    border-color: #f59e0b;
+}
+
+.fu-tab[data-active="1"] {
+    border-color: #b45309;
+    box-shadow: 0 0 0 1px #b45309 inset;
+    background: #fffbeb;
+}

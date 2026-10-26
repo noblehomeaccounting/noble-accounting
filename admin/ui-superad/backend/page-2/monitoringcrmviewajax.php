@@ -146,6 +146,152 @@ function mvInts(array $rows, string $key): array
 {
     return array_values(array_unique(array_map('intval', array_column($rows, $key))));
 }
+// ── Operations (Project Coordinator): DR approval → Foreman → Labor → Timeline → Billing → Punch list → Turnover ──
+// Bawat DR ng inquiry (transmittal → PR → BOM → 2D quotation). Bawat table may sariling mvSafe.
+function mvOperations(mysqli $conn, int $inquiryId): array
+{
+    $drs = mvSafe(fn() => mvFetchAll($conn,
+        "SELECT d.* FROM noblepc_dr d
+         JOIN nobletransmittal t ON t.id = d.transmittal_id
+         JOIN noblepurchaserequest p ON p.id = t.pr_id
+         JOIN noblecrm_bom b ON b.id = p.bom_id
+         JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+         WHERE q.inquiry_id = ? ORDER BY d.id ASC", [$inquiryId], 'i'));
+    if (!$drs) {
+        return [];
+    }
+    $ids = implode(',', mvInts($drs, 'id'));
+    $byDr = function (array $rows): array {
+        $m = [];
+        foreach ($rows as $r) {
+            $m[(int) $r['dr_id']][] = $r;
+        }
+        return $m;
+    };
+
+    $foremen   = $byDr(mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepc_foreman WHERE dr_id IN ($ids)")));
+    $lqs       = $byDr(mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepc_laborquote WHERE dr_id IN ($ids)")));
+    $lqIds     = [];
+    foreach ($lqs as $list) { foreach ($list as $q) { $lqIds[] = (int) $q['id']; } }
+    $lqSec     = $lqIds ? mvSafe(fn() => mvFetchAll($conn, "SELECT quote_id, section_name, COUNT(*) AS n FROM noblepc_laborquote_item WHERE quote_id IN (" . implode(',', $lqIds) . ") GROUP BY quote_id, section_no, section_name ORDER BY section_no")) : [];
+    $timelines = $byDr(mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepc_timeline WHERE dr_id IN ($ids)")));
+    $tlIds     = [];
+    foreach ($timelines as $list) { foreach ($list as $x) { $tlIds[] = (int) $x['id']; } }
+    $tasks     = $tlIds ? mvSafe(fn() => mvFetchAll($conn, "SELECT timeline_id, phase_name, task, start_date, end_date, duration FROM noblepc_timeline_task WHERE timeline_id IN (" . implode(',', $tlIds) . ") ORDER BY phase_no, task_no")) : [];
+    $billings  = $byDr(mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepc_billing WHERE dr_id IN ($ids) ORDER BY seq ASC")));
+    $punch     = $byDr(mvSafe(fn() => mvFetchAll($conn, "SELECT dr_id, status, COUNT(*) AS n FROM noblepc_punch WHERE dr_id IN ($ids) GROUP BY dr_id, status")));
+    $turnovers = $byDr(mvSafe(fn() => mvFetchAll($conn, "SELECT * FROM noblepc_turnover WHERE dr_id IN ($ids)")));
+
+    $today = date('Y-m-d');
+    $out = [];
+    foreach ($drs as $d) {
+        $did = (int) $d['id'];
+
+        $f = $foremen[$did][0] ?? null;
+        $q = $lqs[$did][0] ?? null;
+        $tl = $timelines[$did][0] ?? null;
+        $to = $turnovers[$did][0] ?? null;
+
+        // Timeline: progress = tasks na tapos na ang end_date
+        $tlTasks = $tl ? array_values(array_filter($tasks, fn($k) => (int) $k['timeline_id'] === (int) $tl['id'])) : [];
+        $done = count(array_filter($tlTasks, fn($k) => $k['end_date'] < $today));
+
+        // Billing totals (approved lang ang bilang na "billed")
+        $bl = $billings[$did] ?? [];
+        $last = $bl ? end($bl) : null;
+        $contract = $last ? (float) $last['contract_amount'] + (float) $last['change_orders'] : 0.0;
+        $billed = 0.0;
+        $rows = [];
+        foreach ($bl as $b) {
+            if ($b['status'] === 'approved') {
+                $billed += (float) $b['this_period'];
+            }
+            $rows[] = [
+                'ref_no'       => $b['ref_no'],
+                'label'        => $b['billing_type'] === 'dp' ? 'Downpayment' : 'Application #' . (int) $b['app_no'],
+                'billing_date' => $b['billing_date'],
+                'this_period'  => (float) $b['this_period'],
+                'status'       => $b['status'],
+                'head_by'      => $b['head_by'],
+                'head_at'      => $b['head_at'],
+                'sa_by'        => $b['sa_by'],
+                'sa_at'        => $b['sa_at'],
+                'return_remarks' => $b['return_remarks'],
+            ];
+        }
+        $rate = $last ? (float) $last['retainage_rate'] : 0.0;
+
+        $pc = ['open' => 0, 'fixed' => 0, 'verified' => 0];
+        foreach ($punch[$did] ?? [] as $r) {
+            $pc[$r['status']] = (int) $r['n'];
+        }
+
+        $out[] = [
+            'dr_no'           => $d['dr_no'],
+            'created_at'      => $d['created_at'],
+            'prepared_by'     => $d['prepared_by'] ?? null,
+            'dr_status'       => $d['status'] ?? null,
+            'permit_required' => isset($d['permit_required']) ? ($d['permit_required'] === null ? null : (int) $d['permit_required']) : null,
+            'dr_approved_by'  => $d['approved_by'] ?? null,
+            'dr_approved_at'  => $d['approved_at'] ?? null,
+            'dr_return_remarks' => $d['return_remarks'] ?? null,
+            'foreman' => $f ? [
+                'name'       => $f['name'],
+                'contact_no' => $f['contact_no'],
+                'id_type'    => $f['id_type'],
+                'id_number'  => $f['id_number'],
+                'id_photo'   => mvUrl($f['id_photo']),
+                'created_at' => $f['created_at'],
+            ] : null,
+            'labor' => $q ? [
+                'quote_no'      => $q['quote_no'],
+                'subcontractor' => $q['subcontractor'],
+                'total'         => (float) $q['total'],
+                'duration_days' => $q['duration_days'] !== null ? (int) $q['duration_days'] : null,
+                'status'        => $q['status'],
+                'submitted_at'  => $q['submitted_at'],
+                'approved_by'   => $q['approved_by'],
+                'approved_at'   => $q['approved_at'],
+                'return_remarks' => $q['return_remarks'],
+                'sections'      => array_values(array_map(fn($s) => $s['section_name'],
+                                    array_filter($lqSec, fn($s) => (int) $s['quote_id'] === (int) $q['id']))),
+            ] : null,
+            'timeline' => $tl ? [
+                'date_started' => $tl['date_started'],
+                'date_finish'  => $tl['date_finish'],
+                'updated_at'   => $tl['updated_at'] ?: $tl['created_at'],
+                'task_count'   => count($tlTasks),
+                'done'         => $done,
+                'phases'       => array_values(array_unique(array_column($tlTasks, 'phase_name'))),
+            ] : null,
+            'billing' => $bl ? [
+                'contract'  => $contract,
+                'billed'    => $billed,
+                'balance'   => max(0, $contract - $billed),
+                'retainage_rate' => $rate,
+                'complete'  => $contract > 0 && $billed + 0.005 >= $contract,
+                'rows'      => $rows,
+            ] : null,
+            'punch' => ($pc['open'] + $pc['fixed'] + $pc['verified']) ? $pc : null,
+            'turnover' => $to ? [
+                'status'        => $to['status'],
+                'letter_date'   => $to['letter_date'],
+                'client_name'   => $to['client_name'],
+                'submitted_at'  => $to['submitted_at'],
+                'sa_by'         => $to['sa_by'],
+                'sa_at'         => $to['sa_at'],
+                'return_remarks' => $to['return_remarks'],
+                'accepted_date' => $to['accepted_date'],
+                'client_signed' => (int) $to['client_signed'] === 1,
+                'signed_copy'   => mvUrl($to['signed_copy']),
+                'closed_by'     => $to['closed_by'],
+                'closed_at'     => $to['closed_at'],
+            ] : null,
+        ];
+    }
+    return $out;
+}
+
 function mvProduction(mysqli $conn, int $inquiryId, array $names): array
 {
     $qIds = mvSafe(fn() => mvInts(mvFetchAll($conn, "SELECT id FROM noblecrm_2dquotation WHERE inquiry_id = ?", [$inquiryId], 'i'), 'id'));
@@ -353,6 +499,7 @@ if ($action === 'timeline') {
             'design_progress' => $designProgress,
             'cycles'          => $cycles,
             'production'      => mvProduction($conn, $id, $names),
+            'operations'      => mvOperations($conn, $id),
         ]);
     } catch (Throwable $e) {
         error_log('monitoringcrmviewajax timeline: ' . $e->getMessage());

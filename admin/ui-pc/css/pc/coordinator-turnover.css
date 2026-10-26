@@ -1,0 +1,194 @@
+/* coordinator-turnover.css — styles ng coordinator-turnover.php */
+
+.dr-hazard {
+    background: repeating-linear-gradient(-45deg, #f59e0b 0 12px, #1f2937 12px 24px);
+}
+
+[data-picked="1"] {
+    box-shadow: 0 0 0 2px #b45309;
+}
+
+/* ── Turnover letter (kapareho ng sample) ── */
+.todoc {
+    font-family: Calibri, Arial, Helvetica, sans-serif;
+    color: #111;
+    font-size: 12px;
+    line-height: 1.45;
+    width: 720px;
+    padding: 6px 10px;
+}
+
+.todoc .hd {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 3px solid #e8650a;
+    padding-bottom: 8px;
+}
+
+.todoc .hd img {
+    height: 62px;
+}
+
+.todoc .hd .co {
+    flex: 1;
+    text-align: center;
+    color: #6b7280;
+    font-weight: 700;
+    letter-spacing: .03em;
+}
+
+.todoc .hd .co b {
+    display: block;
+    font-size: 13px;
+    color: #374151;
+}
+
+.todoc .hd .co span {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.todoc h2 {
+    text-align: center;
+    font-size: 13.5px;
+    font-weight: 800;
+    margin: 16px 0 12px;
+    letter-spacing: .02em;
+}
+
+.todoc p {
+    margin: 0 0 9px;
+}
+
+.todoc .meta p {
+    margin: 0 0 2px;
+}
+
+.todoc .subj {
+    font-weight: 700;
+    margin: 12px 0;
+}
+
+.todoc table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 6px 0 12px;
+}
+
+.todoc th,
+.todoc td {
+    border: 1px solid #111;
+    padding: 4px 8px;
+    vertical-align: top;
+    text-align: left;
+}
+
+.todoc th {
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.todoc td ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+.todoc .docs {
+    margin: -4px 0 10px;
+    font-size: 11.5px;
+}
+
+.todoc .docs ul {
+    margin: 2px 0 0;
+    padding-left: 18px;
+}
+
+.todoc .sigblk {
+    margin-top: 10px;
+}
+
+.todoc .sigimg {
+    height: 46px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.todoc .sigimg img {
+    max-height: 46px;
+    max-width: 170px;
+    object-fit: contain;
+}
+
+.todoc .nm {
+    font-weight: 700;
+}
+
+.todoc .here {
+    border: 2px dashed #f59e0b;
+    border-radius: 6px;
+    background: #fffbeb;
+    color: #b45309;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+}
+
+.todoc .conf {
+    margin-top: 16px;
+}
+
+.todoc .conf .line {
+    width: 230px;
+    border-bottom: 1px solid #111;
+    height: 40px;
+}
+
+.tdwm {
+    position: relative;
+    overflow: hidden;
+}
+
+.tdwm::after {
+    content: 'FOR APPROVAL — NOT VALID';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 40px/1 Arial, sans-serif;
+    color: rgba(220, 38, 38, .12);
+    transform: rotate(-24deg);
+    pointer-events: none;
+}
+
+#nhPrintArea {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 14mm;
+    }
+
+    body>*:not(#nhPrintArea) {
+        display: none !important;
+    }
+
+    #nhPrintArea {
+        display: block !important;
+    }
+
+    #nhPrintArea .todoc {
+        width: auto;
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    #nhPrintArea,
+    #nhPrintArea * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

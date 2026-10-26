@@ -57,6 +57,34 @@ const MON_STATUSES = [
     'TRANSMITTAL ISSUED'      => 'amber',
     'DELIVERED'               => 'green',
     'DR CREATED'              => 'green',
+    // ── Operations (Project Coordinator) → Turnover ──
+    'DR FOR APPROVAL'         => 'blue',
+    'DR RETURNED'             => 'red',
+    'DR APPROVED'             => 'green',
+    'FOREMAN ASSIGNED'        => 'green',
+    'LABOR QUOTE SUBMITTED'   => 'blue',
+    'LABOR QUOTE RETURNED'    => 'red',
+    'LABOR QUOTE APPROVED'    => 'green',
+    'TIMELINE SET'            => 'green',
+    'BILLING SUBMITTED'       => 'amber',
+    'BILLING RETURNED'        => 'red',
+    'BILLING NOTED'           => 'blue',
+    'BILLING APPROVED'        => 'green',
+    'FULLY BILLED'            => 'green',
+    'PUNCH LIST OPEN'         => 'amber',
+    'PUNCH LIST CLOSED'       => 'green',
+    'TURNOVER SUBMITTED'      => 'blue',
+    'TURNOVER RETURNED'       => 'red',
+    'TURNOVER SIGNED'         => 'green',
+    'TURNED OVER'             => 'green',
+];
+
+// Mga status ng Operations (Project Coordinator): DR approval → Turnover
+const MON_OPS = [
+    'DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED', 'FOREMAN ASSIGNED',
+    'LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET',
+    'BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED', 'BILLING APPROVED', 'FULLY BILLED',
+    'PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'TURNED OVER',
 ];
 
 // Mga status na galing sa production / purchasing (para sa divider sa Status History)
@@ -64,6 +92,10 @@ const MON_PIPELINE = [
     'NOTICE TO PROCEED', 'CUTTING LIST UPLOADED', 'CUTTING LIST REJECTED', 'CUTTING LIST APPROVED', 'BOM SUBMITTED', 'BOM APPROVED', 'BOM RECEIVED',
     'PR SUBMITTED', 'PR RETURNED', 'PR APPROVED', 'PR REVIEWED', 'PR RECEIVED BY ACCOUNTING', 'PR RELEASED', 'PR PAID',
     'TRANSMITTAL ISSUED', 'DELIVERED', 'DR CREATED',
+    'DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED', 'FOREMAN ASSIGNED',
+    'LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET',
+    'BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED', 'BILLING APPROVED', 'FULLY BILLED',
+    'PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'TURNED OVER',
 ];
 
 // Ano ang susunod pagkatapos ng huling production / purchasing status: [note, expected next]
@@ -84,7 +116,26 @@ const MON_PIPELINE_NEXT = [
     'PR PAID'                   => ['Purchase request paid', 'Transmittal'],
     'TRANSMITTAL ISSUED'        => ['Transmittal issued, for delivery', 'Delivery'],
     'DELIVERED'                 => ['Items delivered to the client', 'Delivery Receipt'],
-    'DR CREATED'                => ['Delivery receipt prepared by the Project Coordinator', 'Site Coordination'],
+    'DR CREATED'                => ['Delivery receipt prepared by the Project Coordinator', 'DR Approval'],
+    'DR FOR APPROVAL'           => ['Delivery receipt waiting for the Superadmin\'s signature', 'DR Approval'],
+    'DR RETURNED'               => ['Delivery receipt returned to the Project Coordinator', 'Fix & resubmit DR'],
+    'DR APPROVED'               => ['Delivery receipt signed, can be printed', 'Foreman ID'],
+    'FOREMAN ASSIGNED'          => ['Foreman and ID recorded', 'Labor Quotation'],
+    'LABOR QUOTE SUBMITTED'     => ['Labor quotation waiting for the Superadmin\'s signature', 'Labor Quote Approval'],
+    'LABOR QUOTE RETURNED'      => ['Labor quotation returned to the Project Coordinator', 'Fix & resubmit Labor Quote'],
+    'LABOR QUOTE APPROVED'      => ['Labor quotation approved', 'Timeline'],
+    'TIMELINE SET'              => ['Project timeline prepared', 'Progress Billing'],
+    'BILLING SUBMITTED'         => ['Progress billing waiting for the Accounting Head', 'Accounting Head (Noted by)'],
+    'BILLING RETURNED'          => ['Progress billing returned to the Project Coordinator', 'Fix & resubmit Billing'],
+    'BILLING NOTED'             => ['Noted by the Accounting Head, waiting for the Superadmin', 'Superadmin (Approved by)'],
+    'BILLING APPROVED'          => ['Progress billing approved', 'Next Billing'],
+    'FULLY BILLED'              => ['Contract is fully billed and approved', 'Punch List'],
+    'PUNCH LIST OPEN'           => ['Punch list items being fixed', 'Verify Punch List'],
+    'PUNCH LIST CLOSED'         => ['All punch list items verified', 'Turnover Letter'],
+    'TURNOVER SUBMITTED'        => ['Turnover letter waiting for the Superadmin\'s signature', 'Turnover Approval'],
+    'TURNOVER RETURNED'         => ['Turnover letter returned to the Project Coordinator', 'Fix & resubmit Turnover'],
+    'TURNOVER SIGNED'           => ['Turnover letter signed, waiting for the client\'s signature', 'Client Acceptance'],
+    'TURNED OVER'               => ['Project turned over to the client and closed', '—'],
 ];
 
 // Stage ng bawat inquiry. Returns [label, color, note, expected next].
@@ -238,12 +289,20 @@ function monHistoryData(mysqli $conn, array $ids): array
     $out = [];
     foreach ($ids as $id) {
         $out[(int) $id] = ['sv' => [], 'initials' => [], 'reviews' => [], 'finals' => [],
-                           'cutting' => [], 'boms' => [], 'prs' => [], 'trs' => [], 'drs' => []];
+                           'cutting' => [], 'boms' => [], 'prs' => [], 'trs' => [], 'drs' => [],
+                           'dr_ap' => [], 'foremen' => [], 'lqs' => [], 'timelines' => [], 'billings' => [], 'punch' => [], 'turnovers' => []];
     }
     if (!$out) {
         return $out;
     }
     $in = implode(',', array_map('intval', array_keys($out)));
+    // DR → inquiry (sa pamamagitan ng transmittal → PR → BOM → 2D quotation)
+    $opsJoinFromDr = "JOIN nobletransmittal t ON t.id = d.transmittal_id
+                      JOIN noblepurchaserequest p ON p.id = t.pr_id
+                      JOIN noblecrm_bom b ON b.id = p.bom_id
+                      JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                      WHERE q.inquiry_id IN ($in)";
+    $opsJoin = "FROM noblepc_dr d " . $opsJoinFromDr;
 
     $queries = [
         'sv'       => "SELECT inquiry_id, created_at, visited FROM noblecrm_sitevisit WHERE inquiry_id IN ($in) ORDER BY created_at ASC, id ASC",
@@ -283,6 +342,27 @@ function monHistoryData(mysqli $conn, array $ids): array
                        JOIN noblecrm_bom b ON b.id = p.bom_id
                        JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
                        WHERE q.inquiry_id IN ($in) ORDER BY d.id ASC",
+
+        // ── Operations (Project Coordinator) → Turnover; hiwalay na query bawat table para kapag wala pa ang table, iyon lang ang laktaw ──
+        'dr_ap'     => "SELECT q.inquiry_id, d.id AS dr_id, d.dr_no, d.created_at, d.status, d.submitted_at, d.approved_at, d.approved_by,
+                               d.returned_at, d.returned_by, d.return_remarks, d.permit_required
+                        $opsJoin ORDER BY d.id ASC",
+        'foremen'   => "SELECT q.inquiry_id, d.dr_no, x.name, x.created_at
+                        FROM noblepc_foreman x JOIN noblepc_dr d ON d.id = x.dr_id $opsJoinFromDr ORDER BY x.id ASC",
+        'lqs'       => "SELECT q.inquiry_id, d.dr_no, x.quote_no, x.total, x.subcontractor, x.created_at, x.submitted_at, x.status,
+                               x.approved_at, x.approved_by, x.returned_at, x.returned_by, x.return_remarks
+                        FROM noblepc_laborquote x JOIN noblepc_dr d ON d.id = x.dr_id $opsJoinFromDr ORDER BY x.id ASC",
+        'timelines' => "SELECT q.inquiry_id, d.dr_no, x.created_at, x.updated_at, x.date_started, x.date_finish,
+                               (SELECT COUNT(*) FROM noblepc_timeline_task k WHERE k.timeline_id = x.id) AS task_count
+                        FROM noblepc_timeline x JOIN noblepc_dr d ON d.id = x.dr_id $opsJoinFromDr ORDER BY x.id ASC",
+        'billings'  => "SELECT q.inquiry_id, d.id AS dr_id, d.dr_no, x.ref_no, x.billing_type, x.app_no, x.this_period, x.contract_amount, x.change_orders,
+                               x.created_at, x.submitted_at, x.status, x.head_at, x.head_by, x.sa_at, x.sa_by, x.returned_at, x.returned_by, x.returned_stage, x.return_remarks
+                        FROM noblepc_billing x JOIN noblepc_dr d ON d.id = x.dr_id $opsJoinFromDr ORDER BY x.dr_id ASC, x.seq ASC",
+        'punch'     => "SELECT q.inquiry_id, d.dr_no, MIN(x.created_at) AS first_at, COUNT(*) AS n, SUM(x.status = 'verified') AS v, MAX(x.verified_at) AS last_verified
+                        FROM noblepc_punch x JOIN noblepc_dr d ON d.id = x.dr_id $opsJoinFromDr GROUP BY q.inquiry_id, d.id, d.dr_no",
+        'turnovers' => "SELECT q.inquiry_id, d.dr_no, x.created_at, x.submitted_at, x.status, x.sa_at, x.sa_by, x.returned_at, x.returned_by, x.return_remarks,
+                               x.closed_at, x.closed_by, x.accepted_date, x.client_name
+                        FROM noblepc_turnover x JOIN noblepc_dr d ON d.id = x.dr_id $opsJoinFromDr ORDER BY x.id ASC",
     ];
     foreach ($queries as $key => $sql) {
         // kapag wala pa ang table (hal. noblepc_dr), laktawan lang — huwag sirain ang buong monitoring
@@ -453,6 +533,67 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         $addP('DR CREATED', $d['created_at'], $by($d['prepared_by']), 'DR# ' . $d['dr_no']);
     }
 
+    // 8. Operations (Project Coordinator) → Turnover
+    // isang "cycle": submitted → (returned → resubmitted) → approved
+    $cycle = function (array $L, ?string $created, ?string $submitted, ?string $returned, string $retNote, ?string $approved, string $okNote, string $ref, string $subNote, bool $skipFirst = false) use ($addP) {
+        if (!$skipFirst) $addP($L[0], $created ?: $submitted, $subNote, $ref);
+        if ($returned) {
+            $addP($L[1], $returned, $retNote, $ref);
+            if ($submitted && strtotime($submitted) > strtotime($returned)) $addP($L[0], $submitted, 'Resubmitted after changes', $ref);
+        }
+        if ($approved) $addP($L[2], $approved, $okNote, $ref);
+    };
+    $quoteNote = fn($rem) => !empty($rem) ? ' — “' . $rem . '”' : '';
+    $peso = fn($v) => '₱' . number_format((float) $v, 2);
+
+    foreach ($data['dr_ap'] ?? [] as $d) {
+        if (empty($d['status'])) continue;
+        $permit = $d['permit_required'] === null ? '' : ((int) $d['permit_required'] === 1 ? ' · Needs permit' : ' · No permit needed');
+        $cycle(['DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED'], $d['created_at'], $d['submitted_at'], $d['returned_at'],
+            trim($by($d['returned_by']) . $quoteNote($d['return_remarks'])), $d['approved_at'], 'Signed ' . $by($d['approved_by']),
+            'DR# ' . $d['dr_no'], 'Sent to the Superadmin for signing' . $permit);
+    }
+    foreach ($data['foremen'] ?? [] as $f) {
+        $addP('FOREMAN ASSIGNED', $f['created_at'], 'Foreman: ' . $f['name'], 'DR# ' . $f['dr_no']);
+    }
+    foreach ($data['lqs'] ?? [] as $l) {
+        $cycle(['LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED'], $l['created_at'], $l['submitted_at'], $l['returned_at'],
+            trim($by($l['returned_by']) . $quoteNote($l['return_remarks'])), $l['approved_at'], 'Signed ' . $by($l['approved_by']) . ' · ' . $peso($l['total']),
+            $l['quote_no'], ($l['subcontractor'] ? $l['subcontractor'] . ' · ' : '') . $peso($l['total']));
+    }
+    foreach ($data['timelines'] ?? [] as $tl) {
+        $days = (strtotime($tl['date_finish']) - strtotime($tl['date_started'])) / 86400 + 1;
+        $addP('TIMELINE SET', $tl['created_at'], date('M j, Y', strtotime($tl['date_started'])) . ' → ' . date('M j, Y', strtotime($tl['date_finish'])) . ' · ' . (int) $days . ' days · ' . (int) $tl['task_count'] . ' tasks', 'DR# ' . $tl['dr_no']);
+    }
+    $billedByDr = [];
+    foreach ($data['billings'] ?? [] as $b) {
+        $what = $b['billing_type'] === 'dp' ? 'Down payment' : 'Application for Payment ' . (int) $b['app_no'];
+        $stage = ($b['returned_stage'] ?? '') === 'sa' ? 'Superadmin' : 'Accounting Head';
+        $cycle(['BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED'], $b['created_at'], $b['submitted_at'], $b['returned_at'],
+            trim('by the ' . $stage . ($b['returned_by'] ? ' (' . $b['returned_by'] . ')' : '') . $quoteNote($b['return_remarks'])), $b['head_at'], 'Noted ' . $by($b['head_by']),
+            $b['ref_no'], $what . ' · ' . $peso($b['this_period']));
+        if ($b['status'] === 'approved') {
+            $addP('BILLING APPROVED', $b['sa_at'], $what . ' · ' . $peso($b['this_period']) . ' · ' . $by($b['sa_by']), $b['ref_no']);
+            $k = (int) $b['dr_id'];
+            $billedByDr[$k]['sum'] = ($billedByDr[$k]['sum'] ?? 0) + (float) $b['this_period'];
+            $billedByDr[$k]['contract'] = (float) $b['contract_amount'] + (float) $b['change_orders'];
+            $billedByDr[$k]['at'] = $b['sa_at'];
+            $billedByDr[$k]['dr'] = $b['dr_no'];
+        }
+    }
+    foreach ($billedByDr as $bd) {
+        if ($bd['contract'] > 0 && $bd['sum'] >= $bd['contract'] - 0.004) $addP('FULLY BILLED', $bd['at'], $peso($bd['sum']) . ' billed and approved', 'DR# ' . $bd['dr']);
+    }
+    foreach ($data['punch'] ?? [] as $pu) {
+        $addP('PUNCH LIST OPEN', $pu['first_at'], (int) $pu['n'] . ' item(s) found during inspection', 'DR# ' . $pu['dr_no']);
+        if ((int) $pu['n'] > 0 && (int) $pu['v'] === (int) $pu['n']) $addP('PUNCH LIST CLOSED', $pu['last_verified'], 'All ' . (int) $pu['n'] . ' item(s) verified', 'DR# ' . $pu['dr_no']);
+    }
+    foreach ($data['turnovers'] ?? [] as $tv) {
+        $cycle(['TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED'], $tv['created_at'], $tv['submitted_at'], $tv['returned_at'],
+            trim($by($tv['returned_by']) . $quoteNote($tv['return_remarks'])), $tv['sa_at'], 'Signed ' . $by($tv['sa_by']), 'DR# ' . $tv['dr_no'], 'Turnover letter sent for signing');
+        $addP('TURNED OVER', $tv['closed_at'], 'Accepted by ' . $tv['client_name'] . ($tv['accepted_date'] ? ' on ' . date('M j, Y', strtotime($tv['accepted_date'])) : '') . ' · project closed', 'DR# ' . $tv['dr_no']);
+    }
+
     usort($ev, fn($a, $b) => [$a['_sort'], $a['_seq']] <=> [$b['_sort'], $b['_seq']]);
 
     // Kasalukuyang stage: kung iba sa huling event, idagdag bilang "ngayon".
@@ -468,7 +609,7 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         $e['current'] = ($i === $last);
         // ts = unix time ng event (para sa date filter); "ngayon" ang current na walang oras
         $e['ts'] = $e['_sort'] === PHP_INT_MAX ? time() : ($e['_sort'] ?: null);
-        $e['group'] = in_array($e['label'], MON_PIPELINE, true) ? 'pipeline' : 'crm';
+        $e['group'] = in_array($e['label'], MON_OPS, true) ? 'ops' : (in_array($e['label'], MON_PIPELINE, true) ? 'pipeline' : 'crm');
         unset($e['_sort'], $e['_seq']);
     }
     unset($e);
@@ -676,7 +817,7 @@ if ($action === 'status_detail') {
     // Kapag nasa Cutting list → Delivery na, iyon ang ipapakita
     $hist = monBuildHistory($conn, $r);
     $cur = $hist[count($hist) - 1] ?? null;
-    if ($cur && ($cur['group'] ?? '') === 'pipeline') {
+    if ($cur && in_array($cur['group'] ?? '', ['pipeline', 'ops'], true)) {
         $label = $cur['label'];
         $color = $cur['color'];
         [$note, $next] = MON_PIPELINE_NEXT[$label] ?? [$cur['note'], '—'];

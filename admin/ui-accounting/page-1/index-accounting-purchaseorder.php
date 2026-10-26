@@ -26,19 +26,7 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
     <title>Purchase Order Approval</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
-    <style>
-        /* Print: kinokopya ang form sa #nhPrintArea (direct child ng body) para hindi maputol ng modal */
-        #nhPrintArea { display: none; }
-        @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
-            body > *:not(#nhPrintArea) { display: none !important; }
-            #nhPrintArea { display: block !important; width: 100%; zoom: .86; }
-            #nhPrintArea > * { min-width: 0 !important; width: 100% !important; }
-            #nhPrintArea * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            #nhPrintArea table, #nhPrintArea tr, #nhPrintArea img { page-break-inside: avoid; break-inside: avoid; }
-        }
-    </style>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/ui-accounting/css/accounting/index-accounting-purchaseorder.css?v=<?= @filemtime(ROOT_PATH . '/admin/ui-accounting/css/accounting/index-accounting-purchaseorder.css') ?: 1 ?>">
 </head>
 
 <body class="bg-slate-100">
@@ -143,7 +131,7 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
                     <button type="button" id="apoReviewBtn" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm">
                         <i class="fa-solid fa-signature"></i> Review &amp; Sign
                     </button>
-                    <button type="button" id="apoClose" class="ml-1 text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                    <button type="button" id="apoClose" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
                 </div>
             </div>
             <div id="apoNotice" class="hidden mx-4 mt-3 rounded-lg px-3 py-2 text-xs"></div>

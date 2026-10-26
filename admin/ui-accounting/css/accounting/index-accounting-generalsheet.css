@@ -1,0 +1,73 @@
+/* index-accounting-generalsheet.css — styles ng index-accounting-generalsheet.php */
+
+.gs-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+.gs-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.gs-scroll::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 9999px;
+}
+
+.gs-input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: .5rem;
+    padding: .5rem .75rem;
+    font-size: .875rem;
+    color: #1f2937;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.gs-input:focus {
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px #fef3c7;
+}
+
+.gs-input[aria-invalid="true"] {
+    border-color: #f87171;
+    box-shadow: 0 0 0 3px #fee2e2;
+}
+
+.gs-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #6b7280;
+    margin-bottom: .375rem;
+}
+
+.gs-mode {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+}
+
+.gs-mode:hover {
+    border-color: #d1d5db;
+}
+
+.gs-mode[data-active="1"] {
+    border-color: #b45309;
+    background: #fffbeb;
+    color: #92400e;
+    box-shadow: 0 0 0 1px #b45309 inset;
+}
+
+.gs-field-ref {
+    position: relative;
+}
+
+.gs-field-ref[data-ref="1"] .gs-input {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}

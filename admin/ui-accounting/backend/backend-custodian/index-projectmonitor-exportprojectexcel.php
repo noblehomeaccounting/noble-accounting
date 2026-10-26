@@ -406,7 +406,32 @@ $ws->getPageMargins()->setLeft(0.3);
 $ws->getPageMargins()->setRight(0.3);
 
 // ── OUTPUT ────────────────────────────────────────────────────────────────────
-$filename = 'project-monitoring-' . ($project['reference_no'] ?? $project_id) . '.xlsx';
+// ?view=1  → ipakita sa browser (HTML preview ng parehong sheet)
+// default  → i-download bilang .xlsx
+$filename = 'project-monitoring-' . preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) ($project['reference_no'] ?? $project_id)) . '.xlsx';
+
+if (($_GET['view'] ?? '') === '1') {
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Html($ss);
+    if (method_exists($writer, 'setEmbedImages')) $writer->setEmbedImages(true);   // kasama ang logo sa preview
+    if (method_exists($writer, 'setEditHtmlCallback')) {
+        $title = htmlspecialchars(($project['project_name'] ?? 'Project') . ' — Excel preview', ENT_QUOTES, 'UTF-8');
+        $writer->setEditHtmlCallback(function (string $html) use ($title): string {
+            $css = '<title>' . $title . '</title><style>
+                html, body { margin: 0; background: #e5e7eb; }
+                body { padding: 16px; }
+                body > table, body > div > table { background: #fff; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08); }
+                @media print { html, body { background: #fff; padding: 0; } body > table, body > div > table { box-shadow: none; } }
+            </style>';
+            return preg_replace('#</head>#i', $css . '</head>', $html, 1);
+        });
+    }
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: no-store');
+    header('X-Frame-Options: SAMEORIGIN');
+    $writer->save('php://output');
+    exit;
+}
+
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Cache-Control: max-age=0');

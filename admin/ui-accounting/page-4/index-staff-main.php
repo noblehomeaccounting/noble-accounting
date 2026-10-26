@@ -9,6 +9,7 @@ $allowedRoles = [ROLE_ACCOUNTING];
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 ?>
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -16,132 +17,164 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
     <title>Accounting Dashboard</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
+    <style>
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+
+        .day-chip { background:#fff; border-color:#e5e7eb; color:#4b5563; cursor:pointer; }
+        .day-chip:hover { border-color:#d97706; color:#b45309; }
+        .day-chip[data-empty="1"] { color:#9ca3af; border-style:dashed; }
+        .day-chip[data-active="1"] { background:#b45309; border-color:#b45309; color:#fff; }
+
+        @keyframes dayRowFlash { 0%,100% { background: transparent; } 50% { background: #fef3c7; } }
+        .day-row-flash { animation: dayRowFlash .6s ease-in-out 5; }
+    </style>
 </head>
 
-<body class="bg-slate-100">
+<body class="bg-gray-100">
     <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
 
-        <!-- Header -->
-        <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
-            <div>
-                <h1 class="text-xl font-bold text-gray-800">For Receiving</h1>
-                <p class="text-sm text-gray-400 mt-1">Approved requests pending for receive</p>
+        <!-- ═══ HEADER ═══ -->
+        <div class="mb-5 flex items-start sm:items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-xl font-bold text-gray-800 leading-tight">For Receiving</h1>
+                    <p class="text-sm text-gray-500">Approved requests waiting to be received</p>
+                </div>
             </div>
+            <div class="flex items-center gap-2 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span id="last-updated">Loading…</span>
+            </div>
+        </div>
 
-            <!-- Month/Year nav + Dates dropdown -->
-            <div class="flex items-center gap-3 flex-wrap">
+        <!-- ═══ STAT CARDS (buwan na nakabukas) ═══ -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+                <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">This month</p>
+                    <p id="stat-total" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
+                </div>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-inbox"></i></div>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">For receive</p>
+                    <p id="stat-for" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
+                </div>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+                <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">Received</p>
+                    <p id="stat-received" class="text-2xl font-bold text-gray-800 leading-none mt-1">0</p>
+                </div>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0 col-span-2 lg:col-span-1">
+                <div class="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-peso-sign"></i></div>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate">Amount to receive</p>
+                    <p id="stat-amount" class="text-xl font-bold text-gray-800 leading-none mt-1 truncate">₱ 0.00</p>
+                </div>
+            </div>
+        </div>
 
-                <!-- Dates with requests dropdown -->
+        <!-- ═══ CALENDAR CARD ═══ -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-5">
+            <div class="flex items-center justify-between flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
+                <div class="flex items-center gap-2">
+                    <button onclick="prevMonth()" title="Previous month"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <span id="cal-label" class="text-base font-bold text-gray-800 min-w-[140px] text-center"></span>
+                    <button onclick="nextMonth()" title="Next month"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                    <button onclick="goToday()"
+                        class="ml-1 h-9 text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 px-3 rounded-lg transition">
+                        Today
+                    </button>
+                </div>
+
                 <div class="relative" id="dates-dropdown-wrap">
                     <button onclick="toggleDatesDropdown(event)"
-                        class="flex items-center gap-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition shadow-sm">
-                        <i class="fa-solid fa-calendar-days text-orange-400"></i>
-                        Dates with Requests
-                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2.5"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
+                        class="h-9 flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 px-3 rounded-lg transition">
+                        <i class="fa-solid fa-calendar-check text-amber-600"></i>
+                        <span class="hidden sm:inline">Jump to date</span>
+                        <span class="sm:hidden">Dates</span>
+                        <i class="fa-solid fa-chevron-down text-[9px] text-gray-400"></i>
                     </button>
-
                     <div id="dates-dropdown"
-                        class="hidden absolute left-0 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                        class="hidden absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                         <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                            <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Dates with Requests</p>
+                            <p class="text-xs font-bold text-gray-600 uppercase tracking-wide">Dates with requests</p>
                             <span id="dates-dropdown-count" class="text-[10px] text-gray-400"></span>
                         </div>
                         <div class="px-3 py-2 border-b border-gray-100">
-                            <input type="text" id="dates-search" placeholder="Search date..."
-                                oninput="filterDatesDropdown()"
-                                class="w-full text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 transition">
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px]"></i>
+                                <input type="text" id="dates-search" placeholder="Search date..." oninput="filterDatesDropdown()"
+                                    class="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition">
+                            </div>
                         </div>
-                        <ul id="dates-list" class="max-h-64 overflow-y-auto py-1"></ul>
+                        <ul id="dates-list" class="max-h-64 overflow-y-auto py-1 scrollbar-thin"></ul>
                     </div>
                 </div>
-
-                <button onclick="prevMonth()"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-500">
-                    <i class="fa-solid fa-chevron-left text-xs"></i>
-                </button>
-                <span id="cal-label" class="text-sm font-semibold text-gray-700 min-w-[130px] text-center"></span>
-                <button onclick="nextMonth()"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-500">
-                    <i class="fa-solid fa-chevron-right text-xs"></i>
-                </button>
-                <button onclick="goToday()"
-                    class="text-xs font-semibold text-orange-500 border border-orange-200 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition">
-                    Today
-                </button>
-                <div class="flex items-center gap-1.5 ml-2">
-                    <span id="last-updated" class="text-[10px] text-gray-400"></span>
-                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                </div>
             </div>
-        </div>
 
-        <!-- Calendar Grid -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-            <!-- Day headers -->
-            <div class="grid grid-cols-7 border-b border-gray-100">
+            <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
                 <?php foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $d): ?>
-                    <div class="py-2.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest
-                    <?= $d === 'Sun' ? 'text-red-400' : ($d === 'Sat' ? 'text-blue-400' : '') ?>">
-                        <?= $d ?>
+                    <div class="py-2 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wide <?= $d === 'Sun' ? 'text-red-400' : ($d === 'Sat' ? 'text-blue-400' : 'text-gray-500') ?>">
+                        <span class="sm:hidden"><?= substr($d, 0, 1) ?></span><span class="hidden sm:inline"><?= $d ?></span>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <!-- Cells -->
             <div id="calendar-grid" class="grid grid-cols-7"></div>
-        </div>
 
-        <!-- Legend -->
-        <div class="flex items-center gap-4 mb-6 px-1">
-            <div class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-                <span class="text-[11px] text-gray-500">Approved (For Receive)</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
-                <span class="text-[11px] text-gray-500">Received</span>
+            <div class="flex items-center gap-4 flex-wrap px-4 py-2.5 border-t border-gray-100 text-[11px] text-gray-500">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>For receive</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Received</span>
+                <span class="ml-auto hidden sm:inline text-gray-400">Click a day to see its requests</span>
             </div>
         </div>
 
-        <!-- Day Detail Panel (hidden by default) -->
-        <div id="day-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <span id="day-panel-title" class="text-sm font-semibold text-gray-700"></span>
-                <button onclick="closeDayPanel()" class="text-gray-300 hover:text-gray-500 transition">
+        <!-- ═══ DAY PANEL ═══ -->
+        <div id="day-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                        <i class="fa-regular fa-calendar"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p id="day-panel-title" class="text-sm font-bold text-gray-800 truncate"></p>
+                        <p id="day-panel-sub" class="text-[11px] text-gray-500 truncate"></p>
+                    </div>
+                </div>
+                <button onclick="closeDayPanel()" title="Close"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition shrink-0">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div class="overflow-x-auto max-h-[460px] overflow-y-auto scrollbar-thin">
-                <table class="w-full text-sm">
-                    <thead class="sticky top-0 z-10 bg-gray-50">
-                        <tr class="bg-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
-                            <th class="px-5 py-3 text-left">Control No.</th>
-                            <th class="px-5 py-3 text-left">Requestor</th>
-                            <th class="px-5 py-3 text-left">Purpose</th>
-                            <th class="px-5 py-3 text-left">Total</th>
-                            <th class="px-5 py-3 text-left">Approved By</th>
-                            <th class="px-5 py-3 text-left">Category</th>
-                            <th class="px-5 py-3 text-left">Status</th>
-                            <th class="px-5 py-3 text-left">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="day-requests-tbody"></tbody>
-                </table>
-            </div>
+            <div id="day-filter" class="flex items-center gap-2 flex-wrap px-4 sm:px-5 py-2.5 border-b border-gray-100 bg-gray-50/60"></div>
+            <div id="day-requests-cards" class="max-h-[560px] overflow-y-auto scrollbar-thin divide-y divide-gray-100"></div>
         </div>
 
     </main>
-
     <!-- View Modal (read-only) -->
     <div id="view-modal"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8 overflow-y-auto">
         <div class="bg-white w-full max-w-5xl rounded-sm shadow-xl border border-gray-300 my-auto">
 
             <!-- Header -->
-            <div class="grid grid-cols-[1fr_auto] border-b-2 border-gray-800">
-                <div class="flex items-center gap-4 px-3 py-3 border-r-2 border-gray-800">
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] border-b-2 border-gray-800">
+                <div class="flex items-center gap-4 px-3 py-3 border-b-2 md:border-b-0 md:border-r-2 border-gray-800 min-w-0">
                     <div class="w-14 h-14 shrink-0">
                         <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Logo" class="w-full h-full object-contain">
                     </div>
@@ -157,12 +190,12 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 </div>
                 <div class="flex flex-col">
                     <div class="flex items-center justify-between px-4 py-2 border-b-2 border-gray-800 gap-4">
-                        <h2 class="font-bold text-sm uppercase tracking-widest whitespace-nowrap">Budget Request Form
+                        <h2 class="font-bold text-xs md:text-sm uppercase tracking-widest">Budget Request Form
                         </h2>
                         <div class="flex items-center gap-2">
 
                             <button onclick="printRequest(currentViewRow)"
-                                class="flex items-center gap-1.5 text-[10px] font-semibold text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-lg transition">
+                                class="flex items-center gap-1.5 text-[10px] font-semibold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition">
                                 <i class="fa-solid fa-print"></i> Print
                             </button>
                             <button onclick="closeViewModal()"
@@ -177,13 +210,13 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                                 class="bg-orange-500 text-white font-bold px-4 py-1 uppercase tracking-wider text-center border-b-2 border-gray-800">Control
                                 No.</span>
                             <p id="view-control-no"
-                                class="flex-1 px-4 py-1 font-mono text-xs text-center bg-gray-50 min-w-[180px]"></p>
+                                class="flex-1 px-4 py-1 font-mono text-xs text-center bg-gray-50 md:min-w-[180px]"></p>
                         </div>
                         <div class="flex flex-col flex-1">
                             <span
                                 class="bg-orange-500 text-white font-bold px-4 py-1 uppercase tracking-wider text-center border-b-2 border-gray-800">Date:</span>
                             <p id="view-date"
-                                class="flex-1 px-4 py-1 font-mono text-xs text-center bg-gray-50 min-w-[150px]"></p>
+                                class="flex-1 px-4 py-1 font-mono text-xs text-center bg-gray-50 md:min-w-[150px]"></p>
                         </div>
                     </div>
                 </div>
@@ -191,20 +224,20 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 
             <!-- Requestor + Purpose + Category -->
-            <div class="grid grid-cols-3 border-b-2 border-gray-800">
-                <div class="flex items-center gap-2 px-6 py-3 border-r-2 border-gray-800">
+            <div class="grid grid-cols-1 md:grid-cols-3 border-b-2 border-gray-800">
+                <div class="flex items-center gap-2 px-4 md:px-6 py-3 border-b md:border-b-0 md:border-r-2 border-gray-800 min-w-0">
                     <span
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-600 whitespace-nowrap">Requestor
                         Name:</span>
-                    <p id="view-requestor" class="text-sm text-gray-800"></p>
+                    <p id="view-requestor" class="text-sm text-gray-800 break-words min-w-0"></p>
                 </div>
-                <div class="flex items-center gap-2 px-6 py-3 border-r-2 border-gray-800">
+                <div class="flex items-center gap-2 px-4 md:px-6 py-3 border-b md:border-b-0 md:border-r-2 border-gray-800 min-w-0">
                     <span
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-600 whitespace-nowrap">Purpose
                         of Request:</span>
-                    <p id="view-purpose" class="text-sm text-gray-800"></p>
+                    <p id="view-purpose" class="text-sm text-gray-800 break-words min-w-0"></p>
                 </div>
-                <div class="flex items-center gap-2 px-6 py-3">
+                <div class="flex items-center gap-2 px-4 md:px-6 py-3 min-w-0">
                     <span
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-600 whitespace-nowrap">Category:</span>
                     <p id="view-category" class="text-sm text-gray-800"></p>
@@ -247,8 +280,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             </div>
 
             <!-- Signatures -->
-            <div class="grid grid-cols-2 border-t-2 border-gray-800">
-                <div class="px-5 py-4 border-r-2 border-gray-800">
+            <div class="grid grid-cols-1 sm:grid-cols-2 border-t-2 border-gray-800">
+                <div class="px-5 py-4 border-b-2 sm:border-b-0 sm:border-r-2 border-gray-800">
                     <div class="flex items-center gap-2 mb-4">
                         <span class="text-[10px] font-bold uppercase tracking-widest text-gray-600">Approved By:</span>
                         <div id="view-status-badge"></div>
@@ -286,213 +319,265 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         </div>
         <div class="w-2 h-2 bg-gray-800 rotate-45 mx-auto -mt-1"></div>
     </div>
-
     <script>
+        const API = '<?= BASE_URL ?>';
+
+        const escHtml = s => String(s ?? '').replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmtMoney = n => (parseFloat(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const toDate = v => (v ? new Date(String(v).replace(' ', 'T')) : null);
+        function fmtShort(v) {
+            const d = toDate(v); if (!d || isNaN(d)) return '';
+            return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' +
+                d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+        function fmtLong(v) {
+            const d = toDate(v); if (!d || isNaN(d)) return '';
+            return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' +
+                d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+        const rowTotal = r => (r.items ?? []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+        const isReceived = r => !!r.receiver_name;
+
         // ─── State ───────────────────────────────────────────
         let allRequests = [];
-        let lastSig = '';          // ← pamalit sa previousCount
-        let isFetching = false;    // ← iwas sabay-sabay na request
+        let lastSig = '';
+        let isFetching = false;
         let calYear = new Date().getFullYear();
         let calMonth = new Date().getMonth();
         let selectedDate = null;
         let highlightDone = false;
+        let dayFilter = 'all';
+        let dayRequests = [];
+        let confirmId = null, confirmTimer = null;   // inline confirm ng Mark Received
+        const savingIds = new Set();
 
-        // ─── Calendar ────────────────────────────────────────
         const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'];
 
+        // ─── Stats (buwan na nakabukas) ──────────────────────
+        function updateStats() {
+            const prefix = calYear + '-' + String(calMonth + 1).padStart(2, '0');
+            const month = allRequests.filter(r => r.date_requested?.startsWith(prefix));
+            const pend = month.filter(r => !isReceived(r));
+            document.getElementById('stat-total').textContent = month.length;
+            document.getElementById('stat-for').textContent = pend.length;
+            document.getElementById('stat-received').textContent = month.length - pend.length;
+            document.getElementById('stat-amount').textContent = '₱ ' + fmtMoney(pend.reduce((s, r) => s + rowTotal(r), 0));
+        }
+
+        // ─── Calendar ────────────────────────────────────────
         function renderCalendar() {
             document.getElementById('cal-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
-
+            updateStats();
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
-
             const firstDay = new Date(calYear, calMonth, 1).getDay();
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
             const today = new Date();
+            const isMobile = window.innerWidth < 768;
+            const cellH = isMobile ? '56px' : '104px';
 
-            // Group by date
             const byDate = {};
             allRequests.forEach(r => {
                 const d = r.date_requested ? r.date_requested.substring(0, 10) : null;
-                if (!d) return;
-                if (!byDate[d]) byDate[d] = [];
-                byDate[d].push(r);
+                if (d) (byDate[d] = byDate[d] || []).push(r);
             });
 
-            // Leading blanks
-            for (let i = 0; i < firstDay; i++) {
-                const blank = document.createElement('div');
-                blank.className = 'min-h-[90px] bg-gray-50/50 border-b border-r border-gray-100';
-                grid.appendChild(blank);
-            }
+            const blank = () => {
+                const b = document.createElement('div');
+                b.className = 'border-b border-r border-gray-100 bg-gray-50/60';
+                b.style.minHeight = cellH;
+                grid.appendChild(b);
+            };
+            for (let i = 0; i < firstDay; i++) blank();
 
             for (let day = 1; day <= daysInMonth; day++) {
-                const mm = String(calMonth + 1).padStart(2, '0');
-                const dd = String(day).padStart(2, '0');
-                const dateStr = `${calYear}-${mm}-${dd}`;
+                const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const requests = byDate[dateStr] ?? [];
-
-                const isToday = (today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === day);
+                const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === day;
                 const isSelected = selectedDate === dateStr;
-                const dayOfWeek = (firstDay + day - 1) % 7;
-                const isSun = dayOfWeek === 0;
-                const isSat = dayOfWeek === 6;
+                const dow = (firstDay + day - 1) % 7;
+                const has = requests.length > 0;
+                const forRec = requests.filter(r => !isReceived(r)).length;
+                const rec = requests.length - forRec;
 
                 const cell = document.createElement('div');
+                cell.style.minHeight = cellH;
                 cell.className = [
-                    'min-h-[90px] p-2 border-b border-r border-gray-100 cursor-pointer transition-all duration-150',
-                    requests.length ? 'hover:bg-orange-50' : 'hover:bg-gray-50',
-                    isSelected ? 'bg-orange-50 ring-2 ring-inset ring-orange-400' : '',
+                    'border-b border-r border-gray-100 cursor-pointer transition-colors relative min-w-0',
+                    isMobile ? 'flex flex-col items-center pt-1.5 pb-1 gap-1' : 'p-1.5 flex flex-col gap-1',
+                    isSelected ? 'bg-amber-50 ring-2 ring-inset ring-amber-500' : (has ? 'hover:bg-amber-50/60' : 'hover:bg-gray-50'),
                 ].join(' ');
 
-                // approved = not yet received (status still 'approved'), received = has receiver_name
-                const forReceive = requests.filter(r => !r.receiver_name).length;
-                const received = requests.filter(r => r.receiver_name).length;
+                const numCls = isToday
+                    ? 'w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center'
+                    : 'w-6 h-6 flex items-center justify-center ' + (dow === 0 ? 'text-red-400' : dow === 6 ? 'text-blue-400' : 'text-gray-700');
 
-                const dots = [
-                    forReceive ? `<span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>` : '',
-                    received ? `<span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>` : '',
-                ].join('');
+                if (isMobile) {
+                    cell.innerHTML = `
+                        <span class="text-xs font-semibold ${numCls}">${day}</span>
+                        ${has ? `<div class="flex items-center gap-0.5">
+                            ${forRec ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>' : ''}
+                            ${rec ? '<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>' : ''}</div>
+                        <span class="text-[9px] font-bold text-amber-700 leading-none">${requests.length}</span>` : ''}`;
+                } else {
+                    cell.innerHTML = `
+                        <div class="flex items-center justify-between gap-1">
+                            <span class="text-xs font-semibold ${numCls}">${day}</span>
+                            ${has ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${forRec ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}"
+                                title="${forRec} for receive · ${rec} received">${forRec ? forRec + ' to receive' : 'All done'}</span>` : ''}
+                        </div>
+                        ${has ? `<div class="flex flex-col gap-0.5 min-w-0">
+                            ${requests.slice(0, 2).map(r => `
+                                <div class="text-[10px] leading-tight truncate pl-1.5 pr-1 py-0.5 rounded border-l-2 font-medium
+                                    ${isReceived(r) ? 'bg-green-50 text-green-800 border-green-500' : 'bg-blue-50 text-blue-800 border-blue-500'}">
+                                    ${escHtml(r.requestor_name)}
+                                </div>`).join('')}
+                            ${requests.length > 2 ? `<div class="text-[10px] text-gray-400 pl-1">+${requests.length - 2} more</div>` : ''}
+                        </div>` : ''}`;
+                }
 
-                const countBadge = requests.length
-                    ? `<span class="text-[10px] font-bold text-orange-500">${requests.length} req</span>`
-                    : '';
-
-                cell.innerHTML = `
-            <div class="flex items-start justify-between mb-1">
-                <span class="text-xs font-semibold ${isToday ? 'w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center' : isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-gray-500'}">${day}</span>
-                ${countBadge}
-            </div>
-            ${requests.length ? `
-            <div class="flex flex-wrap gap-1 mt-1">${dots}</div>
-            <div class="mt-1.5 space-y-0.5">
-                ${requests.slice(0, 2).map(r => `
-                    <div class="text-[9px] truncate px-1.5 py-0.5 rounded font-medium
-                        ${r.receiver_name ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
-                        ${r.requestor_name}
-                    </div>`).join('')}
-                ${requests.length > 2 ? `<div class="text-[9px] text-gray-400 px-1">+${requests.length - 2} more</div>` : ''}
-            </div>` : ''}
-        `;
-
-                cell.onclick = () => openDayPanel(dateStr, requests);
+                cell.onclick = () => { dayFilter = 'all'; openDayPanel(dateStr, requests); };
                 grid.appendChild(cell);
             }
 
-            // Trailing blanks
             const total = firstDay + daysInMonth;
             const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
-            for (let i = 0; i < trailing; i++) {
-                const blank = document.createElement('div');
-                blank.className = 'min-h-[90px] bg-gray-50/50 border-b border-r border-gray-100';
-                grid.appendChild(blank);
-            }
+            for (let i = 0; i < trailing; i++) blank();
         }
 
         function prevMonth() {
-            calMonth--;
-            if (calMonth < 0) { calMonth = 11; calYear--; }
-            selectedDate = null;
+            calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
             closeDayPanel();
-            renderCalendar();
         }
-
         function nextMonth() {
-            calMonth++;
-            if (calMonth > 11) { calMonth = 0; calYear++; }
-            selectedDate = null;
+            calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
             closeDayPanel();
-            renderCalendar();
         }
-
         function goToday() {
             const now = new Date();
-            calYear = now.getFullYear();
-            calMonth = now.getMonth();
-            selectedDate = null;
+            calYear = now.getFullYear(); calMonth = now.getMonth();
             closeDayPanel();
-            renderCalendar();
         }
 
         // ─── Day Panel ───────────────────────────────────────
-        function openDayPanel(dateStr, requests) {
+        function setDayFilter(f) {
+            dayFilter = f;
+            if (selectedDate) openDayPanel(selectedDate, dayRequests, true);
+        }
+
+        function receiveBtnHtml(id) {
+            if (savingIds.has(id)) {
+                return `<button type="button" disabled
+                    class="inline-flex items-center gap-1.5 bg-blue-400 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-wait">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Saving…</button>`;
+            }
+            if (confirmId === id) {
+                return `<span class="inline-flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] font-semibold text-gray-600">Mark as received?</span>
+                    <button type="button" onclick="event.stopPropagation(); markReceived(${id})"
+                        class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                        <i class="fa-solid fa-check"></i> Yes</button>
+                    <button type="button" onclick="event.stopPropagation(); cancelReceive()"
+                        class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg transition">Cancel</button>
+                </span>`;
+            }
+            return `<button type="button" onclick="event.stopPropagation(); askReceive(${id})"
+                class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                <i class="fa-solid fa-hand-holding-dollar"></i> Mark Received</button>`;
+        }
+
+        function dayRowHtml(row) {
+            const id = Number(row.id);
+            const received = isReceived(row);
+            const followUp = (row.attachment_status ?? 'attached') === 'follow_up';
+            const itemCount = (row.items ?? []).filter(i => i.description?.trim()).length;
+            const status = received
+                ? `<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Received</span>`
+                : `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">For receive</span>`;
+
+            return `
+            <div data-id="${id}" class="day-row flex items-stretch gap-3 px-4 sm:px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                <div class="w-1 rounded-full shrink-0 ${received ? 'bg-green-500' : 'bg-blue-500'}"></div>
+                <div class="flex-1 min-w-0 flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-5">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" onclick="viewRequestById(${id})"
+                                class="notranslate font-mono text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 hover:bg-amber-100 transition">
+                                ${escHtml(row.control_no)}</button>
+                            ${status}
+                            ${followUp ? `<span class="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-yellow-200 whitespace-nowrap">
+                                <i class="fa-solid fa-paperclip text-[9px]"></i> Attachment pending</span>` : ''}
+                        </div>
+                        <p class="mt-1.5 text-sm font-semibold text-gray-800 truncate">${escHtml(row.requestor_name)}
+                            ${row.sender_email ? `<span class="font-normal text-[11px] text-gray-400 ml-1 hidden sm:inline">${escHtml(row.sender_email)}</span>` : ''}</p>
+                        <p class="text-[13px] text-gray-600 break-words line-clamp-2">${escHtml(row.purpose)}</p>
+                        <div class="flex items-center gap-x-3 gap-y-1 mt-1.5 flex-wrap text-[11px] text-gray-500">
+                            ${categoryBadge(row.request_category, row.request_reference)}
+                            <span><i class="fa-solid fa-list-ul text-[9px] text-gray-400 mr-1"></i>${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
+                            ${row.approver_name ? `<span class="truncate"><i class="fa-solid fa-user-check text-[9px] text-gray-400 mr-1"></i>Approved by ${escHtml(row.approver_name)}${row.approved_at ? ' · ' + escHtml(fmtShort(row.approved_at)) : ''}</span>` : ''}
+                            ${received ? `<span class="truncate text-green-700"><i class="fa-solid fa-circle-check text-[9px] mr-1"></i>Received by ${escHtml(row.receiver_name)}${row.received_at ? ' · ' + escHtml(fmtShort(row.received_at)) : ''}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between lg:justify-end gap-3 shrink-0 flex-wrap">
+                        <div class="lg:text-right">
+                            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total</p>
+                            <p class="font-mono text-sm font-bold text-gray-800">₱ ${fmtMoney(rowTotal(row))}</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" onclick="viewRequestById(${id})"
+                                class="inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-eye"></i> View</button>
+                            ${received ? '' : receiveBtnHtml(id)}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function openDayPanel(dateStr, requests, keepScroll = false) {
             selectedDate = dateStr;
+            dayRequests = requests;
             renderCalendar();
 
             const panel = document.getElementById('day-panel');
-            const title = document.getElementById('day-panel-title');
-            const tbody = document.getElementById('day-requests-tbody');
-
             const d = new Date(dateStr + 'T00:00:00');
-            title.textContent = d.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('day-panel-title').textContent =
+                d.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-            if (!requests.length) {
-                tbody.innerHTML = `<tr><td colspan="7" class="px-5 py-8 text-center text-gray-400 text-sm">No requests on this day.</td></tr>`;
-            } else {
-                tbody.innerHTML = requests.map(row => {
-                    const isReceived = !!row.receiver_name;
-                    const rowClass = isReceived ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50';
-                    const items = row.items ?? [];
-                    const total = items.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+            const cnt = { all: requests.length, for: 0, received: 0 };
+            requests.forEach(r => isReceived(r) ? cnt.received++ : cnt.for++);
+            document.getElementById('day-panel-sub').textContent = requests.length
+                ? `${requests.length} request${requests.length !== 1 ? 's' : ''} · ${cnt.for} to receive`
+                : 'No requests';
 
-                    const receivedAt = row.received_at
-                        ? new Date(row.received_at.replace(' ', 'T')).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
-                        + ' ' + new Date(row.received_at.replace(' ', 'T')).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-                        : '';
+            const chip = (key, label) => `
+                <button type="button" onclick="setDayFilter('${key}')" data-active="${dayFilter === key ? 1 : 0}" data-empty="${cnt[key] ? 0 : 1}"
+                    class="day-chip text-[11px] font-semibold px-3 py-1 rounded-full border transition">
+                    ${label} <span class="ml-0.5 opacity-70">${cnt[key]}</span></button>`;
+            const bar = document.getElementById('day-filter');
+            bar.innerHTML = requests.length ? chip('all', 'All') + chip('for', 'For receive') + chip('received', 'Received') : '';
+            bar.classList.toggle('hidden', !requests.length);
 
-                    const statusBadgeHtml = isReceived
-                        ? `<div>
-<span class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">Received</span>
-<p class="text-[9px] text-gray-400 mt-0.5">${receivedAt}</p>
-</div>`
-                        : `<span class="bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">For Receive</span>`;
-                    const actionHtml = isReceived
-                        ? `<button onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'
-                    class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
-                    <i class="fa-solid fa-eye mr-1"></i>View
-                   </button>`
-                        : `<div class="flex items-center gap-2">
-                    <button onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'
-                        class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
-                        <i class="fa-solid fa-eye mr-1"></i>View
-                    </button>
-                    <button onclick="markReceived(${row.id})"
-                        class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold px-3 py-1 rounded-full transition-all">
-                        <i class="fa-solid fa-check mr-1"></i>Mark Received
-                    </button>
-                   </div>`;
+            const shown = dayFilter === 'all' ? requests
+                : requests.filter(r => dayFilter === 'received' ? isReceived(r) : !isReceived(r));
+            const label = { all: '', for: 'for-receive ', received: 'received ' }[dayFilter] ?? '';
+            document.getElementById('day-requests-cards').innerHTML = shown.length ? shown.map(dayRowHtml).join('') : `
+                <div class="px-4 py-10 text-center">
+                    <div class="w-12 h-12 mx-auto rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-2">
+                        <i class="fa-regular fa-calendar-xmark"></i></div>
+                    <p class="text-sm text-gray-500">No ${label}requests on this day.</p>
+                    ${dayFilter !== 'all' && requests.length ? `<button type="button" onclick="setDayFilter('all')" class="mt-2 text-xs font-semibold text-amber-700 hover:underline">Show all ${requests.length}</button>` : ''}
+                </div>`;
 
-                    return `
-            <tr data-id="${row.id}" class="border-t border-gray-100 transition-colors ${rowClass}">
-                <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
-                    onclick='viewRequest(${JSON.stringify(row).replace(/"/g, '&quot;')})'>
-                    ${row.control_no}
-                </td>
-                <td class="px-5 py-3">
-                    <p class="font-medium text-gray-800">${row.requestor_name}</p>
-                    <p class="text-[10px] text-gray-400">${row.sender_email ?? ''}</p>
-                </td>
-                <td class="px-5 py-3 text-gray-600">${row.purpose}</td>
-                <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">
-                    ₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                </td>
-                <td class="px-5 py-3">
-                    <p class="text-sm text-gray-700">${row.approver_name ?? ''}</p>
-                    <p class="text-[10px] text-gray-400">${row.approved_at
-                            ? new Date(row.approved_at.replace(' ', 'T')).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
-                            + ' ' + new Date(row.approved_at.replace(' ', 'T')).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-                            : ''}</p>
-                </td>
-                <td class="px-5 py-3">${categoryBadge(row.request_category, row.request_reference)}</td>
-                <td class="px-5 py-3">${statusBadgeHtml}</td>
-                <td class="px-5 py-3">${actionHtml}</td>
-            </tr>`;
-                }).join('');
-            }
-
+            const wasHidden = panel.classList.contains('hidden');
             panel.classList.remove('hidden');
-            setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+            if (wasHidden && !keepScroll) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        }
+
+        function refreshDayPanel() {
+            if (selectedDate) openDayPanel(selectedDate, allRequests.filter(r => r.date_requested?.startsWith(selectedDate)), true);
         }
 
         function closeDayPanel() {
@@ -501,6 +586,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             renderCalendar();
         }
 
+        // ─── Category badge + tooltip ────────────────────────
         function categoryBadge(category, reference) {
             if (!category) return '<span class="text-gray-300 text-xs">—</span>';
             const map = {
@@ -509,20 +595,12 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 nhcc: { label: 'NHCC', icon: 'fa-building', color: 'bg-orange-100 text-orange-700 border-orange-200' },
             };
             const cfg = map[category] ?? { label: category, icon: 'fa-tag', color: 'bg-gray-100 text-gray-600 border-gray-200' };
-            if (!reference) {
-                return `<span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.color}">
-            <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
-        </span>`;
-            }
-            const safeRef = reference.replace(/'/g, "\\'").replace(/`/g, '\\`');
-            return `<div class="relative inline-block"
-onmouseenter="showCatTooltip(event, '${cfg.label}', '${safeRef}')"
-onmouseleave="hideCatTooltip()">
-<span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold cursor-default ${cfg.color}">
-    <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${cfg.label}
-    <i class="fa-solid fa-circle-info text-[8px] opacity-50"></i>
-</span>
-</div>`;
+            const pill = (info) => `<span class="inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-[10px] font-semibold ${info ? 'cursor-default' : ''} ${cfg.color}">
+                <i class="fa-solid ${cfg.icon} text-[9px]"></i> ${escHtml(cfg.label)}
+                ${info ? '<i class="fa-solid fa-circle-info text-[8px] opacity-50"></i>' : ''}</span>`;
+            if (!reference) return pill(false);
+            return `<span class="relative inline-block" data-label="${escHtml(cfg.label)}" data-ref="${escHtml(reference)}"
+                onmouseenter="showCatTooltip(event, this.dataset.label, this.dataset.ref)" onmouseleave="hideCatTooltip()">${pill(true)}</span>`;
         }
 
         function showCatTooltip(e, label, reference) {
@@ -532,8 +610,7 @@ onmouseleave="hideCatTooltip()">
             tip.style.visibility = 'hidden';
             tip.classList.remove('hidden');
             const rect = e.currentTarget.getBoundingClientRect();
-            const tipW = tip.offsetWidth;
-            const tipH = tip.offsetHeight;
+            const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
             let left = rect.left + (rect.width / 2) - (tipW / 2);
             left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
             let top = rect.top - tipH - 8;
@@ -542,57 +619,50 @@ onmouseleave="hideCatTooltip()">
             tip.style.top = top + 'px';
             tip.style.visibility = 'visible';
         }
-
-        function hideCatTooltip() {
-            document.getElementById('cat-tooltip').classList.add('hidden');
-        }
+        function hideCatTooltip() { document.getElementById('cat-tooltip').classList.add('hidden'); }
 
         // ─── Fetch ───────────────────────────────────────────
-        // force = true -> lampasan ang browser cache at server cache (gamit pagkatapos ng Mark Received)
         function fetchApproved(force = false) {
-            if (isFetching && !force) return;
+            if (isFetching && !force) return Promise.resolve();
             isFetching = true;
-
-            const url = '<?= BASE_URL ?>/fetchapproved' + (force ? '?_=' + Date.now() : '');
-
-            fetch(url, force ? { cache: 'no-store' } : {})
+            const url = API + '/fetchapproved' + (force ? '?_=' + Date.now() : '');
+            return fetch(url, force ? { cache: 'no-store' } : {})
                 .then(res => res.json())
                 .then(data => {
-                    // Signature: nahuhuli ang pagbabago ng status, hindi lang ng bilang
+                    if (!Array.isArray(data)) return;
                     const sig = data.map(r =>
-                        r.id + '|' + (r.receiver_name ?? '') + '|' + (r.received_at ?? '') + '|' + (r.approved_at ?? '')
-                    ).join(',');
-
-                    const changed = sig !== lastSig;
-
-                    if (changed || force || !highlightDone) {
+                        r.id + '|' + (r.receiver_name ?? '') + '|' + (r.received_at ?? '') + '|' + (r.approved_at ?? '')).join(',');
+                    if (sig !== lastSig || force || !highlightDone) {
                         lastSig = sig;
                         allRequests = data;
-
                         renderCalendar();
                         buildDatesDropdown();
-
-                        if (selectedDate) {
-                            const filtered = allRequests.filter(r => r.date_requested?.startsWith(selectedDate));
-                            openDayPanel(selectedDate, filtered);
-                        }
-
-                        document.getElementById('last-updated').textContent =
-                            'Updated ' + new Date().toLocaleTimeString('en-PH');
+                        refreshDayPanel();
                     }
-
-                    if (!highlightDone) {
-                        highlightDone = true;
-                        checkHighlight();
-                    }
+                    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
+                    if (!highlightDone) { highlightDone = true; checkHighlight(); }
                 })
                 .catch(err => console.error('Fetch error:', err))
                 .finally(() => { isFetching = false; });
         }
 
-        // ─── Mark Received ───────────────────────────────────
+        // ─── Mark Received (inline confirm, walang confirm()) ─
+        function askReceive(id) {
+            confirmId = id;
+            clearTimeout(confirmTimer);
+            confirmTimer = setTimeout(() => { confirmId = null; refreshDayPanel(); }, 6000);
+            refreshDayPanel();
+        }
+        function cancelReceive() {
+            confirmId = null; clearTimeout(confirmTimer); refreshDayPanel();
+        }
+
         function markReceived(id) {
-            fetch('<?= BASE_URL ?>/markreceived', {
+            if (savingIds.has(id)) return;
+            confirmId = null; clearTimeout(confirmTimer);
+            savingIds.add(id);
+            refreshDayPanel();
+            fetch(API + '/markreceived', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id })
@@ -601,14 +671,32 @@ onmouseleave="hideCatTooltip()">
                 .then(data => {
                     if (data.success) {
                         showToast('Request marked as received!', 'received');
-                        fetchApproved(true); // force: bypass browser + server cache
+                        return fetchApproved(true);
                     }
-                });
+                    showToast(data.message || 'Could not mark as received.', 'error');
+                })
+                .catch(() => showToast('Network error. Please try again.', 'error'))
+                .finally(() => { savingIds.delete(id); refreshDayPanel(); });
         }
 
         let currentViewRow = null;
 
         // ─── View Modal ──────────────────────────────────────
+        function viewRequestById(id) {
+            const row = allRequests.find(r => Number(r.id) === Number(id));
+            if (row) viewRequest(row);
+        }
+
+        function sigBlock(name, at, sig) {
+            if (!name) return '';
+            return `<div class="relative inline-block">
+                ${sig ? `<img src="${API}/${escHtml(sig)}" alt="Signature"
+                    style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">` : ''}
+                <p class="text-sm font-semibold text-gray-800">${escHtml(name)}</p>
+                <p class="text-[10px] text-gray-400">${escHtml(fmtLong(at))}</p>
+            </div>`;
+        }
+
         function viewRequest(row) {
             currentViewRow = row;
             document.getElementById('view-control-no').textContent = row.control_no;
@@ -617,74 +705,34 @@ onmouseleave="hideCatTooltip()">
             document.getElementById('view-purpose').textContent = row.purpose;
             document.getElementById('view-category').innerHTML = categoryBadge(row.request_category, row.request_reference);
 
-            const items = row.items ?? [];
             let total = 0, rowNum = 0;
-            document.getElementById('view-items-tbody').innerHTML = items
+            document.getElementById('view-items-tbody').innerHTML = (row.items ?? [])
                 .filter(item => item.description && item.description.trim() !== '')
                 .map(item => {
                     rowNum++;
                     const amount = parseFloat(item.amount) || 0;
                     total += amount;
                     return `
-            <tr class="border-t border-gray-200">
-                <td class="px-3 py-2 text-center text-xs text-gray-400 font-mono border-r border-gray-200 w-10">${rowNum}</td>
-                <td class="px-4 py-2 border-r border-gray-200 min-w-[180px]">${item.description || ''}</td>
-                <td class="px-4 py-2 border-r border-gray-200 min-w-[150px]">${item.purpose || ''}</td>
-                <td class="px-4 py-2 border-r border-gray-200 text-center w-24">${item.quantity || 0}</td>
-                <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                <td class="px-4 py-2 min-w-[120px]">${item.notes || ''}</td>
-            </tr>`;
+                    <tr class="border-t border-gray-200">
+                        <td class="px-3 py-2 text-center text-xs text-gray-400 font-mono border-r border-gray-200 w-10">${rowNum}</td>
+                        <td class="px-4 py-2 border-r border-gray-200 min-w-[180px]">${escHtml(item.description)}</td>
+                        <td class="px-4 py-2 border-r border-gray-200 min-w-[150px]">${escHtml(item.purpose)}</td>
+                        <td class="px-4 py-2 border-r border-gray-200 text-center w-24">${escHtml(item.quantity || 0)}</td>
+                        <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">${fmtMoney(item.unit_price)}</td>
+                        <td class="px-4 py-2 border-r border-gray-200 text-right font-mono w-32">₱ ${fmtMoney(amount)}</td>
+                        <td class="px-4 py-2 min-w-[120px]">${escHtml(item.notes)}</td>
+                    </tr>`;
                 }).join('');
+            document.getElementById('view-total').textContent = '₱ ' + fmtMoney(total);
 
-            document.getElementById('view-total').textContent = '₱ ' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+            const received = isReceived(row);
+            document.getElementById('view-status-badge').innerHTML = received
+                ? `<span class="bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">received</span>`
+                : `<span class="bg-green-100 text-green-800 text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">approved</span>`;
 
-            const statusMap = {
-                approved: 'bg-green-300 text-green-900',
-                received: 'bg-blue-100 text-blue-700',
-            };
-            const statusLabel = row.receiver_name ? 'received' : 'approved';
-            const statusClass = row.receiver_name ? statusMap.received : statusMap.approved;
-            document.getElementById('view-status-badge').innerHTML =
-                `<span class="${statusClass} text-[10px] font-semibold px-2 py-1 rounded-full uppercase tracking-wide">${statusLabel}</span>`;
+            document.getElementById('view-approved-by').innerHTML = sigBlock(row.approver_name, row.approved_at, row.approver_signature);
+            document.getElementById('view-received-by').innerHTML = sigBlock(row.receiver_name, row.received_at, row.receiver_signature);
 
-            const approverName = row.approver_name ?? '';
-            const approvedAt = row.approved_at
-                ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-                + ' ' + new Date(row.approved_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-                : '';
-            const approverSig = row.approver_signature ?? '';
-            document.getElementById('view-approved-by').innerHTML = approverName
-                ? `<div class="relative inline-block">
-${approverSig
-                    ? `<img src="<?= BASE_URL ?>/${approverSig}" 
-           alt="Signature" 
-           style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">`
-                    : ''}
-<p class="text-sm font-semibold text-gray-800">${approverName}</p>
-<p class="text-[10px] text-gray-400">${approvedAt}</p>
-</div>`
-                : '';
-
-            const receiverName = row.receiver_name ?? '';
-            const receivedAt = row.received_at
-                ? new Date(row.received_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-                + ' ' + new Date(row.received_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-                : '';
-            const receiverSig = row.receiver_signature ?? '';
-            document.getElementById('view-received-by').innerHTML = receiverName
-                ? `<div class="relative inline-block">
-${receiverSig
-                    ? `<img src="<?= BASE_URL ?>/${receiverSig}" 
-           alt="Signature" 
-           style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); height:80px; max-width:220px; z-index:10; pointer-events:none;">`
-                    : ''}
-<p class="text-sm font-semibold text-gray-800">${receiverName}</p>
-<p class="text-[10px] text-gray-400">${receivedAt}</p>
-</div>`
-                : '';
-
-            // Attachments
             let attachments = [];
             try {
                 const raw = row.attachments;
@@ -692,71 +740,64 @@ ${receiverSig
             } catch (e) { attachments = []; }
 
             const attachSection = document.getElementById('view-attachments');
-            // ── attachment_status badge ──
             const oldBadge = document.getElementById('view-attachment-status-badge');
             if (oldBadge) oldBadge.remove();
-
             if ((row.attachment_status ?? 'attached') === 'follow_up') {
                 const badge = document.createElement('div');
                 badge.id = 'view-attachment-status-badge';
                 badge.className = 'flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-2 mx-6 mt-3';
-                badge.innerHTML = `
-<i class="fa-solid fa-clock text-yellow-500 text-xs"></i>
-<span class="text-xs font-semibold text-yellow-700">Attachment pending — requestor will follow up</span>
-`;
-                document.getElementById('view-attachments').before(badge);
+                badge.innerHTML = `<i class="fa-solid fa-clock text-yellow-500 text-xs"></i>
+                    <span class="text-xs font-semibold text-yellow-700">Attachment pending — requestor will follow up</span>`;
+                attachSection.before(badge);
             }
             if (attachments.length) {
                 attachSection.classList.remove('hidden');
                 document.getElementById('view-attachments-grid').innerHTML = attachments.map(path => {
-                    const isPdf = path.toLowerCase().endsWith('.pdf');
-                    const fullUrl = `<?= BASE_URL ?>/${path}`;
-
-                    if (isPdf) {
-                        return `
-<a href="${fullUrl}" target="_blank"
-    class="relative flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all bg-red-50 cursor-pointer gap-1">
-    <i class="fa-solid fa-file-pdf text-red-500 text-2xl"></i>
-    <span class="text-[9px] text-red-400 font-semibold uppercase tracking-wide">PDF</span>
-</a>`;
+                    const fullUrl = escHtml(`${API}/${path}`);
+                    if (String(path).toLowerCase().endsWith('.pdf')) {
+                        return `<a href="${fullUrl}" target="_blank" rel="noopener"
+                            class="relative flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all bg-red-50 gap-1">
+                            <i class="fa-solid fa-file-pdf text-red-500 text-2xl"></i>
+                            <span class="text-[9px] text-red-400 font-semibold uppercase tracking-wide">PDF</span></a>`;
                     }
-
-                    return `
-<div class="relative group/thumb cursor-pointer" onclick="openLightbox('${fullUrl}', event)">
-<img src="${fullUrl}"
-    class="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all">
-<div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 rounded-lg transition-all flex items-center justify-center">
-    <i class="fa-solid fa-magnifying-glass text-white opacity-0 group-hover/thumb:opacity-100 transition-all text-xs"></i>
-</div>
-</div>`;
+                    return `<div class="relative group/thumb cursor-pointer" data-src="${fullUrl}" onclick="openLightbox(this.dataset.src, event)">
+                        <img src="${fullUrl}" class="w-20 h-20 object-cover rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:scale-105 transition-all">
+                        <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 rounded-lg transition-all flex items-center justify-center">
+                            <i class="fa-solid fa-magnifying-glass text-white opacity-0 group-hover/thumb:opacity-100 transition-all text-xs"></i>
+                        </div></div>`;
                 }).join('');
             } else {
                 attachSection.classList.add('hidden');
             }
 
             document.getElementById('view-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
 
-        function closeViewModal() { document.getElementById('view-modal').classList.add('hidden'); }
+        function closeViewModal() {
+            document.getElementById('view-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        document.getElementById('view-modal').addEventListener('click', function (e) { if (e.target === this) closeViewModal(); });
 
         // ─── Print ───────────────────────────────────────────
         function printRequest(row) {
             if (!row) return;
-            const items = row.items ?? [];
+            const E = escHtml;
             let total = 0, itemRows = '', filledCount = 0;
-            items.forEach(item => {
+            (row.items ?? []).forEach(item => {
                 if (!item.description) return;
                 filledCount++;
                 const amount = parseFloat(item.amount || 0);
                 total += amount;
                 itemRows += `<tr>
     <td style="text-align:center;border:1px solid #ccc;padding:5px;">${filledCount}</td>
-    <td style="border:1px solid #ccc;padding:5px;">${item.description || ''}</td>
-    <td style="border:1px solid #ccc;padding:5px;">${item.purpose || ''}</td>
-    <td style="text-align:center;border:1px solid #ccc;padding:5px;">${item.quantity || 0}</td>
-    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">${parseFloat(item.unit_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-    <td style="border:1px solid #ccc;padding:5px;">${item.notes || ''}</td></tr>`;
+    <td style="border:1px solid #ccc;padding:5px;">${E(item.description)}</td>
+    <td style="border:1px solid #ccc;padding:5px;">${E(item.purpose)}</td>
+    <td style="text-align:center;border:1px solid #ccc;padding:5px;">${E(item.quantity || 0)}</td>
+    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">${fmtMoney(item.unit_price)}</td>
+    <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ ${fmtMoney(amount)}</td>
+    <td style="border:1px solid #ccc;padding:5px;">${E(item.notes)}</td></tr>`;
             });
             for (let e = filledCount; e < 5; e++) {
                 itemRows += `<tr>
@@ -768,36 +809,30 @@ ${receiverSig
     <td style="text-align:right;border:1px solid #ccc;padding:5px;font-family:monospace;">₱ 0.00</td>
     <td style="border:1px solid #ccc;padding:5px;"></td></tr>`;
             }
-            const approverName = row.approver_name ?? '';
-            const approvedAt = row.approved_at
-                ? new Date(row.approved_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-                + ' ' + new Date(row.approved_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-                : '';
-            const receiverName = row.receiver_name ?? '';
-            const receivedAt = row.received_at
-                ? new Date(row.received_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-                + ' ' + new Date(row.received_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-                : '';
-            const approverSigPath = row.approver_signature ? `<?= BASE_URL ?>/${row.approver_signature}` : '';
-            const receiverSigPath = row.receiver_signature ? `<?= BASE_URL ?>/${row.receiver_signature}` : '';
+            const approverName = E(row.approver_name ?? '');
+            const approvedAt = E(fmtLong(row.approved_at));
+            const receiverName = E(row.receiver_name ?? '');
+            const receivedAt = E(fmtLong(row.received_at));
+            const approverSigPath = row.approver_signature ? E(`${API}/${row.approver_signature}`) : '';
+            const receiverSigPath = row.receiver_signature ? E(`${API}/${row.receiver_signature}`) : '';
 
-            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Budget Request - ${row.control_no}</title>
+            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Budget Request - ${E(row.control_no)}</title>
 <style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:15px;}table{width:100%;border-collapse:collapse;}th{background:#f97316;color:white;padding:6px 8px;font-size:10px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.label{font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#555;}.control-box{background:#f97316;color:white;font-weight:bold;text-align:center;padding:4px 8px;font-size:9px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.sig-line{border-top:1px solid #999;margin-top:40px;}@page{size:A4 landscape;margin:1cm;}</style></head><body>
 <div style="border:1px solid #111;">
 <table style="border-bottom:1px solid #111;"><tr>
 <td style="width:60%;border-right:1px solid #111;padding:10px;"><table><tr>
-<td style="width:60px;"><img src="<?= BASE_URL ?>/icon/logo.webp" style="width:50px;height:50px;object-fit:contain;"></td>
+<td style="width:60px;"><img src="${API}/icon/logo.webp" style="width:50px;height:50px;object-fit:contain;"></td>
 <td style="border-left:1px solid #aaa;padding-left:10px;"><strong style="font-size:11px;text-transform:uppercase;">Noblehome Construction Corporation</strong><br>
 <span style="font-size:9px;color:#666;">1181 MC Premiere Bldg., EDSA Balintawak Quezon City<br>noblehomeconsl.ph@gmail.com | Tel. No. 02-88221295 | Cell. No. 0968-591-6544</span></td></tr></table></td>
 <td style="width:40%;padding:0;vertical-align:top;"><div style="font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:8px;border-bottom:1px solid #111;">Budget Request Form</div>
 <table style="width:100%;"><tr>
-<td style="width:50%;border-right:1px solid #111;padding:0;vertical-align:top;"><div class="control-box">Control No.</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.control_no}</div></td>
-<td style="width:50%;padding:0;vertical-align:top;"><div class="control-box">Date</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${row.date_requested}</div></td>
+<td style="width:50%;border-right:1px solid #111;padding:0;vertical-align:top;"><div class="control-box">Control No.</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${E(row.control_no)}</div></td>
+<td style="width:50%;padding:0;vertical-align:top;"><div class="control-box">Date</div><div style="text-align:center;font-family:monospace;font-size:10px;padding:6px;background:#f9fafb;">${E(row.date_requested)}</div></td>
 </tr></table></td></tr></table>
 <table style="border-bottom:1px solid #111;"><tr>
-<td style="width:34%;border-right:1px solid #111;padding:8px;"><span class="label">Requestor Name:</span><span style="font-size:12px;margin-left:5px;">${row.requestor_name}</span></td>
-<td style="width:33%;border-right:1px solid #111;padding:8px;"><span class="label">Purpose of Request:</span><span style="font-size:12px;margin-left:5px;">${row.purpose}</span></td>
-<td style="width:33%;padding:8px;"><span class="label">Category:</span><span style="font-size:12px;margin-left:5px;">${row.request_category ? row.request_category.toUpperCase() : '—'}</span></td>
+<td style="width:34%;border-right:1px solid #111;padding:8px;"><span class="label">Requestor Name:</span><span style="font-size:12px;margin-left:5px;">${E(row.requestor_name)}</span></td>
+<td style="width:33%;border-right:1px solid #111;padding:8px;"><span class="label">Purpose of Request:</span><span style="font-size:12px;margin-left:5px;">${E(row.purpose)}</span></td>
+<td style="width:33%;padding:8px;"><span class="label">Category:</span><span style="font-size:12px;margin-left:5px;">${row.request_category ? E(row.request_category.toUpperCase()) : '—'}</span></td>
 </tr></table>
 <table style="border-collapse:collapse;width:100%;border-bottom:1px solid #111;"><thead><tr>
 <th style="width:5%;border:1px solid #ea6c00;">No.</th><th style="border:1px solid #ea6c00;text-align:left;">Items / Description</th>
@@ -806,7 +841,7 @@ ${receiverSig
 <th style="border:1px solid #ea6c00;text-align:left;">Notes</th></tr></thead>
 <tbody>${itemRows}</tbody>
 <tfoot><tr><td colspan="5" style="text-align:right;font-weight:bold;padding:6px;border:1px solid #ccc;font-size:10px;text-transform:uppercase;">Total:</td>
-<td style="text-align:right;font-weight:bold;font-family:monospace;border:1px solid #ccc;padding:6px;">₱ ${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+<td style="text-align:right;font-weight:bold;font-family:monospace;border:1px solid #ccc;padding:6px;">₱ ${fmtMoney(total)}</td>
 <td style="border:1px solid #ccc;"></td></tr></tfoot></table>
 <table style="width:100%;"><tr>
 <td style="width:50%;border-right:1px solid #111;padding:15px 20px;vertical-align:bottom;"><span class="label">Approved By:</span>
@@ -818,6 +853,7 @@ ${receiverSig
 </div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script></body></html>`;
 
             const w = window.open('', '_blank');
+            if (!w) { showToast('Allow pop-ups to print.', 'error'); return; }
             w.document.write(html);
             w.document.close();
         }
@@ -832,18 +868,22 @@ ${receiverSig
             document.getElementById('lightbox').classList.add('hidden');
             document.getElementById('lightbox-img').src = '';
         }
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLightbox(); closeViewModal(); } });
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('lightbox').classList.contains('hidden')) closeLightbox();
+            else closeViewModal();
+        });
 
         // ─── Toast ───────────────────────────────────────────
         function showToast(message, type = 'received') {
             const existing = document.getElementById('toast-notif');
             if (existing) existing.remove();
-            const color = type === 'received' ? 'bg-blue-500' : 'bg-green-500';
-            const icon = type === 'received' ? 'fa-circle-check' : 'fa-check';
+            const color = type === 'error' ? 'bg-red-500' : type === 'received' ? 'bg-blue-600' : 'bg-green-600';
+            const icon = type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check';
             const toast = document.createElement('div');
             toast.id = 'toast-notif';
-            toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${color} text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+            toast.className = `fixed bottom-6 right-4 left-4 sm:left-auto sm:right-6 z-[999] flex items-center gap-3 ${color} text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${escHtml(message)}`;
             document.body.appendChild(toast);
             setTimeout(() => toast.classList.replace('opacity-0', 'opacity-100'), 10);
             setTimeout(() => {
@@ -861,18 +901,14 @@ ${receiverSig
                 const d = r.date_requested ? r.date_requested.substring(0, 10) : null;
                 if (!d) return;
                 if (!byDate[d]) byDate[d] = { forReceive: 0, received: 0, total: 0 };
-                if (r.receiver_name) byDate[d].received++;
-                else byDate[d].forReceive++;
+                isReceived(r) ? byDate[d].received++ : byDate[d].forReceive++;
                 byDate[d].total++;
             });
-
             allDatesCache = Object.entries(byDate)
                 .sort((a, b) => b[0].localeCompare(a[0]))
                 .map(([date, counts]) => ({ date, ...counts }));
-
             document.getElementById('dates-dropdown-count').textContent =
                 allDatesCache.length + ' date' + (allDatesCache.length !== 1 ? 's' : '');
-
             renderDatesList(allDatesCache);
         }
 
@@ -885,34 +921,30 @@ ${receiverSig
             ul.innerHTML = dates.map(({ date, forReceive, received, total }) => {
                 const d = new Date(date + 'T00:00:00');
                 const label = d.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-                const dots = [
-                    forReceive ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-400"  title="${forReceive} for receive"></span>` : '',
-                    received ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" title="${received} received"></span>` : '',
-                ].join('');
                 return `
-        <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition group"
-            onclick="jumpToDate('${date}')">
-            <div class="flex items-center gap-2">
-                <i class="fa-regular fa-calendar text-gray-300 group-hover:text-orange-400 transition text-xs"></i>
-                <span class="text-xs font-medium text-gray-700">${label}</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                ${dots}
-                <span class="text-[10px] font-bold text-orange-500 bg-orange-50 group-hover:bg-white border border-orange-200 rounded-full px-1.5 py-0.5 ml-1">${total}</span>
-            </div>
-        </li>`;
+                <li class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-amber-50 cursor-pointer transition group"
+                    data-date="${escHtml(date)}" onclick="jumpToDate(this.dataset.date)">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <i class="fa-regular fa-calendar text-gray-300 group-hover:text-amber-600 transition text-xs"></i>
+                        <span class="text-xs font-medium text-gray-700 truncate">${escHtml(label)}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${forReceive ? `<span class="text-[10px] font-semibold text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5" title="for receive">${forReceive} to receive</span>` : ''}
+                        ${!forReceive && received ? `<span class="w-1.5 h-1.5 rounded-full bg-green-500" title="all received"></span>` : ''}
+                        <span class="text-[10px] font-bold text-amber-700 bg-amber-50 group-hover:bg-white border border-amber-200 rounded-full px-1.5 py-0.5">${Number(total)}</span>
+                    </div>
+                </li>`;
             }).join('');
         }
 
         function filterDatesDropdown() {
             const q = document.getElementById('dates-search').value.toLowerCase();
             if (!q) { renderDatesList(allDatesCache); return; }
-            const filtered = allDatesCache.filter(({ date }) => {
+            renderDatesList(allDatesCache.filter(({ date }) => {
                 const d = new Date(date + 'T00:00:00');
                 return d.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
                     .toLowerCase().includes(q) || date.includes(q);
-            });
-            renderDatesList(filtered);
+            }));
         }
 
         function toggleDatesDropdown(e) {
@@ -925,89 +957,106 @@ ${receiverSig
         function jumpToDate(dateStr) {
             document.getElementById('dates-dropdown').classList.add('hidden');
             const d = new Date(dateStr + 'T00:00:00');
-            calYear = d.getFullYear();
-            calMonth = d.getMonth();
-            renderCalendar();
-            const requests = allRequests.filter(r => r.date_requested?.startsWith(dateStr));
-            openDayPanel(dateStr, requests);
+            calYear = d.getFullYear(); calMonth = d.getMonth();
+            dayFilter = 'all';
+            openDayPanel(dateStr, allRequests.filter(r => r.date_requested?.startsWith(dateStr)));
             document.getElementById('calendar-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // Close dropdown on outside click
-        document.addEventListener('click', () => {
-            document.getElementById('dates-dropdown').classList.add('hidden');
+        // Isara lang ang dropdown kapag nag-click sa LABAS nito
+        document.addEventListener('click', e => {
+            if (!e.target.closest('#dates-dropdown-wrap')) document.getElementById('dates-dropdown').classList.add('hidden');
         });
 
-        // ─── Highlight (from ping/redirect) ──────────────────
+        // ─── Highlight (galing sa ping/redirect) ─────────────
         function checkHighlight() {
             const params = new URLSearchParams(window.location.search);
             const highlightId = params.get('highlight');
-            const jumpDate = params.get('date'); // format: YYYY-MM-DD
-
+            const jumpDate = params.get('date'); // YYYY-MM-DD
             if (!highlightId) return;
 
-            // Kung may date, jump ang calendar doon
             if (jumpDate) {
                 const d = new Date(jumpDate + 'T00:00:00');
-                calYear = d.getFullYear();
-                calMonth = d.getMonth();
-                renderCalendar();
-
-                // Open ang day panel para sa date na iyon
-                const requests = allRequests.filter(r => r.date_requested?.startsWith(jumpDate));
-                openDayPanel(jumpDate, requests);
+                if (!isNaN(d)) {
+                    calYear = d.getFullYear(); calMonth = d.getMonth();
+                    dayFilter = 'all';
+                    openDayPanel(jumpDate, allRequests.filter(r => r.date_requested?.startsWith(jumpDate)));
+                }
             }
-
-            // Highlight ang row sa day panel
+            let tries = 0;
             const interval = setInterval(() => {
-                const row = document.querySelector(`tr[data-id="${highlightId}"]`);
+                tries++;
+                const row = document.querySelector(`#day-requests-cards .day-row[data-id="${CSS.escape(highlightId)}"]`);
                 if (row) {
                     clearInterval(interval);
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                    const firstTd = row.querySelector('td:first-child');
-                    const badge = document.createElement('span');
-                    badge.className = 'highlight-badge';
-                    firstTd.prepend(badge);
-                    setTimeout(() => badge.remove(), 5000);
+                    row.classList.add('day-row-flash');
+                    setTimeout(() => row.classList.remove('day-row-flash'), 3200);
                 }
+                if (tries >= 25) clearInterval(interval);
             }, 200);
-            setTimeout(() => clearInterval(interval), 5000);
         }
 
-        const style = document.createElement('style');
-        style.textContent = `
-    @keyframes badgePulse {
-        0%   { transform: scale(1);   opacity: 1; }
-        50%  { transform: scale(1.4); opacity: 0.5; }
-        100% { transform: scale(1);   opacity: 1; }
-    }
-    .highlight-badge {
-        display: inline-block;
-        width: 10px; height: 10px;
-        background-color: #ef4444;
-        border-radius: 50%;
-        animation: badgePulse 0.8s ease-in-out 6;
-        margin-right: 6px;
-        vertical-align: middle;
-        flex-shrink: 0;
-    }
-`;
-        document.head.appendChild(style);
-
         // ─── Init ────────────────────────────────────────────
+        renderCalendar();
         fetchApproved();
 
-        // 30s na lang (dating 5s), at huwag mag-poll kapag nakatago ang tab
+        // 30s, at huwag mag-poll kapag nakatago ang tab
         setInterval(() => { if (!document.hidden) fetchApproved(); }, 30000);
-
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') fetchApproved();
         });
 
-            setInterval(() => {
-        if (document.visibilityState === 'visible') fetchRequests();
-    }, 10000); // 10 segundo
+        // Ayusin ang calendar kapag lumipat mula desktop papuntang phone na lapad
+        let _wasMobile = window.innerWidth < 768;
+        window.addEventListener('resize', () => {
+            const m = window.innerWidth < 768;
+            if (m !== _wasMobile) { _wasMobile = m; renderCalendar(); }
+        });
+    
+        // ─── Highlight ng huling pinindot na row ─────────────
+        // Kapag pinindot ang kahit anong bahagi ng row (View, Approve, atbp.),
+        // mananatili itong naka-highlight hanggang may ibang pindutin.
+        (function () {
+            const KEY = 'stf-picked';
+            const SEL = '#day-requests-cards .day-row';
+            let picked = null;
+            try { picked = sessionStorage.getItem(KEY); } catch (e) { }
+
+            if (!document.getElementById('nh-picked-style')) {
+                const st = document.createElement('style');
+                st.id = 'nh-picked-style';
+                st.textContent = `
+                    [data-picked="1"] { position: relative; background: #fffbeb !important;
+                        box-shadow: inset 3px 0 0 #d97706, inset 0 0 0 1px #fcd34d; }
+                    [data-picked="1"]:hover { background: #fef3c7 !important; }
+                    [data-picked="1"]::after { content: 'Last opened'; position: absolute; top: 3px; right: 10px;
+                        font-size: 9px; font-weight: 700; letter-spacing: .02em; color: #92400e;
+                        background: #fde68a; border-radius: 9999px; padding: 1px 7px; pointer-events: none; }`;
+                document.head.appendChild(st);
+            }
+
+            function apply() {
+                document.querySelectorAll(SEL).forEach(el => {
+                    const on = picked !== null && String(el.dataset.id) === picked;
+                    const v = on ? '1' : '0';
+                    if (el.dataset.picked !== v) el.dataset.picked = v;
+                });
+            }
+
+            // capture: mauuna ito bago buksan ang modal
+            document.addEventListener('click', e => {
+                const row = e.target.closest(SEL);
+                if (!row || row.dataset.id === undefined) return;
+                picked = String(row.dataset.id);
+                try { sessionStorage.setItem(KEY, picked); } catch (err) { }
+                apply();
+            }, true);
+
+            // I-apply ulit tuwing magre-render ang listahan (auto-refresh, filter, ibang buwan)
+            new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
+            apply();
+        })();
     </script>
 </body>
 

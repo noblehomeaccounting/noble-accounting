@@ -343,7 +343,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             </div>
             <div class="sidebar-divider-v w-px h-10 bg-gray-300 sidebar-logo-text"></div>
             <span
-                class="sidebar-logo-text text-base font-bold text-gray-800 tracking-tight whitespace-nowrap leading-tight">
+                class="sidebar-logo-text text-xs font-bold text-gray-800 tracking-tight whitespace-nowrap leading-tight">
                 Noble<span class="text-amber-500">Home</span><br>
                 <span class="text-gray-400 font-normal text-xs">Department</span>
             </span>
@@ -454,45 +454,54 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     <span class="sidebar-label">Purchase Order List</span>
                 </a>
 
+                <div class="sidebar-section-label pt-4">
+                    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Billing</p>
+                </div>
+
+                <a href="<?= BASE_URL ?>/accountingbilling" data-tooltip="Billing" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/coordinatorbilling') ?>">
+                    <i class="fa-solid fa-chart-gantt w-4 text-center text-sm flex-shrink-0"></i>
+                    <span class="sidebar-label">Billing</span>
+                </a>
+
             <?php endif; ?>
 
             <?php if ($isStaff): ?>
                 <a href="<?= BASE_URL ?>/accountingstaffdashboard" data-tooltip="Dashboard Records"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaffdashboard') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingstaffdashboard') ?>">
                     <i class="fa-solid fa-chart-column w-4 text-center text-sm flex-shrink-0"></i>
 
                     <span class="sidebar-label">Dashboard Records</span>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingstaff" data-tooltip="Acknowledge Request"
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaff') ?>">
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingstaff') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Acknowledge Request</span>
                     <?= sidebarBadge('toReceive', $counts['toReceive']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Cash Voucher Request</span>
                     <?= sidebarBadge('toPrepare', $counts['toPrepare']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/projectmonitor" data-tooltip="Project Monitor"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/projectmonitor') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/projectmonitor') ?>">
                     <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Project Monitor</span>
                 </a>
 
                 <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
-                    class="flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
+                    class="flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-all <?= isActive('/cashvoucherdashboard') ?>">
                     <i class="fa-solid fa-money-bills w-4 text-center text-sm flex-shrink-0" style="color: rgb(0, 0, 0); "></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Approval Cash Voucher</span>
                     <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingstaffpurchase" data-tooltip="Receive Purchase Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingstaffpurchase') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingstaffpurchase') ?>">
                     <i class="fa-solid fa-folder-tree w-4 text-center text-xs flex-shrink-0"></i>
                     <span class="sidebar-label">Receive Purchase</span>
                 </a>
@@ -500,18 +509,18 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
             <?php if ($isCustodian): ?>
                 <a href="<?= BASE_URL ?>/accountingcustodiandashboard" data-tooltip="Dashboard Records"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodiandashboard') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodiandashboard') ?>">
                     <i class="fa-solid fa-chart-line w-4 text-center text-xs flex-shrink-0"></i>
                     <span class="sidebar-label">Dashboard Records</span>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-xs flex-shrink-0"></i>
                     <span class="sidebar-label flex-1">Cash Vouch Req</span>
                     <?= sidebarBadge('toPrepare', $counts['toPrepare']) ?>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" data-tooltip="Petty Cash"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodianpettycash') ?>">
                     <i class="fa-solid fa-coins w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Petty Cash</span>
                 </a>
@@ -521,20 +530,20 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 </div>
 
                 <a href="<?= BASE_URL ?>/projectmonitor" data-tooltip="Project Monitor"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/projectmonitor') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/projectmonitor') ?>">
                     <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Project Monitor</span>
                 </a>
 
                 <a href="<?= BASE_URL ?>/cashvoucherdashboard" data-tooltip="Approval Cash Voucher"
-                    class="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
+                    class="flex items-center gap-3 px-2 py-2 rounded-lg text-xs transition-all <?= isActive('/cashvoucherdashboard') ?>">
                     <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1">Approval Cash Voucher</span>
                     <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingcustodianpurchaseorder" data-tooltip="Purchase Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodianpurchaseorder') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodianpurchaseorder') ?>">
                     <i class="fa-solid fa-file-signature w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Purchase Request</span>
                 </a>
@@ -547,14 +556,14 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 </div>
 
                 <a href="<?= BASE_URL ?>/accountingcustodian" data-tooltip="Cash Voucher Request"
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label flex-1 text-xs whitespace-nowrap">Cash Voucher Request</span>
                     <?= sidebarBadge('toRelease', $counts['toRelease']) ?>
                 </a>
 
                 <a href="<?= BASE_URL ?>/accountingcustodianassistantpurchaseorder" data-tooltip="Purchase Request"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingcustodianassistantpurchaseorder') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingcustodianassistantpurchaseorder') ?>">
                     <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Purchase Request</span>
                 </a>
@@ -697,6 +706,26 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                 <span class="sidebar-label">Purchase Order Approval</span>
             </a>
 
+            <a href="<?= BASE_URL ?>/superadmin-dr" data-tooltip="Delivery Receipt" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/superadmin-dr') ?>">
+                <i class="fa-regular fa-file-lines w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Delivery Receipt</span>
+            </a>
+
+            <a href="<?= BASE_URL ?>/superadminlabor" data-tooltip="Labor Quotation" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/superadminlabor') ?>">
+                <i class="fa-regular fa-file-lines w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Labor Quotation</span>
+            </a>
+
+            <a href="<?= BASE_URL ?>/superadminbilling" data-tooltip="Billing" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/superadminbilling') ?>">
+                <i class="fa-regular fa-file-lines w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Billing</span>
+            </a>
+
+            <a href="<?= BASE_URL ?>/superadminturnover" data-tooltip="Turnover Letter" class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/superadminturnover') ?>">
+                <i class="fa-regular fa-file-lines w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Turnover Letter</span>
+            </a>
+
         <?php endif; ?>
 
 
@@ -721,14 +750,14 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if ($role === ROLE_IT): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/it" data-tooltip="Dashboard"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/it') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/it') ?>">
                     <i class="fa-sharp fa-solid fa-chart-bar w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="sidebar-label">Dashboard</span>
                 </a>
             <?php endif; ?>
 
             <a href="#" data-tooltip="Maintenance"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all">
                 <i class="fa-solid fa-wrench w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Maintenance</span>
             </a>
@@ -738,13 +767,13 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             </div>
 
             <a href="<?= BASE_URL ?>/superad" data-tooltip="Manage Accounts"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/superad') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/superad') ?>">
                 <i class="fa-solid fa-user-plus w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Create Account</span>
             </a>
 
             <a href="<?= BASE_URL ?>/createaccount" data-tooltip="Account Management"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/createaccount') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/createaccount') ?>">
                 <i class="fa-solid fa-user-gear w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Account Management</span>
             </a>
@@ -754,20 +783,20 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if ($role === ROLE_PO): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/crmpurchaseorder" data-tooltip="Dashboard"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/crmpurchaseorder') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/crmpurchaseorder') ?>">
                     <i class="fa-solid fa-file-signature w-4 text-center text-xs flex-shrink-0"></i>
                     <span class="sidebar-label">Purchase Order</span>
                 </a>
             <?php endif; ?>
 
             <a href="<?= BASE_URL ?>/clientseries" data-tooltip="Client Series"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/clientseries') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/clientseries') ?>">
                 <i class="fa-solid fa-user-gear w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Client Series</span>
             </a>
 
             <a href="<?= BASE_URL ?>/transmittalsummary" data-tooltip="Transmittal Summary"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/transmittalsummary') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/transmittalsummary') ?>">
                 <i class="fa-solid fa-truck-pickup w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Transmittal Summary</span>
             </a>
@@ -776,16 +805,39 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if ($role === ROLE_PC): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/coordinator" data-tooltip="Coordinator"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-sm group transition-all <?= isActive('/coordinator') ?>">
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg font-semibold text-xs group transition-all <?= isActive('/coordinator') ?>">
                     <i class="fa-solid fa-file-signature w-4 text-center text-xs flex-shrink-0"></i>
                     <span class="sidebar-label">Coordinator</span>
                 </a>
             <?php endif; ?>
 
-            <a href="<?= BASE_URL ?>/clientseries" data-tooltip="Client Series"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-sm group transition-all <?= isActive('/clientseries') ?>">
+            <a href="<?= BASE_URL ?>/coordinatorlabor" data-tooltip="Labor Quotation"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/coordinatorlabor') ?>">
                 <i class="fa-solid fa-user-gear w-4 text-center text-sm flex-shrink-0"></i>
-                <span class="sidebar-label">Client Series</span>
+                <span class="sidebar-label">Labor Quotation</span>
+            </a>
+
+            <a href="<?= BASE_URL ?>/coordinatortimeline" data-tooltip="Timeline" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/coordinatortimeline') ?>">
+                <i class="fa-solid fa-chart-gantt w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Timeline</span>
+            </a>
+
+              <div class="sidebar-section-label pt-4">
+                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Progress Billing</p>
+            </div>
+
+            <a href="<?= BASE_URL ?>/coordinatorbilling" data-tooltip="Billing" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/coordinatorbilling') ?>">
+                <i class="fa-solid fa-chart-gantt w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Billing</span>
+            </a>
+
+            <div class="sidebar-section-label pt-4">
+                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Punch list & Turnover</p>
+            </div>
+
+            <a href="<?= BASE_URL ?>/coordinatorturnover" data-tooltip="Turnover Letter" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 font-medium text-xs group transition-all <?= isActive('/coordinatorturnover') ?>">
+                <i class="fa-regular fa-file-lines w-4 text-center text-sm flex-shrink-0"></i>
+                <span class="sidebar-label">Turnover Letter</span>
             </a>
 
         <?php endif; ?>
@@ -796,7 +848,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         </div>
 
         <button onclick="toggleSidebarNotif()" data-tooltip="Notifications"
-            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 text-gray-500 font-medium text-sm transition-all">
+            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 hover:text-gray-800 text-gray-500 font-medium text-xs transition-all">
             <div class="relative w-4 flex items-center justify-center flex-shrink-0">
                 <i class="fa-regular fa-bell text-sm"></i>
                 <span id="sidebar-notif-badge"
@@ -834,7 +886,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if (($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF,])) || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING): ?>
 
             <a href="<?= BASE_URL ?>/accountingsignatured" data-tooltip="Signatured Request"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all <?= isActive('/accountingsignatured') ?>">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all <?= isActive('/accountingsignatured') ?>">
                 <i class="fa-solid fa-signature w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="sidebar-label">Signatured Request</span>
             </a>
@@ -897,7 +949,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                         <i class="fa-sharp fa-solid fa-user-tie text-sm" style="color: <?= $currentRoleColor ?>;"></i>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-sm font-bold text-gray-800 truncate">
+                        <p class="text-xs font-bold text-gray-800 truncate">
                             <?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?>
                         </p>
                         <p class="text-[11px] text-gray-500 truncate">
@@ -947,7 +999,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <!-- Logo center -->
         <div class="flex items-center gap-2">
             <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-7 w-auto object-contain">
-            <span class="text-sm font-bold text-gray-800">Noble<span class="text-amber-500">Home</span></span>
+            <span class="text-xs font-bold text-gray-800">Noble<span class="text-amber-500">Home</span></span>
         </div>
 
         <!-- Right: Notif + Avatar -->
@@ -1003,7 +1055,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
     <div class="sb-layer flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <div class="flex items-center gap-2.5">
             <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-8 w-auto object-contain">
-            <span class="text-base font-bold text-gray-800 leading-tight">
+            <span class="text-xs font-bold text-gray-800 leading-tight">
                 Noble<span class="text-amber-500">Home</span><br>
                 <span class="text-gray-400 font-normal text-xs">Department</span>
             </span>
@@ -1025,7 +1077,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
                     class="absolute -bottom-0.5 -right-0.5 w-3 h-3 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-gray-800 truncate">
+                <p class="text-xs font-semibold text-gray-800 truncate">
                     <?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'Admin' ?>
                 </p>
                 <p class="text-[11px] text-gray-400">
@@ -1054,25 +1106,25 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($role === ROLE_ACCOUNTING): ?>
             <a href="<?= BASE_URL ?>/generalannouncement" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/generalannouncement') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/generalannouncement') ?>">
                 <i class="fa-solid fa-bullhorn w-4 text-center text-sm flex-shrink-0"></i>
                 General Announce
             </a>
 
             <?php if ($isHead): ?>
                 <a href="<?= BASE_URL ?>/accountinggraph" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountinggraph') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountinggraph') ?>">
                     <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                     Dashboard
                 </a>
                 <a href="<?= BASE_URL ?>/accounting" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accounting') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accounting') ?>">
                     <i class="fa-solid fa-list-check w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="flex-1">Requests List</span>
                     <?= sidebarBadge('requestPending', $counts['requestPending']) ?>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingcustodianpettycash') ?>">
                     <i class="fa-solid fa-coins w-4 text-center text-sm flex-shrink-0"></i>
                     Petty Cash
                 </a>
@@ -1080,12 +1132,12 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
             <?php if ($isStaff): ?>
                 <a href="<?= BASE_URL ?>/accountingstaffdashboard" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingstaffdashboard') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingstaffdashboard') ?>">
                     <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                     Dashboard Records
                 </a>
                 <a href="<?= BASE_URL ?>/accountingstaff" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingstaff') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingstaff') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="flex-1">Acknowledge Request</span>
                     <?= sidebarBadge('toReceive', $counts['toReceive']) ?>
@@ -1094,18 +1146,18 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
             <?php if ($isCustodian): ?>
                 <a href="<?= BASE_URL ?>/accountingcustodiandashboard" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodiandashboard') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingcustodiandashboard') ?>">
                     <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                     Dashboard Records
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodian" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingcustodian') ?>">
                     <i class="fa-solid fa-list w-4 text-center text-sm flex-shrink-0"></i>
                     <span class="flex-1">Cash Voucher Request</span>
                     <?= sidebarBadge('toPrepare', $counts['toPrepare']) ?>
                 </a>
                 <a href="<?= BASE_URL ?>/accountingcustodianpettycash" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodianpettycash') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingcustodianpettycash') ?>">
                     <i class="fa-solid fa-coins w-4 text-center text-sm flex-shrink-0"></i>
                     Petty Cash
                 </a>
@@ -1114,12 +1166,12 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if (in_array($role, [ROLE_HR])): ?>
             <a href="<?= BASE_URL ?>/humanresource" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/humanresource') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/humanresource') ?>">
                 <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                 Dashboard
             </a>
             <a href="<?= BASE_URL ?>/humanresourcerequest" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/humanresourcerequest') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/humanresourcerequest') ?>">
                 <i class="fa-solid fa-address-book w-4 text-center text-sm flex-shrink-0"></i>
                 Request
             </a>
@@ -1127,7 +1179,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if (in_array($role, [ROLE_IT])): ?>
             <a href="<?= BASE_URL ?>/it" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/informationtech') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/informationtech') ?>">
                 <i class="fa-sharp fa-solid fa-chart-bar w-4 text-center text-sm flex-shrink-0"></i>
                 Dashboard
             </a>
@@ -1136,20 +1188,20 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
         <?php if (in_array($role, [ROLE_SALES])): ?>
             <?php if ($isMainBranch): ?>
                 <a href="<?= BASE_URL ?>/salesmarket" onclick="closeMobileDrawer()"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/salesmarket') ?>">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/salesmarket') ?>">
                     <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                     Budget Request list
                 </a>
             <?php endif; ?>
 
             <a href="<?= BASE_URL ?>/crm-main" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/crm-main') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/crm-main') ?>">
                 <i class="fa-solid fa-chart-line w-4 text-center text-sm flex-shrink-0"></i>
                 CRM Main
             </a>
 
             <a href="<?= BASE_URL ?>/crmsaleslist" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/crmsaleslist') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/crmsaleslist') ?>">
                 <i class="fa-solid fa-list-ol w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="flex-1">CRM List</span>
                 <?= sidebarBadge('crmPending', $counts['crmPending']) ?>
@@ -1160,7 +1212,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($isStaff): ?>
             <a href="<?= BASE_URL ?>/accountingstaffannouncement" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingstaffannouncement') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingstaffannouncement') ?>">
                 <i class="fa-solid fa-bullhorn w-4 text-center text-sm flex-shrink-0"></i>
                 Insert-Announcement
             </a>
@@ -1168,12 +1220,12 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($isCustooAssistant): ?>
             <a href="<?= BASE_URL ?>/accountingcustodianassistant" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodianassistant') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingcustodianassistant') ?>">
                 <i class="fa-solid fa-bullhorn w-4 text-center text-sm flex-shrink-0"></i>
                 Insert-Announcement
             </a>
             <a href="<?= BASE_URL ?>/accountingcustodian" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingcustodian') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingcustodian') ?>">
                 <i class="fa-solid fa-circle-dollar-to-slot w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="flex-1">Cash Voucher Request</span>
                 <?= sidebarBadge('toRelease', $counts['toRelease']) ?>
@@ -1182,12 +1234,12 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($isCustodian): ?>
             <a href="<?= BASE_URL ?>/announcementcustodian" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/announcementcustodian') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/announcementcustodian') ?>">
                 <i class="fa-solid fa-bullhorn w-4 text-center text-sm flex-shrink-0"></i>
                 Insert-Announcement
             </a>
             <a href="<?= BASE_URL ?>/projectmonitor" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/projectmonitor') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/projectmonitor') ?>">
                 <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                 Project Monitor
             </a>
@@ -1195,22 +1247,22 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD])): ?>
             <a href="<?= BASE_URL ?>/announcementdashboard" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/announcementdashboard') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/announcementdashboard') ?>">
                 <i class="fa-solid fa-sign-hanging w-4 text-center text-sm flex-shrink-0"></i>
                 Announce List
             </a>
             <a href="<?= BASE_URL ?>/accountingmonitoring" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingmonitoring') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingmonitoring') ?>">
                 <i class="fa-solid fa-file-circle-check w-4 text-center text-sm flex-shrink-0"></i>
                 Monitoring Project
             </a>
             <a href="<?= BASE_URL ?>/accountingtracking" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingtracking') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingtracking') ?>">
                 <i class="fa-solid fa-timeline w-4 text-center text-sm flex-shrink-0"></i>
                 Tracking Req & Vouch
             </a>
             <a href="<?= BASE_URL ?>/accountinggeneralsheet" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountinggeneralsheet') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountinggeneralsheet') ?>">
                 <i class="fa-solid fa-clipboard-list w-4 text-center text-sm flex-shrink-0"></i>
                 General Sheet
             </a>
@@ -1218,7 +1270,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT])): ?>
             <a href="<?= BASE_URL ?>/cashvoucherdashboard" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/cashvoucherdashboard') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/cashvoucherdashboard') ?>">
                 <i class="fa-solid fa-ticket-simple w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="flex-1">Approval Cash Voucher</span>
                 <?= sidebarBadge('unpreparedVoucher', $counts['unpreparedVoucher']) ?>
@@ -1227,7 +1279,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if (in_array($role, [ROLE_HR])): ?>
             <a href="<?= BASE_URL ?>/superad" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/superad') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/superad') ?>">
                 <i class="fa-solid fa-user-plus w-4 text-center text-sm flex-shrink-0"></i>
                 Manage Accounts
             </a>
@@ -1237,7 +1289,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2 mt-4">Followups Requests
             </p>
             <a href="<?= BASE_URL ?>/accountingfollowups" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingfollowups') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingfollowups') ?>">
                 <i class="fa-solid fa-file-arrow-up w-4 text-center text-sm flex-shrink-0"></i>
                 <span class="flex-1">Follow-ups</span>
                 <?= sidebarBadge('followupWaiting', $counts['followupWaiting']) ?>
@@ -1248,7 +1300,7 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 
         <?php if ($role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF])): ?>
             <a href="<?= BASE_URL ?>/accountingsignatured" onclick="closeMobileDrawer()"
-                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all <?= isActive('/accountingsignatured') ?>">
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all <?= isActive('/accountingsignatured') ?>">
                 <i class="fa-solid fa-signature w-4 text-center text-sm flex-shrink-0"></i>
                 Signatured Request
             </a>
@@ -1258,36 +1310,50 @@ $currentRoleColor = $roleColors[$role] ?? '#6B7280'; // default gray fallback
 </div>
 
 
-<div id="notif-overlay" onclick="toggleSidebarNotif()" class="hidden fixed inset-0 z-40 bg-black/20"></div>
+<div id="notif-overlay" onclick="toggleSidebarNotif()" class="hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"></div>
 
 <div id="notif-panel"
-    class="fixed top-0 z-50 h-screen bg-white border-r border-gray-100 shadow-xl flex flex-col transition-all duration-300 ease-in-out"
+    class="fixed top-0 z-50 h-screen bg-white border-r border-gray-200 shadow-2xl flex flex-col transition-all duration-300 ease-in-out"
     style="width: 420px; max-width: 100vw; right: auto; left: -420px; border-left: none;">
 
-    <div class="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <div class="flex items-center gap-2">
-            <i class="fa-regular fa-bell text-gray-600 text-sm"></i>
-            <span class="text-sm font-bold text-gray-800">Notifications</span>
-            <span id="notif-panel-badge"
-                class="hidden bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"></span>
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-3 px-4 py-4 border-b border-gray-100 shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <i class="fa-regular fa-bell"></i>
+            </div>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold text-gray-800">Notifications</span>
+                    <span id="notif-panel-badge"
+                        class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none"></span>
+                </div>
+                <p class="text-[11px] text-gray-500">Updates on your requests and approvals</p>
+            </div>
         </div>
-        <button onclick="toggleSidebarNotif()" class="text-gray-400 hover:text-gray-600 transition-colors">
-            <i class="fa-solid fa-xmark text-sm"></i>
+        <button type="button" onclick="toggleSidebarNotif()" title="Close"
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition shrink-0">
+            <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
 
-    <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50">
-        <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Recent</span>
-        <button onclick="sidebarMarkAllRead()"
-            class="text-[10px] text-orange-500 hover:text-orange-600 font-semibold transition-colors">Mark all
-            read</button>
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 shrink-0">
+        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Recent</span>
+        <button type="button" onclick="sidebarMarkAllRead()"
+            class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 hover:text-amber-800 bg-white border border-amber-200 hover:bg-amber-50 rounded-lg px-2.5 py-1 transition">
+            <i class="fa-solid fa-check-double text-[10px]"></i> Mark all read
+        </button>
     </div>
 
-    <div id="sidebar-notif-list" class="overflow-y-auto divide-y divide-gray-100"
-        style="max-height: calc(100vh - 120px);">
-        <div class="px-4 py-8 text-center text-gray-400 text-[11px]">
-            <i class="fa-regular fa-bell mb-2 block text-2xl"></i>
-            No notifications
+    <!-- List (ginagawa ng js/global-notif.js) -->
+    <div id="sidebar-notif-list" class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100">
+        <div class="px-6 py-16 text-center">
+            <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-3">
+                <i class="fa-regular fa-bell-slash text-xl"></i>
+            </div>
+            <p class="text-sm font-semibold text-gray-600">No notifications</p>
+            <p class="text-[11px] text-gray-400 mt-1">You're all caught up.</p>
         </div>
     </div>
 </div>

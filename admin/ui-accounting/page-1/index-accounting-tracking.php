@@ -96,33 +96,7 @@ foreach ($requests as $r) $reqMap[(int)$r['id']] = $r;
     <title>Budget Request Tracking</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
-    <style>
-        .badge-pending  { background:#fef9c3; color:#854d0e; }
-        .badge-approved { background:#dcfce7; color:#166534; }
-        .badge-rejected { background:#fee2e2; color:#991b1b; }
-        .badge-received { background:#dbeafe; color:#1e40af; }
-        .badge-voucher  { background:#f3e8ff; color:#6b21a8; }
-
-        .bar-pending  { background:#facc15; }
-        .bar-approved { background:#22c55e; }
-        .bar-rejected { background:#f87171; }
-        .bar-received { background:#3b82f6; }
-        .bar-voucher  { background:#a855f7; }
-
-        .trk-tab { background:#fff; border-color:#e5e7eb; }
-        .trk-tab:hover { border-color:#f59e0b; }
-        .trk-tab[data-active="1"] { border-color:#b45309; box-shadow:0 0 0 1px #b45309 inset; background:#fffbeb; }
-
-        .trk-scroll::-webkit-scrollbar { width: 4px; }
-        .trk-scroll::-webkit-scrollbar-track { background: transparent; }
-        .trk-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
-
-        .step-dot { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-                    font-size:13px; flex-shrink:0; position:relative; z-index:1; }
-        .pulse-dot::after { content:''; position:absolute; inset:0; border-radius:50%; background:inherit; opacity:.4;
-                            animation: trkPulse 1.8s ease-in-out infinite; }
-        @keyframes trkPulse { 0% { transform:scale(1); opacity:.4; } 70%,100% { transform:scale(1.6); opacity:0; } }
-    </style>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/ui-accounting/css/accounting/index-accounting-tracking.css?v=<?= @filemtime(ROOT_PATH . '/admin/ui-accounting/css/accounting/index-accounting-tracking.css') ?: 1 ?>">
 </head>
 
 <body class="bg-gray-100">
@@ -493,6 +467,50 @@ foreach ($requests as $r) $reqMap[(int)$r['id']] = $r;
         });
         document.getElementById('searchInput').addEventListener('input', filterTable);
         document.getElementById('categoryFilter').addEventListener('change', filterTable);
+    
+        // ─── Highlight ng huling pinindot na row ─────────────
+        // Kapag pinindot ang kahit anong bahagi ng row (View, Approve, atbp.),
+        // mananatili itong naka-highlight hanggang may ibang pindutin.
+        (function () {
+            const KEY = 'trk-picked';
+            const SEL = '#trkList .request-row';
+            let picked = null;
+            try { picked = sessionStorage.getItem(KEY); } catch (e) { }
+
+            if (!document.getElementById('nh-picked-style')) {
+                const st = document.createElement('style');
+                st.id = 'nh-picked-style';
+                st.textContent = `
+                    [data-picked="1"] { position: relative; background: #fffbeb !important;
+                        box-shadow: inset 3px 0 0 #d97706, inset 0 0 0 1px #fcd34d; }
+                    [data-picked="1"]:hover { background: #fef3c7 !important; }
+                    [data-picked="1"]::after { content: 'Last opened'; position: absolute; top: 3px; right: 10px;
+                        font-size: 9px; font-weight: 700; letter-spacing: .02em; color: #92400e;
+                        background: #fde68a; border-radius: 9999px; padding: 1px 7px; pointer-events: none; }`;
+                document.head.appendChild(st);
+            }
+
+            function apply() {
+                document.querySelectorAll(SEL).forEach(el => {
+                    const on = picked !== null && String(el.dataset.id) === picked;
+                    const v = on ? '1' : '0';
+                    if (el.dataset.picked !== v) el.dataset.picked = v;
+                });
+            }
+
+            // capture: mauuna ito bago buksan ang modal
+            document.addEventListener('click', e => {
+                const row = e.target.closest(SEL);
+                if (!row || row.dataset.id === undefined) return;
+                picked = String(row.dataset.id);
+                try { sessionStorage.setItem(KEY, picked); } catch (err) { }
+                apply();
+            }, true);
+
+            // I-apply ulit tuwing magre-render ang listahan (auto-refresh, filter, ibang buwan)
+            new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
+            apply();
+        })();
     </script>
 
 </body>

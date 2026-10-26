@@ -1,0 +1,110 @@
+/* index-accounting-tracking.css — styles ng index-accounting-tracking.php */
+
+.badge-pending {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.badge-approved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-rejected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-received {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-voucher {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.bar-pending {
+    background: #facc15;
+}
+
+.bar-approved {
+    background: #22c55e;
+}
+
+.bar-rejected {
+    background: #f87171;
+}
+
+.bar-received {
+    background: #3b82f6;
+}
+
+.bar-voucher {
+    background: #a855f7;
+}
+
+.trk-tab {
+    background: #fff;
+    border-color: #e5e7eb;
+}
+
+.trk-tab:hover {
+    border-color: #f59e0b;
+}
+
+.trk-tab[data-active="1"] {
+    border-color: #b45309;
+    box-shadow: 0 0 0 1px #b45309 inset;
+    background: #fffbeb;
+}
+
+.trk-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.trk-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.trk-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.step-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.pulse-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    opacity: .4;
+    animation: trkPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes trkPulse {
+    0% {
+        transform: scale(1);
+        opacity: .4;
+    }
+
+    70%,
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}

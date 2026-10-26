@@ -23,66 +23,90 @@ $position = $_SESSION['position'] ?? '';
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 </head>
 
-<body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-3 md:p-8 transition-all duration-300">
+<body class="bg-gray-100">
+    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
 
-        <div class="mb-4 md:mb-6">
-            <h1 class="text-lg md:text-xl font-bold text-gray-800">Cash Voucher Dashboard</h1>
-            <p class="text-xs md:text-sm text-gray-400 mt-1">Review and process cash vouchers</p>
+        <!-- ═══ HEADER ═══ -->
+        <div class="mb-5 flex items-start sm:items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-xl font-bold text-gray-800 leading-tight">Cash Voucher Dashboard</h1>
+                    <p class="text-sm text-gray-500">Review and process cash vouchers</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span id="last-updated">Loading…</span>
+            </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <!-- ═══ STATUS TABS ═══ -->
+        <?php
+        $hasActionTab = in_array($position, [POSITION_STAFF, POSITION_HEAD], true);
+        $actionLabel = $position === POSITION_HEAD ? 'To approve' : 'To prepare';
+        $cvdTabs = [];
+        if ($hasActionTab) $cvdTabs[] = ['action', $actionLabel, 'fa-bell', 'bg-red-50 text-red-500'];
+        $cvdTabs[] = ['all',              'All this month',     'fa-layer-group',     'bg-amber-50 text-amber-700'];
+        $cvdTabs[] = ['preparing',        'Preparing',        'fa-pen-to-square',   'bg-orange-50 text-orange-600'];
+        $cvdTabs[] = ['voucher_approval', 'For approval',     'fa-hourglass-half',  'bg-yellow-50 text-yellow-600'];
+        $cvdTabs[] = ['ready_to_release', 'Ready to release', 'fa-box-open',        'bg-blue-50 text-blue-600'];
+        $cvdTabs[] = ['released',         'Released',         'fa-circle-check',    'bg-green-50 text-green-600'];
+        $defaultTab = $hasActionTab ? 'action' : 'all';
+        ?>
+        <div class="grid grid-cols-2 sm:grid-cols-3 <?= $hasActionTab ? 'xl:grid-cols-6' : 'xl:grid-cols-5' ?> gap-3 mb-5" id="cvd-tabs">
+            <?php foreach ($cvdTabs as $i => [$key, $label, $icon, $tone]): ?>
+                <button type="button" data-tab="<?= $key ?>" data-active="<?= $key === $defaultTab ? 1 : 0 ?>" onclick="setTab('<?= $key ?>')"
+                    class="cvd-tab border rounded-xl p-3.5 flex items-center gap-3 text-left shadow-sm transition min-w-0 <?= $key === 'action' ? 'cvd-tab-action' : '' ?>">
+                    <span class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 <?= $tone ?>"><i class="fa-solid <?= $icon ?>"></i></span>
+                    <span class="min-w-0">
+                        <span class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide leading-tight"><?= $label ?></span>
+                        <span class="block text-2xl font-bold text-gray-800 leading-none mt-1" data-count="<?= $key ?>">0</span>
+                    </span>
+                </button>
+            <?php endforeach; ?>
+        </div>
 
-            <!-- Table Header / Search -->
-            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
-                <span class="text-sm font-semibold text-gray-700">Voucher Records</span>
-                <div class="flex items-center gap-2">
+        <!-- ═══ LIST CARD ═══ -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 px-4 py-3 border-b border-gray-100">
+                <!-- Month navigation -->
+                <div class="flex items-center gap-2 flex-wrap" id="cvd-month-nav">
+                    <button type="button" onclick="changeMonth(-1)" title="Previous month"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
                     <div class="relative">
-                        <i
-                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                        <input type="text" id="search-input" placeholder="Search..."
-                            class="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-full outline-none focus:border-amber-400 transition-all w-36 md:w-48">
+                        <select id="cvd-month-select" onchange="pickMonth(this.value)" title="Choose month"
+                            class="appearance-none h-9 min-w-[150px] text-center text-sm font-bold text-gray-800 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg pl-3 pr-8 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition cursor-pointer"></select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 pointer-events-none"></i>
                     </div>
-                    <span id="last-updated" class="text-[10px] text-gray-400 hidden sm:inline"></span>
-                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
+                    <button type="button" onclick="changeMonth(1)" title="Next month"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                    <button type="button" onclick="goThisMonth()"
+                        class="h-9 text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 px-3 rounded-lg transition">
+                        This month
+                    </button>
+                    <span class="text-xs text-gray-500 ml-1">Total: <b id="cvd-month-total" class="font-mono text-gray-800">₱ 0.00</b></span>
+                </div>
+                <div class="relative w-full lg:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                    <input type="text" id="search-input" placeholder="Search voucher no., title, payee, purpose..."
+                        class="w-full h-9 pl-8 pr-3 text-xs border border-gray-200 rounded-lg outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition">
                 </div>
             </div>
-
-            <!-- Desktop Table -->
-            <div class="hidden md:block overflow-x-auto">
-                <div class="max-h-[500px] overflow-y-auto scrollbar-thin">
-                    <table class="w-full text-sm">
-                        <thead class="sticky top-0 z-10">
-                            <tr class="bg-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
-                                <th class="px-5 py-3 text-left">Voucher No.</th>
-                                <th class="px-5 py-3 text-left">Title</th>
-                                <th class="px-5 py-3 text-left">Payee</th>
-                                <th class="px-5 py-3 text-left">Payment For</th>
-                                <th class="px-5 py-3 text-left">Date</th>
-                                <th class="px-5 py-3 text-left">Total Amount</th>
-                                <th class="px-5 py-3 text-left">Status</th>
-                                <th class="px-5 py-3 text-left">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="voucher-tbody">
-                            <tr>
-                                <td colspan="8" class="px-5 py-8 text-center text-gray-400 text-sm">
-                                    <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Mobile Cards -->
-            <div class="md:hidden" id="voucher-cards">
-                <div class="px-4 py-8 text-center text-gray-400 text-sm">
+            <div id="cvd-info" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
+            <div id="voucher-cards" class="max-h-[640px] overflow-y-auto scrollbar-thin divide-y divide-gray-100">
+                <div class="px-4 py-10 text-center text-gray-400 text-sm">
                     <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
                 </div>
             </div>
-
         </div>
+
 
         <!-- ─── VOUCHER MODAL ────────────────────── -->
         <div id="voucher-modal"
@@ -370,53 +394,27 @@ $position = $_SESSION['position'] ?? '';
 
     </main>
 
+
     <style>
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 4px;
-        }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: transparent;
-        }
+        .cvd-tab { background: #fff; border-color: #e5e7eb; }
+        .cvd-tab:hover { border-color: #f59e0b; }
+        .cvd-tab[data-active="1"] { border-color: #b45309; box-shadow: 0 0 0 1px #b45309 inset; background: #fffbeb; }
+        .cvd-tab-action[data-hot="1"] [data-count] { color: #dc2626; }
 
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 999px;
-        }
+        @keyframes cvdRowFlash { 0%,100% { background: transparent; } 50% { background: #fef3c7; } }
+        .cvd-row-flash { animation: cvdRowFlash .6s ease-in-out 5; }
 
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        @keyframes badgePulse {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: scale(1.4);
-                opacity: 0.5;
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        .highlight-badge {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            background: #ef4444;
-            border-radius: 50%;
-            animation: badgePulse 0.8s ease-in-out 6;
-            margin-right: 6px;
-            vertical-align: middle;
-            flex-shrink: 0;
-        }
+        /* Row na huling pinindot / binuksan */
+        .cvd-row[data-selected="1"] { background: #fffbeb; box-shadow: inset 3px 0 0 #d97706, inset 0 0 0 1px #fcd34d; }
+        .cvd-row[data-selected="1"]:hover { background: #fef3c7; }
     </style>
+
+
 
     <script>
         const POSITION = '<?= htmlspecialchars($position) ?>';
@@ -503,6 +501,7 @@ $position = $_SESSION['position'] ?? '';
 
         function matchesQuery(row, q) {
             return row.control_no?.toLowerCase().includes(q) ||
+                row.voucher_control_no?.toLowerCase().includes(q) ||
                 row.voucher_title?.toLowerCase().includes(q) ||
                 row.voucher_payee?.toLowerCase().includes(q) ||
                 row.purpose?.toLowerCase().includes(q);
@@ -514,85 +513,195 @@ $position = $_SESSION['position'] ?? '';
                 : '';
         }
 
+
+        // ─── Tabs / filter ───────────────────────────────────
+        const IS_STAFF = POSITION === '<?= POSITION_STAFF ?>';
+        const IS_HEAD = POSITION === '<?= POSITION_HEAD ?>';
+        let currentTab = '<?= $defaultTab ?>';
+        const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        let viewYear = new Date().getFullYear();
+        let viewMonth = new Date().getMonth(); // 0-11
+        let loaded = false;
+        let actionTabTouched = false;
+        const savingVids = new Set();
+
+        // Huling pinindot na voucher (naka-highlight hanggang may ibang pindutin)
+        let selectedId = null;
+        try { selectedId = sessionStorage.getItem('cvd-selected'); } catch (e) { }
+        function markSelected(id) {
+            selectedId = String(id);
+            try { sessionStorage.setItem('cvd-selected', selectedId); } catch (e) { }
+            document.querySelectorAll('#voucher-cards .cvd-row').forEach(el => {
+                const on = el.dataset.id === selectedId;
+                el.dataset.selected = on ? '1' : '0';
+                const tag = el.querySelector('.cvd-opened-tag');
+                if (tag) tag.classList.toggle('hidden', !on);
+            });
+        }
+
+        // Kailangan ng aksyon MO (depende sa posisyon)
+        function needsMyAction(row) {
+            if (!row.voucher_id) return false;
+            if (IS_STAFF) return !row.prepared_by && row.voucher_status !== 'released';
+            if (IS_HEAD) return row.voucher_status === 'voucher_approval' && !row.approved_by && !!row.prepared_by;
+            return false;
+        }
+
+        // ─── Per month ───────────────────────────────────────
+        const monthKey = (y = viewYear, m = viewMonth) => y + '-' + String(m + 1).padStart(2, '0');
+        const monthLabel = (y = viewYear, m = viewMonth) => MONTH_NAMES[m] + ' ' + y;
+        const rowMonth = row => String(row.date_requested ?? '').substring(0, 7);
+        const inMonth = row => rowMonth(row) === monthKey();
+
+        function setMonth(y, m) {
+            viewYear = y; viewMonth = m;
+            try { sessionStorage.setItem('cvd-month', monthKey()); } catch (e) { }
+            buildMonthSelect();
+            rerender();
+        }
+        function changeMonth(step) {
+            let m = viewMonth + step, y = viewYear;
+            if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+            setMonth(y, m);
+        }
+        function goThisMonth() { const n = new Date(); setMonth(n.getFullYear(), n.getMonth()); }
+        function pickMonth(val) {
+            const [y, m] = String(val).split('-').map(Number);
+            if (y && m) setMonth(y, m - 1);
+        }
+
+        // Dropdown: mga buwan na may voucher (+ buwan ngayon at ang napili), may bilang
+        function buildMonthSelect() {
+            const sel = document.getElementById('cvd-month-select');
+            const counts = {};
+            allData.forEach(r => { const k = rowMonth(r); if (/^\d{4}-\d{2}$/.test(k)) counts[k] = (counts[k] || 0) + 1; });
+            const keys = new Set(Object.keys(counts));
+            keys.add(monthKey()); keys.add(monthKey(new Date().getFullYear(), new Date().getMonth()));
+            sel.innerHTML = [...keys].sort().reverse().map(k => {
+                const [y, m] = k.split('-').map(Number);
+                return `<option value="${k}" ${k === monthKey() ? 'selected' : ''}>${monthLabel(y, m - 1)}${counts[k] ? ' (' + counts[k] + ')' : ''}</option>`;
+            }).join('');
+        }
+
+        // Ang "To prepare / To approve" ay mula sa LAHAT ng buwan para walang makaligtaan;
+        // ang ibang tab ay para sa buwan na napili lang.
+        function tabMatch(row, tab) {
+            if (tab === 'action') return needsMyAction(row);
+            if (!inMonth(row)) return false;
+            if (tab === 'all') return true;
+            return voucherStatus(row) === tab;
+        }
+
+        function setTab(key) {
+            currentTab = key;
+            if (key === 'action') actionTabTouched = true;
+            document.querySelectorAll('#cvd-tabs .cvd-tab').forEach(b => b.dataset.active = b.dataset.tab === key ? '1' : '0');
+            rerender();
+        }
+
+        function updateCounts() {
+            document.querySelectorAll('#cvd-tabs [data-count]').forEach(el => {
+                el.textContent = allData.filter(r => tabMatch(r, el.dataset.count)).length;
+            });
+            const act = document.querySelector('#cvd-tabs .cvd-tab-action');
+            if (act) act.dataset.hot = allData.some(needsMyAction) ? '1' : '0';
+            const monthSum = allData.filter(inMonth).reduce((s, r) => s + sumItems(r.items), 0);
+            document.getElementById('cvd-month-total').textContent = '₱ ' + fmtMoney(monthSum);
+            document.getElementById('cvd-month-nav').classList.toggle('opacity-50', currentTab === 'action');
+        }
+
+        const STATUS_BAR = {
+            preparing: 'bg-orange-400', voucher_approval: 'bg-yellow-400',
+            ready_to_release: 'bg-blue-500', released: 'bg-green-500',
+        };
+
+        function emptyHtml(title, sub = '') {
+            return `<div class="px-4 py-12 text-center">
+                <div class="w-12 h-12 mx-auto rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-2"><i class="fa-solid fa-inbox"></i></div>
+                <p class="text-sm font-semibold text-gray-600">${escHtml(title)}</p>
+                ${sub ? `<p class="text-xs text-gray-400 mt-1">${escHtml(sub)}</p>` : ''}
+            </div>`;
+        }
+
+        // Maikling progress: Prepared → Approved → Released
+        function stepsHtml(row) {
+            const step = (done, label) => `<span class="inline-flex items-center gap-1 ${done ? 'text-green-700' : 'text-gray-400'}">
+                <i class="fa-solid ${done ? 'fa-circle-check' : 'fa-circle'} text-[9px]"></i>${label}</span>`;
+            return `<span class="inline-flex items-center gap-2 flex-wrap">
+                ${step(!!row.prepared_by || !!row.prepared_name, 'Prepared')}
+                <span class="text-gray-300">›</span>${step(!!row.approved_by || !!row.approver_name, 'Approved')}
+                <span class="text-gray-300">›</span>${step(row.voucher_status === 'released', 'Released')}</span>`;
+        }
+
         // ─── Render list ─────────────────────────────────────
         function renderTable(data, q = '') {
-            const tbody = document.getElementById('voucher-tbody');
             const cards = document.getElementById('voucher-cards');
+            const info = document.getElementById('cvd-info');
+            if (!loaded) return;
+            const monthCount = allData.filter(inMonth).length;
+            info.innerHTML = currentTab === 'action'
+                ? `Showing <b class="text-gray-700">${data.length}</b> waiting for you · <span class="text-amber-700 font-semibold">all months</span>`
+                : `Showing <b class="text-gray-700">${data.length}</b> of ${monthCount} voucher${monthCount !== 1 ? 's' : ''} · <b class="text-gray-700">${escHtml(monthLabel())}</b>`;
 
             if (!data.length) {
-                tbody.innerHTML = `<tr><td colspan="8" class="px-5 py-8 text-center text-gray-400">No vouchers yet.</td></tr>`;
-                cards.innerHTML = `<div class="px-4 py-8 text-center text-gray-400 text-sm">No vouchers yet.</div>`;
+                cards.innerHTML = !allData.length ? emptyHtml('No vouchers yet.')
+                    : currentTab === 'action' && !q ? emptyHtml('All caught up!', 'Nothing needs your action right now.')
+                    : !monthCount && !q ? emptyHtml(`No vouchers in ${monthLabel()}.`, 'Use the arrows or the month list to check another month.')
+                    : emptyHtml('No matching vouchers.', 'Try another search or tab.');
                 return;
             }
-
-            tbody.innerHTML = data.map(row => {
-                const id = Number(row.id);
-                const total = sumItems(row.items);
-                const st = voucherStatus(row);
-                return `
-            <tr data-id="${id}" class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                <td class="px-5 py-3 font-mono text-xs text-blue-900 cursor-pointer"
-                    onclick="viewVoucherById(${id})">
-                    ${highlight(row.control_no, q)}
-                </td>
-                <td class="px-5 py-3 text-xs text-gray-700">${highlight(row.voucher_title ?? '—', q)}</td>
-                <td class="px-5 py-3 text-gray-800">${highlight(row.voucher_payee ?? '—', q)}</td>
-                <td class="px-5 py-3 text-gray-600">${highlight(row.purpose, q)}</td>
-                <td class="px-5 py-3 text-xs text-gray-400 font-mono">${escHtml(row.date_requested)}</td>
-                <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">PHP ${fmtMoney(total)}</td>
-                <td class="px-5 py-3">${st ? statusBadge(st) : '<span class="text-[10px] text-gray-400">Not submitted</span>'}</td>
-                <td class="px-5 py-3">
-                    <button onclick="viewVoucherById(${id})"
-                        class="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all">
-                        <i class="fa-solid fa-receipt mr-1"></i>View
-                    </button>
-                </td>
-            </tr>`;
-            }).join('');
 
             cards.innerHTML = data.map(row => {
                 const id = Number(row.id);
                 const total = sumItems(row.items);
                 const st = voucherStatus(row);
-                const isComplete = st === 'released';
-                const barColor = isComplete ? 'bg-green-400'
-                    : st === 'preparing' ? 'bg-orange-400'
-                        : st === 'voucher_approval' ? 'bg-yellow-400'
-                            : st === 'ready_to_release' ? 'bg-blue-400'
-                                : 'bg-gray-200';
-                const rowBg = isComplete ? 'bg-green-50' : 'bg-white';
-
+                const mine = needsMyAction(row);
                 return `
-            <div data-id="${id}"
-                class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors ${rowBg} active:bg-gray-50">
-                <div class="w-1 self-stretch rounded-full flex-shrink-0 ${barColor}"></div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-2 mb-0.5">
-                        <span class="font-mono text-[10px] font-bold text-blue-500 truncate">${highlight(row.control_no, q)}</span>
-                        ${st ? statusBadge(st) : '<span class="text-[9px] text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 flex-shrink-0">Not submitted</span>'}
+                <div data-id="${id}" data-selected="${String(id) === String(selectedId) ? 1 : 0}" class="cvd-row flex items-stretch gap-3 px-4 sm:px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
+                    onclick="viewVoucherById(${id})">
+                    <div class="w-1 rounded-full shrink-0 ${STATUS_BAR[st] ?? 'bg-gray-300'}"></div>
+                    <div class="flex-1 min-w-0 flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-5">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="notranslate font-mono text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">${highlight(row.voucher_control_no ?? row.control_no, q)}</span>
+                                ${st ? statusBadge(st) : '<span class="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">Not submitted</span>'}
+                                ${mine ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+                                    <i class="fa-solid fa-bell text-[9px]"></i> ${IS_HEAD ? 'Needs your approval' : 'Needs preparing'}</span>` : ''}
+                                <span class="cvd-opened-tag ${String(id) === String(selectedId) ? '' : 'hidden'} inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 rounded-full px-2 py-0.5">
+                                    <i class="fa-solid fa-eye text-[9px]"></i> Last opened</span>
+                            </div>
+                            <p class="mt-1.5 text-sm font-semibold text-gray-800 truncate">${highlight(row.voucher_title || row.voucher_payee || '—', q)}</p>
+                            <p class="text-[13px] text-gray-600 break-words line-clamp-2">
+                                ${row.voucher_title && row.voucher_payee ? `<span class="text-gray-500">${highlight(row.voucher_payee, q)} · </span>` : ''}${highlight(row.purpose ?? '—', q)}
+                            </p>
+                            <div class="flex items-center gap-x-3 gap-y-1 mt-1.5 flex-wrap text-[11px] text-gray-500">
+                                <span class="whitespace-nowrap"><i class="fa-regular fa-calendar text-gray-400 mr-1"></i>${escHtml(fmtDate(row.date_requested) || row.date_requested || '—')}</span>
+                                ${stepsHtml(row)}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between lg:justify-end gap-3 shrink-0">
+                            <div class="lg:text-right">
+                                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total</p>
+                                <p class="font-mono text-sm font-bold ${st === 'released' ? 'text-green-700' : 'text-gray-800'}">₱ ${fmtMoney(total)}</p>
+                            </div>
+                            <button type="button" onclick="event.stopPropagation(); viewVoucherById(${id})"
+                                class="inline-flex items-center gap-1.5 ${mine ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-white border border-gray-200 hover:bg-gray-50 text-gray-700'} text-xs font-semibold px-3.5 py-1.5 rounded-lg transition">
+                                <i class="fa-solid ${mine ? 'fa-pen-to-square' : 'fa-receipt'}"></i> ${mine ? (IS_HEAD ? 'Review' : 'Prepare') : 'View'}
+                            </button>
+                        </div>
                     </div>
-                    <div class="text-sm font-semibold text-gray-800 truncate leading-tight">${highlight(row.voucher_title ?? '—', q)}</div>
-                    <div class="text-[11px] text-gray-500 truncate">${highlight(row.voucher_payee ?? '—', q)}</div>
-                    <div class="text-[11px] text-gray-400 truncate">${highlight(row.purpose ?? '—', q)}</div>
-                    <div class="mt-1 text-[10px] text-gray-400 font-mono">${escHtml(row.date_requested)}</div>
-                </div>
-                <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                    <div class="font-mono text-xs font-bold ${isComplete ? 'text-green-600' : 'text-gray-700'} text-right">
-                        PhP ${fmtMoney(total)}
-                    </div>
-                    <button onclick="viewVoucherById(${id})"
-                        class="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                        <i class="fa-solid fa-receipt mr-1"></i>View
-                    </button>
-                </div>
-            </div>`;
+                </div>`;
             }).join('');
         }
+
+
 
         // ─── View modal ──────────────────────────────────────
         function viewVoucherById(id) {
             const row = allData.find(r => r.id == id);
-            if (row) viewVoucher(row);
+            if (!row) return;
+            markSelected(id);
+            viewVoucher(row);
         }
 
         function viewVoucher(row) {
@@ -701,14 +810,15 @@ $position = $_SESSION['position'] ?? '';
             document.getElementById('v-footer-btns-m').innerHTML = buildActionBtnMobile(row) + mCloseBtn;
 
             document.getElementById('voucher-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
 
         function buildActionBtn(row) {
             const vid = Number(row.voucher_id);
             if (POSITION === '<?= POSITION_STAFF ?>') {
                 if (!row.prepared_by) {
-                    return `<button onclick="markPrepared(${vid})"
-                    class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+                    return `<button type="button" data-action="1" onclick="markPrepared(${vid})"
+                    class="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
                     <i class="fa-solid fa-pen-to-square mr-1"></i>Mark as Prepared
                 </button>`;
                 }
@@ -719,7 +829,7 @@ $position = $_SESSION['position'] ?? '';
                         <i class="fa-solid fa-lock"></i>Waiting to be prepared
                     </span>`;
                     }
-                    return `<button onclick="markApproved(${vid})"
+                    return `<button type="button" data-action="1" onclick="markApproved(${vid})"
                     class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
                     <i class="fa-solid fa-check mr-1"></i>Approve Voucher
                 </button>`;
@@ -751,8 +861,8 @@ $position = $_SESSION['position'] ?? '';
             const vid = Number(row.voucher_id);
             if (POSITION === '<?= POSITION_STAFF ?>') {
                 if (!row.prepared_by) {
-                    return `<button onclick="markPrepared(${vid})"
-                    class="w-full flex items-center justify-center gap-2 bg-orange-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
+                    return `<button type="button" data-action="1" onclick="markPrepared(${vid})"
+                    class="w-full flex items-center justify-center gap-2 bg-amber-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                     <i class="fa-solid fa-pen-to-square"></i>Mark as Prepared
                 </button>`;
                 }
@@ -763,7 +873,7 @@ $position = $_SESSION['position'] ?? '';
                         <i class="fa-solid fa-lock"></i>Waiting to be prepared
                     </span>`;
                     }
-                    return `<button onclick="markApproved(${vid})"
+                    return `<button type="button" data-action="1" onclick="markApproved(${vid})"
                     class="w-full flex items-center justify-center gap-2 bg-green-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                     <i class="fa-solid fa-check"></i>Approve Voucher
                 </button>`;
@@ -793,8 +903,13 @@ $position = $_SESSION['position'] ?? '';
 
         function closeVoucherModal() {
             document.getElementById('voucher-modal').classList.add('hidden');
+            document.body.style.overflow = '';
             currentRow = null;
         }
+        // Isara kapag pinindot ang madilim na background
+        document.getElementById('voucher-modal').addEventListener('click', function (e) {
+            if (e.target === this) closeVoucherModal();
+        });
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && !document.getElementById('voucher-modal').classList.contains('hidden')) {
@@ -803,7 +918,21 @@ $position = $_SESSION['position'] ?? '';
         });
 
         // ─── Actions ─────────────────────────────────────────
+        // Habang nagse-save: i-disable ang lahat ng action button sa modal
+        function setModalBusy(busy, label) {
+            document.querySelectorAll('#v-footer-btns button, #v-footer-btns-m button').forEach(b => {
+                if (!b.dataset.action) return;
+                b.disabled = busy;
+                b.classList.toggle('opacity-60', busy);
+                b.classList.toggle('cursor-wait', busy);
+                if (busy) { b.dataset.html = b.innerHTML; b.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${label}`; }
+                else if (b.dataset.html) b.innerHTML = b.dataset.html;
+            });
+        }
+
         function markPrepared(voucherId) {
+            if (savingVids.has(voucherId)) return;
+            savingVids.add(voucherId); setModalBusy(true, 'Saving…');
             fetch(API + '/cashvoucherprepared', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -811,10 +940,13 @@ $position = $_SESSION['position'] ?? '';
             }).then(res => res.json()).then(data => {
                 if (data.success) { closeVoucherModal(); showToast('Voucher marked as prepared!'); fetchVouchers(true); }
                 else showToast(data.error ?? data.message ?? 'Failed to mark as prepared.', 'error');
-            }).catch(() => showToast('Network error. Please try again.', 'error'));
+            }).catch(() => showToast('Network error. Please try again.', 'error'))
+              .finally(() => { savingVids.delete(voucherId); setModalBusy(false); });
         }
 
         function markApproved(voucherId) {
+            if (savingVids.has(voucherId)) return;
+            savingVids.add(voucherId); setModalBusy(true, 'Approving…');
             fetch(API + '/cashvoucherapproved', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -822,13 +954,14 @@ $position = $_SESSION['position'] ?? '';
             }).then(res => res.json()).then(data => {
                 if (data.success) { closeVoucherModal(); showToast('Voucher approved successfully!'); fetchVouchers(true); }
                 else showToast(data.error ?? data.message ?? 'Failed.', 'error');
-            }).catch(() => showToast('Network error. Please try again.', 'error'));
+            }).catch(() => showToast('Network error. Please try again.', 'error'))
+              .finally(() => { savingVids.delete(voucherId); setModalBusy(false); });
         }
 
         function showToast(message, type = 'success') {
             const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
             const toast = document.createElement('div');
-            toast.className = `fixed bottom-6 right-6 z-[999] flex items-center gap-3 ${colors[type] ?? colors.success} text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0 translate-y-2`;
+            toast.className = `fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-[999] flex items-center gap-3 ${colors[type] ?? colors.success} text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all duration-300 opacity-0 translate-y-2`;
             toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'}"></i> ${escHtml(message)}`;
             document.body.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-2'));
@@ -984,77 +1117,89 @@ $position = $_SESSION['position'] ?? '';
         </body></html>`;
 
             const w = window.open('', '_blank');
+            if (!w) { showToast('Allow pop-ups to print.', 'error'); return; }
             w.document.write(html);
             w.document.close();
         }
 
+
         function fetchVouchers(force = false) {
-            return fetch(API + '/cashvoucherfetchall')
+            return fetch(API + '/cashvoucherfetchall', force ? { cache: 'no-store' } : {})
                 .then(res => {
                     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
                     if (res.status === 304) return null; // walang nagbago
                     return res.text();
                 })
                 .then(text => {
-                    if (text === null) {
-                        if (force) rerender();
-                        return;
-                    }
+                    if (text === null) { if (force) rerender(); return; }
                     if (!force && text === lastText) return;
                     let data;
                     try { data = JSON.parse(text); } catch (e) { return; }
                     if (!Array.isArray(data)) return;
                     lastText = text;
                     allData = data;
-                    rerender();
+                    const first = !loaded;
+                    loaded = true;
+                    buildMonthSelect();
+                    // Kung walang kailangang aksyon sa unang load, ipakita na lang ang lahat
+                    if (first && currentTab === 'action' && !actionTabTouched && !allData.some(needsMyAction)
+                        && !new URLSearchParams(location.search).get('highlight')) {
+                        setTab('all'); actionTabTouched = false;
+                    } else {
+                        rerender();
+                    }
+                    if (first) checkHighlight();
                 })
-                .catch(err => console.error('Fetch error:', err));
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    if (!loaded) {
+                        document.getElementById('voucher-cards').innerHTML =
+                            emptyHtml('Could not load vouchers.', 'Check your connection, then refresh the page.');
+                    }
+                });
         }
 
         function rerender() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            renderTable(q ? allData.filter(row => matchesQuery(row, q)) : allData, q);
+            updateCounts();
+            const q = document.getElementById('search-input').value.trim().toLowerCase();
+            renderTable(allData.filter(row => tabMatch(row, currentTab) && (!q || matchesQuery(row, q))), q);
         }
 
-        document.getElementById('search-input').addEventListener('input', function () {
-            const q = this.value.toLowerCase();
-            renderTable(allData.filter(row => matchesQuery(row, q)), q);
-        });
+        document.getElementById('search-input').addEventListener('input', rerender);
 
         // ─── Highlight (galing sa notification link) ─────────
         function checkHighlight() {
-            const params = new URLSearchParams(window.location.search);
-            const highlightId = params.get('highlight');
+            const highlightId = new URLSearchParams(window.location.search).get('highlight');
             if (!highlightId) return;
+            // siguraduhing makikita ang row kahit nasa ibang tab o ibang buwan
+            if (!document.querySelector(`#voucher-cards .cvd-row[data-id="${CSS.escape(highlightId)}"]`)) {
+                const target = allData.find(r => String(r.id) === String(highlightId));
+                const k = target ? rowMonth(target) : '';
+                if (/^\d{4}-\d{2}$/.test(k)) { viewYear = +k.slice(0, 4); viewMonth = +k.slice(5, 7) - 1; buildMonthSelect(); }
+                setTab('all');
+            }
+            let tries = 0;
             const interval = setInterval(() => {
-                const isMobile = window.innerWidth < 768;
-                const row = isMobile
-                    ? document.querySelector(`#voucher-cards div[data-id="${CSS.escape(highlightId)}"]`)
-                    : document.querySelector(`#voucher-tbody tr[data-id="${CSS.escape(highlightId)}"]`);
+                tries++;
+                const row = document.querySelector(`#voucher-cards .cvd-row[data-id="${CSS.escape(highlightId)}"]`);
                 if (row) {
                     clearInterval(interval);
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (!isMobile) {
-                        const firstCell = row.querySelector('td:first-child');
-                        if (firstCell) {
-                            const badge = document.createElement('span');
-                            badge.className = 'highlight-badge';
-                            firstCell.prepend(badge);
-                            setTimeout(() => badge.remove(), 5000);
-                        }
-                    } else {
-                        let on = true;
-                        const flash = setInterval(() => { row.style.backgroundColor = on ? '#fecaca' : '#fee2e2'; on = !on; }, 300);
-                        setTimeout(() => { clearInterval(flash); row.style.backgroundColor = ''; }, 5000);
-                    }
+                    row.classList.add('cvd-row-flash');
+                    setTimeout(() => row.classList.remove('cvd-row-flash'), 3200);
                 }
+                if (tries >= 25) clearInterval(interval);
             }, 200);
-            setTimeout(() => clearInterval(interval), 5000);
         }
 
         // ─── Init ────────────────────────────────────────────
+        // Tandaan ang huling buwan na tiningnan (sa tab na ito lang)
+        try {
+            const saved = sessionStorage.getItem('cvd-month');
+            if (saved && /^\d{4}-\d{2}$/.test(saved)) { viewYear = +saved.slice(0, 4); viewMonth = +saved.slice(5, 7) - 1; }
+        } catch (e) { }
+        buildMonthSelect();
         fetchVouchers(true);
-        setTimeout(checkHighlight, 500);
 
         // 15s, at tumatakbo lang kapag nakikita ang tab
         setInterval(() => {

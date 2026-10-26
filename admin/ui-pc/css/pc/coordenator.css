@@ -1,0 +1,184 @@
+/* coordenator.css — styles ng coordenator.php */
+
+.dr-hazard {
+    background: repeating-linear-gradient(-45deg, #f59e0b 0 12px, #1f2937 12px 24px);
+}
+
+.dr-board {
+    background-color: #1f2937;
+    background-image: linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+
+/* ── DR print (asul) ── */
+.drdoc {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.drdoc table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.drdoc td {
+    vertical-align: top;
+    padding: 3px 5px;
+    word-wrap: break-word;
+}
+
+.drdoc .tbl td {
+    border: 1px solid #333;
+}
+
+.drdoc .c {
+    text-align: center;
+}
+
+.drdoc .r {
+    text-align: right;
+}
+
+.drdoc .b {
+    font-weight: 700;
+}
+
+.drdoc .i {
+    font-style: italic;
+}
+
+.drdoc p {
+    margin: 0 0 5px;
+}
+
+.drdoc .head {
+    border: 2px solid #1d4ed8;
+    margin-bottom: 8px;
+}
+
+.drdoc .title {
+    background: #1d4ed8;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    font-size: 15px;
+    letter-spacing: .08em;
+    padding: 5px;
+}
+
+.drdoc .co {
+    font-size: 10px;
+    color: #333;
+}
+
+.drdoc .meta td {
+    padding: 2px 4px;
+    font-size: 10.5px;
+}
+
+.drdoc .tbl .th td {
+    background: #1d4ed8;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+}
+
+.drdoc .blue {
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.drdoc .terms {
+    margin-top: 12px;
+    font-size: 10px;
+}
+
+.drdoc .sign {
+    margin-top: 36px;
+}
+
+.drdoc .sign td {
+    text-align: center;
+    padding: 0 14px;
+}
+
+.drdoc .sign .nm {
+    min-height: 15px;
+    font-weight: 700;
+}
+
+.drdoc .sign .ln {
+    border-top: 1px solid #111;
+    padding-top: 2px;
+    font-size: 10px;
+}
+
+.drdoc .sign .sig {
+    height: 46px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.drdoc .sign .sig img {
+    max-height: 46px;
+    max-width: 170px;
+    object-fit: contain;
+}
+
+.drdoc .sign .when {
+    font-size: 9px;
+    color: #555;
+    margin-top: 1px;
+}
+
+.dr-wm {
+    position: relative;
+    overflow: hidden;
+}
+
+.dr-wm::after {
+    content: 'FOR APPROVAL — NOT VALID';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 46px/1 Arial, sans-serif;
+    color: rgba(220, 38, 38, .12);
+    transform: rotate(-24deg);
+    pointer-events: none;
+    letter-spacing: .04em;
+}
+
+.dr-wm.ret::after {
+    content: 'RETURNED — NOT VALID';
+}
+
+#nhPrintArea {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 12mm;
+    }
+
+    body>*:not(#nhPrintArea) {
+        display: none !important;
+    }
+
+    #nhPrintArea {
+        display: block !important;
+    }
+
+    #nhPrintArea,
+    #nhPrintArea * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

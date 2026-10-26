@@ -48,6 +48,7 @@ $inquiryId = intval($_GET['id'] ?? 0);
             <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-3clientreviewapproval.php'; ?>
             <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-4quotationhistory.php'; ?>
             <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-5production.php'; ?>
+            <?php include ROOT_PATH . '/admin/ui-superad/page-2/set-6operations.php'; ?>
 
         </div>
 
@@ -168,6 +169,7 @@ $inquiryId = intval($_GET['id'] ?? 0);
                 monRenderDesignProgress(data.design_progress);
                 monRenderTimeline(data.cycles);
                 if (window.monRenderProduction) monRenderProduction(data.production);   // Cutting list → Delivery
+                if (window.monRenderOperations) monRenderOperations(data.operations);  // DR approval → Turnover
 
             } catch (e) {
                 console.error('monLoadTimeline:', e);

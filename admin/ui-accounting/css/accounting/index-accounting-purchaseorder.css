@@ -1,0 +1,13 @@
+/* index-accounting-purchaseorder.css — styles ng index-accounting-purchaseorder.php */
+
+/* Print: kinokopya ang form sa #nhPrintArea (direct child ng body) para hindi maputol ng modal */
+#nhPrintArea { display: none; }
+@media print {
+    @page { size: A4 portrait; margin: 8mm; }
+    html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+    body > *:not(#nhPrintArea) { display: none !important; }
+    #nhPrintArea { display: block !important; width: 100%; zoom: .86; }
+    #nhPrintArea > * { min-width: 0 !important; width: 100% !important; }
+    #nhPrintArea * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #nhPrintArea table, #nhPrintArea tr, #nhPrintArea img { page-break-inside: avoid; break-inside: avoid; }
+}
