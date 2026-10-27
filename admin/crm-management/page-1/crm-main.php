@@ -195,206 +195,154 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
 ?>
 
 
-<style>
-    .crm-doc .crm-step-panel { display: none; animation: crmFadeSlide .3s ease forwards; }
-    .crm-doc .crm-step-panel.active { display: block; }
-    @keyframes crmFadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+<?php
+// Tailwind-only na class strings — ginagamit ng step1–step4 at ng JS (walang <style> sa page na ito)
+$crmInputCls = 'w-full h-11 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
+$crmSelectCls = $crmInputCls . ' appearance-none pr-9 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed';
+$crmChipCls = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] text-gray-700 bg-white border border-gray-300 select-none transition hover:border-amber-400 peer-checked:bg-amber-700 peer-checked:border-amber-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 [&>i]:hidden peer-checked:[&>i]:inline';
+$crmSteps = [
+    ['Client Info', 'Name & address', 'fa-user'],
+    ['Project Details', 'Nature & scope', 'fa-ruler-combined'],
+    ['Assignment', 'Who handles it', 'fa-users-gear'],
+    ['Review', 'Check & submit', 'fa-clipboard-check'],
+];
+?>
 
-    /* step header */
-    .crm-doc .crm-step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .crm-doc .crm-step-icon { width: 40px; height: 40px; border-radius: 12px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; display: flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
-    .crm-doc .crm-step-title { font-size: 17px; font-weight: 700; color: #111827; line-height: 1.2; }
-    .crm-doc .crm-step-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
-
-    /* sections & fields */
-    .crm-doc .crm-section { background: rgba(255, 255, 255, .55); border: 1px solid #EEE8D9; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
-    .crm-doc .crm-section-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #a8a29e; margin-bottom: 12px; }
-    .crm-doc .crm-label { display: block; font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 6px; }
-    .crm-doc .crm-field { position: relative; }
-    .crm-doc .crm-field-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #c4b8a0; pointer-events: none; }
-    .crm-doc .crm-input { width: 100%; height: 42px; padding: 0 12px; font-size: 14px; color: #1f2937; background: #fff; border: 1px solid #DCD5C3; border-radius: 10px; outline: none; transition: border-color .15s, box-shadow .15s; }
-    .crm-doc .crm-input.pl-9 { padding-left: 34px; }
-    .crm-doc .crm-input.pr-12 { padding-right: 48px; }
-    .crm-doc .crm-input::placeholder { color: #c7c2b6; }
-    .crm-doc .crm-input:focus { border-color: #b45309; box-shadow: 0 0 0 3px rgba(180, 83, 9, .12); }
-    .crm-doc .crm-input:disabled { background: #f5f3ee; color: #a8a29e; cursor: not-allowed; }
-    .crm-doc .crm-select { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a8a29e'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px; }
-    .crm-doc .crm-invalid { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, .12) !important; }
-    .crm-doc .crm-error { display: none; margin-top: 6px; font-size: 11px; color: #dc2626; }
-    .crm-doc .crm-error.show { display: block; }
-
-    /* choice cards (Project Nature) */
-    .crm-doc .crm-choice { display: flex; align-items: center; gap: 12px; padding: 14px; background: #fff; border: 1.5px solid #E4DFD1; border-radius: 12px; transition: all .15s; }
-    .crm-doc label:hover > .crm-choice { border-color: #d6b98c; }
-    .crm-doc .crm-choice-icon { width: 38px; height: 38px; border-radius: 10px; background: #f5f3ee; color: #78716c; display: flex; align-items: center; justify-content: center; flex: none; transition: all .15s; }
-    .crm-doc .crm-choice-check { width: 20px; height: 20px; border-radius: 999px; border: 1.5px solid #d6d3d1; color: transparent; font-size: 10px; display: flex; align-items: center; justify-content: center; flex: none; transition: all .15s; }
-    .crm-doc .peer:checked + .crm-choice { border-color: #b45309; background: #fffbf5; box-shadow: 0 0 0 3px rgba(180, 83, 9, .1); }
-    .crm-doc .peer:checked + .crm-choice .crm-choice-icon { background: #b45309; color: #fff; }
-    .crm-doc .peer:checked + .crm-choice .crm-choice-check { background: #b45309; border-color: #b45309; color: #fff; }
-    .crm-doc .peer:focus-visible + .crm-choice, .crm-doc .peer:focus-visible + .crm-chip { outline: 2px solid #b45309; outline-offset: 2px; }
-
-    /* mode chips (naka-lock) */
-    .crm-doc .crm-mode-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #a8a29e; background: #f5f3ee; border: 1px solid #E4DFD1; }
-    .crm-doc .peer:checked + .crm-mode-chip { color: #fff; background: #1f2937; border-color: #1f2937; }
-
-    /* option chips (Scope) */
-    .crm-doc .crm-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; color: #44403c; background: #fff; border: 1px solid #DCD5C3; transition: all .15s; user-select: none; }
-    .crm-doc label:hover > .crm-chip { border-color: #d6b98c; }
-    .crm-doc .crm-chip-tick { display: none; font-size: 10px; }
-    .crm-doc .peer:checked + .crm-chip { color: #fff; background: #b45309; border-color: #b45309; }
-    .crm-doc .peer:checked + .crm-chip .crm-chip-tick { display: inline; }
-    .crm-doc .crm-gear { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #a8a29e; padding: 3px 8px; border-radius: 6px; transition: all .15s; }
-    .crm-doc .crm-gear:hover { color: #b45309; background: #fff7ed; }
-
-    .crm-doc .crm-note { display: flex; gap: 10px; font-size: 12px; color: #6b7280; background: #F6F2E8; border: 1px dashed #DCD5C3; border-radius: 12px; padding: 12px 14px; line-height: 1.5; }
-
-    /* buttons */
-    .crm-doc .crm-actions { display: flex; align-items: center; gap: 8px; margin-top: 24px; padding-top: 18px; border-top: 1px solid #EEE8D9; }
-    .crm-doc .crm-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 20px; border-radius: 10px; background: #1f2937; color: #fff; font-size: 13px; font-weight: 600; transition: background .15s; }
-    .crm-doc .crm-btn-primary:hover { background: #111827; }
-    .crm-doc .crm-btn-ghost { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 10px; color: #6b7280; font-size: 13px; font-weight: 600; border: 1px solid #DCD5C3; background: #fff; transition: all .15s; }
-    .crm-doc .crm-btn-ghost:hover { color: #374151; border-color: #a8a29e; }
-    .crm-doc .crm-btn-submit { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 22px; border-radius: 10px; background: #b45309; color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 6px 16px -6px rgba(180, 83, 9, .6); transition: all .15s; }
-    .crm-doc .crm-btn-submit:hover:not(:disabled) { background: #92400e; }
-    .crm-doc .crm-btn-submit:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-
-    /* stepper */
-    .crm-doc .crm-dot { width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px solid #d6d3d1; color: #a8a29e; background: #fff; transition: all .3s; position: relative; z-index: 1; }
-    .crm-doc .crm-dot.is-current { border-color: #b45309; color: #b45309; background: #fff7ed; box-shadow: 0 0 0 4px rgba(180, 83, 9, .12); }
-    .crm-doc .crm-dot.is-done { border-color: #b45309; background: #b45309; color: #fff; }
-    .crm-doc .crm-step-label { font-size: 11px; font-weight: 600; color: #a8a29e; margin-top: 6px; white-space: nowrap; transition: color .3s; }
-    .crm-doc .crm-step-label.is-on { color: #1f2937; }
-    .crm-doc .crm-line { flex: 1; height: 2px; background: #e7e5e4; margin: 0 6px 22px; border-radius: 2px; overflow: hidden; }
-    .crm-doc .crm-line > span { display: block; height: 100%; width: 0; background: #b45309; transition: width .35s ease; }
-    .crm-doc .crm-line.is-done > span { width: 100%; }
-
-    /* review */
-    .crm-doc .crm-review-card { background: #fff; border: 1px solid #E4DFD1; border-radius: 12px; overflow: hidden; }
-    .crm-doc .crm-review-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #F6F2E8; border-bottom: 1px solid #EEE8D9; }
-    .crm-doc .crm-confirm-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 14px; border-bottom: 1px solid #F3EEE1; font-size: .8125rem; }
-    .crm-doc .crm-confirm-row:last-child { border-bottom: none; }
-    .crm-doc .crm-confirm-label { color: #9CA3AF; white-space: nowrap; }
-    .crm-doc .crm-confirm-value { color: #111827; font-weight: 500; text-align: right; }
-</style>
-
-<!-- Flash data mula sa PHP session, ginagamit ng Tailwind toast script sa ibaba -->
+<!-- Flash data mula sa PHP session, ginagamit ng toast script sa ibaba -->
 <script>
     const crmToastData = {
         error: <?= json_encode($formError) ?>,
         success: <?= json_encode($formSuccess) ?>,
         controlNo: <?= json_encode($generatedControlNo) ?>
     };
+    const CRM_CHIP_CLS = <?= json_encode($crmChipCls) ?>;
 </script>
 
-<div class="crm-doc max-w-3xl mx-auto">
+<div class="crm-doc max-w-6xl mx-auto">
 
-    <!-- Document Card -->
-    <div class="bg-[#FBF9F4] rounded-2xl shadow-[0_10px_40px_-18px_rgba(120,80,20,.35)] border border-[#E4DFD1] overflow-hidden">
+    <div class="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start">
 
-        <!-- Header -->
-        <div class="relative px-6 md:px-8 pt-6 pb-5 bg-gradient-to-br from-white to-[#F6F0E2] border-b border-[#E4DFD1] overflow-hidden">
-            <img src="<?= BASE_URL ?>/icon/logo.webp" alt="" aria-hidden="true"
-                class="absolute -right-6 -bottom-8 w-40 opacity-[0.06] pointer-events-none select-none">
-            <div class="relative flex flex-wrap items-start justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <span class="w-12 h-12 rounded-xl bg-white border border-[#E4DFD1] shadow-sm flex items-center justify-center">
-                        <img src="<?= BASE_URL ?>/icon/logo.webp" class="h-9 w-9 object-contain" alt="logo">
-                    </span>
-                    <div>
-                        <p class="text-amber-700 text-[10px] font-bold tracking-[0.18em] uppercase mb-0.5">CRM · Inquiry Form</p>
-                        <h1 class="crm-serif text-gray-900 text-2xl leading-tight font-semibold">New Client Inquiry</h1>
+        <!-- ═══ FORM CARD ═══ -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-w-0">
+            <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+
+            <!-- Header -->
+            <div class="relative px-5 md:px-7 pt-5 pb-4 border-b border-gray-100 overflow-hidden">
+                <img src="<?= BASE_URL ?>/icon/logo.webp" alt="" aria-hidden="true"
+                    class="absolute -right-6 -bottom-10 w-40 opacity-[0.05] pointer-events-none select-none">
+                <div class="relative flex flex-wrap items-start justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-12 h-12 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
+                            <img src="<?= BASE_URL ?>/icon/logo.webp" class="h-9 w-9 object-contain" alt="logo">
+                        </span>
+                        <div class="min-w-0">
+                            <p class="text-amber-700 text-[10px] font-bold tracking-[0.18em] uppercase">CRM · Inquiry Form</p>
+                            <h1 class="text-gray-900 text-xl leading-tight font-semibold">New Client Inquiry</h1>
+                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500"><i class="fa-regular fa-calendar text-amber-700"></i> <?= date('F d, Y') ?></span>
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500 capitalize"><i class="fa-solid fa-code-branch text-amber-700"></i> <?= htmlspecialchars($_SESSION['branch'] ?? '—') ?></span>
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500"><i class="fa-regular fa-user text-amber-700"></i> <?= htmlspecialchars($currentSalesName) ?></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2">
+                        <p class="text-[9px] text-gray-400 uppercase tracking-[0.16em]">Reference No.</p>
+                        <p class="text-gray-900 font-mono font-semibold text-sm">
+                            <?= !empty($generatedControlNo)
+                                ? htmlspecialchars($generatedControlNo)
+                                : '<span class="text-gray-400 font-sans text-xs">Assigned on submit</span>' ?>
+                        </p>
                     </div>
                 </div>
-                <div class="text-right shrink-0 rounded-xl bg-white/80 border border-[#E4DFD1] px-3.5 py-2">
-                    <p class="text-[9px] text-gray-400 uppercase tracking-[0.16em]">Reference No.</p>
-                    <p class="text-gray-900 font-mono font-semibold text-sm">
-                        <?= !empty($generatedControlNo)
-                            ? htmlspecialchars($generatedControlNo)
-                            : '<span class="text-gray-400">Assigned on submit</span>' ?>
-                    </p>
-                </div>
             </div>
 
-            <!-- meta -->
-            <div class="relative mt-4 flex flex-wrap items-center gap-2 text-[11px]">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#E4DFD1] text-gray-500">
-                    <i class="fa-regular fa-calendar text-amber-700"></i> <?= date('F d, Y') ?>
-                </span>
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#E4DFD1] text-gray-500">
-                    <i class="fa-solid fa-code-branch text-amber-700"></i> <?= htmlspecialchars($_SESSION['branch'] ?? '—') ?>
-                </span>
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#E4DFD1] text-gray-500">
-                    <i class="fa-regular fa-user text-amber-700"></i> <?= htmlspecialchars($currentSalesName) ?>
-                </span>
-                <span id="crm_draft_tag" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700">
-                    <i class="fa-solid fa-cloud"></i> Draft saved
-                </span>
+            <!-- Step Indicator -->
+            <div class="flex items-start px-5 md:px-8 pt-5 pb-1">
+                <?php foreach ($crmSteps as $i => [$label, $sub, $icon]):
+                    $n = $i + 1; ?>
+                    <button type="button" onclick="crmStepClick(<?= $n ?>)" class="flex flex-col items-center group min-w-0" aria-label="Step <?= $n ?>: <?= $label ?>">
+                        <span id="crm-dot-<?= $n ?>" class="relative z-[1] w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300
+                            <?= $n === 1 ? 'border-amber-700 text-amber-700 bg-amber-50 ring-4 ring-amber-100' : 'border-gray-300 text-gray-400 bg-white' ?>"><?= $n ?></span>
+                        <span id="crm-label-<?= $n ?>" class="mt-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors <?= $n === 1 ? 'text-gray-900' : 'text-gray-400' ?>"><?= $label ?></span>
+                        <span class="hidden sm:block text-[10px] text-gray-400 whitespace-nowrap"><?= $sub ?></span>
+                    </button>
+                    <?php if ($n < count($crmSteps)): ?>
+                        <div id="crm-line-<?= $n ?>" class="flex-1 h-0.5 bg-gray-200 mx-1.5 mt-[18px] rounded overflow-hidden"><span class="block h-full w-0 bg-amber-700 transition-all duration-500"></span></div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
             </div>
-        </div>
 
-        <!-- Step Indicator -->
-        <div class="flex items-start px-6 md:px-10 pt-6 pb-2">
-            <?php
-            $crmSteps = ['Client Info', 'Project Details', 'Assignment', 'Review'];
-            foreach ($crmSteps as $i => $label):
-                $n = $i + 1;
+            <!-- Form Body -->
+            <form method="POST" action="" id="crmInquiryForm" class="px-5 md:px-7 pt-4 pb-6 bg-slate-50/50" novalidate>
+                <?php
+                include $crmStepsPath . '/step1.php';
+                include $crmStepsPath . '/step2.php';
+                include $crmStepsPath . '/step3.php';
+                include $crmStepsPath . '/step4.php';
                 ?>
-                <div class="flex flex-col items-center">
-                    <div id="crm-dot-<?= $n ?>" class="crm-dot <?= $n === 1 ? 'is-current' : '' ?>"><?= $n ?></div>
-                    <span id="crm-label-<?= $n ?>" class="crm-step-label <?= $n === 1 ? 'is-on' : '' ?>"><?= $label ?></span>
+            </form>
+
+            <!-- footer strip -->
+            <div class="px-5 md:px-7 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                <p class="text-[11px] text-amber-800/80"><i class="fa-solid fa-shield-halved mr-1"></i>This record is maintained by the Sales Department.</p>
+                <p class="text-[11px] text-gray-400">NobleHome Construction Corporation</p>
+            </div>
+        </div>
+
+        <!-- ═══ LIVE SUMMARY (sticky) ═══ -->
+        <aside class="lg:sticky lg:top-4 space-y-3 min-w-0">
+            <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <i class="fa-solid fa-file-lines text-amber-700"></i>
+                    <p class="text-[12.5px] font-semibold text-gray-900 flex-1">Inquiry summary</p>
+                    <span id="crm_draft_tag" class="hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-semibold">
+                        <i class="fa-solid fa-cloud"></i> Draft saved
+                    </span>
                 </div>
-                <?php if ($n < count($crmSteps)): ?>
-                    <div id="crm-line-<?= $n ?>" class="crm-line mt-4"><span></span></div>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-
-        <!-- Form Body -->
-        <form method="POST" action="" id="crmInquiryForm" class="px-6 md:px-8 pt-4 pb-7" novalidate>
-
-            <?php
-            include $crmStepsPath . '/step1.php';
-            include $crmStepsPath . '/step2.php';
-            include $crmStepsPath . '/step3.php';
-            include $crmStepsPath . '/step4.php';
-            ?>
-
-        </form>
-
-        <!-- Document footer strip -->
-        <div class="px-6 md:px-8 py-3 bg-[#F3EEE1] border-t border-[#E4DFD1] flex items-center justify-between gap-3">
-            <p class="text-[11px] text-[#B0664A]"><i class="fa-solid fa-shield-halved mr-1"></i>This record is maintained by the Sales Department.</p>
-            <p class="text-[11px] text-gray-400">NobleHome Construction Corporation</p>
-        </div>
+                <div class="p-4">
+                    <div class="mb-3">
+                        <div class="flex items-center justify-between text-[10.5px] font-semibold text-gray-500 mb-1"><span>Completion</span><span id="crm_sum_pct">0%</span></div>
+                        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div id="crm_sum_bar" class="h-full bg-amber-600 rounded-full transition-all duration-300" style="width:0%"></div></div>
+                    </div>
+                    <dl id="crm_summary" class="space-y-2.5 text-[12px]"></dl>
+                </div>
+            </section>
+            <section class="rounded-2xl border border-dashed border-gray-300 bg-white/60 px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
+                <p class="font-semibold text-gray-700 mb-1"><i class="fa-solid fa-lightbulb text-amber-600 mr-1"></i>Tip</p>
+                Your progress is saved on this device as you type, so you can refresh or come back later.
+            </section>
+        </aside>
     </div>
 </div>
 
 <!-- Reusable Modal para sa Manage Options (CRUD) ng Measuring Space / Scope of Project -->
 <div id="optionsModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-gear text-xs"></i></span>
-                <h3 id="optionsModalTitle" class="text-sm font-semibold text-gray-800">Manage Options</h3>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-gear text-xs"></i></span>
+                <h3 id="optionsModalTitle" class="text-sm font-semibold text-gray-800 truncate">Manage Options</h3>
             </div>
-            <button type="button" onclick="closeOptionsModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            <button type="button" onclick="closeOptionsModal()" aria-label="Close"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
         </div>
         <div class="p-5 space-y-4">
             <div class="flex gap-2">
                 <input id="optionsNewLabel" type="text" placeholder="Add new option"
                     onkeydown="if (event.key === 'Enter') { event.preventDefault(); addOption(); }"
-                    class="flex-1 h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-600/10">
+                    class="flex-1 h-10 px-3 text-sm border border-gray-300 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                 <button type="button" onclick="addOption()"
-                    class="h-10 px-4 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800">
+                    class="h-10 px-4 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-black">
                     <i class="fa-solid fa-plus text-xs mr-1"></i>Add
                 </button>
             </div>
-            <ul id="optionsList" class="space-y-2 max-h-64 overflow-y-auto"></ul>
+            <ul id="optionsList" class="space-y-2 max-h-64 overflow-y-auto [scrollbar-width:thin]"></ul>
         </div>
     </div>
 </div>
 
-<!-- Toast container: bottom-right, Tailwind-only, walang custom CSS -->
+<!-- Toast container -->
 <div id="crmToastContainer"
     class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
 </div>
@@ -407,19 +355,11 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         const container = document.getElementById('crmToastContainer');
 
         const palette = type === 'success'
-            ? {
-                wrap: 'bg-green-50 border-green-200 text-green-700',
-                icon: 'bg-green-200 text-green-700',
-                symbol: '✓'
-            }
-            : {
-                wrap: 'bg-red-50 border-red-200 text-red-700',
-                icon: 'bg-red-200 text-red-700',
-                symbol: '!'
-            };
+            ? { wrap: 'bg-white border-gray-200 text-gray-800', icon: 'bg-emerald-500 text-white', symbol: '✓' }
+            : { wrap: 'bg-white border-gray-200 text-gray-800', icon: 'bg-red-600 text-white', symbol: '!' };
 
         const toast = document.createElement('div');
-        toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm
+        toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-xl shadow-lg px-4 py-3 text-sm
             ${palette.wrap}
             translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
 
@@ -428,9 +368,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
                 ${palette.symbol}
             </span>
             <span class="flex-1 leading-relaxed">${message}</span>
-            <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">
-                &times;
-            </button>
+            <button type="button" class="shrink-0 inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600" aria-label="Close"><i class="fa-solid fa-xmark text-xs"></i></button>
         `;
 
         container.appendChild(toast);
@@ -456,43 +394,82 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
     const CRM_TOTAL_STEPS = 4;
 
     // ── inline na error (walang alert) ──
+    const CRM_INVALID_CLS = ['crm-invalid', '!border-red-500', 'ring-2', 'ring-red-100'];
+    function crmSetInvalid(el, on) { if (el) CRM_INVALID_CLS.forEach(c => el.classList.toggle(c, on)); }
+    function crmShowError(key, msg) {
+        const p = document.querySelector(`#crmInquiryForm [data-error-for="${key}"]`);
+        if (!p) return;
+        p.textContent = msg || '';
+        p.classList.toggle('hidden', !msg);
+    }
     function crmClearErrors() {
-        document.querySelectorAll('#crmInquiryForm .crm-invalid').forEach(el => el.classList.remove('crm-invalid'));
-        document.querySelectorAll('#crmInquiryForm .crm-error').forEach(p => { p.classList.remove('show'); p.textContent = ''; });
+        document.querySelectorAll('#crmInquiryForm .crm-invalid').forEach(el => crmSetInvalid(el, false));
+        document.querySelectorAll('#crmInquiryForm .crm-error').forEach(p => { p.classList.add('hidden'); p.textContent = ''; });
+        const ng = document.getElementById('crm_nature_group');
+        if (ng) ng.classList.remove('ring-2', 'ring-red-200', 'ring-offset-2');
     }
     function crmFieldError(id, msg) {
         const el = document.getElementById(id);
-        if (el) { el.classList.add('crm-invalid'); el.focus({ preventScroll: true }); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        const p = document.querySelector(`#crmInquiryForm [data-error-for="${id}"]`);
-        if (p) { p.textContent = msg; p.classList.add('show'); }
+        if (el) { crmSetInvalid(el, true); el.focus({ preventScroll: true }); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        crmShowError(id, msg);
         crmShowToast(msg, 'error', 3500);
     }
     // tanggalin ang pula kapag inayos na ng user
     document.getElementById('crmInquiryForm').addEventListener('input', e => {
         if (!e.target.classList.contains('crm-invalid')) return;
-        e.target.classList.remove('crm-invalid');
-        const p = document.querySelector(`#crmInquiryForm [data-error-for="${e.target.id}"]`);
-        if (p) p.classList.remove('show');
+        crmSetInvalid(e.target, false);
+        crmShowError(e.target.id, '');
     });
     document.getElementById('crmInquiryForm').addEventListener('change', e => {
         if (e.target.name === 'project_nature') {
-            const p = document.querySelector('#crmInquiryForm [data-error-for="project_nature"]');
-            if (p) p.classList.remove('show');
+            crmShowError('project_nature', '');
+            const ng = document.getElementById('crm_nature_group');
+            if (ng) ng.classList.remove('ring-2', 'ring-red-200', 'ring-offset-2');
         }
         if (e.target.classList.contains('crm-invalid')) {
-            e.target.classList.remove('crm-invalid');
-            const p = document.querySelector(`#crmInquiryForm [data-error-for="${e.target.id}"]`);
-            if (p) p.classList.remove('show');
+            crmSetInvalid(e.target, false);
+            crmShowError(e.target.id, '');
         }
     });
 
+    function crmContactCount() {
+        const el = document.getElementById('crm_contact_number');
+        const cc = document.getElementById('crm_contact_count');
+        if (!el || !cc) return;
+        const n = el.value.length;
+        cc.textContent = n + '/11';
+        cc.className = 'absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold ' + (n === 11 ? 'text-green-600' : n ? 'text-amber-600' : 'text-gray-300');
+    }
+
+    function crmSetProjectType(v) {
+        const el = document.getElementById('crm_project_type');
+        el.value = v;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Pinindot ang step sa itaas: pwedeng bumalik; pasulong ay dadaan pa rin sa validation
+    function crmStepClick(n) {
+        if (n === crmCurrentStep) return;
+        if (n < crmCurrentStep) return crmGoToStep(n);
+        if (crmCurrentStep === 1) return crmGoToStep2();
+        if (crmCurrentStep === 2) return crmGoToStep3();
+        if (crmCurrentStep === 3) return crmGoToStep4();
+    }
+
+    function crmShowStep(n) {
+        document.querySelectorAll('#crmInquiryForm .crm-step-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById(`crm-step-${n}`);
+        panel.classList.remove('hidden');
+        panel.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 250, easing: 'ease-out' });
+    }
+
     function crmGoToStep(n) {
         crmClearErrors();
-        document.getElementById(`crm-step-${crmCurrentStep}`).classList.remove('active');
         crmCurrentStep = n;
-        document.getElementById(`crm-step-${crmCurrentStep}`).classList.add('active');
+        crmShowStep(n);
         crmUpdateDots();
         crmSaveDraft();
+        crmUpdateSummary();
         window.scrollTo({ top: document.getElementById('crmInquiryForm').offsetTop - 20, behavior: 'smooth' });
     }
 
@@ -551,14 +528,22 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
             siteVisitRadio.disabled = true;
             siteVisitLabel.classList.add('opacity-40', 'pointer-events-none');
         }
+        const note = document.getElementById('crm_next_mode_note');
+        if (note) {
+            note.classList.toggle('hidden', !nature);
+            note.innerHTML = nature === 'material'
+                ? '<i class="fa-solid fa-file-invoice mr-1"></i>Material Only — no site visit needed. Goes straight to 2D &amp; Quotation once a designer is assigned.'
+                : '<i class="fa-solid fa-person-walking mr-1"></i>Modular — the designer will visit the site to take measurements first.';
+        }
         crmSaveDraft();
     }
 
     function crmGoToStep3() {
         const nature = document.querySelector('input[name="project_nature"]:checked');
         if (!nature) {
-            const p = document.querySelector('#crmInquiryForm [data-error-for="project_nature"]');
-            if (p) { p.textContent = 'Please choose Modular or Material Only.'; p.classList.add('show'); }
+            crmShowError('project_nature', 'Please choose Modular or Material Only.');
+            const ng = document.getElementById('crm_nature_group');
+            if (ng) { ng.classList.add('ring-2', 'ring-red-200', 'ring-offset-2'); ng.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             crmShowToast('Please select Project Nature (Modular or Material Only).', 'error', 3500);
             return;
         }
@@ -571,16 +556,19 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
     }
 
     function crmUpdateDots() {
+        const base = 'relative z-[1] w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ';
         for (let i = 1; i <= CRM_TOTAL_STEPS; i++) {
             const dot = document.getElementById(`crm-dot-${i}`);
             const lbl = document.getElementById(`crm-label-${i}`);
-            dot.classList.toggle('is-done', i < crmCurrentStep);
-            dot.classList.toggle('is-current', i === crmCurrentStep);
-            dot.innerHTML = i < crmCurrentStep ? '<i class="fa-solid fa-check text-[11px]"></i>' : i;
-            if (lbl) lbl.classList.toggle('is-on', i <= crmCurrentStep);
+            const done = i < crmCurrentStep, cur = i === crmCurrentStep;
+            dot.className = base + (done ? 'border-amber-700 bg-amber-700 text-white'
+                : cur ? 'border-amber-700 text-amber-700 bg-amber-50 ring-4 ring-amber-100'
+                    : 'border-gray-300 text-gray-400 bg-white');
+            dot.innerHTML = done ? '<i class="fa-solid fa-check text-[11px]"></i>' : i;
+            if (lbl) lbl.className = 'mt-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors ' + (i <= crmCurrentStep ? 'text-gray-900' : 'text-gray-400');
         }
         for (let i = 1; i < CRM_TOTAL_STEPS; i++) {
-            document.getElementById(`crm-line-${i}`).classList.toggle('is-done', i < crmCurrentStep);
+            document.getElementById(`crm-line-${i}`).firstElementChild.style.width = i < crmCurrentStep ? '100%' : '0';
         }
     }
 
@@ -779,15 +767,15 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         ];
 
         document.getElementById('crm_review_content').innerHTML = groups.map(g => `
-            <div class="crm-review-card">
-                <div class="crm-review-head">
+            <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
                     <p class="text-[11px] font-bold uppercase tracking-wider text-gray-600"><i class="fa-solid ${g.icon} text-amber-700 mr-1.5"></i>${g.title}</p>
-                    <button type="button" onclick="crmGoToStep(${g.step})" class="text-[11px] font-semibold text-amber-700 hover:underline"><i class="fa-solid fa-pen text-[9px] mr-1"></i>Edit</button>
+                    <button type="button" onclick="crmGoToStep(${g.step})" class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 px-2 py-1 rounded-md hover:bg-amber-50"><i class="fa-solid fa-pen text-[9px]"></i>Edit</button>
                 </div>
                 ${g.rows.map(([label, val]) => `
-                    <div class="crm-confirm-row">
-                        <span class="crm-confirm-label">${label}</span>
-                        <span class="crm-confirm-value">${escapeHtml(val)}</span>
+                    <div class="flex justify-between gap-4 px-4 py-2.5 border-b border-gray-100 last:border-b-0 text-[13px]">
+                        <span class="text-gray-400 whitespace-nowrap">${label}</span>
+                        <span class="text-right font-medium min-w-0 break-words ${val === '—' ? 'text-gray-300' : 'text-gray-900'}">${escapeHtml(val)}</span>
                     </div>`).join('')}
             </div>`).join('');
 
@@ -880,8 +868,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         }
         crmSyncAddressHiddenFields();
         crmUpdateAddressPreview();
-        const cc = document.getElementById('crm_contact_count');
-        if (cc) cc.textContent = (document.getElementById('crm_contact_number').value || '').length + '/11';
+        crmContactCount();
 
         // Project Nature -> derives Mode automatically (no separate inquiry_mode restore needed)
         if (data.project_nature) {
@@ -903,9 +890,8 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
 
         // Bumalik sa step kung saan sila huling na-iwan
         if (data.step && data.step >= 1 && data.step <= CRM_TOTAL_STEPS) {
-            document.getElementById(`crm-step-${crmCurrentStep}`).classList.remove('active');
             crmCurrentStep = data.step;
-            document.getElementById(`crm-step-${crmCurrentStep}`).classList.add('active');
+            crmShowStep(crmCurrentStep);
             crmUpdateDots();
 
             // Kung Step 4 (Review) ang na-restore, i-build ulit yung review content
@@ -913,6 +899,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
                 crmBuildReview();
             }
         }
+        crmUpdateSummary();
     }
 
     // Submit: sa Review lang, naka-check ang confirm, at isang beses lang
@@ -929,9 +916,58 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
         if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'submit') e.preventDefault();
     });
 
+    // ═══════════════════════════════════════════════════════════
+    // LIVE SUMMARY (kanang panel)
+    // ═══════════════════════════════════════════════════════════
+    function crmUpdateSummary() {
+        const box = document.getElementById('crm_summary');
+        if (!box) return;
+        const v = id => (document.getElementById(id)?.value || '').trim();
+        const checked = name => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
+        const addr = [v('crm_house_street'), crmSelectedText('crm_barangay') ? 'Brgy. ' + crmSelectedText('crm_barangay') : '', crmSelectedText('crm_city'), crmSelectedText('crm_province')].filter(Boolean).join(', ');
+        const nature = document.querySelector('input[name="project_nature"]:checked')?.value || '';
+        const scope = checked('project_scope[]');
+        const area = checked('measuring_space[]');
+        const phoneOk = /^[0-9]{11}$/.test(v('crm_contact_number'));
+
+        const required = [!!v('crm_client_name'), phoneOk, !!v('crm_house_street'), !!crmSelectedText('crm_city'), !!crmSelectedText('crm_barangay'), !!nature];
+        const pct = Math.round(required.filter(Boolean).length / required.length * 100);
+        document.getElementById('crm_sum_pct').textContent = pct + '%';
+        document.getElementById('crm_sum_bar').style.width = pct + '%';
+        document.getElementById('crm_sum_bar').className = 'h-full rounded-full transition-all duration-300 ' + (pct === 100 ? 'bg-green-600' : 'bg-amber-600');
+
+        const row = (icon, label, value, ok) => `
+            <div class="flex items-start gap-2.5">
+                <span class="w-6 h-6 rounded-md ${ok ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'} flex items-center justify-center shrink-0 text-[10px]"><i class="fa-solid ${ok ? 'fa-check' : icon}"></i></span>
+                <div class="min-w-0 flex-1">
+                    <dt class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">${label}</dt>
+                    <dd class="${value ? 'text-gray-800 font-medium' : 'text-gray-300'} break-words">${value ? escapeHtml(value) : 'Not yet filled'}</dd>
+                </div>
+            </div>`;
+        const chips = list => list.length
+            ? `<dd class="flex flex-wrap gap-1 mt-0.5">${list.map(s => `<span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 text-[10.5px] font-medium">${escapeHtml(s)}</span>`).join('')}</dd>`
+            : '<dd class="text-gray-300">None selected</dd>';
+
+        box.innerHTML = [
+            row('fa-user', 'Client', v('crm_client_name'), !!v('crm_client_name')),
+            row('fa-phone', 'Contact', v('crm_contact_number') + (v('crm_contact_number') && !phoneOk ? ' (needs 11 digits)' : ''), phoneOk),
+            row('fa-location-dot', 'Address', addr, !!(v('crm_house_street') && crmSelectedText('crm_city') && crmSelectedText('crm_barangay'))),
+            row('fa-cubes', 'Project nature', nature ? (nature === 'modular' ? 'Modular · Site visit needed' : 'Material Only · Ready for quotation') : '', !!nature),
+            row('fa-building', 'Type of project', v('crm_project_type'), !!v('crm_project_type')),
+            `<div class="pt-1 border-t border-gray-100"><dt class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mt-1.5">Scope of project</dt>${chips(scope)}</div>`,
+            `<div><dt class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Scope area</dt>${chips(area)}</div>`,
+        ].join('');
+
+        // bilang ng napili sa bawat chip group
+        [['project_scope_checkboxes', scope.length], ['measuring_space_checkboxes', area.length]].forEach(([id, n]) => {
+            const el = document.querySelector(`[data-chip-count="${id}"]`);
+            if (el) el.textContent = n ? `· ${n} selected` : '';
+        });
+    }
+
     // I-save kada may binabago sa form (typing, select, checkbox)
-    document.getElementById('crmInquiryForm').addEventListener('input', crmSaveDraft);
-    document.getElementById('crmInquiryForm').addEventListener('change', crmSaveDraft);
+    document.getElementById('crmInquiryForm').addEventListener('input', () => { crmSaveDraft(); crmUpdateSummary(); });
+    document.getElementById('crmInquiryForm').addEventListener('change', () => { crmSaveDraft(); crmUpdateSummary(); });
 
     // I-trigger ang toast base sa flash data mula sa PHP session, tapos i-restore ang draft
     if (crmToastData.error) {
@@ -1103,7 +1139,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
             label.className = 'cursor-pointer';
             label.innerHTML = `
                 <input type="checkbox" name="${inputName}" value="${escapeHtml(item.label)}" class="peer sr-only">
-                <span class="crm-chip"><i class="fa-solid fa-check crm-chip-tick"></i>${escapeHtml(item.label)}</span>
+                <span class="${CRM_CHIP_CLS}"><i class="fa-solid fa-check text-[10px]"></i>${escapeHtml(item.label)}</span>
             `;
             if (checkedValues.includes(item.label)) {
                 label.querySelector('input').checked = true;
@@ -1111,6 +1147,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
             container.appendChild(label);
         });
         crmSaveDraft();
+        crmUpdateSummary();
     }
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOptionsModal(); });

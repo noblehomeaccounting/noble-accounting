@@ -6,274 +6,199 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
 <div class="max-w-6xl mx-auto">
 
-    <!-- Header -->
-    <div class="mb-4">
-        <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management</p>
-        <h1 class="text-gray-900 text-xl font-semibold">Sales &amp; Market List</h1>
-    </div>
-
-    <!-- Search + Filters (same IDs as before, so your JS still works) -->
-    <div class="mb-4 bg-white border border-gray-200 rounded-xl shadow-sm">
-
-        <!-- Row 1: search + clear -->
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3">
-            <div class="relative flex-1 sm:max-w-md">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                </svg>
-                <input id="crmListSearch" type="text" placeholder="Search control no., client or contact"
-                    class="w-full h-9 pl-9 pr-8 text-sm text-gray-800 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-lg
-                       focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
-                <button type="button" id="crmListSearchClear" aria-label="Clear search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full
-                       text-gray-400 hover:text-gray-600 hover:bg-gray-200 text-base leading-none">&times;</button>
+    <!-- ═══ HEADER ═══ -->
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
+        <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+        <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-address-book text-lg"></i></span>
+                <div class="min-w-0">
+                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">CRM Management · Sales</p>
+                    <h1 class="text-gray-900 text-lg font-semibold leading-tight">Sales &amp; Market List</h1>
+                    <p class="text-gray-400 text-[11px] mt-0.5">Schedule the site visit and assign a designer, then follow the inquiry to 2D &amp; Quotation.</p>
+                </div>
             </div>
-
-            <button type="button" id="crmFilterClear" class="hidden sm:ml-auto inline-flex items-center gap-1.5 h-9 px-3 text-xs font-medium text-amber-700 bg-amber-50
-                   border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Clear filters
-            </button>
         </div>
 
-        <!-- Row 2: filters -->
-        <div
-            class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.6fr)] gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl">
+        <!-- Stage counters (= quick filter) -->
+        <div id="crmStageTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <?php foreach ([
+                ['', 'All', 'fa-layer-group', 'text-gray-900'],
+                ['schedule', 'To schedule', 'fa-calendar-plus', 'text-amber-700'],
+                ['sitevisit', 'Site visit', 'fa-ruler-combined', 'text-orange-700'],
+                ['quotation', '2D & Quotation', 'fa-file-pen', 'text-blue-700'],
+                ['stopped', 'Not proceeding', 'fa-ban', 'text-red-600'],
+            ] as [$val, $label, $icon, $cls]): ?>
+                <button type="button" data-stage="<?= $val ?>"
+                    class="crm-stage-tab text-left rounded-xl border px-3.5 py-2 transition-colors">
+                    <span class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"><i class="fa-solid <?= $icon ?> text-[9px]"></i><?= htmlspecialchars($label) ?></span>
+                    <span data-stage-count="<?= $val ?>" class="block text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span>
+                </button>
+            <?php endforeach; ?>
+        </div>
 
-            <label class="block">
-                <span class="block mb-1 text-[11px] font-medium text-gray-500">Status</span>
-                <div class="relative">
-                    <select id="crmFilterStatus"
-                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
-                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+        <!-- Search + filters (same IDs as before) -->
+        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60">
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="relative flex-1 min-w-[200px] max-w-md">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px] pointer-events-none"></i>
+                    <input id="crmListSearch" type="text" placeholder="Search control no., client or contact…"
+                        class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-8 pr-8 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                    <button type="button" id="crmListSearchClear" aria-label="Clear search"
+                        class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100"><i class="fa-solid fa-xmark text-xs leading-none"></i></button>
+                </div>
+                <button type="button" id="crmFilterToggle" onclick="crmToggleFilters()"
+                    class="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <i class="fa-solid fa-sliders"></i> Filters <span id="crmFilterCountBadge" class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold items-center justify-center">0</span>
+                </button>
+                <select id="crmSortSelect" aria-label="Sort"
+                    class="h-9 pl-2.5 pr-7 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600">
+                    <option value="created_at:desc">Newest first</option>
+                    <option value="created_at:asc">Oldest first</option>
+                    <option value="client_name:asc">Client A–Z</option>
+                    <option value="control_no:asc">Control no.</option>
+                    <option value="contract_amount:desc">Highest amount</option>
+                    <option value="measurement_datetime:asc">Site visit date</option>
+                </select>
+                <button type="button" id="crmFilterClear"
+                    class="hidden inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
+                    <i class="fa-solid fa-xmark"></i> Clear filters
+                </button>
+                <span id="crmListCount" class="ml-auto text-[11px] text-gray-400"></span>
+            </div>
+
+            <div id="crmFilterPanel" class="hidden mt-3 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.6fr)] gap-3">
+                <label class="block">
+                    <span class="block mb-1 text-[11px] font-semibold text-gray-500">Status</span>
+                    <select id="crmFilterStatus" class="crm-filter w-full h-9 px-2.5 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                         <option value="">All status</option>
                     </select>
-                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </div>
-            </label>
-
-            <label class="block">
-                <span class="block mb-1 text-[11px] font-medium text-gray-500">Designer</span>
-                <div class="relative">
-                    <select id="crmFilterDesigner"
-                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
-                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                </label>
+                <label class="block">
+                    <span class="block mb-1 text-[11px] font-semibold text-gray-500">Designer</span>
+                    <select id="crmFilterDesigner" class="crm-filter w-full h-9 px-2.5 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                         <option value="">All designers</option>
                     </select>
-                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </div>
-            </label>
-
-            <label class="block">
-                <span class="block mb-1 text-[11px] font-medium text-gray-500">Project</span>
-                <div class="relative">
-                    <select id="crmFilterProject"
-                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
-                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                </label>
+                <label class="block">
+                    <span class="block mb-1 text-[11px] font-semibold text-gray-500">Project</span>
+                    <select id="crmFilterProject" class="crm-filter w-full h-9 px-2.5 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                         <option value="">All projects</option>
                     </select>
-                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </div>
-            </label>
-
-            <label class="block">
-                <span class="block mb-1 text-[11px] font-medium text-gray-500">Contract amount</span>
-                <div class="relative">
-                    <select id="crmFilterAmount"
-                        class="crm-filter w-full h-9 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg appearance-none cursor-pointer
-                           hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 transition-colors">
+                </label>
+                <label class="block">
+                    <span class="block mb-1 text-[11px] font-semibold text-gray-500">Contract amount</span>
+                    <select id="crmFilterAmount" class="crm-filter w-full h-9 px-2.5 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                         <option value="">Any</option>
                         <option value="with">With amount</option>
                         <option value="without">No amount yet</option>
                     </select>
-                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </div>
-            </label>
-
-            <!-- Date range: one joined control instead of two separate boxes -->
-            <div class="col-span-2 md:col-span-4 xl:col-span-1">
-                <span class="block mb-1 text-[11px] font-medium text-gray-500">Date filed</span>
-                <div
-                    class="flex items-center h-9 bg-white border border-gray-200 rounded-lg hover:border-gray-300
-                        focus-within:ring-2 focus-within:ring-amber-100 focus-within:border-amber-600 transition-colors">
-                    <input id="crmFilterFrom" type="date" aria-label="Filed from"
-                        class="crm-filter flex-1 min-w-0 h-full px-2.5 text-sm text-gray-700 bg-transparent border-0 rounded-l-lg focus:outline-none">
-                    <span class="text-gray-300 text-sm select-none">–</span>
-                    <input id="crmFilterTo" type="date" aria-label="Filed to"
-                        class="crm-filter flex-1 min-w-0 h-full px-2.5 text-sm text-gray-700 bg-transparent border-0 rounded-r-lg focus:outline-none">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Table Card (desktop / tablet) -->
-    <div class="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-xs">
-                <thead>
-                    <tr
-                        class="bg-gray-50 border-b border-gray-200 text-left text-[10px] uppercase tracking-wide text-gray-500">
-                        <th class="px-4 py-2.5 font-semibold select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700"
-                                data-key="control_no">
-                                Control No. <span class="crm-sort-arrow text-gray-300">↕</span>
-                            </button>
-                        </th>
-                        <th class="px-4 py-2.5 font-semibold select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700"
-                                data-key="client_name">
-                                Client <span class="crm-sort-arrow text-gray-300">↕</span>
-                            </button>
-                        </th>
-                        <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Contact No.</th>
-                        <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Project</th>
-                        <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Designer</th>
-                        <th class="px-4 py-2.5 font-semibold text-right select-none whitespace-nowrap">
-                            <button type="button"
-                                class="crm-sort-th flex items-center gap-1 hover:text-gray-700 ml-auto"
-                                data-key="contract_amount">
-                                Contract Amount <span class="crm-sort-arrow text-gray-300">↕</span>
-                            </button>
-                        </th>
-                        <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
-                        <th class="px-4 py-2.5 font-semibold select-none whitespace-nowrap">
-                            <button type="button" class="crm-sort-th flex items-center gap-1 hover:text-gray-700"
-                                data-key="created_at">
-                                Date Filed <span class="crm-sort-arrow text-gray-300">↕</span>
-                            </button>
-                        </th>
-                        <th class="px-4 py-2.5 font-semibold text-right whitespace-nowrap">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="crmListTbody" class="divide-y divide-gray-100">
-                    <!-- Populated via JS -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Card list (mobile) -->
-    <div id="crmListCards" class="md:hidden space-y-2.5"></div>
-
-    <p id="crmListCount" class="text-[11px] text-gray-400 mt-2.5"></p>
-</div>
-
-<!-- Detail Modal -->
-<div id="crmDetailModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden max-h-[85vh] flex flex-col">
-        <div class="px-5 py-3.5 border-b border-gray-100 flex items-start justify-between">
-            <div>
-                <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">Inquiry Detail
-                </p>
-                <h3 id="crmDetailControlNo" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
-            </div>
-            <button type="button" onclick="crmCloseDetailModal()"
-                class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-        </div>
-        <div id="crmDetailBody" class="px-5 py-3.5 overflow-y-auto space-y-0.5">
-            <!-- Populated via JS -->
-        </div>
-        <div class="px-5 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
-            <span id="crmDetailStatusBadge"></span>
-            <div class="flex items-center gap-2">
-                <button type="button" id="crmDetailAssignBtn" onclick="crmOpenAssignModal(crmDetailCurrentId)"
-                    class="hidden px-3.5 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-600 transition-colors">
-                    Schedule &amp; Assign
-                </button>
-                <button type="button" id="crmDetail2dBtn" onclick="crm2dQuotationFromModal()" disabled
-                    class="hidden px-3.5 py-1.5 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
-                    2D &amp; Quotation
-                </button>
-                <button type="button" onclick="crmCloseDetailModal()"
-                    class="px-3.5 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Schedule & Assign Modal -->
-<div id="crmAssignModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden">
-        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-800">Schedule &amp; Assign Designer</h3>
-            <button type="button" onclick="crmCloseAssignModal()"
-                class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-        </div>
-        <div class="p-5 space-y-4">
-            <p class="text-xs text-gray-400">
-                Contact the client first to confirm their available date, then set the schedule and assign a
-                designer.
-            </p>
-
-            <div>
-                <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-                    Client Status <span class="text-gray-400 normal-case font-normal">(Required)</span>
                 </label>
-                <div id="crmAssignClientStatusGroup" class="flex gap-2">
-                    <button type="button"
-                        class="crm-client-status-btn flex-1 px-2.5 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-                        data-value="confirmed">
-                        Confirmed
-                    </button>
-                    <button type="button"
-                        class="crm-client-status-btn flex-1 px-2.5 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-                        data-value="tentative">
-                        Tentative
-                    </button>
-                    <button type="button"
-                        class="crm-client-status-btn flex-1 px-2.5 py-2 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-                        data-value="no">
-                        Not Proceeding
-                    </button>
+                <div class="col-span-2 md:col-span-4 xl:col-span-1">
+                    <span class="block mb-1 text-[11px] font-semibold text-gray-500">Date filed</span>
+                    <div class="flex items-center h-9 bg-white border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-amber-100 focus-within:border-amber-600">
+                        <input id="crmFilterFrom" type="date" aria-label="Filed from" class="crm-filter flex-1 min-w-0 h-full px-2.5 text-xs text-gray-700 bg-transparent border-0 rounded-l-lg outline-none">
+                        <span class="text-gray-300 text-sm select-none">–</span>
+                        <input id="crmFilterTo" type="date" aria-label="Filed to" class="crm-filter flex-1 min-w-0 h-full px-2.5 text-xs text-gray-700 bg-transparent border-0 rounded-r-lg outline-none">
+                    </div>
                 </div>
-                <p id="crmAssignPauseNote" class="hidden text-[11px] text-amber-600 mt-1.5"></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ LIST (may sariling scroll) ═══ -->
+    <div id="crmListCards" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[260px] overflow-y-auto p-[3px] pr-2 -m-[3px] [scrollbar-width:thin]"></div>
+    <!-- (compat: dating table body — hindi na ginagamit) -->
+    <div id="crmListTbody" class="hidden"></div>
+</div>
+
+<!-- ═══ DETAIL PANEL (galing sa kanan) ═══ -->
+<div id="crmDetailModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/30" onclick="crmCloseDetailModal()"></div>
+    <div id="crmDetailSheet" class="absolute top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-300 ease-out">
+        <div class="h-1.5 shrink-0 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+        <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+            <div class="min-w-0">
+                <p id="crmDetailControlNo" class="font-mono text-[11px] font-semibold text-amber-700">—</p>
+                <h3 id="crmDetailClient" class="text-lg font-semibold text-gray-900 truncate capitalize"></h3>
+                <div id="crmDetailStatusBadge" class="mt-1.5 flex flex-wrap items-center gap-1.5"></div>
+            </div>
+            <button type="button" onclick="crmCloseDetailModal()" aria-label="Close"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+        </div>
+        <div id="crmDetailBody" class="px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60 [scrollbar-width:thin]"></div>
+        <div class="px-5 py-4 bg-white border-t border-gray-100 shrink-0 grid grid-cols-2 gap-2">
+            <button type="button" onclick="crmCloseDetailModal()"
+                class="px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Close</button>
+            <button type="button" id="crmDetailAssignBtn" onclick="crmOpenAssignModal(crmDetailCurrentId)"
+                class="hidden inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
+                <i class="fa-solid fa-calendar-plus"></i> Schedule &amp; Assign
+            </button>
+            <button type="button" id="crmDetail2dBtn" onclick="crm2dQuotationFromModal()" disabled
+                class="hidden inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-file-pen"></i> 2D &amp; Quotation
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ SCHEDULE & ASSIGN MODAL ═══ -->
+<div id="crmAssignModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[60] px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[92vh] flex flex-col">
+        <div class="h-1.5 shrink-0 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+        <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-calendar-plus"></i></span>
+                <div class="min-w-0">
+                    <h3 class="text-sm font-semibold text-gray-900">Schedule &amp; Assign Designer</h3>
+                    <p id="crmAssignSubtitle" class="text-[11px] text-gray-400 truncate">Call the client first to confirm their available date.</p>
+                </div>
+            </div>
+            <button type="button" onclick="crmCloseAssignModal()" aria-label="Close"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+        </div>
+        <div class="p-5 space-y-4 overflow-y-auto">
+            <div>
+                <p class="text-[11.5px] font-semibold text-gray-700 mb-1.5">1. Client status <span class="text-red-500">*</span></p>
+                <div id="crmAssignClientStatusGroup" class="grid grid-cols-3 gap-2">
+                    <?php foreach ([
+                        ['confirmed', 'Confirmed', 'fa-circle-check', 'Book the visit'],
+                        ['tentative', 'Tentative', 'fa-hourglass-half', 'Not decided'],
+                        ['no', 'Not Proceeding', 'fa-ban', 'Client declined'],
+                    ] as [$v, $l, $ic, $sub]): ?>
+                        <button type="button" data-value="<?= $v ?>"
+                            class="crm-client-status-btn flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                            <i class="fa-solid <?= $ic ?>"></i>
+                            <span class="text-[11.5px] font-semibold leading-tight text-center"><?= $l ?></span>
+                            <span class="text-[10px] opacity-70 leading-tight"><?= $sub ?></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+                <p id="crmAssignPauseNote" class="hidden mt-2 text-[11.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"></p>
             </div>
 
             <div id="crmAssignScheduleFields" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-                        Measurement Date &amp; Time <span class="text-red-500">*</span>
-                    </label>
+                    <label for="crmAssignDatetime" class="block text-[11.5px] font-semibold text-gray-700 mb-1.5">2. Measurement date &amp; time <span class="text-red-500">*</span></label>
                     <input type="datetime-local" id="crmAssignDatetime"
-                        class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
+                        class="w-full h-10 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                    <p id="crmAssignDateHint" class="text-[11px] text-gray-400 mt-1"></p>
                 </div>
-
                 <div>
-                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-1.5">
-                        Designer Assign <span class="text-red-500">*</span>
-                    </label>
+                    <label for="crmAssignDesigner" class="block text-[11.5px] font-semibold text-gray-700 mb-1.5">3. Assign designer <span class="text-red-500">*</span></label>
                     <select id="crmAssignDesigner"
-                        class="w-full px-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition">
+                        class="w-full h-10 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                         <option value="">Loading designers…</option>
                     </select>
                 </div>
             </div>
         </div>
-        <div class="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+        <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2 shrink-0">
             <button type="button" onclick="crmCloseAssignModal()"
-                class="px-3.5 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                Cancel
-            </button>
+                class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button type="button" id="crmAssignSaveBtn" onclick="crmSubmitAssign()"
-                class="px-3.5 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-600 disabled:opacity-50">
-                Submit site visit request
+                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm disabled:opacity-50">
+                <i class="fa-solid fa-paper-plane"></i> <span>Submit site visit request</span>
             </button>
         </div>
     </div>
@@ -288,18 +213,16 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     function crmShowToast(message, type = 'success', duration = 4000) {
         const container = document.getElementById('crmToastContainer');
         const palette = type === 'success'
-            ? { wrap: 'bg-green-50 border-green-200 text-green-700', icon: 'bg-green-200 text-green-700', symbol: '✓' }
-            : { wrap: 'bg-red-50 border-red-200 text-red-700', icon: 'bg-red-200 text-red-700', symbol: '!' };
+            ? { icon: 'bg-emerald-500', symbol: '✓' }
+            : { icon: 'bg-red-600', symbol: '!' };
 
         const toast = document.createElement('div');
-        toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm
-            ${palette.wrap}
+        toast.className = `pointer-events-auto flex items-start gap-2.5 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-800
             translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
-
         toast.innerHTML = `
-            <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${palette.icon}">${palette.symbol}</span>
+            <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white ${palette.icon}">${palette.symbol}</span>
             <span class="flex-1 leading-relaxed">${message}</span>
-            <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>
+            <button type="button" class="shrink-0 inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600" aria-label="Close"><i class="fa-solid fa-xmark text-xs"></i></button>
         `;
         container.appendChild(toast);
         requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
@@ -325,20 +248,38 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     let crmSortDir = 'desc'; // 'asc' | 'desc'
 
     // ═══════════════════════════════════════════════════════════
+    // STAGE (kung nasaan na ang inquiry)
+    // ═══════════════════════════════════════════════════════════
+    function crmStageOf(r) {
+        if (r.client_status === 'no') return 'stopped';
+        if (!r.designer_id) return 'schedule';
+        if (r.status === 'In Progress') return 'quotation';
+        return 'sitevisit';
+    }
+    const CRM_STAGE_META = {
+        schedule: { label: 'To schedule', bar: 'bg-amber-400', chip: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'fa-calendar-plus' },
+        sitevisit: { label: 'For site visit', bar: 'bg-orange-500', chip: 'bg-orange-50 text-orange-700 border-orange-200', icon: 'fa-ruler-combined' },
+        quotation: { label: '2D & Quotation', bar: 'bg-blue-500', chip: 'bg-blue-50 text-blue-700 border-blue-200', icon: 'fa-file-pen' },
+        stopped: { label: 'Not proceeding', bar: 'bg-red-400', chip: 'bg-red-50 text-red-700 border-red-200', icon: 'fa-ban' },
+    };
+
+    // ═══════════════════════════════════════════════════════════
     // FILTERS (client-side)
     // ═══════════════════════════════════════════════════════════
     const crmFilters = { status: '', designer: '', project: '', amount: '', from: '', to: '' };
+    let crmStageFilter = '';
 
     function crmFiltersActive() {
         return Object.values(crmFilters).some(v => v !== '');
     }
 
     function crmFilterSig() {
-        return JSON.stringify(crmFilters);
+        return JSON.stringify(crmFilters) + crmStageFilter;
     }
 
-    function crmFilteredRows(rows) {
+    function crmFilteredRows(rows, ignoreStage = false) {
         return rows.filter(r => {
+            if (!ignoreStage && crmStageFilter && crmStageOf(r) !== crmStageFilter) return false;
             if (crmFilters.status && r.status !== crmFilters.status) return false;
 
             if (crmFilters.designer === '__none__') {
@@ -396,10 +337,18 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
             [...designers.entries()].sort((a, b) => a[1].localeCompare(b[1])),
             [['__none__', 'Unassigned']]);
 
-        // Kung nawala ang napiling value sa dropdown, i-sync ang state
         crmFilters.status = document.getElementById('crmFilterStatus').value;
         crmFilters.project = document.getElementById('crmFilterProject').value;
         crmFilters.designer = document.getElementById('crmFilterDesigner').value;
+    }
+
+    function crmUpdateFilterBadge() {
+        const n = Object.values(crmFilters).filter(v => v !== '').length;
+        const badge = document.getElementById('crmFilterCountBadge');
+        badge.textContent = n;
+        badge.classList.toggle('hidden', !n);
+        badge.classList.toggle('inline-flex', !!n);
+        document.getElementById('crmFilterClear').classList.toggle('hidden', !n);
     }
 
     function crmApplyFilters() {
@@ -410,10 +359,17 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         crmFilters.from = document.getElementById('crmFilterFrom').value;
         crmFilters.to = document.getElementById('crmFilterTo').value;
 
-        document.getElementById('crmFilterClear').classList.toggle('hidden', !crmFiltersActive());
+        crmUpdateFilterBadge();
         crmListLastSignature = '';
         crmRenderRows(crmListRawRows);
     }
+
+    function crmToggleFilters() {
+        const p = document.getElementById('crmFilterPanel');
+        p.classList.toggle('hidden');
+        try { sessionStorage.setItem('crmListFiltersOpen', p.classList.contains('hidden') ? '0' : '1'); } catch (e) { }
+    }
+    try { if (sessionStorage.getItem('crmListFiltersOpen') === '1') document.getElementById('crmFilterPanel').classList.remove('hidden'); } catch (e) { }
 
     document.querySelectorAll('.crm-filter').forEach(el => {
         el.addEventListener('change', crmApplyFilters);
@@ -424,10 +380,33 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         crmApplyFilters();
     });
 
+    // Stage tabs
+    function crmRenderStageTabs() {
+        document.querySelectorAll('.crm-stage-tab').forEach(b => {
+            const on = b.dataset.stage === crmStageFilter;
+            b.classList.toggle('border-amber-600', on);
+            b.classList.toggle('bg-amber-50', on);
+            b.classList.toggle('ring-1', on);
+            b.classList.toggle('ring-amber-600', on);
+            b.classList.toggle('border-gray-200', !on);
+            b.classList.toggle('bg-white', !on);
+            b.classList.toggle('hover:bg-gray-50', !on);
+        });
+    }
+    document.querySelectorAll('.crm-stage-tab').forEach(b => b.addEventListener('click', () => {
+        crmStageFilter = b.dataset.stage;
+        try { sessionStorage.setItem('crmListStage', crmStageFilter); } catch (e) { }
+        crmRenderStageTabs();
+        crmListLastSignature = '';
+        crmRenderRows(crmListRawRows);
+    }));
+    try { crmStageFilter = sessionStorage.getItem('crmListStage') || ''; } catch (e) { }
+    crmRenderStageTabs();
+
     function crmUpdateCount(shown, total) {
         const label = total === 1 ? 'inquiry' : 'inquiries';
         document.getElementById('crmListCount').textContent =
-            crmFiltersActive() ? `${shown} of ${total} ${label} shown` : `${total} ${label} found`;
+            (crmFiltersActive() || crmStageFilter) ? `Showing ${shown} of ${total} ${label}` : `${total} ${label}`;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -450,19 +429,41 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
     function crmFormatDate(value) {
         if (!value) return '—';
-        const dt = new Date(value.replace(' ', 'T'));
+        const dt = new Date(String(value).replace(' ', 'T'));
         if (isNaN(dt.getTime())) return value;
         return dt.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
     function crmFormatDateTimeLong(value) {
         if (!value) return '—';
-        const dt = new Date(value.replace(' ', 'T'));
+        const dt = new Date(String(value).replace(' ', 'T'));
         if (isNaN(dt.getTime())) return value;
         return dt.toLocaleString('en-PH', {
             year: 'numeric', month: 'long', day: 'numeric',
             hour: 'numeric', minute: '2-digit', hour12: true
         });
+    }
+
+    function crmFormatDateTimeShort(value) {
+        if (!value) return '—';
+        const dt = new Date(String(value).replace(' ', 'T'));
+        if (isNaN(dt.getTime())) return value;
+        return dt.toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
+    // "Today", "Tomorrow", "in 3 days", "2 days ago"
+    function crmRelDay(value) {
+        if (!value) return null;
+        const dt = new Date(String(value).replace(' ', 'T'));
+        if (isNaN(dt.getTime())) return null;
+        const a = new Date(); a.setHours(0, 0, 0, 0);
+        const b = new Date(dt); b.setHours(0, 0, 0, 0);
+        const d = Math.round((b - a) / 864e5);
+        if (d === 0) return { text: 'Today', cls: 'text-amber-700' };
+        if (d === 1) return { text: 'Tomorrow', cls: 'text-amber-700' };
+        if (d > 1) return { text: `in ${d} days`, cls: 'text-gray-500' };
+        if (d === -1) return { text: 'Yesterday', cls: 'text-gray-500' };
+        return { text: `${-d} days ago`, cls: 'text-gray-500' };
     }
 
     function crmInitials(name) {
@@ -488,181 +489,169 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         };
         const s = map[status];
         if (!s) return '—';
-        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${s.cls}">
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap ${s.cls}">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}"></span>${s.label}
             </span>`;
     }
 
     function crmStatusBadge(status) {
         const isDone = status === 'In Progress';
-        const cls = isDone
-            ? 'bg-blue-50 text-blue-700 border-blue-200'
-            : 'bg-amber-50 text-amber-700 border-amber-200';
+        const cls = isDone ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200';
         const dot = isDone ? 'bg-blue-500' : 'bg-amber-500';
-        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${cls}">
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap ${cls}">
                     <span class="w-1.5 h-1.5 rounded-full shrink-0 ${dot}"></span>${crmEscapeHtml(status)}
                 </span>`;
     }
 
-    // Kung wala pang designer, "Schedule & Assign" muna ang action — di pa
-    // pwede diretso sa 2D & Quotation hangga't hindi pa naka-set ang schedule
-    // at designer. (Tentative/Not Proceeding client_status keeps designer_id
-    // null, so this button naturally stays "Schedule & Assign" for them.)
+    function crmStageChip(r) {
+        const m = CRM_STAGE_META[crmStageOf(r)];
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap ${m.chip}"><i class="fa-solid ${m.icon} text-[9px]"></i>${m.label}</span>`;
+    }
+
+    // Kung wala pang designer, "Schedule & Assign" muna ang action.
     function crmActionButton(row, size = 'normal') {
-        const sizeCls = size === 'small' ? 'px-3 py-1.5 text-xs w-full' : 'px-3 py-1.5 text-xs whitespace-nowrap';
+        const sizeCls = size === 'small' ? 'px-3 py-2 text-xs w-full justify-center' : 'px-3.5 py-2 text-xs whitespace-nowrap';
 
         if (!row.designer_id) {
             return `<button type="button" onclick="crmOpenAssignModal(${row.id})"
-                        class="${sizeCls} font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-600 transition-colors">
-                        Schedule &amp; Assign
+                        class="${sizeCls} inline-flex items-center gap-1.5 font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
+                        <i class="fa-solid fa-calendar-plus"></i> ${row.client_status === 'tentative' || row.client_status === 'no' ? 'Update status' : 'Schedule &amp; Assign'}
                    </button>`;
         }
 
         const isDone = row.status === 'In Progress';
         return isDone
             ? `<button type="button" onclick="crm2dQuotation(${row.id})"
-                    class="${sizeCls} font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
-                    2D &amp; Quotation
+                    class="${sizeCls} inline-flex items-center gap-1.5 font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 shadow-sm">
+                    <i class="fa-solid fa-file-pen"></i> 2D &amp; Quotation
                </button>`
-            : `<button type="button" disabled title="Complete the site visit first"
-                    class="${sizeCls} font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
-                    2D &amp; Quotation
+            : `<button type="button" disabled title="Waiting for the designer's site visit"
+                    class="${sizeCls} inline-flex items-center gap-1.5 font-semibold text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
+                    <i class="fa-solid fa-hourglass-half"></i> Waiting site visit
                </button>`;
     }
 
     function crmSkeletonRows(count = 5) {
-        const tbody = document.getElementById('crmListTbody');
-        tbody.innerHTML = Array.from({ length: count }).map(() => `
-            <tr>
-                ${Array.from({ length: 9 }).map(() => `
-                    <td class="px-4 py-3"><div class="h-3 rounded bg-gray-100 animate-pulse"></div></td>
-                `).join('')}
-            </tr>
-        `).join('');
-
-        document.getElementById('crmListCards').innerHTML = Array.from({ length: 3 }).map(() => `
-            <div class="bg-white border border-gray-200 rounded-xl p-3.5 space-y-2">
-                <div class="h-3 w-1/3 rounded bg-gray-100 animate-pulse"></div>
-                <div class="h-4 w-2/3 rounded bg-gray-100 animate-pulse"></div>
-                <div class="h-3 w-1/2 rounded bg-gray-100 animate-pulse"></div>
-            </div>
-        `).join('');
+        document.getElementById('crmListCards').innerHTML = Array.from({ length: count }).map(() =>
+            `<div class="h-[88px] rounded-xl bg-white border border-gray-200 animate-pulse"></div>`).join('');
     }
 
     function crmEmptyState() {
         let message = 'No inquiries yet.';
-        if (crmListSearchTerm && crmFiltersActive()) message = `No inquiries match "${crmEscapeHtml(crmListSearchTerm)}" with the selected filters.`;
+        if (crmListSearchTerm && (crmFiltersActive() || crmStageFilter)) message = `No inquiries match "${crmEscapeHtml(crmListSearchTerm)}" with the selected filters.`;
         else if (crmListSearchTerm) message = `No inquiries match "${crmEscapeHtml(crmListSearchTerm)}".`;
-        else if (crmFiltersActive()) message = 'No inquiries match the selected filters.';
-        return `
-            <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17.25v-6.75A2.25 2.25 0 0111.25 8.25h1.5A2.25 2.25 0 0115 10.5v6.75m-9 0h12a1.5 1.5 0 001.5-1.5V7.5a1.5 1.5 0 00-.44-1.06l-3-3A1.5 1.5 0 0015 3H9a1.5 1.5 0 00-1.06.44l-3 3A1.5 1.5 0 004.5 7.5v8.25a1.5 1.5 0 001.5 1.5z" />
-                </svg>
-                <p class="text-gray-400 text-xs">${message}</p>
-            </div>
-        `;
+        else if (crmFiltersActive() || crmStageFilter) message = 'No inquiries match the selected filters.';
+        return `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl px-6 py-12 text-center">
+            <div class="w-12 h-12 mx-auto rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mb-2"><i class="fa-regular fa-folder-open"></i></div>
+            <p class="text-sm font-semibold text-gray-700">${message}</p></div>`;
     }
 
     function crmSortedRows(rows) {
-        const sorted = [...rows].sort((a, b) => {
+        return [...rows].sort((a, b) => {
             let av = a[crmSortKey], bv = b[crmSortKey];
             if (crmSortKey === 'contract_amount') { av = Number(av) || 0; bv = Number(bv) || 0; }
-            else if (crmSortKey === 'created_at') { av = new Date((av || '').replace(' ', 'T')).getTime() || 0; bv = new Date((bv || '').replace(' ', 'T')).getTime() || 0; }
+            else if (crmSortKey === 'created_at' || crmSortKey === 'measurement_datetime') {
+                // walang petsa → laging nasa dulo
+                const big = crmSortDir === 'asc' ? Infinity : -Infinity;
+                av = new Date(String(av || '').replace(' ', 'T')).getTime() || big;
+                bv = new Date(String(bv || '').replace(' ', 'T')).getTime() || big;
+            }
             else { av = (av || '').toString().toLowerCase(); bv = (bv || '').toString().toLowerCase(); }
             if (av < bv) return crmSortDir === 'asc' ? -1 : 1;
             if (av > bv) return crmSortDir === 'asc' ? 1 : -1;
             return 0;
         });
-        return sorted;
     }
 
+    // (compat — wala nang sort headers; dropdown na ang gamit)
     function crmUpdateSortArrows() {
-        document.querySelectorAll('.crm-sort-th').forEach(btn => {
-            const arrow = btn.querySelector('.crm-sort-arrow');
-            if (btn.dataset.key === crmSortKey) {
-                arrow.textContent = crmSortDir === 'asc' ? '↑' : '↓';
-                arrow.classList.remove('text-gray-300');
-                arrow.classList.add('text-amber-600');
-            } else {
-                arrow.textContent = '↕';
-                arrow.classList.add('text-gray-300');
-                arrow.classList.remove('text-amber-600');
-            }
-        });
+        const sel = document.getElementById('crmSortSelect');
+        if (sel) sel.value = `${crmSortKey}:${crmSortDir}`;
     }
 
     // ═══════════════════════════════════════════════════════════
     // RENDER + FETCH
     // ═══════════════════════════════════════════════════════════
+    function crmRenderStageCounts(allRows) {
+        const base = crmFilteredRows(allRows, true);
+        const counts = { '': base.length, schedule: 0, sitevisit: 0, quotation: 0, stopped: 0 };
+        base.forEach(r => counts[crmStageOf(r)]++);
+        document.querySelectorAll('[data-stage-count]').forEach(el => el.textContent = counts[el.dataset.stageCount] ?? 0);
+    }
+
+    function crmRowCard(row) {
+        const stage = crmStageOf(row);
+        const m = CRM_STAGE_META[stage];
+        const isActive = crmDetailCurrentId === row.id;
+
+        let schedule;
+        if (row.measurement_datetime) {
+            const rel = stage === 'sitevisit' ? crmRelDay(row.measurement_datetime) : null;
+            schedule = `<dd class="text-gray-800 font-medium whitespace-nowrap">${crmEscapeHtml(crmFormatDateTimeShort(row.measurement_datetime))}</dd>
+                        ${rel ? `<dd class="text-[10.5px] font-semibold ${rel.cls}">${rel.text}</dd>` : ''}`;
+        } else {
+            schedule = `<dd class="text-gray-400 whitespace-nowrap">${row.client_status === 'tentative' ? 'Tentative' : 'Not set'}</dd>`;
+        }
+
+        return `
+        <article class="relative bg-white border rounded-xl overflow-hidden cursor-pointer transition ${isActive ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}"
+            onclick="crmOpenDetailModal(${row.id})">
+            <span class="absolute left-0 top-0 bottom-0 w-1 ${m.bar}"></span>
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
+                <div class="flex items-center gap-3 min-w-0 flex-1 basis-[250px]">
+                    <span class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full text-xs font-bold ${crmAvatarColor(row.client_name)}">${crmEscapeHtml(crmInitials(row.client_name))}</span>
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="font-mono text-[11px] font-semibold text-amber-700">${crmEscapeHtml(row.control_no)}</span>
+                            ${crmStageChip(row)}
+                        </div>
+                        <p class="text-sm font-semibold text-gray-900 truncate capitalize mt-0.5">${crmEscapeHtml(row.client_name)}</p>
+                        <p class="text-[11px] text-gray-500 truncate">
+                            <i class="fa-solid fa-phone text-gray-300 mr-1"></i>${crmEscapeHtml(row.contact_number) || '—'}
+                            <span class="text-gray-300 mx-1.5">·</span><span class="capitalize">${crmEscapeHtml(row.project_type) || '—'}</span>
+                        </p>
+                    </div>
+                </div>
+                <dl class="grid grid-cols-3 gap-x-5 text-[11px] basis-[360px] grow sm:grow-0">
+                    <div class="min-w-0">
+                        <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Designer</dt>
+                        <dd class="font-medium truncate ${row.designer_id ? 'text-gray-800' : 'text-gray-400'}">${row.designer_id ? crmEscapeHtml(row.designer_name) : 'Unassigned'}</dd>
+                    </div>
+                    <div class="min-w-0">
+                        <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Site visit</dt>
+                        ${schedule}
+                    </div>
+                    <div class="min-w-0">
+                        <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Contract</dt>
+                        <dd class="font-semibold tabular-nums whitespace-nowrap ${Number(row.contract_amount) > 0 ? 'text-gray-900' : 'text-gray-400'}">${crmFormatCurrency(row.contract_amount)}</dd>
+                        <dd class="text-[10.5px] text-gray-400 whitespace-nowrap">Filed ${crmFormatDate(row.created_at)}</dd>
+                    </div>
+                </dl>
+                <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${crmActionButton(row)}</div>
+            </div>
+        </article>`;
+    }
+
     function crmRenderRows(allRows) {
-        const tbody = document.getElementById('crmListTbody');
         const cardsWrap = document.getElementById('crmListCards');
 
+        crmRenderStageCounts(allRows);
         const rows = crmFilteredRows(allRows);
         crmUpdateCount(rows.length, allRows.length);
 
         if (rows.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="p-0">${crmEmptyState()}</td></tr>`;
             cardsWrap.innerHTML = crmEmptyState();
             return;
         }
 
-        const sorted = crmSortedRows(rows);
-
-        tbody.innerHTML = sorted.map(row => `
-            <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer" onclick="crmOpenDetailModal(${row.id})">
-                <td class="px-4 py-2.5">
-                    <span class="font-mono text-[11px] font-semibold text-amber-700 hover:underline underline-offset-2">
-                        ${crmEscapeHtml(row.control_no)}
-                    </span>
-                </td>
-                <td class="px-4 py-2.5">
-                    <div class="flex items-center gap-2">
-                        <span class="text-gray-800">${crmEscapeHtml(row.client_name)}</span>
-                    </div>
-                </td>
-                <td class="px-4 py-2.5 text-gray-600 whitespace-nowrap">${crmEscapeHtml(row.contact_number)}</td>
-                <td class="px-4 py-2.5 text-gray-600">${crmEscapeHtml(row.project_type) || '—'}</td>
-                <td class="px-4 py-2.5 text-gray-600">${crmEscapeHtml(row.designer_name)}</td>
-                <td class="px-4 py-2.5 text-gray-800 text-right tabular-nums whitespace-nowrap">${crmFormatCurrency(row.contract_amount)}</td>
-                <td class="px-4 py-2.5">${crmStatusBadge(row.status)}</td>
-                <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${crmFormatDate(row.created_at)}</td>
-                <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">${crmActionButton(row)}</td>
-            </tr>
-        `).join('');
-
-        cardsWrap.innerHTML = sorted.map(row => `
-            <div class="bg-white border border-gray-200 rounded-xl p-3.5 active:bg-amber-50/40 transition-colors" onclick="crmOpenDetailModal(${row.id})">
-                <div class="flex items-start justify-between gap-3 mb-2.5">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-xs font-semibold ${crmAvatarColor(row.client_name)}">${crmEscapeHtml(crmInitials(row.client_name))}</span>
-                        <div class="min-w-0">
-                            <p class="text-gray-900 font-medium truncate">${crmEscapeHtml(row.client_name)}</p>
-                            <p class="font-mono text-[11px] text-amber-700">${crmEscapeHtml(row.control_no)}</p>
-                        </div>
-                    </div>
-                    ${crmStatusBadge(row.status)}
-                </div>
-                <div class="grid grid-cols-2 gap-y-1.5 text-xs text-gray-500 mb-2.5">
-                    <span>${crmEscapeHtml(row.contact_number)}</span>
-                    <span class="text-right">${crmEscapeHtml(row.project_type) || '—'}</span>
-                    <span>${crmEscapeHtml(row.designer_name)}</span>
-                    <span class="text-right font-medium text-gray-700 tabular-nums">${crmFormatCurrency(row.contract_amount)}</span>
-                </div>
-                <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
-                    <span class="text-[11px] text-gray-400">${crmFormatDate(row.created_at)}</span>
-                    <div onclick="event.stopPropagation()">${crmActionButton(row, 'small')}</div>
-                </div>
-            </div>
-        `).join('');
+        cardsWrap.innerHTML = crmSortedRows(rows).map(crmRowCard).join('');
     }
 
     async function crmFetchList({ silent = false } = {}) {
         if (!silent && crmListRawRows.length === 0) crmSkeletonRows();
         try {
             const url = `${CRM_LIST_AJAX_URL}?action=list&q=${encodeURIComponent(crmListSearchTerm)}`;
-            const res = await fetch(url);
+            const res = await fetch(url, { cache: 'no-store' });
             const data = await res.json();
 
             if (!data.success) {
@@ -673,7 +662,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
             crmListRawRows = data.rows;
             crmPopulateFilterOptions(data.rows);
 
-            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id))
+            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id + ':' + r.client_status + ':' + r.measurement_datetime + ':' + r.contract_amount))
                 + crmSortKey + crmSortDir + crmFilterSig();
             if (signature !== crmListLastSignature) {
                 crmRenderRows(data.rows);
@@ -682,7 +671,9 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
         } catch (e) {
             console.error('crmFetchList:', e);
-            if (!silent) crmShowToast('Connection error while fetching inquiries.', 'error');
+            if (!silent) {
+                document.getElementById('crmListCards').innerHTML = `<div class="bg-white border border-red-200 rounded-xl px-6 py-10 text-center text-xs text-red-600">Could not load inquiries. <button type="button" onclick="crmFetchList()" class="font-semibold underline">Retry</button></div>`;
+            }
         }
     }
 
@@ -726,20 +717,16 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         crmSearchInput.focus();
     });
 
-    document.querySelectorAll('.crm-sort-th').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const key = btn.dataset.key;
-            if (crmSortKey === key) {
-                crmSortDir = crmSortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                crmSortKey = key;
-                crmSortDir = 'asc';
-            }
-            crmUpdateSortArrows();
-            crmListLastSignature = '';
-            crmRenderRows(crmListRawRows);
-        });
+    document.getElementById('crmSortSelect').addEventListener('change', function () {
+        [crmSortKey, crmSortDir] = this.value.split(':');
+        try { sessionStorage.setItem('crmListSort', this.value); } catch (e) { }
+        crmListLastSignature = '';
+        crmRenderRows(crmListRawRows);
     });
+    try {
+        const s = sessionStorage.getItem('crmListSort');
+        if (s && s.includes(':')) [crmSortKey, crmSortDir] = s.split(':');
+    } catch (e) { }
 
     crmUpdateSortArrows();
     crmFetchList().then(crmStartPolling);
@@ -756,40 +743,45 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     }
 
     // ═══════════════════════════════════════════════════════════
-    // DETAIL MODAL
+    // DETAIL PANEL
     // ═══════════════════════════════════════════════════════════
     function crmDetailRow(label, value) {
         return `
-            <div class="flex justify-between gap-3 py-2 border-b border-gray-100 text-[13px] last:border-b-0">
+            <div class="flex justify-between gap-3 py-2 border-b border-gray-100 text-[12.5px] last:border-b-0">
                 <span class="text-gray-400 whitespace-nowrap">${label}</span>
-                <span class="text-gray-800 font-medium text-right">${value}</span>
+                <span class="text-gray-800 font-medium text-right min-w-0 break-words">${value}</span>
             </div>
         `;
+    }
+    function crmDetailGroup(title, icon, rowsHtml) {
+        return `<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <p class="px-4 py-2.5 border-b border-gray-100 text-[10.5px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid ${icon} mr-1 text-amber-700"></i>${title}</p>
+            <div class="px-4 py-1">${rowsHtml}</div></section>`;
     }
 
     async function crmOpenDetailModal(id) {
         const modal = document.getElementById('crmDetailModal');
+        const sheet = document.getElementById('crmDetailSheet');
         const body = document.getElementById('crmDetailBody');
         const quotationBtn = document.getElementById('crmDetail2dBtn');
         const assignBtn = document.getElementById('crmDetailAssignBtn');
         crmDetailCurrentId = id;
+        crmRenderRows(crmListRawRows);
 
         document.getElementById('crmDetailControlNo').textContent = 'Loading…';
+        document.getElementById('crmDetailClient').textContent = '';
         document.getElementById('crmDetailStatusBadge').innerHTML = '';
         quotationBtn.classList.add('hidden');
         assignBtn.classList.add('hidden');
         quotationBtn.disabled = true;
-        body.innerHTML = `
-            <div class="space-y-2 py-1">
-                ${Array.from({ length: 6 }).map(() => `<div class="h-4 rounded bg-gray-100 animate-pulse"></div>`).join('')}
-            </div>
-        `;
+        body.innerHTML = `<div class="space-y-3">${Array.from({ length: 4 }).map(() => `<div class="h-16 rounded-xl bg-gray-100 animate-pulse"></div>`).join('')}</div>`;
         modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        requestAnimationFrame(() => sheet.classList.remove('translate-x-full'));
 
         try {
-            const res = await fetch(`${CRM_LIST_AJAX_URL}?action=detail&id=${id}`);
+            const res = await fetch(`${CRM_LIST_AJAX_URL}?action=detail&id=${id}`, { cache: 'no-store' });
             const data = await res.json();
+            if (crmDetailCurrentId !== id) return;
 
             if (!data.success) {
                 body.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">${crmEscapeHtml(data.message || 'Record not found.')}</p>`;
@@ -798,34 +790,56 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
             const r = data.record;
             const isDone = r.status === 'In Progress';
+            const stage = crmStageOf(r);
 
             document.getElementById('crmDetailControlNo').textContent = r.control_no;
-            document.getElementById('crmDetailStatusBadge').innerHTML = crmStatusBadge(r.status);
+            document.getElementById('crmDetailClient').textContent = r.client_name || '';
+            document.getElementById('crmDetailStatusBadge').innerHTML = crmStageChip(r) + crmStatusBadge(r.status) + (r.client_status ? crmClientStatusBadge(r.client_status) : '');
 
             if (!r.designer_id) {
                 assignBtn.classList.remove('hidden');
+                assignBtn.classList.add('inline-flex');
+                assignBtn.innerHTML = `<i class="fa-solid fa-calendar-plus"></i> ${r.client_status === 'tentative' || r.client_status === 'no' ? 'Update status' : 'Schedule &amp; Assign'}`;
                 quotationBtn.classList.add('hidden');
             } else {
                 assignBtn.classList.add('hidden');
                 quotationBtn.classList.remove('hidden');
+                quotationBtn.classList.add('inline-flex');
                 quotationBtn.disabled = !isDone;
             }
 
-            body.innerHTML = [
-                crmDetailRow('Client Name', crmEscapeHtml(r.client_name)),
-                crmDetailRow('Address', crmEscapeHtml(r.address) || '—'),
-                crmDetailRow('Contact Number', crmEscapeHtml(r.contact_number)),
-                crmDetailRow('Type of Project', crmEscapeHtml(r.project_type) || '—'),
-                crmDetailRow('Scope of Project', crmEscapeHtml(r.project_scope) || '—'),
-                crmDetailRow('Measuring Space', crmEscapeHtml(r.measuring_space) || '—'),
-                crmDetailRow('Client Status', crmClientStatusBadge(r.client_status)),
-                crmDetailRow('Measurement Date &amp; Time', crmFormatDateTimeLong(r.measurement_datetime)),
-                crmDetailRow('Designer Assign', crmEscapeHtml(r.designer_name)),
-                crmDetailRow('Contract Amount', crmFormatCurrency(r.contract_amount)),
-                crmDetailRow('Branch', crmEscapeHtml(r.branch) || '—'),
-                crmDetailRow('Filed By', crmEscapeHtml(r.sales_name)),
-                crmDetailRow('Date Filed', crmFormatDateTimeLong(r.created_at)),
-            ].join('');
+            const next = {
+                schedule: ['bg-amber-50 border-amber-200 text-amber-900', 'fa-calendar-plus', 'Next: Schedule the site visit', 'Call the client, then set the measurement date and assign a designer.'],
+                sitevisit: ['bg-orange-50 border-orange-200 text-orange-900', 'fa-ruler-combined', 'Waiting for the site visit', `${crmEscapeHtml(r.designer_name)} will visit on ${crmEscapeHtml(crmFormatDateTimeLong(r.measurement_datetime))}.`],
+                quotation: ['bg-blue-50 border-blue-200 text-blue-900', 'fa-file-pen', '2D & Quotation in progress', 'Open 2D & Quotation to follow the designer\'s files and set the contract.'],
+                stopped: ['bg-red-50 border-red-200 text-red-900', 'fa-ban', 'Client is not proceeding', 'You can update the client status if they change their mind.'],
+            }[stage];
+
+            body.innerHTML = `<div class="space-y-3">
+                <div class="rounded-xl border px-4 py-3 flex items-start gap-3 ${next[0]}">
+                    <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid ${next[1]}"></i></span>
+                    <div class="min-w-0"><p class="text-sm font-semibold">${next[2]}</p><p class="text-xs opacity-80 mt-0.5">${next[3]}</p></div>
+                </div>
+                ${crmDetailGroup('Client', 'fa-user', [
+                    crmDetailRow('Name', `<span class="capitalize">${crmEscapeHtml(r.client_name)}</span>`),
+                    crmDetailRow('Contact', r.contact_number ? `<a href="tel:${crmEscapeHtml(String(r.contact_number).replace(/[^\d+]/g, ''))}" class="text-amber-700 hover:underline">${crmEscapeHtml(r.contact_number)}</a>` : '—'),
+                    crmDetailRow('Address', r.address ? `${crmEscapeHtml(r.address)}<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}" target="_blank" rel="noopener" class="block text-[11px] text-amber-700 hover:underline mt-0.5"><i class="fa-solid fa-map-location-dot mr-1"></i>Open in Maps</a>` : '—'),
+                    crmDetailRow('Client status', crmClientStatusBadge(r.client_status)),
+                ].join(''))}
+                ${crmDetailGroup('Project', 'fa-helmet-safety', [
+                    crmDetailRow('Type', `<span class="capitalize">${crmEscapeHtml(r.project_type) || '—'}</span>`),
+                    crmDetailRow('Scope', crmEscapeHtml(r.project_scope) || '—'),
+                    crmDetailRow('Measuring space', crmEscapeHtml(r.measuring_space) || '—'),
+                    crmDetailRow('Contract amount', crmFormatCurrency(r.contract_amount)),
+                ].join(''))}
+                ${crmDetailGroup('Site visit & assignment', 'fa-calendar-check', [
+                    crmDetailRow('Measurement', crmFormatDateTimeLong(r.measurement_datetime)),
+                    crmDetailRow('Designer', r.designer_id ? crmEscapeHtml(r.designer_name) : '<span class="text-gray-400">Unassigned</span>'),
+                    crmDetailRow('Branch', `<span class="capitalize">${crmEscapeHtml(r.branch) || '—'}</span>`),
+                    crmDetailRow('Filed by', crmEscapeHtml(r.sales_name)),
+                    crmDetailRow('Date filed', crmFormatDateTimeLong(r.created_at)),
+                ].join(''))}
+            </div>`;
 
         } catch (e) {
             console.error('crmOpenDetailModal:', e);
@@ -835,19 +849,16 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
     function crmCloseDetailModal() {
         const modal = document.getElementById('crmDetailModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        document.getElementById('crmDetailSheet').classList.add('translate-x-full');
+        setTimeout(() => modal.classList.add('hidden'), 300);
         crmDetailCurrentId = null;
+        crmRenderRows(crmListRawRows);
     }
-
-    document.getElementById('crmDetailModal').addEventListener('click', function (e) {
-        if (e.target === this) crmCloseDetailModal();
-    });
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-            crmCloseDetailModal();
-            crmCloseAssignModal();
+            if (!document.getElementById('crmAssignModal').classList.contains('hidden')) crmCloseAssignModal();
+            else if (crmDetailCurrentId) crmCloseDetailModal();
         }
     });
 
@@ -859,34 +870,29 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     let crmAssignClientStatus = null; // 'confirmed' | 'tentative' | 'no' | null
 
     const crmClientStatusStyles = {
-        confirmed: ['bg-emerald-50', 'border-emerald-500', 'text-emerald-700'],
-        tentative: ['bg-amber-50', 'border-amber-500', 'text-amber-700'],
-        no: ['bg-red-50', 'border-red-500', 'text-red-700'],
+        confirmed: ['bg-emerald-50', 'border-emerald-500', 'text-emerald-700', 'ring-1', 'ring-emerald-500'],
+        tentative: ['bg-amber-50', 'border-amber-500', 'text-amber-700', 'ring-1', 'ring-amber-500'],
+        no: ['bg-red-50', 'border-red-500', 'text-red-700', 'ring-1', 'ring-red-500'],
     };
 
     const crmClientStatusPauseNotes = {
-        tentative: 'Client hasn\u2019t decided yet — schedule and designer will be set once they confirm.',
+        tentative: 'Client hasn’t decided yet — schedule and designer will be set once they confirm.',
         no: 'Client is not proceeding — no schedule or designer needed for now.',
     };
 
     function crmUpdateClientStatusButtons() {
+        const all = Object.values(crmClientStatusStyles).flat();
         document.querySelectorAll('.crm-client-status-btn').forEach(btn => {
             const value = btn.dataset.value;
-            const isSelected = value === crmAssignClientStatus;
-
-            btn.classList.remove('bg-emerald-50', 'border-emerald-500', 'text-emerald-700',
-                'bg-amber-50', 'border-amber-500', 'text-amber-700',
-                'bg-red-50', 'border-red-500', 'text-red-700');
-            btn.classList.add('border-gray-300', 'text-gray-600');
-
-            if (isSelected) {
-                btn.classList.remove('border-gray-300', 'text-gray-600');
+            btn.classList.remove(...all);
+            btn.classList.add('border-gray-200', 'text-gray-600');
+            if (value === crmAssignClientStatus) {
+                btn.classList.remove('border-gray-200', 'text-gray-600');
                 btn.classList.add(...crmClientStatusStyles[value]);
             }
         });
 
-        // Lalabas lang yung schedule fields kapag "Confirmed" ang napili —
-        // wala pa (default) o Tentative/Not Proceeding = nakatago pa rin.
+        // Lalabas lang ang schedule fields kapag "Confirmed"
         const showScheduleFields = crmAssignClientStatus === 'confirmed';
         document.getElementById('crmAssignScheduleFields').classList.toggle('hidden', !showScheduleFields);
 
@@ -898,22 +904,44 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         } else {
             note.classList.add('hidden');
         }
+
+        const label = document.querySelector('#crmAssignSaveBtn span');
+        if (label) label.textContent = isPaused ? 'Save client status' : 'Submit site visit request';
     }
 
     document.querySelectorAll('.crm-client-status-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const value = btn.dataset.value;
-            // click again on the same one to deselect — optional field kasi
             crmAssignClientStatus = (crmAssignClientStatus === value) ? null : value;
             crmUpdateClientStatusButtons();
         });
+    });
+
+    // Hint sa petsa: "Tomorrow", "in 3 days", o babala kapag lumipas na
+    document.getElementById('crmAssignDatetime').addEventListener('input', function () {
+        const hint = document.getElementById('crmAssignDateHint');
+        if (!this.value) { hint.textContent = ''; return; }
+        const dt = new Date(this.value);
+        if (dt.getTime() < Date.now()) {
+            hint.textContent = 'This date and time has already passed.';
+            hint.className = 'text-[11px] text-red-600 font-semibold mt-1';
+            return;
+        }
+        const rel = crmRelDay(this.value.replace('T', ' '));
+        hint.textContent = rel ? rel.text : '';
+        hint.className = 'text-[11px] text-gray-500 mt-1';
     });
 
     async function crmOpenAssignModal(id) {
         if (!id) return;
         crmAssignCurrentId = id;
         document.getElementById('crmAssignDatetime').value = '';
-        crmAssignClientStatus = null;
+        document.getElementById('crmAssignDateHint').textContent = '';
+        const row = crmListRawRows.find(r => r.id === id);
+        document.getElementById('crmAssignSubtitle').textContent = row
+            ? `${row.control_no} · ${row.client_name} · ${row.contact_number || ''}`
+            : 'Call the client first to confirm their available date.';
+        crmAssignClientStatus = (row && (row.client_status === 'tentative' || row.client_status === 'no')) ? row.client_status : null;
         crmUpdateClientStatusButtons();
         const modal = document.getElementById('crmAssignModal');
         modal.classList.remove('hidden');
@@ -977,20 +1005,32 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
         try {
             const res = await fetch(CRM_LIST_AJAX_URL, { method: 'POST', body: formData });
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text.replace(/^﻿/, '').trim()); }
+            catch (er) {
+                // Hindi JSON ang sagot (PHP error / expired session) → ipakita ang totoong dahilan
+                console.error('crmSubmitAssign response:', res.status, text);
+                const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                crmShowToast(crmEscapeHtml(/<!doctype html|<html[\s>]/i.test(text)
+                    ? 'The server returned a page instead of data. Reload the page (your session may have expired).'
+                    : `Server error (HTTP ${res.status}): ${plain.slice(0, 200) || 'empty response'}`), 'error', 9000);
+                return;
+            }
             if (data.success) {
                 crmShowToast(isPaused ? 'Client status saved.' : 'Schedule saved and designer assigned.', 'success');
+                if (data.warning) crmShowToast(crmEscapeHtml(data.warning), 'error', 8000);
                 const wasDetailOpen = crmDetailCurrentId === crmAssignCurrentId;
                 crmCloseAssignModal();
                 crmListLastSignature = '';
                 crmFetchList();
                 if (wasDetailOpen) crmOpenDetailModal(crmDetailCurrentId);
             } else {
-                crmShowToast(data.message || 'Failed to save.', 'error');
+                crmShowToast(crmEscapeHtml(data.message || 'Failed to save.'), 'error', 8000);
             }
         } catch (e) {
             console.error('crmSubmitAssign:', e);
-            crmShowToast('Connection error.', 'error');
+            crmShowToast('Could not reach the server. Check your connection and try again.', 'error');
         } finally {
             btn.disabled = false;
         }
