@@ -278,6 +278,9 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
     </main>
 
     <script>
+        // Naka-IIFE para hindi bumangga sa `esc`, `$`, atbp. na naka-declare na
+        // sa top.php / sidebar.php (iisang global scope ang lahat ng <script>).
+        (() => {
         const API = '<?= BASE_URL ?>/quotationpricelistajax';
         const $ = id => document.getElementById(id);
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -816,7 +819,15 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             if (!$('sinkModal').classList.contains('hidden')) closeSink();
         });
 
+        // Mga function na tinatawag ng inline onclick="" sa HTML
+        Object.assign(window, {
+            switchTab, clearFilters, editRow, removeRow,
+            openSize, editSize, removeSize, saveDrawer,
+            openSink, editSink, removeSink
+        });
+
         init();
+        })();
     </script>
 </body>
 

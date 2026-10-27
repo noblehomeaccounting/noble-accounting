@@ -12,16 +12,11 @@ $crmSiteVisitUrl = BASE_URL . '/crmsitevisit';
 $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
 ?>
-<style>
-    .crm-hazard { background: repeating-linear-gradient(-45deg, #f59e0b 0 10px, #1f2937 10px 20px); }
-    .crm-scroll { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
-</style>
-
 <div class="max-w-6xl mx-auto">
 
     <!-- ═══ HEADER ═══ -->
     <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
-        <div class="crm-hazard h-1.5"></div>
+        <div class="bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)] h-1.5"></div>
         <div class="p-5 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-3 min-w-0">
                 <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-compass-drafting text-lg"></i></span>
@@ -62,7 +57,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     </section>
 
     <!-- ═══ LIST ═══ -->
-    <div id="crmDesignerList" class="space-y-2.5">
+    <div id="crmDesignerList" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[320px] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] p-1 pr-2 -m-1">
         <div class="bg-white border border-gray-200 rounded-xl px-6 py-12 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading assigned inquiries…</div>
     </div>
 
@@ -74,7 +69,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
 <div id="crmDetailPanel" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col
            translate-x-full transition-transform duration-300 ease-out">
-    <div class="crm-hazard h-1.5 shrink-0"></div>
+    <div class="bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)] h-1.5 shrink-0"></div>
     <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
         <div class="min-w-0">
             <p id="crmDetailControlNo" class="font-mono text-[11px] font-semibold text-amber-700">—</p>
@@ -85,7 +80,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
             class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
     </div>
 
-    <div id="crmDetailBody" class="crm-scroll px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60">
+    <div id="crmDetailBody" class="[scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] overscroll-contain px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60">
         <!-- Populated via JS -->
     </div>
 
