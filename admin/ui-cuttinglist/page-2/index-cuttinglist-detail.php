@@ -65,6 +65,15 @@ if ($recordId <= 0) {
                 </div>
             </div>
 
+            <!-- 2D Revision history (pinakabago sa itaas, luma sa ibaba — walang napapalitan) -->
+            <div id="cutRevisionCard" class="hidden bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-5">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">2D Revision History</p>
+                    <span id="cutRevisionCount" class="text-[11px] text-gray-400"></span>
+                </div>
+                <div id="cutRevisionList" class="max-h-[560px] overflow-y-auto pr-1"></div>
+            </div>
+
             <!-- Site Notes -->
             <div class="mb-3">
                 <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Site Notes</p>
@@ -88,11 +97,15 @@ if ($recordId <= 0) {
             class="fixed inset-0 bg-black/30 z-[9998] opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
         <aside id="cutFeedbackSidebar"
-            class="fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl z-[9999] translate-x-full transition-transform duration-300 ease-out flex flex-col">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                <h2 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Feedback on 2D File</h2>
-                <button type="button" onclick="cutCloseFeedbackSidebar()"
-                    class="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+            class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[9999] translate-x-full transition-transform duration-300 ease-out flex flex-col">
+            <div class="h-1.5 shrink-0 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+            <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-200">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-700">Cutting → Designer</p>
+                    <h2 class="text-sm font-semibold text-gray-900">Feedback on 2D File</h2>
+                </div>
+                <button type="button" onclick="cutCloseFeedbackSidebar()" aria-label="Close"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
             <div id="cutFeedbackSidebarBody" class="flex-1 overflow-y-auto px-5 py-4">
                 <p class="text-sm text-gray-400 italic">Loading…</p>
@@ -130,6 +143,68 @@ if ($recordId <= 0) {
         const CUT_RECORD_ID = <?= json_encode($recordId) ?>;
 
         let cutCurrentRecord = null;
+        const CUT_REV_URL = <?= json_encode(BASE_URL . '/crm2drevisionajax') ?>;
+        let cutRevisions = [];   // pinakabago muna; [0] = current
+
+        // Aling revision ang sumagot sa feedback na ito
+        function cutResolvedIn(fid) {
+            return cutRevisions.find(r => (r.answers || []).some(a => a.id === fid)) || null;
+        }
+
+        async function cutLoadRevisions(r) {
+            try {
+                const res = await fetch(`${CUT_REV_URL}?action=list&quotation_id=${r.id}`, { cache: 'no-store' });
+                const data = await res.json();
+                cutRevisions = data.success ? (data.revisions || []) : [];
+            } catch (e) {
+                console.error('cutLoadRevisions:', e);
+                cutRevisions = [];
+            }
+        }
+
+        function cutRenderRevisionHistory(r) {
+            const card = document.getElementById('cutRevisionCard');
+            const list = document.getElementById('cutRevisionList');
+            if (!card || !list) return;
+
+            if (r.deposit_status !== 'Notice to Proceed' || !cutRevisions.length) {
+                card.classList.add('hidden');
+                return;
+            }
+            card.classList.remove('hidden');
+            document.getElementById('cutRevisionCount').textContent =
+                `${cutRevisions.length} version${cutRevisions.length === 1 ? '' : 's'} · newest on top`;
+
+            list.innerHTML = `<ol class="relative border-l-2 border-gray-200 ml-2 space-y-3">${cutRevisions.map(v => `
+                <li class="relative ml-5">
+                    <span class="absolute -left-[29px] top-3 w-4 h-4 rounded-full border-2 border-white ${v.is_current ? 'bg-amber-600' : 'bg-gray-300'}"></span>
+                    <div class="rounded-xl border ${v.is_current ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200 bg-white'} px-4 py-3">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${v.revision_no === 0 ? 'bg-gray-100 text-gray-700' : 'bg-amber-700 text-white'}">${cutEscapeHtml(v.label)}</span>
+                            ${v.is_current
+                    ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-green-100 text-green-700">Current</span>'
+                    : '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500">Previous</span>'}
+                            <span class="ml-auto text-[11.5px] text-gray-500 whitespace-nowrap"><i class="fa-regular fa-clock mr-1"></i>${cutEscapeHtml(v.created_at || '—')}</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1">${cutEscapeHtml(v.created_by_name)} · ${cutEscapeHtml(v.created_role)}</p>
+                        ${v.change_notes ? `
+                            <div class="mt-2 rounded-lg bg-white border border-gray-200 px-3 py-2">
+                                <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">What changed</p>
+                                <p class="text-[12.5px] text-gray-800 whitespace-pre-line">${cutEscapeHtml(v.change_notes)}</p>
+                            </div>` : (v.revision_no === 0 ? '<p class="text-[11.5px] text-gray-400 italic mt-1.5">First 2D file submitted.</p>' : '')}
+                        ${(v.answers || []).length ? `
+                            <div class="mt-2">
+                                <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">Answers your feedback</p>
+                                ${v.answers.map(a => `<p class="text-[12px] text-gray-600 border-l-2 border-amber-300 pl-2 mb-1 whitespace-pre-line">"${cutEscapeHtml(a.message)}" <span class="text-gray-400">· ${cutEscapeHtml(a.created_at)}</span></p>`).join('')}
+                            </div>` : ''}
+                        <div class="mt-2 flex flex-wrap gap-1.5">${(v.files || []).map(f => `
+                            <a href="${cutEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${cutEscapeHtml(f.name)}"
+                                class="inline-flex items-center gap-1.5 max-w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-700 hover:border-amber-600 hover:text-amber-800">
+                                <i class="fa-solid fa-file-pdf text-red-500"></i><span class="truncate max-w-[220px]">${cutEscapeHtml(f.name)}</span>
+                            </a>`).join('')}</div>
+                    </div>
+                </li>`).join('')}</ol>`;
+        }
 
         function cutEscapeHtml(str) {
             const div = document.createElement('div');
@@ -286,15 +361,19 @@ if ($recordId <= 0) {
         // Verified badge that the other file types don't have.
         function cutRender2dFileCard(r) {
             const path = r.design_2d_path;
-            const feedback = r.cutting_feedback || [];
-            const revised = feedback.some(f => f.is_resolved);
+            const current = cutRevisions[0] || null;
+            const revBadge = current && current.revision_no > 0
+                ? `<span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-blue-100 text-blue-700 border border-blue-200" title="${cutEscapeHtml(current.label)} uploaded ${cutEscapeHtml(current.created_at || '')}">
+                        <i class="fa-solid fa-code-branch text-[9px] leading-none"></i><span class="leading-none">${cutEscapeHtml(current.label)}</span></span>`
+                : '';
+            const files = current && current.files && current.files.length ? current.files : (path ? [{ url: path, name: 'View PDF' }] : []);
 
-            const link = path
-                ? `<a href="${cutEscapeHtml(path)}" target="_blank" rel="noopener"
-                        class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px]">
-                        View PDF
+            const link = files.length
+                ? files.map((f, i) => `<a href="${cutEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${cutEscapeHtml(f.name)}"
+                        class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px] mr-3">
+                        ${files.length > 1 ? `PDF ${i + 1}` : 'View PDF'}
                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>`
+                    </a>`).join('')
                 : `<span class="text-gray-400 text-[13px]">No file uploaded</span>`;
 
             const metaLine = path
@@ -321,7 +400,7 @@ if ($recordId <= 0) {
                         <div class="min-w-0">
                             <p class="text-[13px] font-bold text-gray-800 flex items-center gap-2 flex-wrap">
                                 <span>2D File</span>
-                                ${revised ? cutRevisedBadge(r.design_2d_uploaded_at) : ''}
+                                ${revBadge}
                             </p>
                             ${link}
                             ${metaLine}
@@ -352,12 +431,14 @@ if ($recordId <= 0) {
             const historyHtml = feedback.length
                 ? `<div class="space-y-2 mb-4">
                     ${feedback.map(f => `
-                        <div class="border-l-2 ${f.is_resolved ? 'border-gray-300 bg-gray-50' : 'border-amber-400 bg-amber-50'} rounded px-3 py-2">
+                        <div class="rounded-xl border ${f.is_resolved ? 'border-gray-200 bg-white' : 'border-amber-200 bg-amber-50'} px-3 py-2.5">
                             <p class="text-[12.5px] text-gray-800 whitespace-pre-line">${cutEscapeHtml(f.message)}</p>
-                            <p class="text-[10.5px] text-gray-400 mt-1">
-                                ${cutEscapeHtml(f.created_by_name)} · ${cutFormatDateTimeLong(f.created_at)}
-                                ${f.is_resolved ? '<span class="text-green-700 font-semibold ml-1">Resolved</span>' : '<span class="text-amber-700 font-semibold ml-1">Waiting for designer</span>'}
-                            </p>
+                            <p class="text-[10.5px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-0.5"></i>${cutFormatDateTimeLong(f.created_at)} · ${cutEscapeHtml(f.created_by_name)}</p>
+                            ${(() => {
+                    if (!f.is_resolved) return '<p class="text-[10.5px] font-semibold text-amber-700 mt-0.5"><i class="fa-solid fa-hourglass-half mr-0.5"></i>Waiting for designer</p>';
+                    const rv = cutResolvedIn(f.id);
+                    return `<p class="text-[10.5px] font-semibold text-green-700 mt-0.5"><i class="fa-solid fa-check mr-0.5"></i>Resolved${rv ? ` in ${cutEscapeHtml(rv.label)} · ${cutEscapeHtml(rv.created_at || '')}` : ''}</p>`;
+                })()}
                         </div>
                     `).join('')}
                    </div>`
@@ -575,8 +656,10 @@ if ($recordId <= 0) {
 
                 const r = data.record;
                 cutCurrentRecord = r;
+                await cutLoadRevisions(r);
                 cutRenderHeader(r);
                 cutRenderFiles(r);
+                cutRenderRevisionHistory(r);
                 cutRenderSiteVisits(r.site_visits, r);
                 cutRenderFeedbackSidebar(r);
 

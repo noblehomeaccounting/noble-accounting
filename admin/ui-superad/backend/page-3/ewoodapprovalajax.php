@@ -1,5 +1,5 @@
 <?php
-// ewoodapprovalajax.php
+// ewoodapprovalajax.php  (route: crmwoodapprovalajax)
 
 
 include ROOT_PATH . '/network/connect.php';
@@ -18,12 +18,35 @@ use Dompdf\Options;
 
 header('Content-Type: application/json');
 
+// Kapag may PHP/MySQL error, JSON pa rin ang ibabalik (dati HTML fatal error kaya "Error while rejecting" lang ang lumalabas)
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+set_exception_handler(function (Throwable $e) {
+    error_log('ewoodapprovalajax: ' . $e->getMessage());
+    if (!headers_sent()) {
+        http_response_code(200);
+        header('Content-Type: application/json');
+    }
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    exit;
+});
+
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 // Notifies the cutting staff who uploaded this submission that the
 // Superadmin has approved or rejected it.
 function ewoodNotifyUploader(mysqli $conn, int $progressId, int $superadminId, string $decision, string $reason = ''): void
+{
+    // Notification lang ito — kapag pumalya (hal. iba ang columns ng noblenotification),
+    // hindi dapat nito pigilan ang approve/revision.
+    try {
+        ewoodNotifyUploaderRun($conn, $progressId, $superadminId, $decision, $reason);
+    } catch (Throwable $e) {
+        error_log('ewoodNotifyUploader: ' . $e->getMessage());
+    }
+}
+
+function ewoodNotifyUploaderRun(mysqli $conn, int $progressId, int $superadminId, string $decision, string $reason = ''): void
 {
     $stmt = $conn->prepare("
         SELECT p.uploaded_by, i.control_no, i.client_name
@@ -77,15 +100,18 @@ function ewoodNotifyUploader(mysqli $conn, int $progressId, int $superadminId, s
 // creation stays exclusive to ROLE_CUTTING in bomajax.php).
 // -----------------------------------------------------------------------
 
-function ewoodBomFetchList(mysqli $conn, int $quotationId): array
+function ewoodBomFetchList(mysqli $conn, int $quotationId, int $progressId = 0): array
 {
+    // Hanapin sa quotation_id, at pati sa progression_id ng upload na ito
+    // (para lumabas pa rin kahit hindi tugma ang quotation_id ng BOM)
     $stmt = $conn->prepare("
-        SELECT id, bom_number, client_name, date_submitted, date_needed, created_at
+        SELECT id, bom_number, client_name, date_submitted, date_needed, created_at, approved_at
         FROM noblecrm_bom
-        WHERE quotation_id = ?
+        WHERE (quotation_id = ? OR (? > 0 AND progression_id = ?))
+          AND bom_number NOT LIKE 'TEMP-%'
         ORDER BY id DESC
     ");
-    $stmt->bind_param('i', $quotationId);
+    $stmt->bind_param('iii', $quotationId, $progressId, $progressId);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -401,39 +427,122 @@ td, th { border: 1px solid #000; padding: 7px 8px; vertical-align: middle; word-
     </body></html>';
 }
 
+
+// ── Para sa review page: BOM (kasama ang items) na naka-link sa bawat upload ──
+// Una: BOM na may progression_id ng upload. Kapag wala (lumang data), ang
+// pinakabagong hindi pa approved na BOM ng parehong quotation.
+function ewoodBomsForUploads(mysqli $conn, array $rows, bool $fallback): array
+{
+    $out = [];
+    if (!$rows) {
+        return $out;
+    }
+    $ids = implode(',', array_map(fn($r) => (int) $r['id'], $rows));
+    $boms = $conn->query("
+        SELECT id, progression_id, quotation_id, bom_number, date_needed, general_scope, created_at, approved_at, requested_by
+        FROM noblecrm_bom
+        WHERE progression_id IN ($ids) AND bom_number NOT LIKE 'TEMP-%'
+        ORDER BY id DESC
+    ")->fetch_all(MYSQLI_ASSOC);
+    foreach ($boms as $b) {
+        $out[(int) $b['progression_id']][] = $b;
+    }
+    if ($fallback) {
+        foreach ($rows as $r) {
+            $pid = (int) $r['id'];
+            if (!empty($out[$pid])) {
+                continue;
+            }
+            $st = $conn->prepare("
+                SELECT id, progression_id, quotation_id, bom_number, date_needed, general_scope, created_at, approved_at, requested_by
+                FROM noblecrm_bom
+                WHERE quotation_id = ? AND approved_at IS NULL AND bom_number NOT LIKE 'TEMP-%'
+                  AND (progression_id IS NULL OR progression_id = 0)
+                ORDER BY id DESC LIMIT 1
+            ");
+            $qid = (int) $r['quotation_id'];
+            $st->bind_param('i', $qid);
+            $st->execute();
+            $b = $st->get_result()->fetch_assoc();
+            $st->close();
+            if ($b) {
+                $b['linked_by_job'] = 1;   // hindi direktang naka-link; nahanap sa job
+                $out[$pid][] = $b;
+            }
+        }
+    }
+    $bomIds = [];
+    foreach ($out as $list) {
+        foreach ($list as $b) {
+            $bomIds[] = (int) $b['id'];
+        }
+    }
+    $items = [];
+    if ($bomIds) {
+        $res = $conn->query("SELECT bom_id, item_no, item_code, item_description, quantity, unit, supplier
+                             FROM noblecrm_bom_items WHERE bom_id IN (" . implode(',', array_unique($bomIds)) . ") ORDER BY bom_id, item_no");
+        foreach ($res->fetch_all(MYSQLI_ASSOC) as $it) {
+            $items[(int) $it['bom_id']][] = $it;
+        }
+    }
+    foreach ($out as &$list) {
+        foreach ($list as &$b) {
+            $b['id'] = (int) $b['id'];
+            $b['items'] = $items[$b['id']] ?? [];
+        }
+    }
+    return $out;
+}
+
+function ewoodUploadRow(array $row, array $bomsByUpload): array
+{
+    $photos = array_values(array_filter(array_map('trim', explode(',', $row['photos'] ?? ''))));
+    return [
+        'id' => (int) $row['id'],
+        'quotation_id' => (int) $row['quotation_id'],
+        'control_no' => $row['control_no'] ?? ('Upload #' . (int) $row['id']),
+        'client_name' => $row['client_name'] ?? '(job not found)',
+        'status' => $row['status'],
+        'remarks' => $row['remarks'] ?? null,
+        'created_at' => $row['created_at'] ?? null,
+        'uploaded_by' => $row['uploaded_by_name'] ?? null,
+        'archive_url' => !empty($row['archive_path']) ? BASE_URL . '/' . ltrim($row['archive_path'], '/') : null,
+        'archive_name' => $row['archive_original_name'] ?? null,
+        'approved_at' => $row['approved_at'] ?? null,
+        'approved_by' => $row['approved_by_name'] ?? null,
+        'photos' => array_map(fn($p) => BASE_URL . '/' . ltrim($p, '/'), $photos),
+        'boms' => $bomsByUpload[(int) $row['id']] ?? [],
+    ];
+}
+
 // ================= PENDING APPROVAL =================
 // Lists cutting-progress rows that have at least one uploaded photo
 // (expected to contain a QR code) and have not yet been QR-approved.
 if ($action === 'pending_approval') {
 
     $stmt = $conn->prepare("
-        SELECT p.id, p.quotation_id, p.photos, p.status, i.control_no, i.client_name
+        SELECT p.*, i.control_no, i.client_name, u.name AS uploaded_by_name
         FROM noblecrm_cuttinglistprogression p
-        JOIN noblecrm_2dquotation q ON q.id = p.quotation_id
-        JOIN noblecrminquiry i ON i.id = q.inquiry_id
-        WHERE p.qr_approved = 0
-          AND p.qr_rejected = 0
+        LEFT JOIN noblecrm_2dquotation q ON q.id = p.quotation_id
+        LEFT JOIN noblecrminquiry i ON i.id = q.inquiry_id
+        LEFT JOIN noblerole u ON u.id = p.uploaded_by
+        WHERE COALESCE(p.qr_approved, 0) = 0
+          AND COALESCE(p.qr_rejected, 0) = 0
           AND p.photos IS NOT NULL AND p.photos != ''
-        ORDER BY p.id DESC
+        ORDER BY p.id ASC
     ");
     $stmt->execute();
-    $result = $stmt->get_result();
-
-    $entries = [];
-    while ($row = $result->fetch_assoc()) {
-        $photos = array_values(array_filter(explode(',', $row['photos'] ?? '')));
-        if (empty($photos))
-            continue;
-        $entries[] = [
-            'id' => (int) $row['id'],
-            'quotation_id' => (int) $row['quotation_id'], // needed by the front-end to load this job's BOM(s)
-            'control_no' => $row['control_no'],
-            'client_name' => $row['client_name'],
-            'status' => $row['status'],
-            'photos' => array_map(fn($p) => BASE_URL . '/' . $p, $photos),
-        ];
-    }
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
+
+    $boms = ewoodBomsForUploads($conn, $rows, true);
+    $entries = [];
+    foreach ($rows as $row) {
+        $e = ewoodUploadRow($row, $boms);
+        if ($e['photos']) {
+            $entries[] = $e;
+        }
+    }
 
     echo json_encode(['success' => true, 'entries' => $entries]);
     exit;
@@ -445,33 +554,22 @@ if ($action === 'pending_approval') {
 if ($action === 'approved_list') {
 
     $stmt = $conn->prepare("
-        SELECT p.id, p.quotation_id, p.photos, p.status, p.approved_at,
-               i.control_no, i.client_name, r.name AS approved_by_name
+        SELECT p.*, i.control_no, i.client_name, r.name AS approved_by_name, u.name AS uploaded_by_name
         FROM noblecrm_cuttinglistprogression p
-        JOIN noblecrm_2dquotation q ON q.id = p.quotation_id
-        JOIN noblecrminquiry i ON i.id = q.inquiry_id
+        LEFT JOIN noblecrm_2dquotation q ON q.id = p.quotation_id
+        LEFT JOIN noblecrminquiry i ON i.id = q.inquiry_id
         LEFT JOIN noblerole r ON r.id = p.approved_by
+        LEFT JOIN noblerole u ON u.id = p.uploaded_by
         WHERE p.qr_approved = 1
         ORDER BY p.approved_at DESC, p.id DESC
+        LIMIT 300
     ");
     $stmt->execute();
-    $result = $stmt->get_result();
-
-    $entries = [];
-    while ($row = $result->fetch_assoc()) {
-        $photos = array_values(array_filter(explode(',', $row['photos'] ?? '')));
-        $entries[] = [
-            'id' => (int) $row['id'],
-            'quotation_id' => (int) $row['quotation_id'],
-            'control_no' => $row['control_no'],
-            'client_name' => $row['client_name'],
-            'status' => $row['status'],
-            'approved_at' => $row['approved_at'],
-            'approved_by' => $row['approved_by_name'],
-            'photos' => array_map(fn($p) => BASE_URL . '/' . $p, $photos),
-        ];
-    }
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
+
+    $boms = ewoodBomsForUploads($conn, $rows, false);
+    $entries = array_map(fn($row) => ewoodUploadRow($row, $boms), $rows);
 
     echo json_encode(['success' => true, 'entries' => $entries]);
     exit;
@@ -491,13 +589,20 @@ if ($action === 'approve') {
     }
 
     $stmt = $conn->prepare("
-    UPDATE noblecrm_cuttinglistprogression
-    SET qr_approved = 1, approved_by = ?, approved_at = NOW(), status = 'Completed'
-    WHERE id = ?
-");
+        UPDATE noblecrm_cuttinglistprogression
+        SET qr_approved = 1, approved_by = ?, approved_at = NOW(), status = 'Completed'
+        WHERE id = ? AND COALESCE(qr_approved, 0) = 0 AND COALESCE(qr_rejected, 0) = 0
+    ");
     $stmt->bind_param('ii', $currentUserId, $progressId);
     $stmt->execute();
+    $changed = $stmt->affected_rows;
     $stmt->close();
+
+    if ($changed !== 1) {
+        echo json_encode(['success' => false, 'message' => 'This submission was already approved or sent back for revision. Refresh the page.']);
+        exit;
+    }
+
     $bomUpdated = ewoodBomMarkApproved($conn, $progressId, $currentUserId);
 
     // Let the cutting staff who uploaded this know it's been approved.
@@ -524,19 +629,29 @@ if ($action === 'reject') {
         exit;
     }
 
-    // Fetch the uploader BEFORE we wipe/clear the row's data, so the
-    // notification still has what it needs.
-    ewoodNotifyUploader($conn, $progressId, $currentUserId, 'rejected', $remarks);
+    if (mb_strlen($remarks) > 1000) {
+        echo json_encode(['success' => false, 'message' => 'The reason is too long (max 1000 characters).']);
+        exit;
+    }
 
+    // I-save muna ang revision; saka mag-notify (hindi na kailangan ng archive/photos ng notification)
     $stmt = $conn->prepare("
         UPDATE noblecrm_cuttinglistprogression
         SET qr_rejected = 1, rejection_remarks = ?, rejected_by = ?, rejected_at = NOW(),
             archive_path = NULL, archive_original_name = NULL, photos = '', status = 'Pending'
-        WHERE id = ?
+        WHERE id = ? AND COALESCE(qr_approved, 0) = 0 AND COALESCE(qr_rejected, 0) = 0
     ");
     $stmt->bind_param('sii', $remarks, $currentUserId, $progressId);
     $stmt->execute();
+    $changed = $stmt->affected_rows;
     $stmt->close();
+
+    if ($changed !== 1) {
+        echo json_encode(['success' => false, 'message' => 'This submission was already approved or sent back for revision. Refresh the page.']);
+        exit;
+    }
+
+    ewoodNotifyUploader($conn, $progressId, $currentUserId, 'rejected', $remarks);
 
     echo json_encode(['success' => true, 'message' => 'Rejected.']);
     exit;
@@ -548,12 +663,13 @@ if ($action === 'reject') {
 if ($action === 'bom_list') {
 
     $quotationId = intval($_GET['quotation_id'] ?? 0);
-    if ($quotationId <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid quotation.']);
+    $progressId = intval($_GET['progress_id'] ?? 0);
+    if ($quotationId <= 0 && $progressId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'This submission has no quotation linked, so its BOM cannot be found.']);
         exit;
     }
 
-    echo json_encode(['success' => true, 'entries' => ewoodBomFetchList($conn, $quotationId)]);
+    echo json_encode(['success' => true, 'entries' => ewoodBomFetchList($conn, $quotationId, $progressId)]);
     exit;
 }
 

@@ -11,6 +11,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 $cutListAjaxUrl = BASE_URL . '/cuttinglistajax';
 $cutProgAjaxUrl = BASE_URL . '/crmewoodajax';
 $bomAjaxUrl = BASE_URL . '/bomajax';
+$supAjaxUrl = BASE_URL . '/crmsupplierajax';   // listahan ng supplier at produkto (crmsupplier.php)
+$supPageUrl = BASE_URL . '/crmsupplier';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -22,47 +24,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 
-    <style>
-        /* Active row in the list */
-        .ewood-row.is-active {
-            background: #fffbeb;
-            box-shadow: inset 3px 0 0 #b45309;
-        }
-
-        /* History timeline rail */
-        .ewood-timeline {
-            position: relative;
-        }
-
-        .ewood-timeline::before {
-            content: '';
-            position: absolute;
-            left: 4px;
-            top: 8px;
-            bottom: 8px;
-            width: 1px;
-            background: #e5e7eb;
-        }
-
-        /* Thin scrollbars */
-        #ewoodList,
-        #ewoodDetailBody,
-        #ewoodBomViewModal {
-            scrollbar-width: thin;
-            scrollbar-color: #d1d5db transparent;
-        }
-
-        /* Mobile: show either the list or the detail, not both */
-        @media (max-width: 1023px) {
-            #ewoodMain[data-view="detail"] #ewoodSidebar {
-                display: none;
-            }
-
-            #ewoodMain[data-view="list"] #ewoodDetailPane {
-                display: none;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/ui-cuttinglist/css/cutting/ewoodfile.css?v=<?= @filemtime(ROOT_PATH . '/admin/ui-cuttinglist/css/cutting/ewoodfile.css') ?: 1 ?>">
 </head>
 
 <body class="bg-slate-100">
@@ -72,16 +34,36 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         <!-- ═════════════════════════════════════════════ -->
         <!-- LEFT: submissions list                         -->
         <!-- ═════════════════════════════════════════════ -->
-        <aside id="ewoodSidebar" class="w-full lg:w-[380px] shrink-0 h-full bg-white border-r border-gray-200 flex flex-col">
+        <aside id="ewoodSidebar" class="w-full lg:w-[360px] shrink-0 h-full bg-white border-r border-gray-200 flex flex-col">
 
-            <div class="px-5 pt-5 pb-4 shrink-0 border-b border-gray-100">
-                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Cutting
-                    Department</p>
-                <h1 class="text-gray-900 text-lg font-semibold">Cutting Files &amp; Progress</h1>
-                <p class="text-gray-400 text-[11px] mt-1 leading-relaxed">
-                    Uploads unlock once a job has <strong class="text-gray-500">Notice to Proceed</strong> and a
-                    <strong class="text-gray-500">verified 2D file</strong>.
-                </p>
+            <div class="ewood-hazard h-1.5 shrink-0"></div>
+            <div class="px-5 pt-4 pb-4 shrink-0 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-scissors"></i></span>
+                    <div class="min-w-0">
+                        <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Cutting Department</p>
+                        <h1 class="text-gray-900 text-base font-semibold leading-tight">Cutting Files &amp; Progress</h1>
+                    </div>
+                </div>
+
+                <!-- Counters = filter -->
+                <div class="grid grid-cols-3 gap-1.5 mt-4">
+                    <button type="button" data-filter="all"
+                        class="ewood-chip text-left rounded-lg border px-2.5 py-2 transition-colors">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80">All</span>
+                        <span id="ewoodCount_all" class="block text-lg font-bold leading-tight tabular-nums">0</span>
+                    </button>
+                    <button type="button" data-filter="ready"
+                        class="ewood-chip text-left rounded-lg border px-2.5 py-2 transition-colors">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80">Ready</span>
+                        <span id="ewoodCount_ready" class="block text-lg font-bold leading-tight tabular-nums">0</span>
+                    </button>
+                    <button type="button" data-filter="waiting"
+                        class="ewood-chip text-left rounded-lg border px-2.5 py-2 transition-colors">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80">Waiting</span>
+                        <span id="ewoodCount_waiting" class="block text-lg font-bold leading-tight tabular-nums">0</span>
+                    </button>
+                </div>
 
                 <!-- Search -->
                 <div class="relative mt-3">
@@ -89,22 +71,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                     <input type="text" id="ewoodSearch" placeholder="Search control no., client, branch..."
                         class="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 outline-none focus:bg-white focus:border-amber-600 transition-colors">
                 </div>
-
-                <!-- Filter chips -->
-                <div class="flex items-center gap-1.5 mt-3">
-                    <button type="button" data-filter="all"
-                        class="ewood-chip px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors">
-                        All <span id="ewoodCount_all" class="opacity-70">0</span>
-                    </button>
-                    <button type="button" data-filter="ready"
-                        class="ewood-chip px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors">
-                        Ready <span id="ewoodCount_ready" class="opacity-70">0</span>
-                    </button>
-                    <button type="button" data-filter="waiting"
-                        class="ewood-chip px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors">
-                        Waiting <span id="ewoodCount_waiting" class="opacity-70">0</span>
-                    </button>
-                </div>
+                <p class="text-gray-400 text-[10.5px] mt-2 leading-relaxed"><i class="fa-solid fa-circle-info mr-1"></i>A job is <b class="text-gray-500">Ready</b> once it has Notice to Proceed and a verified 2D file.</p>
             </div>
 
             <div id="ewoodList" class="flex-1 overflow-y-auto"></div>
@@ -115,7 +82,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         <!-- ═════════════════════════════════════════════ -->
         <!-- RIGHT: detail pane                             -->
         <!-- ═════════════════════════════════════════════ -->
-        <section id="ewoodDetailPane" class="flex-1 min-w-0 h-full p-3 lg:p-5 flex">
+        <section id="ewoodDetailPane" class="flex-1 min-w-0 h-full p-3 lg:p-4 flex">
 
             <!-- Empty state -->
             <div id="ewoodEmptyState" class="m-auto text-center text-gray-400 max-w-xs">
@@ -130,63 +97,97 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             <div id="ewoodDetailView"
                 class="hidden flex-col w-full h-full bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
 
-                <!-- Header + tabs -->
-                <div class="px-5 lg:px-7 pt-4 border-b border-gray-100 shrink-0">
-                    <button type="button" onclick="ewoodBackToList()"
-                        class="lg:hidden mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 hover:text-amber-700">
-                        <i class="fa-solid fa-chevron-left text-[10px]"></i> Back to list
-                    </button>
+                <!-- Header + stepper + tabs -->
+                <div class="shrink-0 border-b border-gray-100">
+                    <div class="ewood-hazard h-1.5"></div>
+                    <div class="px-5 lg:px-7 pt-4">
+                        <button type="button" onclick="ewoodBackToList()"
+                            class="lg:hidden mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 hover:text-amber-700">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i> Back to list
+                        </button>
 
-                    <p id="ewoodModalControl" class="font-mono text-[11px] font-semibold text-amber-700 tracking-wide"></p>
-                    <h2 id="ewoodModalTitle" class="text-lg font-semibold text-gray-900 truncate">Submission</h2>
-                    <div id="ewoodHeaderChips" class="mt-2 flex flex-wrap items-center gap-1.5"></div>
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p id="ewoodModalControl" class="font-mono text-[11px] font-semibold text-amber-700 tracking-wide"></p>
+                                <h2 id="ewoodModalTitle" class="text-xl font-semibold text-gray-900 truncate capitalize">Submission</h2>
+                                <div id="ewoodHeaderChips" class="mt-1.5 flex flex-wrap items-center gap-1.5"></div>
+                            </div>
+                            <button type="button" id="ewoodPrimaryBtn" onclick="ewoodSwitchTab('upload')"
+                                class="hidden inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload progress
+                            </button>
+                        </div>
 
-                    <div class="mt-4 flex gap-1 -mb-px">
-                        <button type="button" data-tab="details" onclick="ewoodSwitchTab('details')"
-                            class="ewood-tab-btn inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b-2 border-amber-700 text-amber-700">
-                            <i class="fa-solid fa-circle-info text-[11px]"></i> Details
-                        </button>
-                        <button type="button" data-tab="upload" onclick="ewoodSwitchTab('upload')"
-                            class="ewood-tab-btn inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-600">
-                            <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i> Upload &amp; BOM
-                        </button>
-                        <button type="button" data-tab="history" onclick="ewoodSwitchTab('history')"
-                            class="ewood-tab-btn inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-600">
-                            <i class="fa-solid fa-clock-rotate-left text-[11px]"></i> History
-                            <span id="ewoodHistoryCount"
-                                class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold items-center justify-center"></span>
-                        </button>
+                        <!-- Job stepper -->
+                        <ol id="ewoodStepper" class="mt-4 grid grid-cols-5"></ol>
+
+                        <div class="mt-3 flex gap-1 -mb-px overflow-x-auto">
+                            <button type="button" data-tab="details" onclick="ewoodSwitchTab('details')"
+                                class="ewood-tab-btn shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b-2 border-amber-700 text-amber-700">
+                                <i class="fa-solid fa-gauge text-[11px]"></i> Overview
+                            </button>
+                            <button type="button" data-tab="upload" onclick="ewoodSwitchTab('upload')"
+                                class="ewood-tab-btn shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-600">
+                                <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i> Upload &amp; BOM
+                            </button>
+                            <button type="button" data-tab="history" onclick="ewoodSwitchTab('history')"
+                                class="ewood-tab-btn shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-600">
+                                <i class="fa-solid fa-clock-rotate-left text-[11px]"></i> History
+                                <span id="ewoodHistoryCount"
+                                    class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold items-center justify-center"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Body -->
                 <div id="ewoodDetailBody" class="flex-1 overflow-y-auto bg-slate-50/60">
 
-                    <!-- Details panel -->
+                    <!-- Overview panel -->
                     <div id="ewoodPanelDetails" class="px-5 lg:px-7 py-5">
-                        <div class="max-w-4xl space-y-4">
-                            <div id="ewoodDetailNotice"
-                                class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        <div class="max-w-5xl space-y-4">
+
+                            <!-- Next step -->
+                            <div id="ewoodDetailNotice" class="rounded-xl border px-4 py-3.5"></div>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+                                <!-- Requirements -->
+                                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                    <p class="px-4 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-list-check mr-1 text-amber-700"></i>Before uploading</p>
+                                    <dl class="divide-y divide-gray-100 text-xs">
+                                        <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                            <dt class="text-gray-500">Notice to Proceed</dt><dd id="ewoodDetailNtp"></dd>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                            <dt class="text-gray-500">2D file</dt><dd id="ewoodDetailVerified"></dd>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                            <dt class="text-gray-500">Upload access</dt><dd id="ewoodDetailAccess"></dd>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                            <dt class="text-gray-500">Branch · Type</dt><dd id="ewoodDetailJob" class="text-gray-800 font-medium text-right capitalize"></dd>
+                                        </div>
+                                    </dl>
+                                </div>
+
+                                <!-- Latest submission -->
+                                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden min-w-0">
+                                    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-box-open mr-1 text-amber-700"></i>Latest submission</p>
+                                        <button type="button" onclick="ewoodSwitchTab('history')" class="text-[11px] font-semibold text-amber-700 hover:underline">All history</button>
+                                    </div>
+                                    <p id="ewoodDetailLatest" class="sr-only">—</p>
+                                    <div id="ewoodLatestCard" class="p-4"></div>
+                                </div>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div class="bg-white border border-gray-200 rounded-xl p-4">
-                                    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">NTP Status</p>
-                                    <div id="ewoodDetailNtp"></div>
+                            <!-- Bills of materials -->
+                            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-file-invoice mr-1 text-amber-700"></i>Bills of materials</p>
+                                    <span id="ewoodBomCount" class="text-[11px] text-gray-400"></span>
                                 </div>
-                                <div class="bg-white border border-gray-200 rounded-xl p-4">
-                                    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">2D Verified</p>
-                                    <div id="ewoodDetailVerified"></div>
-                                </div>
-                                <div class="bg-white border border-gray-200 rounded-xl p-4">
-                                    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Upload Access</p>
-                                    <div id="ewoodDetailAccess"></div>
-                                </div>
-                            </div>
-
-                            <div class="bg-white border border-gray-200 rounded-xl p-4">
-                                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Latest Progress</p>
-                                <p id="ewoodDetailLatest" class="text-sm text-gray-700">—</p>
+                                <div id="ewoodBomOverview" class="p-4 flex flex-wrap gap-2"></div>
                             </div>
                         </div>
                     </div>
@@ -204,15 +205,19 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                             <div id="ewoodUploadFields" class="space-y-4">
 
                                 <!-- STEP 1 -->
-                                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                <div id="ewoodStep1Card" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                                     <div class="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100">
                                         <span class="w-6 h-6 rounded-full bg-amber-700 text-white text-[11px] font-bold flex items-center justify-center shrink-0">1</span>
                                         <div>
-                                            <p class="text-sm font-semibold text-gray-800">Save progress</p>
-                                            <p class="text-[11px] text-gray-400">Upload the archive, photos, and remarks for this submission.</p>
+                                            <p class="text-sm font-semibold text-gray-800">Progress files</p>
+                                            <p class="text-[11px] text-gray-400">Choose the archive, photos, and remarks. Nothing is sent yet.</p>
                                         </div>
+                                        <button type="button" id="ewoodStep1Edit"
+                                            class="hidden ml-auto text-[11px] font-semibold text-amber-700 hover:text-amber-800">
+                                            <i class="fa-solid fa-pen mr-1"></i>Edit
+                                        </button>
                                     </div>
-                                    <div class="p-5 space-y-4">
+                                    <div id="ewoodStep1Body" class="p-5 space-y-4">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label class="block text-[11px] font-semibold text-gray-600 mb-1.5">
@@ -237,20 +242,31 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                                                 class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600"></textarea>
                                         </div>
 
-                                        <!-- Step 1: saves archive/images/remarks via crmewoodajax?action=upload -->
+                                        <p id="ewoodStep1Err" class="hidden text-[11px] text-red-600"></p>
+
+                                        <!-- Step 1: lilipat lang sa BOM. WALA pang ipinapadala hanggang i-Submit sa Step 2. -->
                                         <button type="button" id="ewoodSaveProgressBtn"
                                             class="w-full py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm">
-                                            Save Progress
+                                            Next: Bill of Materials <i class="fa-solid fa-arrow-right ml-1"></i>
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- BOM already exists for this job and was auto-relinked -->
+                                <!-- May BOM na ang job na hindi pa approved → ikakabit na lang ito sa submission -->
                                 <div id="ewoodBomRelinkedNotice"
-                                    class="hidden text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                                    <i class="fa-solid fa-circle-check mr-1"></i>
-                                    This job already has a Bill of Materials on file. It has been linked to this new
-                                    submission automatically — no need to create another one.
+                                    class="hidden bg-white border border-green-200 rounded-xl overflow-hidden">
+                                    <div class="px-5 py-4 text-xs text-green-800 bg-green-50">
+                                        <i class="fa-solid fa-circle-check mr-1"></i>
+                                        This job already has a Bill of Materials waiting for approval
+                                        (<span id="ewoodBomExistingNo" class="font-mono font-semibold"></span>).
+                                        It will be attached to this submission, so there is no need to create another one.
+                                    </div>
+                                    <div class="p-4">
+                                        <button type="button" id="ewoodSubmitRelinkBtn"
+                                            class="w-full py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm">
+                                            <i class="fa-solid fa-paper-plane mr-1"></i> Submit to Superadmin
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- STEP 2 — hidden until Step 1 succeeds and no BOM could be auto-relinked -->
@@ -279,27 +295,35 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
 
                                         <div>
                                             <div class="flex items-center justify-between mb-1.5">
-                                                <label class="block text-[11px] font-semibold text-gray-600">Items</label>
+                                                <label class="block text-[11px] font-semibold text-gray-600">Items <span class="font-normal text-gray-400">— choose the supplier first, then its product</span></label>
                                                 <button type="button" onclick="ewoodBomAddRow()"
                                                     class="text-[11px] font-semibold text-amber-700 hover:text-amber-800">
                                                     <i class="fa-solid fa-plus"></i> Add row
                                                 </button>
                                             </div>
+                                            <div id="ewoodCatalogNote" class="hidden mb-2 text-[11px] rounded-lg px-3 py-2"></div>
                                             <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                                                <table class="w-full text-[11px] min-w-[560px]">
+                                                <table class="w-full text-[11px] min-w-[540px] table-fixed">
+                                                    <colgroup><col style="width:23%"><col style="width:15%"><col><col style="width:10%"><col style="width:10%"><col style="width:32px"></colgroup>
                                                     <thead class="bg-gray-50 text-gray-500">
                                                         <tr>
+                                                            <th class="px-2 py-2 text-left font-semibold">Supplier</th>
                                                             <th class="px-2 py-2 text-left font-semibold">Item Code</th>
                                                             <th class="px-2 py-2 text-left font-semibold">Description</th>
-                                                            <th class="px-2 py-2 text-left font-semibold w-20">Qty</th>
-                                                            <th class="px-2 py-2 text-left font-semibold w-20">Unit</th>
-                                                            <th class="px-2 py-2 text-left font-semibold">Supplier</th>
-                                                            <th class="w-8"></th>
+                                                            <th class="px-2 py-2 text-left font-semibold">Qty</th>
+                                                            <th class="px-2 py-2 text-left font-semibold">Unit</th>
+                                                            <th></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="ewoodBomItemsBody" class="divide-y divide-gray-100"></tbody>
                                                 </table>
                                             </div>
+                                            <p id="ewoodBomItemsErr" class="hidden mt-1.5 text-[11px] text-red-600"></p>
+                                            <p class="mt-1.5 text-[10.5px] text-gray-400">
+                                                Missing a supplier or product? Add it in <a href="<?= htmlspecialchars($supPageUrl) ?>" target="_blank" class="font-semibold text-amber-700 hover:underline">Suppliers &amp; Products</a>, then click
+                                                <button type="button" id="ewoodCatalogReload" class="font-semibold text-amber-700 hover:underline">reload list</button>.
+                                                Choose <b class="text-gray-500">Outsource</b> when no supplier carries it yet.
+                                            </p>
                                         </div>
 
                                         <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-[11px] text-gray-400 leading-relaxed">
@@ -309,11 +333,12 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                                             BOM sa kanila. Wala nang manual na ilalagay dito.
                                         </div>
 
-                                        <!-- Step 2: creates the BOM via bomajax?action=create -->
+                                        <!-- Step 2: dito pa lang ipapadala ang progress (crmewoodajax?action=upload) kasabay ng BOM (bomajax?action=create) -->
                                         <button type="button" id="ewoodCreateBomBtn"
                                             class="w-full py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm">
-                                            Create BOM
+                                            <i class="fa-solid fa-paper-plane mr-1"></i> Submit progress &amp; BOM
                                         </button>
+                                        <p class="text-[10.5px] text-gray-400 text-center">The Superadmin only sees this submission once the BOM is attached.</p>
                                     </div>
                                 </div>
 
@@ -345,6 +370,53 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]">
     </div>
 
+    <!-- Double confirmation bago ipadala sa Superadmin: 1) Review + checkbox  2) Final confirm -->
+    <div id="ewoodConfirmModal" class="hidden fixed inset-0 z-[9999] items-start sm:items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-auto overflow-hidden flex flex-col max-h-[94vh]">
+            <div class="ewood-hazard h-1.5 shrink-0"></div>
+            <div class="px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Before sending to the Superadmin</p>
+                    <p id="ewoodCfTitle" class="text-base font-semibold text-gray-900 truncate"></p>
+                </div>
+                <button type="button" id="ewoodCfClose" aria-label="Close"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+            </div>
+            <!-- steps -->
+            <div class="px-5 pt-3 shrink-0">
+                <ol class="flex items-center gap-2 text-[11px] font-semibold">
+                    <li id="ewoodCfStep1" class="flex items-center gap-1.5"><span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span> Review the BOM</li>
+                    <li class="flex-1 h-px bg-gray-200"></li>
+                    <li id="ewoodCfStep2" class="flex items-center gap-1.5"><span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span> Final confirm</li>
+                </ol>
+            </div>
+            <div id="ewoodCfBody" class="flex-1 overflow-y-auto px-5 py-4"></div>
+            <div id="ewoodCfFoot" class="px-5 py-3 bg-gray-50 border-t border-gray-100 shrink-0"></div>
+        </div>
+    </div>
+
+    <!-- Product picker: mga produkto ng napiling supplier -->
+    <div id="ewoodPickModal" class="hidden fixed inset-0 z-[9998] items-center justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Choose a product</p>
+                    <p id="ewoodPickTitle" class="text-sm font-semibold text-gray-800 truncate"></p>
+                </div>
+                <button type="button" id="ewoodPickClose" aria-label="Close"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+            </div>
+            <div class="px-4 py-2.5 border-b border-gray-100 shrink-0">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                    <input type="text" id="ewoodPickSearch" placeholder="Search code or description…"
+                        class="w-full h-9 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:bg-white focus:border-amber-600">
+                </div>
+            </div>
+            <div id="ewoodPickList" class="flex-1 overflow-y-auto divide-y divide-gray-100"></div>
+        </div>
+    </div>
+
     <!-- BOM view modal — renders the BOM like the printed form, not an iframe -->
     <div id="ewoodBomViewModal"
         class="hidden fixed inset-0 z-[9998] items-center justify-center bg-black/50 p-4 overflow-y-auto">
@@ -356,8 +428,8 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                         class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800">
                         <i class="fa-solid fa-file-pdf"></i> Download PDF
                     </a>
-                    <button type="button" onclick="ewoodBomCloseViewModal()"
-                        class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+                    <button type="button" onclick="ewoodBomCloseViewModal()" aria-label="Close"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
                 </div>
             </div>
             <div id="ewoodBomViewBody" class="p-5 overflow-x-auto"></div>
@@ -385,6 +457,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         const CUT_LIST_AJAX_URL = <?= json_encode($cutListAjaxUrl) ?>;
         const CUT_PROG_AJAX_URL = <?= json_encode($cutProgAjaxUrl) ?>;
         const BOM_AJAX_URL = <?= json_encode($bomAjaxUrl) ?>;
+        const SUP_AJAX_URL = <?= json_encode($supAjaxUrl) ?>;
 
         let ewoodActiveQuotationId = null;
         let ewoodRowsMap = {};   // quotation_id -> row data, populated on list load
@@ -400,6 +473,23 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             const div = document.createElement('div');
             div.textContent = str ?? '';
             return div.innerHTML;
+        }
+
+        // Basahin ang sagot ng server nang ligtas. Kapag hindi JSON (PHP error, kulang na route,
+        // expired session), ipinapakita ang totoong dahilan imbes na tahimik na "Loading…".
+        async function ewoodJson(res) {
+            const text = await res.text();
+            try { return JSON.parse(text.replace(/^﻿/, '').trim()); }
+            catch (e) {
+                console.error('Not JSON:', res.status, res.url, text);
+                let route = res.url;
+                try { route = new URL(res.url).pathname.split('/').pop(); } catch (x) { }
+                if (/<!doctype html|<html[\s>]/i.test(text)) {
+                    throw new Error(`"${route}" returned a page instead of data. Check that it is registered in the router, or reload if your session expired.`);
+                }
+                const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(`"${route}" server error (HTTP ${res.status}): ${plain ? plain.slice(0, 220) : 'empty response'}`);
+            }
         }
 
         function ewoodFormatDate(value) {
@@ -462,11 +552,13 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         function ewoodApplyChipStyles() {
             document.querySelectorAll('.ewood-chip').forEach(chip => {
                 const active = chip.dataset.filter === ewoodListFilter;
-                chip.classList.toggle('bg-amber-700', active);
-                chip.classList.toggle('text-white', active);
-                chip.classList.toggle('border-amber-700', active);
+                chip.classList.toggle('bg-amber-50', active);
+                chip.classList.toggle('text-amber-800', active);
+                chip.classList.toggle('border-amber-600', active);
+                chip.classList.toggle('ring-1', active);
+                chip.classList.toggle('ring-amber-600', active);
                 chip.classList.toggle('bg-white', !active);
-                chip.classList.toggle('text-gray-500', !active);
+                chip.classList.toggle('text-gray-600', !active);
                 chip.classList.toggle('border-gray-200', !active);
             });
         }
@@ -482,7 +574,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             ewoodApplyChipStyles();
 
             if (ewoodRowsList.length === 0) {
-                list.innerHTML = `<div class="text-center text-gray-400 py-12 text-xs"><i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>No approved submissions found.</div>`;
+                list.innerHTML = `<div class="text-center text-gray-400 py-12 text-xs"><i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>No jobs yet.</div>`;
                 document.getElementById('ewoodCount').textContent = '';
                 return;
             }
@@ -498,27 +590,21 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             if (filtered.length === 0) {
                 list.innerHTML = `<div class="text-center text-gray-400 py-12 text-xs">No submissions match your search.</div>`;
             } else {
+                const check = (ok, label) => `<span class="inline-flex items-center gap-1 text-[10.5px] font-medium ${ok ? 'text-green-700' : 'text-gray-400'}"><i class="fa-solid ${ok ? 'fa-circle-check' : 'fa-circle-xmark'} text-[10px]"></i>${label}</span>`;
                 list.innerHTML = filtered.map(row => {
                     const ready = ewoodIsReady(row);
-                    const statusChip = ready
-                        ? `<span class="shrink-0 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">Ready</span>`
-                        : `<span class="shrink-0 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Waiting</span>`;
                     return `
                     <div id="ewoodRow_${row.id}" onclick="ewoodOpenSidebar(${row.id})"
-                        class="ewood-row px-5 py-3.5 border-b border-gray-100 hover:bg-amber-50/40 transition-colors cursor-pointer">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0">
-                                <p class="text-[13px] font-semibold text-gray-800 truncate">${ewoodEscapeHtml(row.client_name)}</p>
-                                <p class="font-mono text-[10.5px] text-amber-700 truncate mt-0.5">${ewoodEscapeHtml(row.control_no)}</p>
+                        class="ewood-row relative flex items-stretch gap-3 pl-5 pr-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
+                        <span class="absolute left-0 top-0 bottom-0 w-1 ${ready ? 'bg-green-500' : 'bg-amber-400'}"></span>
+                        <span class="w-9 h-9 rounded-lg ${ready ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'} flex items-center justify-center shrink-0 text-[11px] font-bold uppercase">${ewoodEscapeHtml(String(row.client_name || '?').trim().slice(0, 2))}</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="ewood-row-name text-[13px] font-semibold text-gray-800 truncate capitalize">${ewoodEscapeHtml(row.client_name)}</p>
+                                <span class="shrink-0 text-[10px] font-semibold ${ready ? 'text-green-700' : 'text-amber-700'}">${ready ? 'Ready' : 'Waiting'}</span>
                             </div>
-                            ${statusChip}
-                        </div>
-                        <div class="flex items-center justify-between gap-2 mt-2">
-                            <span class="text-[10.5px] text-gray-500 truncate">
-                                <i class="fa-solid fa-location-dot text-gray-300 mr-1"></i>${ewoodEscapeHtml(row.branch)}
-                                <span class="text-gray-300 mx-1">·</span><span class="capitalize">${ewoodEscapeHtml(row.project_type ?? '—')}</span>
-                            </span>
-                            <span class="flex items-center gap-1 shrink-0">${ewoodNtpBadge(row)}${ewoodVerifiedBadge(row)}</span>
+                            <p class="font-mono text-[10.5px] text-gray-400 truncate">${ewoodEscapeHtml(row.control_no)} · <span class="font-sans capitalize">${ewoodEscapeHtml(row.branch)}</span></p>
+                            <div class="flex items-center gap-3 mt-1">${check(row.deposit_status === 'Notice to Proceed', 'NTP')}${check(!!row.design_2d_verified, '2D verified')}</div>
                         </div>
                     </div>`;
                 }).join('');
@@ -533,8 +619,8 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         async function ewoodFetchList() {
             try {
                 const res = await fetch(`${CUT_LIST_AJAX_URL}?action=list&filter=all`);
-                const data = await res.json();
-                if (!data.success) { crmShowToast('Failed to load submissions.', 'error'); return; }
+                const data = await ewoodJson(res);
+                if (!data.success) { crmShowToast(ewoodEscapeHtml(data.message || 'Failed to load submissions.'), 'error'); return; }
 
                 ewoodRowsMap = {};
                 ewoodRowsList = data.rows;
@@ -543,7 +629,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                 ewoodRenderList();
             } catch (e) {
                 console.error(e);
-                crmShowToast('Connection error while fetching submissions.', 'error');
+                crmShowToast(ewoodEscapeHtml(e.message || 'Connection error while fetching submissions.'), 'error');
             }
         }
 
@@ -595,6 +681,105 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             }).join('');
         }
 
+        // ---------------------------------------------------------------
+        // OVERVIEW: stepper sa header, "next step", latest submission, BOMs
+        // ---------------------------------------------------------------
+        const ewoodOv = { row: null, latest: null, loaded: false, boms: [] };
+
+        function ewoodOvState() {
+            const row = ewoodOv.row, latest = ewoodOv.latest;
+            const isNtp = row.deposit_status === 'Notice to Proceed';
+            const isVerified = !!row.design_2d_verified;
+            const appr = latest ? latest.approval_status : null;
+            const steps = [
+                ['Notice to Proceed', isNtp ? 'done' : 'now'],
+                ['2D verified', isVerified ? 'done' : (isNtp ? 'now' : 'todo')],
+                ['Upload & BOM', appr === 'Pending' || appr === 'Approved' ? 'done' : (isNtp && isVerified ? 'now' : 'todo')],
+                ['Superadmin QR', appr === 'Approved' ? 'done' : appr === 'Pending' ? 'now' : appr === 'Rejected' ? 'warn' : 'todo'],
+                ['Completed', appr === 'Approved' && latest.status === 'Completed' ? 'done' : 'todo'],
+            ];
+            return { isNtp, isVerified, appr, steps };
+        }
+
+        function ewoodRenderOverview() {
+            if (!ewoodOv.row) return;
+            const { isNtp, isVerified, appr, steps } = ewoodOvState();
+            const latest = ewoodOv.latest;
+
+            // stepper
+            const DOT = {
+                done: 'bg-emerald-500 border-emerald-500 text-white',
+                now: 'bg-white border-amber-500 text-amber-700 ring-4 ring-amber-50',
+                warn: 'bg-red-500 border-red-500 text-white',
+                todo: 'bg-white border-gray-200 text-gray-300',
+            };
+            const TXT = { done: 'text-gray-600', now: 'text-amber-700 font-semibold', warn: 'text-red-600 font-semibold', todo: 'text-gray-400' };
+            document.getElementById('ewoodStepper').innerHTML = steps.map(([label, st], i) => `
+                <li class="relative flex flex-col items-center text-center px-1 min-w-0">
+                    ${i ? `<span class="ewood-step-line absolute top-[11px] right-1/2 w-full" data-on="${st === 'todo' ? 0 : 1}"></span>` : ''}
+                    <span class="relative z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${DOT[st]}">${st === 'done' ? '<i class="fa-solid fa-check text-[9px]"></i>' : st === 'warn' ? '!' : i + 1}</span>
+                    <span class="mt-1 text-[10.5px] leading-tight ${TXT[st]} truncate max-w-full">${label}</span>
+                </li>`).join('');
+
+            // next step
+            const canUpload = isNtp && isVerified;
+            let tone, icon, title, body, action = '';
+            if (!isNtp) { tone = 'gray'; icon = 'fa-hourglass-half'; title = 'Waiting for Notice to Proceed'; body = 'Accounting gives the Notice to Proceed once the deposit is in. Uploads stay locked until then.'; }
+            else if (!isVerified) { tone = 'gray'; icon = 'fa-hourglass-half'; title = 'Waiting for the 2D file to be verified'; body = 'Verify the 2D file in Cutting List → Verify 2D. Uploads unlock after that.'; }
+            else if (!ewoodOv.loaded) { tone = 'gray'; icon = 'fa-spinner fa-spin'; title = 'Checking the latest submission…'; body = ''; }
+            else if (appr === 'Rejected') { tone = 'red'; icon = 'fa-rotate-left'; title = 'Sent back for revision'; body = latest.rejection_remarks ? `Superadmin: “${ewoodEscapeHtml(latest.rejection_remarks)}”. Fix it and upload again.` : 'Fix it and upload again.'; action = 'Upload again'; }
+            else if (appr === 'Pending') { tone = 'blue'; icon = 'fa-qrcode'; title = 'Waiting for the Superadmin’s QR approval'; body = 'Your latest upload and BOM were sent. You can upload again once it is approved or sent back.'; }
+            else if (appr === 'Approved' && latest.status === 'Completed') { tone = 'green'; icon = 'fa-circle-check'; title = 'Completed and approved'; body = 'Nothing else to upload for this job.'; }
+            else { tone = 'amber'; icon = 'fa-cloud-arrow-up'; title = latest ? 'Ready for the next upload' : 'Ready to upload'; body = 'Choose the progress files, then fill in the Bill of Materials. Both are sent to the Superadmin together.'; action = 'Upload progress'; }
+            const TONE = {
+                gray: 'bg-white border-gray-200 text-gray-700', amber: 'bg-amber-50 border-amber-200 text-amber-900',
+                red: 'bg-red-50 border-red-200 text-red-800', blue: 'bg-sky-50 border-sky-200 text-sky-900', green: 'bg-green-50 border-green-200 text-green-800',
+            };
+            const notice = document.getElementById('ewoodDetailNotice');
+            notice.className = `rounded-xl border px-4 py-3.5 flex flex-wrap items-center gap-3 ${TONE[tone]}`;
+            notice.innerHTML = `<span class="w-9 h-9 rounded-lg bg-white/70 border border-current/10 flex items-center justify-center shrink-0"><i class="fa-solid ${icon}"></i></span>
+                <div class="min-w-0 flex-1"><p class="text-sm font-semibold">${title}</p>${body ? `<p class="text-xs opacity-80 mt-0.5 break-words">${body}</p>` : ''}</div>
+                ${action && canUpload ? `<button type="button" onclick="ewoodSwitchTab('upload')" class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-cloud-arrow-up"></i> ${action}</button>` : ''}`;
+            document.getElementById('ewoodPrimaryBtn').classList.toggle('hidden', !(action && canUpload));
+
+            // latest submission
+            const card = document.getElementById('ewoodLatestCard');
+            if (!ewoodOv.loaded) card.innerHTML = '<p class="text-xs text-gray-400 py-4 text-center"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>';
+            else if (!latest) card.innerHTML = '<div class="py-6 text-center"><i class="fa-regular fa-folder-open text-2xl text-gray-300"></i><p class="text-xs text-gray-400 mt-2">Nothing uploaded yet for this job.</p></div>';
+            else {
+                const photos = latest.photos || [];
+                card.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${ewoodApprovalBadge(latest.approval_status)}
+                        <span class="text-[11px] text-gray-500">Job status: <b class="text-gray-700">${ewoodEscapeHtml(latest.status || '—')}</b></span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-1.5">${ewoodFormatDate(latest.created_at)} · by ${ewoodEscapeHtml(latest.uploaded_by_name || '—')}</p>
+                    ${latest.remarks ? `<p class="text-xs text-gray-600 mt-2 break-words">${ewoodEscapeHtml(latest.remarks)}</p>` : ''}
+                    ${latest.approval_status === 'Rejected' && latest.rejection_remarks ? `<p class="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-2 break-words"><i class="fa-solid fa-rotate-left mr-1"></i>${ewoodEscapeHtml(latest.rejection_remarks)}</p>` : ''}
+                    ${photos.length || latest.archive_url ? `<div class="flex flex-wrap items-center gap-2 mt-3">
+                        ${photos.slice(0, 5).map(p => `<a href="${p}" target="_blank" rel="noopener"><img src="${p}" alt="" class="w-14 h-14 object-cover rounded-lg border border-gray-200 hover:border-amber-500"></a>`).join('')}
+                        ${photos.length > 5 ? `<span class="text-[11px] text-gray-400">+${photos.length - 5} more</span>` : ''}
+                        ${latest.archive_url ? `<a href="${latest.archive_url}" target="_blank" class="inline-flex items-center gap-1.5 h-8 px-2.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100"><i class="fa-solid fa-file-zipper"></i> Archive</a>` : ''}
+                    </div>` : ''}`;
+            }
+
+            // BOMs
+            const boms = ewoodOv.boms || [];
+            document.getElementById('ewoodBomCount').textContent = boms.length ? `${boms.length} total` : '';
+            document.getElementById('ewoodBomOverview').innerHTML = boms.length
+                ? boms.map(b => `<button type="button" data-bom-id="${b.id}" class="ewood-history-bom-btn inline-flex items-center gap-2 px-3 py-2 rounded-lg border ${b.approved_at ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-800'} hover:shadow-sm text-left">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <span><span class="block font-mono text-[11px] font-semibold">${ewoodEscapeHtml(b.bom_number)}</span>
+                        <span class="block text-[10px] opacity-75">${b.approved_at ? 'Approved' : 'Waiting for approval'} · ${ewoodFormatDate(b.created_at)}</span></span></button>`).join('')
+                : '<p class="text-xs text-gray-400">No Bill of Materials yet. You create it in the Upload &amp; BOM tab.</p>';
+        }
+
+        // BOM buttons sa overview → buksan ang BOM view
+        document.getElementById('ewoodBomOverview').addEventListener('click', ev => {
+            const b = ev.target.closest('[data-bom-id]');
+            if (b) ewoodBomOpenViewModal(b.dataset.bomId);
+        });
+
         function ewoodApplyPendingGate(quotationId, entries) {
             // Ignore stale responses if the user already switched rows.
             if (Number(ewoodActiveQuotationId) !== Number(quotationId)) return;
@@ -633,13 +818,17 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
 
         async function ewoodLoadHistory(quotationId) {
             try {
-                const [historyRes, bomRes] = await Promise.all([
-                    fetch(`${CUT_PROG_AJAX_URL}?action=history&quotation_id=${quotationId}`),
-                    fetch(`${BOM_AJAX_URL}?action=list&quotation_id=${quotationId}`)
-                ]);
-                const data = await historyRes.json();
-                const bomData = await bomRes.json();
-                if (!data.success) return;
+                // Hiwalay ang BOM: kapag pumalya ang bomajax, lalabas pa rin ang History
+                const bomPromise = fetch(`${BOM_AJAX_URL}?action=list&quotation_id=${quotationId}`)
+                    .then(ewoodJson)
+                    .catch(e => { console.error('bomajax list:', e); return { success: false, message: e.message }; });
+                const historyRes = await fetch(`${CUT_PROG_AJAX_URL}?action=history&quotation_id=${quotationId}`);
+                const data = await ewoodJson(historyRes);
+                const bomData = await bomPromise;
+                if (!data.success) {
+                    document.getElementById('ewoodHistory').innerHTML = `<p class="text-red-600 text-center py-8"><i class="fa-solid fa-circle-exclamation mr-1"></i>${ewoodEscapeHtml(data.message || 'Could not load the history.')}</p>`;
+                    return;
+                }
 
                 // Index BOMs by their linked progression_id so each history card
                 // can show the BOM(s) created alongside that specific submission.
@@ -668,9 +857,15 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                         ? `${data.entries[0].status} · ${ewoodFormatDate(data.entries[0].created_at)}`
                         : '—';
                 }
+                if (Number(ewoodActiveQuotationId) === Number(quotationId)) {
+                    ewoodOv.latest = data.entries[0] || null;
+                    ewoodOv.loaded = true;
+                    ewoodRenderOverview();
+                }
                 ewoodApplyPendingGate(quotationId, data.entries);
             } catch (e) {
                 console.error(e);
+                document.getElementById('ewoodHistory').innerHTML = `<p class="text-red-600 text-center py-8"><i class="fa-solid fa-circle-exclamation mr-1"></i>${ewoodEscapeHtml(e.message || 'Connection error while loading the history.')}</p>`;
             }
         }
 
@@ -679,6 +874,8 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         // ---------------------------------------------------------------
 
         function ewoodBomRenderList(entries) {
+            ewoodOv.boms = entries;
+            ewoodRenderOverview();
             const box = document.getElementById('ewoodBomList');
             if (!entries.length) {
                 box.innerHTML = `<p class="text-gray-400 text-center py-3">No Bill of Materials yet for this job.</p>`;
@@ -704,21 +901,30 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             ewoodBomOpenViewModal(btn.dataset.bomId);
         });
 
+        function ewoodBomListError(message) {
+            document.getElementById('ewoodBomList').innerHTML =
+                `<p class="text-red-600 text-center py-3 break-words"><i class="fa-solid fa-circle-exclamation mr-1"></i>${ewoodEscapeHtml(message)}</p>`;
+        }
+
         async function ewoodBomLoadList(quotationId) {
+            document.getElementById('ewoodBomList').innerHTML = `<p class="text-gray-400 text-center py-3"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
             try {
                 const res = await fetch(`${BOM_AJAX_URL}?action=list&quotation_id=${quotationId}`);
-                const data = await res.json();
-                if (!data.success) return;
-                ewoodBomRenderList(data.entries);
+                const data = await ewoodJson(res);
+                // huwag i-render kung lumipat na sa ibang row
+                if (Number(ewoodActiveQuotationId) !== Number(quotationId)) return;
+                if (!data.success) { ewoodBomListError(data.message || 'Could not load the BOM list.'); return; }
+                ewoodBomRenderList(data.entries || []);
             } catch (e) {
                 console.error(e);
+                if (Number(ewoodActiveQuotationId) === Number(quotationId)) ewoodBomListError(e.message || 'Connection error while loading the BOM list.');
             }
         }
 
         async function ewoodBomHasUnapproved(quotationId) {
             try {
                 const res = await fetch(`${BOM_AJAX_URL}?action=list&quotation_id=${quotationId}`);
-                const data = await res.json();
+                const data = await ewoodJson(res);
                 if (!data.success) return false;
                 return data.entries.some(e => !e.approved_at);
             } catch (e) {
@@ -732,9 +938,10 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                 const res = await fetch(`${BOM_AJAX_URL}?action=relink`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ quotation_id: quotationId, progression_id: progressionId })
+                    body: new URLSearchParams({ quotation_id: quotationId, progression_id: progressionId, confirm_bom: ewoodBomConfirmed ? '1' : '0' })
                 });
-                const data = await res.json();
+                const data = await ewoodJson(res);
+                if (!data.success) console.warn('relink:', data.message);
                 return !!data.success;
             } catch (e) {
                 console.error(e);
@@ -742,21 +949,208 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             }
         }
 
+        // ---------------------------------------------------------------
+        // Supplier → Product. Pipili ng supplier, saka pipili ng produkto nito.
+        // "Outsource" = wala pang supplier, kaya manual ang pag-type ng item.
+        // ---------------------------------------------------------------
+        const EWOOD_OUTSOURCE = '__out';
+        let ewoodCatalog = [];          // [{id, name, items:[{id,item_code,description,unit}]}]
+        let ewoodCatalogLoaded = false;
+        let ewoodPickRow = null;
+
+        function ewoodCatalogNote(html, tone) {
+            const el = document.getElementById('ewoodCatalogNote');
+            el.innerHTML = html || '';
+            el.className = html ? `mb-2 text-[11px] rounded-lg px-3 py-2 border ${tone === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-800'}` : 'hidden';
+        }
+
+        async function ewoodLoadCatalog() {
+            try {
+                const res = await fetch(`${SUP_AJAX_URL}?action=catalog`, { cache: 'no-store' });
+                const data = await ewoodJson(res);
+                if (!data.success) throw new Error(data.message || 'Could not load the supplier list.');
+                ewoodCatalog = data.suppliers || [];
+                ewoodCatalogLoaded = true;
+                ewoodCatalogNote(ewoodCatalog.length ? '' : '<i class="fa-solid fa-circle-info mr-1"></i>No suppliers yet. Add them in Suppliers &amp; Products, or use Outsource for now.');
+            } catch (e) {
+                console.error(e);
+                ewoodCatalog = [];
+                ewoodCatalogLoaded = false;
+                ewoodCatalogNote(`<i class="fa-solid fa-circle-exclamation mr-1"></i>${ewoodEscapeHtml(e.message)}`, 'error');
+            }
+            // i-refresh ang mga dropdown pero panatilihin ang napili
+            document.querySelectorAll('#ewoodBomItemsBody tr').forEach(tr => {
+                const sel = tr.querySelector('.bom-sup');
+                const cur = sel.value;
+                sel.innerHTML = ewoodSupplierOptions(cur);
+                if (sel.value !== cur) ewoodApplySupplier(tr, false);
+            });
+        }
+        document.getElementById('ewoodCatalogReload').addEventListener('click', () => ewoodLoadCatalog());
+
+        const ewoodSupplierById = id => ewoodCatalog.find(s => String(s.id) === String(id)) || null;
+
+        function ewoodSupplierOptions(selected = '') {
+            return `<option value="">— Choose supplier —</option>`
+                + ewoodCatalog.map(s => `<option value="${s.id}" ${String(s.id) === String(selected) ? 'selected' : ''}>${ewoodEscapeHtml(s.name)}${s.items.length ? '' : ' (no products)'}</option>`).join('')
+                + `<option value="${EWOOD_OUTSOURCE}" ${selected === EWOOD_OUTSOURCE ? 'selected' : ''}>Outsource</option>`;
+        }
+
+        // Ayusin ang itsura ng row ayon sa napiling supplier
+        function ewoodApplySupplier(tr, clear = true) {
+            const val = tr.querySelector('.bom-sup').value;
+            const code = tr.querySelector('[name="item_code[]"]');
+            const desc = tr.querySelector('[name="item_description[]"]');
+            const unit = tr.querySelector('[name="unit[]"]');
+            const supName = tr.querySelector('[name="supplier[]"]');
+            const pickBtn = tr.querySelector('.bom-pick');
+            if (clear) { code.value = ''; desc.value = ''; unit.value = ''; }
+            const isOut = val === EWOOD_OUTSOURCE, sup = ewoodSupplierById(val);
+            supName.value = isOut ? 'OUTSOURCE' : (sup ? sup.name : '');
+            [code, desc, unit].forEach(el => {
+                el.readOnly = !isOut;
+                el.classList.toggle('bg-gray-50', !isOut);
+                el.classList.toggle('cursor-pointer', !!sup);
+            });
+            code.placeholder = isOut ? 'Code (optional)' : '';
+            desc.placeholder = isOut ? 'Type the item to source' : (sup ? 'Click to choose a product' : 'Choose a supplier first');
+            unit.placeholder = isOut ? 'Unit' : '';
+            pickBtn.classList.toggle('hidden', !sup);
+            tr.classList.toggle('bg-amber-50/40', isOut);
+            ewoodBomItemsError('');
+        }
+
+        function ewoodBomItemsError(msg, tr) {
+            const el = document.getElementById('ewoodBomItemsErr');
+            el.textContent = msg || '';
+            el.classList.toggle('hidden', !msg);
+            document.querySelectorAll('#ewoodBomItemsBody tr').forEach(r => r.classList.remove('ring-1', 'ring-red-300'));
+            if (tr) tr.classList.add('ring-1', 'ring-red-300');
+        }
+
         function ewoodBomAddRow(values = {}) {
             const idx = ewoodBomRowIndex++;
             const tbody = document.getElementById('ewoodBomItemsBody');
+            // bagong row: kunin ang supplier ng huling row para mabilis magdagdag
+            const chosen = [...tbody.querySelectorAll('.bom-sup')].filter(s => s.value);
+            const supVal = values.supplier_value ?? (chosen.length ? chosen[chosen.length - 1].value : '');
             const tr = document.createElement('tr');
             tr.dataset.rowId = idx;
             const inputCls = 'w-full text-[11px] border border-gray-200 rounded px-1.5 py-1 outline-none focus:border-amber-600';
             tr.innerHTML = `
-                <td class="px-2 py-1"><input type="text" name="item_code[]" value="${ewoodEscapeHtml(values.item_code || '')}" class="${inputCls}"></td>
-                <td class="px-2 py-1"><input type="text" name="item_description[]" value="${ewoodEscapeHtml(values.item_description || '')}" class="${inputCls}"></td>
+                <td class="px-2 py-1"><select class="bom-sup ${inputCls} bg-white">${ewoodSupplierOptions(supVal)}</select>
+                    <input type="hidden" name="supplier[]" value=""></td>
+                <td class="px-2 py-1"><input type="text" name="item_code[]" maxlength="50" class="${inputCls} font-mono"></td>
+                <td class="px-2 py-1"><div class="relative"><input type="text" name="item_description[]" maxlength="255" class="${inputCls} pr-7">
+                    <button type="button" class="bom-pick hidden absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 inline-flex items-center justify-center rounded text-amber-700 hover:bg-amber-100" title="Choose product"><i class="fa-solid fa-list text-[10px]"></i></button></div></td>
                 <td class="px-2 py-1"><input type="number" step="0.01" min="0" name="quantity[]" value="${values.quantity ?? ''}" class="${inputCls}"></td>
-                <td class="px-2 py-1"><input type="text" name="unit[]" value="${ewoodEscapeHtml(values.unit || '')}" class="${inputCls}"></td>
-                <td class="px-2 py-1"><input type="text" name="supplier[]" value="${ewoodEscapeHtml(values.supplier || '')}" class="${inputCls}"></td>
-                <td class="px-2 py-1 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button></td>
+                <td class="px-2 py-1"><input type="text" name="unit[]" maxlength="30" class="${inputCls}"></td>
+                <td class="px-2 py-1 text-center"><button type="button" class="bom-del inline-flex items-center justify-center w-6 h-6 rounded text-gray-300 hover:text-red-500 hover:bg-red-50" title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>
             `;
             tbody.appendChild(tr);
+            ewoodApplySupplier(tr, true);
+        }
+
+        // Mga event ng items table (isang listener lang para sa lahat ng row)
+        (function () {
+            const tbody = document.getElementById('ewoodBomItemsBody');
+            tbody.addEventListener('change', e => {
+                const sel = e.target.closest('.bom-sup'); if (!sel) return;
+                const tr = sel.closest('tr');
+                ewoodApplySupplier(tr, true);
+                if (ewoodSupplierById(sel.value)) ewoodOpenPicker(tr);
+                else if (sel.value === EWOOD_OUTSOURCE) tr.querySelector('[name="item_description[]"]').focus();
+            });
+            tbody.addEventListener('click', e => {
+                const tr = e.target.closest('tr'); if (!tr) return;
+                if (e.target.closest('.bom-del')) {
+                    if (tbody.rows.length > 1) tr.remove();
+                    else { tr.querySelector('.bom-sup').value = ''; tr.querySelector('[name="quantity[]"]').value = ''; ewoodApplySupplier(tr, true); }
+                    ewoodBomItemsError('');
+                    return;
+                }
+                const onPickField = e.target.closest('.bom-pick') || (e.target.matches('[name="item_code[]"], [name="item_description[]"], [name="unit[]"]') && e.target.readOnly);
+                if (!onPickField) return;
+                if (ewoodSupplierById(tr.querySelector('.bom-sup').value)) ewoodOpenPicker(tr);
+                else { ewoodBomItemsError('Choose a supplier first (or Outsource).', tr); tr.querySelector('.bom-sup').focus(); }
+            });
+            tbody.addEventListener('input', () => ewoodBomItemsError(''));
+        })();
+
+        // ── Product picker ──
+        function ewoodOpenPicker(tr) {
+            const sup = ewoodSupplierById(tr.querySelector('.bom-sup').value);
+            if (!sup) return;
+            ewoodPickRow = tr;
+            document.getElementById('ewoodPickTitle').textContent = sup.name;
+            document.getElementById('ewoodPickSearch').value = '';
+            ewoodRenderPicker();
+            const m = document.getElementById('ewoodPickModal');
+            m.classList.remove('hidden'); m.classList.add('flex');
+            setTimeout(() => document.getElementById('ewoodPickSearch').focus(), 50);
+        }
+        function ewoodClosePicker() {
+            const m = document.getElementById('ewoodPickModal');
+            m.classList.add('hidden'); m.classList.remove('flex');
+            ewoodPickRow = null;
+        }
+        function ewoodRenderPicker() {
+            const box = document.getElementById('ewoodPickList');
+            const sup = ewoodPickRow ? ewoodSupplierById(ewoodPickRow.querySelector('.bom-sup').value) : null;
+            if (!sup) { box.innerHTML = ''; return; }
+            const q = document.getElementById('ewoodPickSearch').value.trim().toLowerCase();
+            const cur = ewoodPickRow.querySelector('[name="item_code[]"]').value;
+            const list = sup.items.filter(i => !q || `${i.item_code} ${i.description} ${i.unit}`.toLowerCase().includes(q));
+            if (!sup.items.length) {
+                box.innerHTML = `<div class="px-4 py-10 text-center text-xs text-gray-500">This supplier has no products yet.<br>
+                    <a href="<?= htmlspecialchars($supPageUrl) ?>" target="_blank" class="inline-block mt-2 font-semibold text-amber-700 hover:underline">Add products in Suppliers &amp; Products</a></div>`;
+                return;
+            }
+            box.innerHTML = list.length ? list.map(i => `
+                <button type="button" data-pick="${i.id}" class="w-full text-left flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50 ${i.item_code === cur ? 'bg-amber-50' : ''}">
+                    <span class="font-mono text-[11px] font-semibold text-amber-800 w-28 shrink-0 break-all">${ewoodEscapeHtml(i.item_code)}</span>
+                    <span class="flex-1 min-w-0 text-xs text-gray-800 break-words">${ewoodEscapeHtml(i.description)}</span>
+                    <span class="text-[10.5px] text-gray-400 shrink-0">${ewoodEscapeHtml(i.unit || '')}</span>
+                    ${i.item_code === cur ? '<i class="fa-solid fa-check text-amber-700 text-xs"></i>' : ''}
+                </button>`).join('')
+                : '<p class="px-4 py-10 text-center text-xs text-gray-400">No product matches.</p>';
+        }
+        document.getElementById('ewoodPickSearch').addEventListener('input', ewoodRenderPicker);
+        document.getElementById('ewoodPickSearch').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); document.querySelector('#ewoodPickList [data-pick]')?.click(); }
+        });
+        document.getElementById('ewoodPickClose').addEventListener('click', ewoodClosePicker);
+        document.getElementById('ewoodPickModal').addEventListener('click', e => { if (e.target.id === 'ewoodPickModal') ewoodClosePicker(); });
+        document.getElementById('ewoodPickList').addEventListener('click', e => {
+            const b = e.target.closest('[data-pick]'); if (!b || !ewoodPickRow) return;
+            const sup = ewoodSupplierById(ewoodPickRow.querySelector('.bom-sup').value);
+            const it = sup && sup.items.find(x => String(x.id) === b.dataset.pick);
+            if (!it) return;
+            const tr = ewoodPickRow;
+            tr.querySelector('[name="item_code[]"]').value = it.item_code;
+            tr.querySelector('[name="item_description[]"]').value = it.description;
+            tr.querySelector('[name="unit[]"]').value = it.unit || '';
+            ewoodClosePicker();
+            ewoodBomItemsError('');
+            tr.querySelector('[name="quantity[]"]').focus();
+        });
+
+        // Suriin ang mga item bago i-submit; ibinabalik ang error message o '' kung ayos
+        function ewoodBomValidateItems() {
+            const rows = [...document.querySelectorAll('#ewoodBomItemsBody tr')];
+            let filled = 0;
+            for (let i = 0; i < rows.length; i++) {
+                const tr = rows[i], n = i + 1;
+                const sup = tr.querySelector('.bom-sup').value;
+                const desc = tr.querySelector('[name="item_description[]"]').value.trim();
+                const qty = tr.querySelector('[name="quantity[]"]').value.trim();
+                if (!sup && !desc && !qty) continue;   // blankong row, laktawan
+                if (!sup) return [`Row ${n}: choose a supplier (or Outsource).`, tr];
+                if (!desc) return [sup === EWOOD_OUTSOURCE ? `Row ${n}: type the item to source.` : `Row ${n}: choose a product from ${ewoodSupplierById(sup)?.name || 'the supplier'}.`, tr];
+                if (!(Number(qty) > 0)) return [`Row ${n}: enter a quantity greater than 0.`, tr];
+                filled++;
+            }
+            return filled ? ['', null] : ['Add at least one BOM item before submitting.', rows[0] || null];
         }
 
         // Resets the BOM items table to a handful of blank rows — called
@@ -780,7 +1174,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
 
             try {
                 const res = await fetch(`${BOM_AJAX_URL}?action=view&bom_id=${bomId}`);
-                const data = await res.json();
+                const data = await ewoodJson(res);
                 if (!data.success) {
                     body.innerHTML = `<p class="text-xs text-red-500 text-center py-10">${ewoodEscapeHtml(data.message || 'Failed to load BOM.')}</p>`;
                     return;
@@ -788,7 +1182,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
                 ewoodBomRenderViewBody(data.bom);
             } catch (e) {
                 console.error(e);
-                body.innerHTML = `<p class="text-xs text-red-500 text-center py-10">Connection error while loading.</p>`;
+                body.innerHTML = `<p class="text-xs text-red-500 text-center py-10">${ewoodEscapeHtml(e.message || 'Connection error while loading.')}</p>`;
             }
         }
 
@@ -920,7 +1314,10 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         });
 
         document.addEventListener('keydown', function (ev) {
-            if (ev.key === 'Escape') ewoodBomCloseViewModal();
+            if (ev.key !== 'Escape') return;
+            if (!document.getElementById('ewoodConfirmModal').classList.contains('hidden')) ewoodCloseConfirm();
+            else if (!document.getElementById('ewoodPickModal').classList.contains('hidden')) ewoodClosePicker();
+            else ewoodBomCloseViewModal();
         });
 
         // ── Selection / tabs ─────────────────────────
@@ -961,25 +1358,55 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             document.getElementById('ewoodMain').dataset.view = 'list';
         }
 
+        const EWOOD_SUBMIT_HTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Submit progress &amp; BOM';
+        const EWOOD_RELINK_HTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Submit to Superadmin';
+        let ewoodExistingBom = null;   // hindi pa approved na BOM ng job (kung meron)
+        let ewoodSubmitting = false;
+        let ewoodBomConfirmed = false;      // true kapag dumaan na sa double confirmation
+        let ewoodUploadQuotationId = null;   // job ng naipadalang progress (para sa discard)
+
+        // Naipadala ang progress pero hindi natapos ang BOM → burahin sa server bago lumipat
+        function ewoodDiscardOrphan() {
+            if (ewoodCurrentProgressionId === null) return;
+            const body = new URLSearchParams({ quotation_id: ewoodUploadQuotationId, progression_id: ewoodCurrentProgressionId });
+            fetch(`${BOM_AJAX_URL}?action=discard_progress`, { method: 'POST', body, keepalive: true }).catch(() => { });
+        }
+        window.addEventListener('pagehide', ewoodDiscardOrphan);
+
         function ewoodResetUploadStepState() {
+            ewoodDiscardOrphan();
+            ewoodBomConfirmed = false;
             ewoodCurrentProgressionId = null;
+            ewoodExistingBom = null;
+            ewoodSubmitting = false;
 
             document.querySelectorAll('#ewoodUploadFields input[name="archive"], #ewoodUploadFields input[name="images[]"], #ewoodUploadFields textarea[name="remarks"]')
                 .forEach(el => { el.disabled = false; el.value = ''; });
 
+            ewoodStep1Lock(false);
             const saveBtn = document.getElementById('ewoodSaveProgressBtn');
             saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Progress';
+            document.getElementById('ewoodStep1Err').classList.add('hidden');
 
             document.querySelectorAll('#ewoodBomSection input').forEach(el => { el.disabled = false; });
             const createBomBtn = document.getElementById('ewoodCreateBomBtn');
-            if (createBomBtn) {
-                createBomBtn.disabled = false;
-                createBomBtn.textContent = 'Create BOM';
-            }
+            createBomBtn.disabled = false;
+            createBomBtn.innerHTML = EWOOD_SUBMIT_HTML;
+            const relinkBtn = document.getElementById('ewoodSubmitRelinkBtn');
+            relinkBtn.disabled = false;
+            relinkBtn.innerHTML = EWOOD_RELINK_HTML;
 
             document.getElementById('ewoodBomSection').classList.add('hidden');
             document.getElementById('ewoodBomRelinkedNotice').classList.add('hidden');
+        }
+
+        // I-lock ang Step 1 habang nasa Step 2 (hindi naka-disabled para kasama pa rin sa FormData)
+        function ewoodStep1Lock(on) {
+            const body = document.getElementById('ewoodStep1Body');
+            body.classList.toggle('pointer-events-none', on);
+            body.classList.toggle('opacity-60', on);
+            document.getElementById('ewoodSaveProgressBtn').classList.toggle('hidden', on);
+            document.getElementById('ewoodStep1Edit').classList.toggle('hidden', !on || ewoodCurrentProgressionId !== null);
         }
 
         // Opens the detail view for a given row.
@@ -1001,12 +1428,16 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             document.getElementById('ewoodModalControl').textContent = row.control_no;
             document.getElementById('ewoodModalTitle').textContent = row.client_name;
             document.getElementById('ewoodHeaderChips').innerHTML = `
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-gray-200 bg-gray-50 text-gray-600">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-gray-200 bg-gray-50 text-gray-600 capitalize">
                     <i class="fa-solid fa-location-dot text-gray-400 text-[10px]"></i>${ewoodEscapeHtml(row.branch)}
                 </span>
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-gray-200 bg-gray-50 text-gray-600 capitalize">
                     <i class="fa-solid fa-house text-gray-400 text-[10px]"></i>${ewoodEscapeHtml(row.project_type ?? '—')}
-                </span>`;
+                </span>
+                ${canUpload ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-green-200 bg-green-50 text-green-700"><i class="fa-solid fa-lock-open text-[9px]"></i>Uploads open</span>'
+                    : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-gray-200 bg-gray-100 text-gray-500"><i class="fa-solid fa-lock text-[9px]"></i>Uploads locked</span>'}`;
+            document.getElementById('ewoodDetailJob').textContent = `${row.branch || '—'} · ${row.project_type || '—'}`;
+            ewoodOv.row = row; ewoodOv.latest = null; ewoodOv.loaded = false; ewoodOv.boms = [];
 
             // Details tab
             document.getElementById('ewoodDetailNtp').innerHTML = ewoodNtpBadge(row);
@@ -1018,15 +1449,7 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
             countEl.classList.add('hidden');
             countEl.classList.remove('inline-flex');
 
-            const notice = document.getElementById('ewoodDetailNotice');
-            if (!canUpload) {
-                notice.textContent = !isNtp
-                    ? 'Waiting for Notice to Proceed from Accounting.'
-                    : 'Waiting for the 2D file to be verified (Cutting List → Verify 2D).';
-                notice.classList.remove('hidden');
-            } else {
-                notice.classList.add('hidden');
-            }
+            ewoodRenderOverview();
 
             // Reset the two-step Upload & BOM state for this row.
             document.getElementById('ewoodUploadForm').reset();
@@ -1069,133 +1492,369 @@ $bomAjaxUrl = BASE_URL . '/bomajax';
         }
 
         // ---------------------------------------------------------------
-        // Step 1: Save Progress (archive / images / remarks)
+        // Daloy: Step 1 (pumili ng files) → Step 2 (BOM) → isang Submit.
+        // Dati, ang "Save Progress" ay agad nagpapadala sa Superadmin kahit wala pang BOM.
+        // Ngayon, sabay na ipinapadala ang progress at ang BOM sa dulo.
         // ---------------------------------------------------------------
-        document.getElementById('ewoodSaveProgressBtn').addEventListener('click', async function () {
-            const quotationId = document.getElementById('ewoodQuotationId').value;
-            const btn = this;
+        function ewoodStep1Error(msg) {
+            const el = document.getElementById('ewoodStep1Err');
+            el.textContent = msg || '';
+            el.classList.toggle('hidden', !msg);
+        }
 
-            btn.disabled = true;
-            btn.textContent = 'Saving…';
-
+        // Unang hindi pa approved na BOM ng job (para ikabit imbes na gumawa ng bago)
+        async function ewoodBomFindUnapproved(quotationId) {
             try {
+                const res = await fetch(`${BOM_AJAX_URL}?action=list&quotation_id=${quotationId}`);
+                const data = await ewoodJson(res);
+                if (!data.success) return null;
+                return (data.entries || []).find(e => !e.approved_at) || null;
+            } catch (e) {
+                console.error(e);
+                return null;
+            }
+        }
+
+        document.getElementById('ewoodSaveProgressBtn').addEventListener('click', async function () {
+            const form = document.getElementById('ewoodUploadForm');
+            const photos = form.querySelector('input[name="images[]"]').files;
+            const archive = form.querySelector('input[name="archive"]').files;
+            ewoodStep1Error('');
+            if (!photos.length) {
+                ewoodStep1Error('Add at least one photo (the QR photo is what the Superadmin checks).');
+                return;
+            }
+            if (archive.length && !/\.(zip|rar)$/i.test(archive[0].name)) {
+                ewoodStep1Error('The archive must be a .zip or .rar file.');
+                return;
+            }
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Checking…';
+            const quotationId = document.getElementById('ewoodQuotationId').value;
+            ewoodExistingBom = await ewoodBomFindUnapproved(quotationId);
+            btn.disabled = false;
+            btn.innerHTML = 'Next: Bill of Materials <i class="fa-solid fa-arrow-right ml-1"></i>';
+
+            ewoodStep1Lock(true);
+            if (ewoodExistingBom) {
+                document.getElementById('ewoodBomExistingNo').textContent = ewoodExistingBom.bom_number || '';
+                document.getElementById('ewoodBomSection').classList.add('hidden');
+                document.getElementById('ewoodBomRelinkedNotice').classList.remove('hidden');
+                document.getElementById('ewoodBomRelinkedNotice').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                document.getElementById('ewoodBomRelinkedNotice').classList.add('hidden');
+                document.getElementById('ewoodBomSection').classList.remove('hidden');
+                document.getElementById('ewoodBomSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+
+        // Bumalik sa Step 1 para palitan ang files (habang wala pang naipapadala)
+        document.getElementById('ewoodStep1Edit').addEventListener('click', () => {
+            if (ewoodCurrentProgressionId !== null || ewoodSubmitting) return;
+            ewoodStep1Lock(false);
+            document.getElementById('ewoodBomSection').classList.add('hidden');
+            document.getElementById('ewoodBomRelinkedNotice').classList.add('hidden');
+        });
+
+        // Ipapadala ang progress (isang beses lang; kapag pumalya ang BOM, hindi na uulitin ang upload)
+        async function ewoodUploadProgressOnce() {
+            if (ewoodCurrentProgressionId !== null) return ewoodCurrentProgressionId;
+            const res = await fetch(`${CUT_PROG_AJAX_URL}?action=upload`, { method: 'POST', body: new FormData(document.getElementById('ewoodUploadForm')) });
+            const data = await ewoodJson(res);
+            if (!data.success || !data.id) throw new Error(data.message || 'Could not save the progress upload.');
+            ewoodCurrentProgressionId = data.id;
+            ewoodUploadQuotationId = document.getElementById('ewoodQuotationId').value;
+            document.getElementById('ewoodStep1Edit').classList.add('hidden');
+            return data.id;
+        }
+
+        // Pagkatapos maipadala: i-lock ang form at ipakita sa History
+        function ewoodAfterSubmit(quotationId) {
+            ewoodCurrentProgressionId = null;
+            document.getElementById('ewoodUploadFields').classList.add('hidden');
+            const blocked = document.getElementById('ewoodUploadBlocked');
+            blocked.textContent = 'Submitted. It is now waiting for the Superadmin\'s QR approval. You can submit again once it is approved or sent back for revision.';
+            blocked.classList.remove('text-gray-500', 'bg-gray-50', 'border-gray-200', 'text-green-700', 'bg-green-50', 'border-green-200');
+            blocked.classList.add('text-amber-700', 'bg-amber-50', 'border-amber-200');
+            blocked.classList.remove('hidden');
+            ewoodBomLoadList(quotationId);
+            ewoodLoadHistory(quotationId);
+            ewoodSwitchTab('history');
+        }
+
+        // Step 2a: gumawa ng BOM + ipadala ang progress
+        document.getElementById('ewoodCreateBomBtn').addEventListener('click', function () {
+            if (ewoodSubmitting) return;
+            const [itemErr, badRow] = ewoodBomValidateItems();
+            if (itemErr) {
+                ewoodBomItemsError(itemErr, badRow);
+                badRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            // "Retry BOM": na-confirm na ito dati, kaya ituloy na
+            if (ewoodBomConfirmed && ewoodCurrentProgressionId !== null) return ewoodDoCreate();
+            ewoodOpenConfirm('create');
+        });
+
+        async function ewoodDoCreate() {
+            if (ewoodSubmitting) return;
+            const quotationId = document.getElementById('ewoodQuotationId').value;
+            const btn = document.getElementById('ewoodCreateBomBtn');
+
+            ewoodSubmitting = true;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Submitting…';
+            let step = 'progress';
+            try {
+                const progressionId = await ewoodUploadProgressOnce();
+                step = 'bom';
                 const formData = new FormData(document.getElementById('ewoodUploadForm'));
+                formData.delete('archive');
+                formData.delete('images[]');
+                formData.append('progression_id', progressionId);
+                formData.append('confirm_bom', ewoodBomConfirmed ? '1' : '0');
+                const res = await fetch(`${BOM_AJAX_URL}?action=create`, { method: 'POST', body: formData });
+                const data = await ewoodJson(res);
+                if (!data.success) throw new Error(data.message || 'Could not create the BOM.');
 
-                const res = await fetch(`${CUT_PROG_AJAX_URL}?action=upload`, { method: 'POST', body: formData });
-                const data = await res.json();
-
-                if (!data.success) {
-                    crmShowToast(data.message, 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Save Progress';
-                    return;
-                }
-
-                ewoodCurrentProgressionId = data.id;
-                crmShowToast('Progress saved.', 'success');
-
-                // Lock the progress inputs so a second archive/image set can't be
-                // attached to the same click-through.
-                document.querySelectorAll('#ewoodUploadFields input[name="archive"], #ewoodUploadFields input[name="images[]"], #ewoodUploadFields textarea[name="remarks"]')
-                    .forEach(el => el.disabled = true);
-                btn.textContent = 'Progress Saved';
-                // Keep btn disabled — stays disabled once progress is saved for this row.
-
-                const relinked = await ewoodBomRelink(quotationId, ewoodCurrentProgressionId);
-
-                if (relinked) {
-                    crmShowToast('Existing BOM found for this job — linked automatically to this submission.', 'success');
-                    document.getElementById('ewoodBomSection').classList.add('hidden');
-                    document.getElementById('ewoodBomRelinkedNotice').classList.remove('hidden');
-                    ewoodBomLoadList(quotationId);
+                crmShowToast('Progress and BOM submitted to the Superadmin.', 'success');
+                document.querySelectorAll('#ewoodBomSection input').forEach(el => { el.disabled = true; });
+                btn.innerHTML = 'Submitted';
+                ewoodSubmitting = false;
+                ewoodAfterSubmit(quotationId);
+            } catch (e) {
+                console.error(e);
+                ewoodSubmitting = false;
+                btn.disabled = false;
+                if (step === 'bom') {
+                    // naipadala na ang progress; BOM na lang ang uulitin
+                    btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-1"></i> Retry BOM';
+                    crmShowToast(`Progress was saved, but the BOM failed: ${ewoodEscapeHtml(e.message)}. Click "Retry BOM".`, 'error', 8000);
                 } else {
+                    btn.innerHTML = EWOOD_SUBMIT_HTML;
+                    crmShowToast(ewoodEscapeHtml(e.message || 'Could not save the progress upload.'), 'error', 6000);
+                }
+            }
+        }
+
+        // Step 2b: may BOM na → ipadala ang progress at ikabit ang BOM
+        document.getElementById('ewoodSubmitRelinkBtn').addEventListener('click', function () {
+            if (ewoodSubmitting) return;
+            ewoodOpenConfirm('relink');
+        });
+
+        async function ewoodDoRelink() {
+            if (ewoodSubmitting) return;
+            const quotationId = document.getElementById('ewoodQuotationId').value;
+            const btn = document.getElementById('ewoodSubmitRelinkBtn');
+            ewoodSubmitting = true;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Submitting…';
+            try {
+                const progressionId = await ewoodUploadProgressOnce();
+                const linked = await ewoodBomRelink(quotationId, progressionId);
+                ewoodSubmitting = false;
+                if (linked) {
+                    crmShowToast(`Submitted with ${ewoodEscapeHtml(ewoodExistingBom?.bom_number || 'the existing BOM')}.`, 'success');
+                    btn.innerHTML = 'Submitted';
+                    ewoodAfterSubmit(quotationId);
+                } else {
+                    // hindi naikabit → gumawa na lang ng bagong BOM para sa submission na ito
+                    crmShowToast('The existing BOM could not be attached. Please fill in a new BOM below.', 'error', 6000);
+                    ewoodBomConfirmed = false;   // bagong BOM → kailangang i-review ulit
                     document.getElementById('ewoodBomRelinkedNotice').classList.add('hidden');
                     document.getElementById('ewoodBomSection').classList.remove('hidden');
-                    crmShowToast('You can now create a BOM for this submission.', 'success');
+                    document.getElementById('ewoodCreateBomBtn').innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Submit BOM';
                 }
-
-                ewoodLoadHistory(quotationId);
             } catch (e) {
                 console.error(e);
-                crmShowToast('Connection error while saving progress.', 'error');
+                ewoodSubmitting = false;
                 btn.disabled = false;
-                btn.textContent = 'Save Progress';
+                btn.innerHTML = EWOOD_RELINK_HTML;
+                crmShowToast(ewoodEscapeHtml(e.message || 'Could not submit.'), 'error', 6000);
+            }
+        }
+
+        // ═════════════ DOUBLE CONFIRMATION ═════════════
+        // Hakbang 1: makikita ang buong BOM at upload; kailangang i-check ang "I checked…".
+        // Hakbang 2: huling tanong bago ipadala. Sa server, tinatanggihan ang BOM na walang confirm_bom=1.
+        let ewoodCf = null;   // { mode, rows, bom }
+        const ewoodCfEl = id => document.getElementById(id);
+
+        function ewoodCfRowsFromForm() {
+            return [...document.querySelectorAll('#ewoodBomItemsBody tr')].map(tr => ({
+                supplier: tr.querySelector('[name="supplier[]"]').value.trim(),
+                item_code: tr.querySelector('[name="item_code[]"]').value.trim(),
+                item_description: tr.querySelector('[name="item_description[]"]').value.trim(),
+                quantity: tr.querySelector('[name="quantity[]"]').value.trim(),
+                unit: tr.querySelector('[name="unit[]"]').value.trim(),
+            })).filter(r => r.item_description || r.item_code);
+        }
+
+        function ewoodCfSteps(n) {
+            [['ewoodCfStep1', 1], ['ewoodCfStep2', 2]].forEach(([id, k]) => {
+                const li = ewoodCfEl(id), dot = li.querySelector('span');
+                li.className = `flex items-center gap-1.5 ${k === n ? 'text-amber-800' : k < n ? 'text-green-700' : 'text-gray-400'}`;
+                dot.className = `w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${k === n ? 'bg-amber-700 text-white' : k < n ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'}`;
+                dot.innerHTML = k < n ? '<i class="fa-solid fa-check text-[9px]"></i>' : k;
+            });
+        }
+
+        async function ewoodOpenConfirm(mode) {
+            const row = ewoodRowsMap[ewoodActiveQuotationId] || {};
+            ewoodCf = { mode, rows: [], bom: null };
+            ewoodCfEl('ewoodCfTitle').textContent = `${row.control_no || ''} · ${row.client_name || ''}`;
+            const m = ewoodCfEl('ewoodConfirmModal');
+            m.classList.remove('hidden'); m.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            if (mode === 'create') {
+                ewoodCf.rows = ewoodCfRowsFromForm();
+                ewoodCf.bom = { bom_number: 'New BOM', date_needed: document.querySelector('#ewoodUploadForm [name="date_needed"]').value, general_scope: document.querySelector('#ewoodUploadForm [name="general_scope"]').value };
+                ewoodCfReview();
+            } else {
+                ewoodCfSteps(1);
+                ewoodCfEl('ewoodCfBody').innerHTML = '<p class="py-12 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading the BOM…</p>';
+                ewoodCfEl('ewoodCfFoot').innerHTML = '';
+                try {
+                    const res = await fetch(`${BOM_AJAX_URL}?action=view&bom_id=${encodeURIComponent(ewoodExistingBom?.id || 0)}`);
+                    const data = await ewoodJson(res);
+                    if (!data.success) throw new Error(data.message || 'Could not load the BOM.');
+                    if (!ewoodCf) return;
+                    ewoodCf.bom = data.bom;
+                    ewoodCf.rows = data.bom.items || [];
+                    ewoodCfReview();
+                } catch (e) {
+                    ewoodCfEl('ewoodCfBody').innerHTML = `<p class="py-12 text-center text-xs text-red-600">${ewoodEscapeHtml(e.message)}</p>`;
+                }
+            }
+        }
+
+        function ewoodCloseConfirm() {
+            const m = ewoodCfEl('ewoodConfirmModal');
+            m.classList.add('hidden'); m.classList.remove('flex');
+            document.body.style.overflow = '';
+            ewoodCf = null;
+        }
+        ewoodCfEl('ewoodCfClose').addEventListener('click', ewoodCloseConfirm);
+        ewoodCfEl('ewoodConfirmModal').addEventListener('click', e => { if (e.target.id === 'ewoodConfirmModal') ewoodCloseConfirm(); });
+
+        // Hakbang 1 — buong review
+        function ewoodCfReview() {
+            if (!ewoodCf) return;
+            ewoodCfSteps(1);
+            const rows = ewoodCf.rows, bom = ewoodCf.bom || {};
+            const form = document.getElementById('ewoodUploadForm');
+            const photos = [...form.querySelector('input[name="images[]"]').files];
+            const archive = form.querySelector('input[name="archive"]').files[0];
+            const remarks = form.querySelector('textarea[name="remarks"]').value.trim();
+
+            // grupo ayon sa supplier, at hanapin ang dobleng item
+            const groups = {};
+            rows.forEach(r => { const k = r.supplier || '—'; (groups[k] ||= []).push(r); });
+            const seen = {}, dupes = new Set();
+            rows.forEach(r => {
+                const k = `${(r.supplier || '').toUpperCase()}|${(r.item_code || r.item_description).toUpperCase()}`;
+                if (seen[k]) dupes.add(k); seen[k] = true;
+            });
+            const outN = (groups.OUTSOURCE || []).length;
+            const supN = Object.keys(groups).filter(k => k !== 'OUTSOURCE').length;
+            const tile = (label, val, cls = 'text-gray-900') => `<div class="rounded-xl border border-gray-200 px-3 py-2"><p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">${label}</p><p class="text-lg font-bold ${cls} leading-tight">${val}</p></div>`;
+
+            ewoodCfEl('ewoodCfBody').innerHTML = `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    ${tile('Items', rows.length)}${tile('Suppliers', supN)}${tile('Outsource', outN, outN ? 'text-amber-700' : 'text-gray-900')}${tile('Photos', photos.length || '—')}
+                </div>
+                ${dupes.size ? `<p class="mt-3 text-[11.5px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Some items appear more than once. Check if that is intended (highlighted below).</p>` : ''}
+
+                <div class="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+                    <div class="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs font-semibold text-gray-800"><i class="fa-solid fa-file-invoice text-amber-700 mr-1"></i>${ewoodEscapeHtml(bom.bom_number || 'Bill of Materials')}</p>
+                        <p class="text-[11px] text-gray-500">Scope: <b class="text-gray-700">${ewoodEscapeHtml(bom.general_scope || '—')}</b> · Needed: <b class="text-gray-700">${ewoodEscapeHtml(bom.date_needed || '—')}</b></p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[12px] min-w-[480px]">
+                            <thead class="text-[10px] uppercase tracking-wide text-gray-400"><tr>
+                                <th class="text-left font-semibold px-4 py-2 w-8">#</th>
+                                <th class="text-left font-semibold px-2 py-2">Item</th>
+                                <th class="text-right font-semibold px-4 py-2">Qty</th></tr></thead>
+                            <tbody>
+                            ${Object.entries(groups).map(([sup, list]) => `
+                                <tr class="${sup === 'OUTSOURCE' ? 'bg-amber-50' : 'bg-slate-50'}"><td colspan="3" class="px-4 py-1.5 text-[11px] font-bold ${sup === 'OUTSOURCE' ? 'text-amber-800' : 'text-gray-700'}">
+                                    <i class="fa-solid ${sup === 'OUTSOURCE' ? 'fa-magnifying-glass' : 'fa-truck-field'} mr-1"></i>${sup === 'OUTSOURCE' ? 'Outsource — still needs a supplier' : ewoodEscapeHtml(sup)} <span class="font-normal text-gray-400">(${list.length})</span></td></tr>
+                                ${list.map(r => {
+                                    const k = `${(r.supplier || '').toUpperCase()}|${(r.item_code || r.item_description).toUpperCase()}`;
+                                    return `<tr class="border-t border-gray-100 ${dupes.has(k) ? 'bg-amber-50/70' : ''}">
+                                        <td class="px-4 py-2 text-gray-400 align-top">${rows.indexOf(r) + 1}</td>
+                                        <td class="px-2 py-2 align-top text-gray-800 break-words">${r.item_code ? `<span class="font-mono text-[11px] text-gray-400 mr-1">${ewoodEscapeHtml(r.item_code)}</span>` : ''}${ewoodEscapeHtml(r.item_description)}${dupes.has(k) ? ' <span class="text-[10px] font-semibold text-amber-700">· repeated</span>' : ''}</td>
+                                        <td class="px-4 py-2 align-top text-right whitespace-nowrap font-semibold text-gray-900">${ewoodQtyFmt(r.quantity)} <span class="font-normal text-gray-400">${ewoodEscapeHtml(r.unit || '')}</span></td></tr>`;
+                                }).join('')}`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-4 rounded-xl border border-gray-200 p-4">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">Progress upload</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${photos.slice(0, 6).map(f => `<img src="${URL.createObjectURL(f)}" alt="" class="w-14 h-14 object-cover rounded-lg border border-gray-200">`).join('')}
+                        ${photos.length > 6 ? `<span class="text-[11px] text-gray-400">+${photos.length - 6} more</span>` : ''}
+                        ${archive ? `<span class="inline-flex items-center gap-1.5 h-8 px-2.5 text-[11px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg"><i class="fa-solid fa-file-zipper"></i>${ewoodEscapeHtml(archive.name)}</span>` : '<span class="text-[11px] text-gray-400">No archive</span>'}
+                    </div>
+                    ${remarks ? `<p class="mt-2 text-xs text-gray-600 break-words"><i class="fa-solid fa-comment-dots text-gray-300 mr-1"></i>${ewoodEscapeHtml(remarks)}</p>` : ''}
+                </div>
+
+                <label class="mt-4 flex items-start gap-2.5 rounded-xl border-2 border-amber-200 bg-amber-50/60 px-4 py-3 cursor-pointer select-none">
+                    <input type="checkbox" id="ewoodCfCheck" class="mt-0.5 w-4 h-4 accent-amber-700 shrink-0">
+                    <span class="text-xs text-amber-900"><b>I checked every item, quantity and supplier.</b> This Bill of Materials is complete and correct.</span>
+                </label>`;
+            ewoodCfEl('ewoodCfFoot').innerHTML = `<div class="flex flex-wrap items-center justify-between gap-2">
+                    <button type="button" data-cf="edit" class="px-3.5 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"><i class="fa-solid fa-pen mr-1"></i>${ewoodCf.mode === 'create' ? 'Edit the BOM' : 'Cancel'}</button>
+                    <button type="button" data-cf="next" disabled class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">Continue <i class="fa-solid fa-arrow-right"></i></button>
+                </div>`;
+            ewoodCfEl('ewoodCfCheck').addEventListener('change', e => { ewoodCfEl('ewoodCfFoot').querySelector('[data-cf="next"]').disabled = !e.target.checked; });
+            ewoodCfEl('ewoodCfBody').scrollTop = 0;
+        }
+
+        // Hakbang 2 — huling tanong
+        function ewoodCfFinal() {
+            if (!ewoodCf) return;
+            ewoodCfSteps(2);
+            const n = ewoodCf.rows.length;
+            ewoodCfEl('ewoodCfBody').innerHTML = `
+                <div class="py-6 text-center max-w-md mx-auto">
+                    <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3"><i class="fa-solid fa-paper-plane text-xl"></i></div>
+                    <p class="text-base font-semibold text-gray-900">Send this to the Superadmin?</p>
+                    <p class="text-xs text-gray-500 mt-1.5 leading-relaxed">${ewoodCf.mode === 'create' ? `The progress upload and the BOM with <b>${n} item${n === 1 ? '' : 's'}</b>` : `The progress upload with <b>${ewoodEscapeHtml(ewoodCf.bom?.bom_number || 'the existing BOM')}</b>`} will be sent for QR approval.</p>
+                    <div class="mt-4 text-left rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[11.5px] text-red-800 space-y-1">
+                        <p><i class="fa-solid fa-lock mr-1"></i>You <b>cannot edit</b> the BOM after sending.</p>
+                        <p><i class="fa-solid fa-rotate-left mr-1"></i>If something is wrong, the Superadmin has to send it back first.</p>
+                    </div>
+                </div>`;
+            ewoodCfEl('ewoodCfFoot').innerHTML = `<div class="flex flex-wrap items-center justify-between gap-2">
+                    <button type="button" data-cf="back" class="px-3.5 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100"><i class="fa-solid fa-arrow-left mr-1"></i>Back to review</button>
+                    <button type="button" data-cf="send" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-paper-plane"></i> Yes, send to Superadmin</button>
+                </div>`;
+        }
+
+        ewoodCfEl('ewoodCfFoot').addEventListener('click', e => {
+            const b = e.target.closest('[data-cf]'); if (!b || !ewoodCf) return;
+            const act = b.dataset.cf;
+            if (act === 'edit') { ewoodCloseConfirm(); document.getElementById('ewoodBomSection').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+            if (act === 'next') { if (ewoodCfEl('ewoodCfCheck')?.checked) ewoodCfFinal(); return; }
+            if (act === 'back') { ewoodCfReview(); return; }
+            if (act === 'send') {
+                const mode = ewoodCf.mode;
+                ewoodBomConfirmed = true;
+                ewoodCloseConfirm();
+                if (mode === 'create') ewoodDoCreate(); else ewoodDoRelink();
             }
         });
 
-        // ---------------------------------------------------------------
-        // Step 2: Create BOM (only enabled after Step 1 returns a progression_id,
-        // and only shown when no existing unapproved BOM could be auto-relinked)
-        // ---------------------------------------------------------------
-        document.getElementById('ewoodCreateBomBtn').addEventListener('click', async function () {
-            const quotationId = document.getElementById('ewoodQuotationId').value;
-            const btn = this;
+        function ewoodQtyFmt(q) { const n = parseFloat(q); return isNaN(n) ? '' : n.toFixed(2).replace(/\.?0+$/, ''); }
 
-            if (!ewoodCurrentProgressionId) {
-                crmShowToast('Save the progress upload first before creating a BOM.', 'error');
-                return;
-            }
-
-            const descInputs = document.querySelectorAll('input[name="item_description[]"]');
-            const hasItem = Array.from(descInputs).some(i => i.value.trim() !== '');
-            if (!hasItem) {
-                crmShowToast('Add at least one BOM item before submitting.', 'error');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = 'Saving…';
-
-            try {
-                const formData = new FormData(document.getElementById('ewoodUploadForm'));
-                formData.append('progression_id', ewoodCurrentProgressionId);
-
-                const res = await fetch(`${BOM_AJAX_URL}?action=create`, { method: 'POST', body: formData });
-                const data = await res.json();
-
-                if (!data.success) {
-                    crmShowToast(`BOM failed: ${data.message}`, 'error');
-
-                    btn.disabled = false;
-                    btn.textContent = 'Create BOM';
-                    return;
-                }
-
-                crmShowToast('BOM created successfully.', 'success');
-
-                document.querySelectorAll('#ewoodBomSection input').forEach(el => { el.disabled = true; });
-                btn.disabled = true;
-                btn.textContent = 'BOM Created';
-
-                ewoodBomLoadList(quotationId);
-
-                ewoodCurrentProgressionId = null;
-                document.getElementById('ewoodUploadFields').classList.add('hidden');
-                {
-                    const blocked = document.getElementById('ewoodUploadBlocked');
-                    blocked.textContent = 'You still have a submission awaiting the Superadmin\'s QR approval. Please wait for it to be approved or rejected before submitting again.';
-                    blocked.classList.remove(
-                        'text-gray-500', 'bg-gray-50', 'border-gray-200',
-                        'text-green-700', 'bg-green-50', 'border-green-200'
-                    );
-                    blocked.classList.add('text-amber-700', 'bg-amber-50', 'border-amber-200');
-                    blocked.classList.remove('hidden');
-                }
-
-                ewoodLoadHistory(quotationId);
-
-                ewoodSwitchTab('history');
-            } catch (e) {
-                console.error(e);
-                crmShowToast('Connection error while creating BOM.', 'error');
-                // Connection failure: safe to let them retry.
-                btn.disabled = false;
-                btn.textContent = 'Create BOM';
-            }
-            // NOTE: no blanket `finally` re-enabling the button — the
-            // success path intentionally leaves it disabled/relabeled.
-        });
-
+        ewoodLoadCatalog().then(() => ewoodBomResetRows());
         ewoodFetchList();
     </script>
 </body>

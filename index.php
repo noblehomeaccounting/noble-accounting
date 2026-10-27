@@ -255,16 +255,14 @@ $adminRoutes = [
 
     // cutting list
     'cuttinglist',     
-
-    // crm cuttinglist page 2
     'crmcuttinglist',
     'crmcuttinglistdetail',
     'cuttinglistajax',
-
-    // cuttinglist page 3
     'crmewood',
     'bomajax',
     'crmewoodajax',
+    'crmsupplier',
+    'crmsupplierajax',
     
     // super admin page 1
     'crm-main',
@@ -325,6 +323,7 @@ $adminRoutes = [
     'crmsitevisit',     
     'crm2dquotation',
     'crm2dcustomerreview',
+    'crm2drevisionajax',
 
 
 ];
@@ -565,20 +564,18 @@ $routes = [
 
     // designer page 3
     'checkdesignerquotation'           => 'admin/ui-designer/page-3/checkdesigner2dquotation.php',
-    'checkdesigner2dquotationajax'         => 'admin/ui-designer/backend/page-3/checkdesigner2dquotationajax.php',
+    'checkdesigner2dquotationajax'     => 'admin/ui-designer/backend/page-3/checkdesigner2dquotationajax.php',
 
     // cutting list
     'cuttinglist'                      => 'admin/ui-cuttinglist/page-1/index-cuttinglist-main.php',
-
-    // crm cutting list page 2
     'crmcuttinglist'                   => 'admin/ui-cuttinglist/page-2/crm-cuttingmain.php',
     'crmcuttinglistdetail'             => 'admin/ui-cuttinglist/page-2/index-cuttinglist-detail.php',
     'cuttinglistajax'                  => 'admin/ui-cuttinglist/backend/page-2/cuttinglistajax.php',
-
-    // cutting list page 3
     'crmewood'                         => 'admin/ui-cuttinglist/page-3/ewoodfile.php',
     'bomajax'                          => 'admin/ui-cuttinglist/backend/page-3/bomajax.php',
     'crmewoodajax'                     => 'admin/ui-cuttinglist/backend/page-3/cuttinglistprogressionajax.php',
+    'crmsupplier'                      => 'admin/ui-cuttinglist/page-4/crmsupplier.php',
+    'crmsupplierajax'                  => 'admin/ui-cuttinglist/backend/page-4/crmsupplierajax.php',
 
     // super admin
     'crm-main'                         => 'admin/ui-superad/page-1/check2dquotation.php',
@@ -645,6 +642,7 @@ $routes = [
     'crmsitevisit'                     => 'admin/crm-management/page-3/subpage-3/sitevisitform.php',
     'crm2dquotation'                   => 'admin/crm-management/page-3/subpage-3/2d-and-quotation.php',
     'crm2dcustomerreview'              => 'admin/crm-management/page-3/subpage-3/crm-2d-customer-review.php',
+    'crm2drevisionajax'                => 'admin/crm-management/backend/page-3/subpage-3/crm2drevisionajax.php',
 ];
 
 

@@ -15,6 +15,7 @@ $isSales = ($currentUserRole === ROLE_SALES);
 $ownerColumn = $isSales ? 'sales_staff_id' : 'designer_id';
 
 $inquiryId = intval($_GET['id'] ?? 0);
+$inquiry = null;
 
 if ($inquiryId <= 0) {
     $qError = 'Missing or invalid inquiry reference.';
@@ -52,61 +53,91 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
 </head>
 
 <body class="bg-gray-100 font-['Barlow_Condensed']">
-    <main class="ml-56 min-h-screen p-4">
-        <div class="max-w-7xl mx-auto">
-            <div class="bg-white border border-gray-300 shadow-sm rounded-lg">
+    <main class="ml-56 min-h-screen p-5 lg:p-7 bg-[#F5F6FA] overflow-x-hidden">
+        <div class="max-w-5xl mx-auto">
 
-                <div class="px-6 pt-6 pb-5 flex items-start justify-between border-b border-gray-300">
-                    <div>
-                        <p class="text-[10px] tracking-[0.25em] uppercase text-gray-500 mb-1">Client Relationship Management</p>
-                        <h1 class="text-xl font-bold text-[#0B2540] tracking-wide">
-                            Customer Review
-                            <span id="crStatusBadge"
-                                class="hidden align-middle ml-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg border"></span>
-                        </h1>
+            <!-- ═══ HEADER ═══ -->
+            <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
+                <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+                <div class="p-5 flex flex-wrap items-start justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-user-check text-lg"></i></span>
+                        <div class="min-w-0">
+                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">CRM · 2D &amp; Quotation</p>
+                            <h1 class="text-gray-900 text-lg font-semibold leading-tight flex flex-wrap items-center gap-2">
+                                Customer Review
+                                <span id="crStatusBadge" class="hidden"></span>
+                            </h1>
+                            <?php if (empty($qError) && $inquiry): ?>
+                                <p class="mt-0.5 text-[12px] text-gray-500 flex flex-wrap items-center gap-x-2">
+                                    <span class="font-mono font-semibold text-amber-700"><?= htmlspecialchars($inquiry['control_no']) ?></span>
+                                    <span class="text-gray-300">·</span>
+                                    <span class="capitalize font-medium text-gray-700"><?= htmlspecialchars($inquiry['client_name']) ?></span>
+                                </p>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <?php if (empty($qError)): ?>
                             <a href="<?= htmlspecialchars(BASE_URL . '/crm2dquotation?id=' . $inquiryId) ?>"
-                                class="text-xs font-medium text-gray-600 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 transition-colors rounded-full">
-                                <i class="fa-solid fa-folder-open"></i> Initial Files
+                                class="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3.5 py-2 hover:bg-gray-50">
+                                <i class="fa-solid fa-folder-open"></i> Initial files
                             </a>
                         <?php endif; ?>
                         <a href="<?= htmlspecialchars($crmBackUrl) ?>"
-                            class="text-xs font-medium text-gray-600 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 transition-colors rounded-full">
-                            <i class="fa-solid fa-circle-arrow-left"></i> Back to List
+                            class="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3.5 py-2 hover:bg-gray-50">
+                            <i class="fa-solid fa-arrow-left"></i> Back to list
                         </a>
                     </div>
                 </div>
 
-                <div class="h-[3px] bg-gray-200"></div>
-
-                <div class="px-6 py-6 text-sm">
-                    <?php if (!empty($qError)): ?>
-                        <div class="border border-gray-400 bg-gray-50 text-gray-800 text-sm px-4 py-2.5">
-                            <strong class="uppercase text-[11px] tracking-wide">Notice:</strong>
-                            <?= htmlspecialchars($qError) ?>
+                <?php if (empty($qError)): ?>
+                    <!-- Stepper -->
+                    <div class="px-5 pb-4">
+                        <div id="crStepper" class="flex items-center gap-2 text-[11px] font-semibold">
+                            <?php
+                            $crSteps = [['fa-cloud-arrow-up', 'Initial files', 'done'], ['fa-user-tie', 'Head approval', 'done'], ['fa-user-check', 'Customer review', 'current'], ['fa-flag-checkered', 'Final', 'todo']];
+                            foreach ($crSteps as $i => [$ic, $lbl, $st]): ?>
+                                <?php if ($i > 0): ?><span data-step-line="<?= $i ?>" class="flex-1 min-w-[12px] h-0.5 rounded <?= $st !== 'todo' ? 'bg-amber-700' : 'bg-gray-200' ?>"></span><?php endif; ?>
+                                <span data-step="<?= $i ?>" class="inline-flex items-center gap-1.5 whitespace-nowrap <?= $st === 'done' ? 'text-amber-800' : ($st === 'current' ? 'text-gray-900' : 'text-gray-400') ?>">
+                                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] <?= $st === 'done' ? 'bg-amber-700 text-white' : ($st === 'current' ? 'bg-amber-50 text-amber-700 ring-2 ring-amber-600' : 'bg-gray-100 text-gray-400') ?>">
+                                        <i class="fa-solid <?= $st === 'done' ? 'fa-check' : $ic ?>"></i>
+                                    </span>
+                                    <span class="hidden sm:inline"><?= htmlspecialchars($lbl) ?></span>
+                                </span>
+                            <?php endforeach; ?>
                         </div>
-                    <?php else: ?>
-                        <div id="crRoot">
-                            <div class="space-y-3 py-4">
-                                <div class="h-6 bg-gray-100 animate-pulse w-1/3"></div>
-                                <div class="h-24 bg-gray-100 animate-pulse"></div>
-                                <div class="h-24 bg-gray-100 animate-pulse"></div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                </div>
+                    </div>
+                <?php endif; ?>
+            </section>
 
-                <div class="border-t border-gray-300 px-6 py-3 text-[11px] text-gray-400 flex justify-between">
-                    <span>Generated on <?= date('F d, Y g:i A') ?></span>
-                    <span id="crUpdatedAt">Customer Review</span>
+            <?php if (!empty($qError)): ?>
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm px-6 py-10 text-center">
+                    <span class="w-12 h-12 mx-auto rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center mb-3"><i class="fa-solid fa-triangle-exclamation text-lg"></i></span>
+                    <p class="text-sm font-semibold text-gray-900"><?= htmlspecialchars($qError) ?></p>
+                    <a href="<?= htmlspecialchars($crmBackUrl) ?>"
+                        class="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg px-4 py-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to list
+                    </a>
                 </div>
+            <?php else: ?>
+                <div id="crRoot">
+                    <div class="space-y-3">
+                        <div class="h-16 rounded-xl bg-white border border-gray-200 animate-pulse"></div>
+                        <div class="h-40 rounded-xl bg-white border border-gray-200 animate-pulse"></div>
+                        <div class="h-40 rounded-xl bg-white border border-gray-200 animate-pulse"></div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div class="mt-5 text-[11px] text-gray-400 flex flex-wrap justify-between gap-2">
+                <span>Generated on <?= date('F d, Y g:i A') ?></span>
+                <span id="crUpdatedAt"><i class="fa-solid fa-rotate mr-1"></i>Live · refreshes every few seconds</span>
             </div>
         </div>
 
         <div id="crmToastContainer"
-            class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none w-30 max-w-sm px-4 sm:px-0">
+            class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4 sm:px-0">
         </div>
 
         <?php if (empty($qError)): ?>
@@ -126,16 +157,16 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                 function crmShowToast(message, type = 'success', duration = 4000) {
                     const container = document.getElementById('crmToastContainer');
                     const palette = type === 'success'
-                        ? { wrap: 'bg-white border-green-900 text-gray-800 rounded-2xl', icon: 'bg-green-600 text-white rounded-lg', symbol: '✓' }
-                        : { wrap: 'bg-white border-red-700 text-gray-800 rounded-2xl', icon: 'bg-red-700 text-white rounded-lg', symbol: '!' };
+                        ? { icon: 'bg-emerald-500', symbol: '✓' }
+                        : { icon: 'bg-red-600', symbol: '!' };
 
                     const toast = document.createElement('div');
-                    toast.className = `pointer-events-auto flex items-start gap-2.5 border shadow-lg px-4 py-3 text-sm
-                        ${palette.wrap} translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
+                    toast.className = `pointer-events-auto flex items-start gap-2.5 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-800
+                        translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
                     toast.innerHTML = `
-                        <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold ${palette.icon}">${palette.symbol}</span>
+                        <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white ${palette.icon}">${palette.symbol}</span>
                         <span class="flex-1 leading-relaxed">${message}</span>
-                        <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>`;
+                        <button type="button" class="shrink-0 inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600" aria-label="Close"><i class="fa-solid fa-xmark text-xs"></i></button>`;
                     container.appendChild(toast);
                     requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
                     const remove = () => {
@@ -156,37 +187,40 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                     return Object.keys(crDecisions).length > 0;
                 }
 
-                function crFilesHtml(files) {
-                    if (!files || !files.length) return '<span class="text-gray-300">—</span>';
-                    return files.map(f => `
-                        <a href="${q2dEscapeHtml(f.url)}" target="_blank" title="${q2dEscapeHtml(f.name)}"
-                            class="flex items-center gap-2 text-xs border border-gray-200 bg-gray-50 hover:bg-gray-100 px-2 py-1 mb-1 transition-colors">
-                            <i class="fa-solid fa-file-lines text-gray-400 shrink-0"></i>
-                            <span class="flex-1 truncate text-[#0B2540] underline underline-offset-2">${q2dEscapeHtml(f.name)}</span>
-                        </a>`).join('');
+                // Icon at kulay bawat slot
+                const CR_SLOT_META = {
+                    '2d': { icon: 'fa-compass-drafting', box: 'bg-blue-50 text-blue-600' },
+                    quotation: { icon: 'fa-file-invoice-dollar', box: 'bg-emerald-50 text-emerald-600' },
+                    '3d': { icon: 'fa-cube', box: 'bg-violet-50 text-violet-600' },
+                };
+                function crFileIcon(name) {
+                    return /\.(jpe?g|png|webp)$/i.test(name || '') ? 'fa-file-image text-violet-500' : 'fa-file-pdf text-red-500';
                 }
 
-                function crInquirySummary(inquiry) {
-                    return `
-                    <table class="w-full border border-gray-300 text-sm mb-6">
-                        <tbody>
-                            <tr>
-                                <td class="w-32 bg-amber-600 font-semibold text-[10px] uppercase tracking-wider text-white px-4 py-2.5 border-r border-gray-200">Control No :</td>
-                                <td class="px-4 py-2.5 font-semibold text-gray-900">${q2dEscapeHtml(inquiry.control_no)}</td>
-                                <td class="w-28 bg-amber-600 font-semibold text-[10px] uppercase tracking-wider text-white px-4 py-2.5 border-r border-l border-gray-200">Client Name :</td>
-                                <td class="px-4 py-2.5 text-gray-900">${q2dEscapeHtml(inquiry.client_name)}</td>
-                            </tr>
-                        </tbody>
-                    </table>`;
+                // Listahan ng files — may sariling scroll kapag marami
+                function crFilesHtml(files) {
+                    if (!files || !files.length) return '<p class="text-xs text-gray-300">No files</p>';
+                    return `<div class="max-h-48 overflow-y-auto pr-1 space-y-1.5 [scrollbar-width:thin]">${files.map((f, i) => `
+                        <a href="${q2dEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${q2dEscapeHtml(f.name)}"
+                            class="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:border-amber-600 hover:bg-amber-50/40 transition-colors min-w-0">
+                            <i class="fa-solid ${crFileIcon(f.name)} shrink-0"></i>
+                            <span class="flex-1 min-w-0 truncate text-[12.5px] font-medium text-gray-800">${q2dEscapeHtml(f.name)}</span>
+                            <span class="text-[10px] text-gray-400 shrink-0">${i + 1}/${files.length}</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-gray-400 shrink-0"></i>
+                        </a>`).join('')}</div>`;
                 }
+
+                // (Pinalitan ng header — iniwan para sa compatibility)
+                function crInquirySummary(inquiry) { return ''; }
 
                 function crDecisionCell(s) {
                     // Okay na dati → locked, walang choices
                     if (s.decision === 'Okay') {
-                        return `<span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 text-green-800">
-                                    <i class="fa-solid fa-circle-check text-green-600 mr-1"></i>Customer Okay
-                                </span>
-                                <p class="text-[11px] text-gray-500 mt-2">No further action needed.</p>`;
+                        return `<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 flex items-center gap-2.5">
+                                    <i class="fa-solid fa-lock text-emerald-600"></i>
+                                    <div><p class="text-[12.5px] font-semibold text-emerald-800">Customer okay</p>
+                                    <p class="text-[11px] text-emerald-700/80">No further action needed.</p></div>
+                                </div>`;
                     }
 
                     const cur = crDecisions[s.slot] || {};
@@ -194,105 +228,144 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                     const isRevise = cur.decision === 'Revise';
 
                     const pendingNote = (s.decision === 'Revise')
-                        ? `<p class="text-[10px] font-semibold uppercase tracking-wide text-amber-700 mb-2">Revised file — waiting for customer decision again</p>`
+                        ? `<p class="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2.5"><i class="fa-solid fa-rotate mr-1"></i>Revised file — waiting for the customer's decision again</p>`
                         : '';
 
                     return `
                     ${pendingNote}
-                    <div class="flex gap-2">
-                        <label class="flex-1 cursor-pointer select-none">
-                            <input type="radio" name="d_${s.slot}" value="Okay" class="peer hidden" ${isOkay ? 'checked' : ''}
+                    <p class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Customer decision <span class="text-red-500">*</span></p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer select-none">
+                            <input type="radio" name="d_${s.slot}" value="Okay" class="peer sr-only" ${isOkay ? 'checked' : ''}
                                 onchange="crSetDecision('${s.slot}', 'Okay')">
-                            <span class="block text-center px-3 py-2 text-xs font-semibold uppercase tracking-wide border border-gray-400 text-gray-600 hover:bg-gray-50
-                                peer-checked:bg-green-700 peer-checked:text-white peer-checked:border-green-700 transition-colors">
-                                <i class="fa-solid fa-check mr-1"></i>Okay
+                            <span class="flex items-center justify-center gap-1.5 h-10 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:border-gray-300
+                                peer-checked:bg-emerald-700 peer-checked:text-white peer-checked:border-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-300 transition-colors">
+                                <i class="fa-solid fa-check"></i>Okay
                             </span>
                         </label>
-                        <label class="flex-1 cursor-pointer select-none">
-                            <input type="radio" name="d_${s.slot}" value="Revise" class="peer hidden" ${isRevise ? 'checked' : ''}
+                        <label class="cursor-pointer select-none">
+                            <input type="radio" name="d_${s.slot}" value="Revise" class="peer sr-only" ${isRevise ? 'checked' : ''}
                                 onchange="crSetDecision('${s.slot}', 'Revise')">
-                            <span class="block text-center px-3 py-2 text-xs font-semibold uppercase tracking-wide border border-gray-400 text-gray-600 hover:bg-gray-50
-                                peer-checked:bg-red-700 peer-checked:text-white peer-checked:border-red-700 transition-colors">
-                                <i class="fa-solid fa-rotate-left mr-1"></i>Needs Revision
+                            <span class="flex items-center justify-center gap-1.5 h-10 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:border-gray-300
+                                peer-checked:bg-red-700 peer-checked:text-white peer-checked:border-red-700 peer-focus-visible:ring-2 peer-focus-visible:ring-red-300 transition-colors">
+                                <i class="fa-solid fa-rotate-left"></i>Needs revision
                             </span>
                         </label>
                     </div>
                     <textarea id="rm_${s.slot}" rows="3" oninput="crSetRemarks('${s.slot}', this.value)"
-                        placeholder="Customer remarks (required)"
-                        class="${isRevise ? '' : 'hidden'} mt-2 w-full border border-gray-300 text-xs p-2 focus:outline-none focus:border-[#0B2540]">${q2dEscapeHtml(cur.remarks || '')}</textarea>`;
+                        placeholder="What does the customer want changed? (required)"
+                        class="${isRevise ? '' : 'hidden'} mt-2 w-full rounded-lg border border-red-300 bg-white text-xs px-3 py-2 resize-y outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100">${q2dEscapeHtml(cur.remarks || '')}</textarea>`;
+                }
+
+                function crSlotCard(s) {
+                    const m = CR_SLOT_META[s.slot] || CR_SLOT_META['2d'];
+                    const cur = crDecisions[s.slot] || {};
+                    const locked = s.decision === 'Okay';
+                    const ring = locked ? 'border-gray-200' : cur.decision === 'Okay' ? 'border-emerald-300' : cur.decision === 'Revise' ? 'border-red-300' : 'border-gray-200';
+                    const count = (s.data.files || []).length;
+                    const chip = locked
+                        ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fa-solid fa-circle-check text-[9px]"></i>Okay</span>'
+                        : cur.decision === 'Okay' ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fa-solid fa-check text-[9px]"></i>Okay</span>'
+                            : cur.decision === 'Revise' ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-red-50 text-red-700 border-red-200"><i class="fa-solid fa-rotate-left text-[9px]"></i>Revision</span>'
+                                : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200"><i class="fa-solid fa-hourglass-half text-[9px]"></i>Waiting</span>';
+
+                    return `
+                    <article data-slot-card="${s.slot}" class="bg-white border ${ring} rounded-2xl shadow-sm overflow-hidden transition-colors">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg ${m.box} flex items-center justify-center shrink-0"><i class="fa-solid ${m.icon} text-sm"></i></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[13px] font-semibold text-gray-900 truncate">${q2dEscapeHtml(s.label)}</p>
+                                <p class="text-[10.5px] text-gray-400">${count} file${count === 1 ? '' : 's'}${s.data.uploaded_by_name && s.data.uploaded_by_name !== '—' ? ` · ${q2dEscapeHtml(s.data.uploaded_by_name)} (${q2dEscapeHtml(s.data.uploaded_role_label)})` : ''}</p>
+                            </div>
+                            <span data-slot-chip>${chip}</span>
+                        </div>
+                        <div class="p-4 grid md:grid-cols-2 gap-4">
+                            <div class="min-w-0">
+                                <p class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Attachments</p>
+                                ${crFilesHtml(s.data.files)}
+                            </div>
+                            <div class="min-w-0">${crDecisionCell(s)}</div>
+                        </div>
+                    </article>`;
                 }
 
                 function crRender(data) {
                     const root = document.getElementById('crRoot');
                     const approved = data.status === 'Customer Approved';
 
-                    const rows = data.slots.map(s => `
-                        <tr class="border-b border-gray-200 last:border-b-0">
-                            <td class="align-top px-4 py-4 font-semibold text-[#0B2540] uppercase tracking-wide text-xs border-r border-gray-200">${q2dEscapeHtml(s.label)}</td>
-                            <td class="align-top px-4 py-4 border-r border-gray-200">
-                                ${crFilesHtml(s.data.files)}
-                                ${s.data.uploaded_by_name && s.data.uploaded_by_name !== '—'
-                            ? `<p class="text-[11px] text-gray-500 mt-2">Uploaded by: ${q2dEscapeHtml(s.data.uploaded_by_name)} (${q2dEscapeHtml(s.data.uploaded_role_label)})</p>` : ''}
-                            </td>
-                            <td class="align-top px-4 py-4">${crDecisionCell(s)}</td>
-                        </tr>`).join('');
+                    const callout = approved
+                        ? `<div class="rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 px-4 py-3.5 mb-4 flex flex-wrap items-center gap-3">
+                                <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid fa-circle-check"></i></span>
+                                <div class="min-w-0 flex-1"><p class="text-sm font-semibold">Customer approved</p>
+                                <p class="text-xs opacity-80">The customer has approved all files. You may proceed to the Final submission.</p></div>
+                                <a href="${Q2D_FINAL_URL}" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm shrink-0">Proceed to Final <i class="fa-solid fa-arrow-right"></i></a>
+                           </div>`
+                        : `<div class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3.5 mb-4 flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid fa-user-clock"></i></span>
+                                <div class="min-w-0 flex-1"><p class="text-sm font-semibold">Waiting for the customer's decision</p>
+                                <p class="text-xs opacity-80">Choose Okay or Needs revision for each file. Files that need revision go back to the designer; files marked Okay stay locked.</p></div>
+                           </div>`;
 
-                    const banner = approved
-                        ? `<span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-green-700 ml-1 text-green-800">
-                                <i class="fa-solid fa-circle-check text-green-600 mr-1"></i>Customer Approved</span>`
-                        : `<span class="inline-flex items-center text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 border border-amber-700 ml-1 text-amber-700">Waiting for Customer</span>`;
-
-                    const hint = approved
-                        ? 'The customer has approved all files. You may proceed to the Final submission.'
-                        : 'Select Okay or Needs Revision for each file. Files marked Needs Revision go back to the designer for re-upload; files that are Okay stay locked.';
-
-                    let footer;
-                    if (approved) {
+                    let footer = '';
+                    if (!approved) {
                         footer = `
-                        <div class="pt-4 mt-2 border-t border-gray-300 flex items-center justify-end gap-3">
-                            <a href="${Q2D_FINAL_URL}"
-                                class="px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-green-900 hover:bg-green-800 transition-colors">
-                                Proceed to Final Submission
-                            </a>
-                        </div>`;
-                    } else {
-                        footer = `
-                        <div class="pt-4 mt-2 border-t border-gray-300 flex items-center justify-end gap-3">
-                            <p id="crSubmitHint" class="text-xs text-gray-400"></p>
-                            <button type="button" id="crSubmitBtn" onclick="crSubmit()"
-                                class="px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white bg-[#0B2540] hover:bg-[#123564] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
-                                Submit Customer Decision
-                            </button>
+                        <div id="crSubmitBar" class="sticky bottom-4 z-10 mt-4 bg-white border border-gray-200 rounded-2xl shadow-lg px-4 py-3.5">
+                            <div data-submit-idle class="flex flex-wrap items-center gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <p id="crSubmitSummary" class="text-[12px] font-semibold text-gray-700"></p>
+                                    <p id="crSubmitHint" class="text-[11px] text-gray-400"></p>
+                                </div>
+                                <button type="button" id="crSubmitBtn" onclick="crSubmit()"
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-paper-plane"></i> Submit customer decision
+                                </button>
+                            </div>
+                            <div data-submit-confirm class="hidden flex flex-wrap items-center gap-3">
+                                <span class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-circle-question"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[13px] font-semibold text-gray-900">Submit the customer's decision?</p>
+                                    <p id="crConfirmText" class="text-[11.5px] text-gray-600"></p>
+                                </div>
+                                <button type="button" onclick="crAskConfirm(false)" class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Go back</button>
+                                <button type="button" id="crConfirmYes" onclick="crDoSubmit()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg">
+                                    <i class="fa-solid fa-check"></i> Yes, submit
+                                </button>
+                            </div>
                         </div>`;
                     }
 
                     root.innerHTML = `
                         ${crInquirySummary(data.inquiry)}
-                        <div class="flex items-center justify-between border-l-4 border-[#0B2540] bg-gray-50 px-4 py-2.5 mb-4">
-                            <p class="text-sm text-gray-800"><strong class="uppercase tracking-wide text-[11px]">Status:</strong>${banner}</p>
-                        </div>
-                        <p class="text-sm text-gray-500 italic mb-6">${hint}</p>
-                        <div class="overflow-x-auto border border-gray-300 mb-6">
-                            <table class="w-full table-fixed text-sm">
-                                <thead>
-                                    <tr class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-600">
-                                        <th class="w-[12%] text-left font-semibold px-4 py-2 border-r border-b border-gray-300">File</th>
-                                        <th class="w-[40%] text-left font-semibold px-4 py-2 border-r border-b border-gray-300">Attachments</th>
-                                        <th class="text-left font-semibold px-4 py-2 border-b border-gray-300">Customer Decision</th>
-                                    </tr>
-                                </thead>
-                                <tbody>${rows}</tbody>
-                            </table>
-                        </div>
+                        ${callout}
+                        <div class="space-y-3">${data.slots.map(crSlotCard).join('')}</div>
                         ${footer}`;
 
                     // badge sa header
                     const badge = document.getElementById('crStatusBadge');
                     badge.textContent = data.status;
-                    badge.className = 'align-middle ml-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg border inline-block '
-                        + (approved ? 'bg-green-100 text-green-800 border-green-600' : 'bg-amber-100 text-amber-800 border-amber-600');
+                    badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border '
+                        + (approved ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-amber-50 text-amber-700 border-amber-300');
+
+                    // stepper: kapag approved na, tapos na rin ang "Customer review"
+                    if (approved) crMarkStepDone(2, 3);
 
                     crUpdateSubmitState(data);
+                }
+
+                function crMarkStepDone(doneIdx, nextIdx) {
+                    const done = document.querySelector(`#crStepper [data-step="${doneIdx}"]`);
+                    const next = document.querySelector(`#crStepper [data-step="${nextIdx}"]`);
+                    const line = document.querySelector(`#crStepper [data-step-line="${nextIdx}"]`);
+                    if (done) {
+                        done.className = 'inline-flex items-center gap-1.5 whitespace-nowrap text-amber-800';
+                        done.firstElementChild.className = 'w-6 h-6 rounded-full flex items-center justify-center text-[10px] bg-amber-700 text-white';
+                        done.firstElementChild.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    }
+                    if (next) {
+                        next.className = 'inline-flex items-center gap-1.5 whitespace-nowrap text-gray-900';
+                        next.firstElementChild.className = 'w-6 h-6 rounded-full flex items-center justify-center text-[10px] bg-amber-50 text-amber-700 ring-2 ring-amber-600';
+                    }
+                    if (line) line.className = 'flex-1 min-w-[12px] h-0.5 rounded bg-amber-700';
                 }
 
                 // Na-enable lang ang submit kapag may desisyon na ang lahat ng slot na hindi pa Okay,
@@ -300,6 +373,7 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                 function crUpdateSubmitState(data) {
                     const btn = document.getElementById('crSubmitBtn');
                     const hint = document.getElementById('crSubmitHint');
+                    const summary = document.getElementById('crSubmitSummary');
                     if (!btn) return;
 
                     const open = data.slots.filter(s => s.decision !== 'Okay');
@@ -312,8 +386,38 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                         if (d.decision === 'Revise' && !(d.remarks || '').trim()) { ok = false; msg = 'Remarks are required for files that need revision.'; break; }
                     }
 
+                    const decided = open.filter(s => (crDecisions[s.slot] || {}).decision).length;
+                    const nOk = open.filter(s => (crDecisions[s.slot] || {}).decision === 'Okay').length;
+                    const nRev = open.filter(s => (crDecisions[s.slot] || {}).decision === 'Revise').length;
+                    if (summary) {
+                        summary.innerHTML = `${decided} of ${open.length} decided`
+                            + (nOk ? ` · <span class="text-emerald-700">${nOk} okay</span>` : '')
+                            + (nRev ? ` · <span class="text-red-700">${nRev} for revision</span>` : '');
+                    }
+
                     btn.disabled = !ok || crSubmitting;
-                    if (hint) hint.textContent = msg;
+                    if (hint) {
+                        hint.textContent = ok ? 'Ready to submit.' : msg;
+                        hint.className = 'text-[11px] ' + (ok ? 'text-emerald-700' : 'text-gray-400');
+                    }
+
+                    // update ang chip at border ng bawat card
+                    open.forEach(s => {
+                        const card = document.querySelector(`[data-slot-card="${s.slot}"]`);
+                        if (!card) return;
+                        const d = (crDecisions[s.slot] || {}).decision;
+                        card.classList.toggle('border-emerald-300', d === 'Okay');
+                        card.classList.toggle('border-red-300', d === 'Revise');
+                        card.classList.toggle('border-gray-200', !d);
+                        const chip = card.querySelector('[data-slot-chip]');
+                        if (chip) chip.innerHTML = d === 'Okay'
+                            ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fa-solid fa-check text-[9px]"></i>Okay</span>'
+                            : d === 'Revise' ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-red-50 text-red-700 border-red-200"><i class="fa-solid fa-rotate-left text-[9px]"></i>Revision</span>'
+                                : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200"><i class="fa-solid fa-hourglass-half text-[9px]"></i>Waiting</span>';
+                    });
+
+                    // isara ang confirm kapag may binago
+                    crAskConfirm(false);
                 }
 
                 let crCurrentData = null;
@@ -322,7 +426,10 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                     crDecisions[slot] = { ...(crDecisions[slot] || {}), decision };
                     if (decision === 'Okay') delete crDecisions[slot].remarks;
                     const ta = document.getElementById('rm_' + slot);
-                    if (ta) ta.classList.toggle('hidden', decision !== 'Revise');
+                    if (ta) {
+                        ta.classList.toggle('hidden', decision !== 'Revise');
+                        if (decision === 'Revise') setTimeout(() => ta.focus(), 0);
+                    }
                     if (crCurrentData) crUpdateSubmitState(crCurrentData);
                 }
 
@@ -339,13 +446,11 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                         if (!data.success) {
                             if (!silent) {
                                 document.getElementById('crRoot').innerHTML = `
-                                    <div class="border border-gray-400 bg-gray-50 text-gray-800 text-sm px-4 py-2.5">
-                                        <strong class="uppercase text-[11px] tracking-wide">Notice:</strong>
-                                        ${q2dEscapeHtml(data.message || 'Unable to load customer review.')}
-                                    </div>
-                                    <div class="mt-4">
-                                        <a href="${Q2D_BACK_TO_2D_URL}" class="text-xs font-medium text-gray-600 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 rounded-full">
-                                            <i class="fa-solid fa-circle-arrow-left"></i> Back to Initial Files
+                                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm px-6 py-10 text-center">
+                                        <span class="w-12 h-12 mx-auto rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center mb-3"><i class="fa-solid fa-triangle-exclamation text-lg"></i></span>
+                                        <p class="text-sm font-semibold text-gray-900">${q2dEscapeHtml(data.message || 'Unable to load customer review.')}</p>
+                                        <a href="${Q2D_BACK_TO_2D_URL}" class="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg px-4 py-2">
+                                            <i class="fa-solid fa-arrow-left"></i> Back to Initial files
                                         </a>
                                     </div>`;
                             }
@@ -364,7 +469,7 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
 
                         const updatedEl = document.getElementById('crUpdatedAt');
                         if (updatedEl) {
-                            updatedEl.textContent = `Updated ${new Date().toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
+                            updatedEl.innerHTML = `<i class="fa-solid fa-rotate mr-1"></i>Updated ${new Date().toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
                         }
                     } catch (e) {
                         console.error('crFetchState:', e);
@@ -372,19 +477,34 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                     }
                 }
 
-                async function crSubmit() {
+                // Inline confirm (walang confirm() popup)
+                function crAskConfirm(show) {
+                    const bar = document.getElementById('crSubmitBar');
+                    if (!bar) return;
+                    bar.querySelector('[data-submit-idle]').classList.toggle('hidden', !!show);
+                    bar.querySelector('[data-submit-confirm]').classList.toggle('hidden', !show);
+                    bar.classList.toggle('border-amber-300', !!show);
+                }
+
+                function crSubmit() {
                     if (crSubmitting) return;
 
                     const open = (crCurrentData?.slots || []).filter(s => s.decision !== 'Okay');
                     const anyRevise = open.some(s => (crDecisions[s.slot] || {}).decision === 'Revise');
-                    const msg = anyRevise
-                        ? 'Some files are marked Needs Revision and will be sent back to the designer. Continue?'
-                        : 'Confirm that the customer approved all files?';
-                    if (!confirm(msg)) return;
+                    document.getElementById('crConfirmText').innerHTML = anyRevise
+                        ? '<span class="text-red-700 font-semibold">Some files need revision</span> and will be sent back to the designer.'
+                        : '<span class="text-emerald-700 font-semibold">The customer approved all files.</span> You will go to the Final submission next.';
+                    crAskConfirm(true);
+                }
 
+                async function crDoSubmit() {
+                    if (crSubmitting) return;
                     crSubmitting = true;
                     const btn = document.getElementById('crSubmitBtn');
                     if (btn) btn.disabled = true;
+                    const yes = document.getElementById('crConfirmYes');
+                    if (yes) { yes.disabled = true; yes.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting…'; }
+                    const resetYes = () => { if (yes) { yes.disabled = false; yes.innerHTML = '<i class="fa-solid fa-check"></i> Yes, submit'; } };
 
                     const fd = new FormData();
                     fd.append('action', 'submit_customer_review');
@@ -398,6 +518,7 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                         if (!data.success) {
                             crmShowToast(q2dEscapeHtml(data.message || 'Something went wrong.'), 'error');
                             crSubmitting = false;
+                            resetYes();
                             if (crCurrentData) crUpdateSubmitState(crCurrentData);
                             return;
                         }
@@ -411,6 +532,7 @@ $crmBackUrl = $isSales ? (BASE_URL . '/crmsaleslist') : (BASE_URL . '/crmdesigne
                         console.error('crSubmit:', e);
                         crmShowToast('Connection error. Please try again.', 'error');
                         crSubmitting = false;
+                        resetYes();
                         if (crCurrentData) crUpdateSubmitState(crCurrentData);
                     }
                 }

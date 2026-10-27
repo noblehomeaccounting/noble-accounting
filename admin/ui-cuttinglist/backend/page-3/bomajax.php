@@ -18,6 +18,40 @@ use Dompdf\Options;
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// Kapag may PHP/MySQL error, JSON pa rin ang ibabalik para makita sa page ang totoong dahilan
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+set_exception_handler(function (Throwable $e) {
+    error_log('bomajax: ' . $e->getMessage());
+    if (!headers_sent()) {
+        http_response_code(200);
+        header('Content-Type: application/json');
+    }
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    exit;
+});
+
+function bomJson(array $data): void
+{
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit;
+}
+
+// Progress upload ng kasalukuyang cutting user para sa job na ito (o null)
+function bomOwnProgression(mysqli $conn, int $progressionId, int $quotationId, int $userId): ?array
+{
+    $stmt = $conn->prepare("
+        SELECT id, qr_approved, qr_rejected FROM noblecrm_cuttinglistprogression
+        WHERE id = ? AND quotation_id = ? AND uploaded_by = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('iii', $progressionId, $quotationId, $userId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
 // -----------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------
@@ -294,7 +328,7 @@ if ($action === 'list') {
     $stmt = $conn->prepare("
         SELECT id, bom_number, client_name, date_submitted, date_needed, created_at, progression_id, approved_at
         FROM noblecrm_bom
-        WHERE quotation_id = ?
+        WHERE quotation_id = ? AND bom_number NOT LIKE 'TEMP-%'
         ORDER BY id DESC
     ");
     $stmt->bind_param('i', $quotationId);
@@ -334,6 +368,9 @@ if ($action === 'relink') {
         echo json_encode(['success' => false, 'message' => 'Invalid data.']);
         exit;
     }
+    if (($_POST['confirm_bom'] ?? '') !== '1') {
+        bomJson(['success' => false, 'message' => 'Please review and confirm the BOM before sending it.']);
+    }
 
     // Confirm the progression row actually belongs to this quotation and to
     // the currently logged-in cutting user, so one user can't relink a BOM
@@ -357,7 +394,7 @@ if ($action === 'relink') {
     // Find the newest not-yet-approved BOM for this quotation.
     $find = $conn->prepare("
         SELECT id FROM noblecrm_bom
-        WHERE quotation_id = ? AND approved_at IS NULL
+        WHERE quotation_id = ? AND approved_at IS NULL AND bom_number NOT LIKE 'TEMP-%'
         ORDER BY id DESC
         LIMIT 1
     ");
@@ -378,9 +415,43 @@ if ($action === 'relink') {
     $upd->execute();
     $upd->close();
 
-    header('Content-Type: application/json');
-    echo json_encode(['success' => true, 'bom_id' => $bomId]);
-    exit;
+    $numStmt = $conn->prepare("SELECT bom_number FROM noblecrm_bom WHERE id = ?");
+    $numStmt->bind_param('i', $bomId);
+    $numStmt->execute();
+    $bomNumber = $numStmt->get_result()->fetch_assoc()['bom_number'] ?? '';
+    $numStmt->close();
+
+    bomJson(['success' => true, 'bom_id' => $bomId, 'bom_number' => $bomNumber]);
+}
+
+// Kapag naipadala ang progress pero hindi natuloy ang BOM at umalis ang user,
+// buburahin ang naiwang progress para hindi lumabas sa Superadmin nang walang BOM.
+if ($action === 'discard_progress') {
+
+    $quotationId = intval($_POST['quotation_id'] ?? 0);
+    $progressionId = intval($_POST['progression_id'] ?? 0);
+    $prog = ($quotationId > 0 && $progressionId > 0) ? bomOwnProgression($conn, $progressionId, $quotationId, $currentUserId) : null;
+
+    if (!$prog || (int) $prog['qr_approved'] === 1 || (int) $prog['qr_rejected'] === 1) {
+        bomJson(['success' => false, 'message' => 'Nothing to discard.']);
+    }
+
+    $has = $conn->prepare("SELECT COUNT(*) AS n FROM noblecrm_bom WHERE progression_id = ?");
+    $has->bind_param('i', $progressionId);
+    $has->execute();
+    $n = (int) ($has->get_result()->fetch_assoc()['n'] ?? 0);
+    $has->close();
+    if ($n > 0) {
+        bomJson(['success' => false, 'message' => 'This upload already has a BOM, so it was kept.']);
+    }
+
+    $del = $conn->prepare("DELETE FROM noblecrm_cuttinglistprogression WHERE id = ? AND uploaded_by = ? AND qr_approved = 0 AND qr_rejected = 0");
+    $del->bind_param('ii', $progressionId, $currentUserId);
+    $del->execute();
+    $gone = $del->affected_rows;
+    $del->close();
+
+    bomJson(['success' => $gone === 1, 'message' => $gone === 1 ? 'Discarded.' : 'Nothing to discard.']);
 }
 
 if ($action === 'create') {
@@ -392,6 +463,11 @@ if ($action === 'create') {
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Invalid quotation.']);
         exit;
+    }
+
+    // Double confirmation: dapat dumaan sa "Review" at "Final confirm" sa page
+    if (($_POST['confirm_bom'] ?? '') !== '1') {
+        bomJson(['success' => false, 'message' => 'Please review and confirm the BOM before sending it.']);
     }
 
     $dateNeeded = trim($_POST['date_needed'] ?? 'ASAP') ?: 'ASAP';
@@ -416,20 +492,68 @@ if ($action === 'create') {
     $itemUnits = $_POST['unit'] ?? [];
     $itemSups = $_POST['supplier'] ?? [];
 
+    // Bawat item: supplier muna. Kapag galing sa listahan (crmsupplier), kinukuha ang
+    // code/description/unit mula sa database para hindi mabago sa browser.
+    // "OUTSOURCE" = wala pang supplier, manual ang item.
+    $catStmt = $conn->prepare("
+        SELECT s.name, i.item_code, i.description, i.unit
+        FROM noblecrm_supplier_item i
+        JOIN noblecrm_supplier s ON s.id = i.supplier_id
+        WHERE s.name = ? AND i.item_code = ? AND s.is_active = 1 AND i.is_active = 1
+        LIMIT 1
+    ");
+
     $items = [];
-    $count = count($itemDescs);
+    $count = max(count($itemDescs), count($itemSups));
     for ($i = 0; $i < $count; $i++) {
         $desc = trim($itemDescs[$i] ?? '');
-        if ($desc === '')
+        $sup = trim($itemSups[$i] ?? '');
+        $code = trim($itemCodes[$i] ?? '');
+        $qty = (float) ($itemQtys[$i] ?? 0);
+        $n = $i + 1;
+        if ($desc === '' && $code === '')
             continue; // skip blank rows
+
+        if ($sup === '') {
+            $catStmt->close();
+            bomJson(['success' => false, 'message' => "Row {$n}: choose a supplier (or Outsource)."]);
+        }
+        if ($qty <= 0) {
+            $catStmt->close();
+            bomJson(['success' => false, 'message' => "Row {$n}: enter a quantity greater than 0."]);
+        }
+
+        if (strcasecmp($sup, 'OUTSOURCE') === 0) {
+            if ($desc === '') {
+                $catStmt->close();
+                bomJson(['success' => false, 'message' => "Row {$n}: type the item to source."]);
+            }
+            $items[] = [
+                'item_code' => mb_substr($code, 0, 50),
+                'description' => mb_substr($desc, 0, 255),
+                'quantity' => $qty,
+                'unit' => mb_substr(trim($itemUnits[$i] ?? ''), 0, 30),
+                'supplier' => 'OUTSOURCE',
+            ];
+            continue;
+        }
+
+        $catStmt->bind_param('ss', $sup, $code);
+        $catStmt->execute();
+        $cat = $catStmt->get_result()->fetch_assoc();
+        if (!$cat) {
+            $catStmt->close();
+            bomJson(['success' => false, 'message' => "Row {$n}: {$code} is not in {$sup}'s product list anymore. Reload the list and choose again."]);
+        }
         $items[] = [
-            'item_code' => trim($itemCodes[$i] ?? ''),
-            'description' => $desc,
-            'quantity' => (float) ($itemQtys[$i] ?? 0),
-            'unit' => trim($itemUnits[$i] ?? ''),
-            'supplier' => trim($itemSups[$i] ?? ''),
+            'item_code' => $cat['item_code'],
+            'description' => $cat['description'],
+            'quantity' => $qty,
+            'unit' => $cat['unit'] ?? '',
+            'supplier' => $cat['name'],
         ];
     }
+    $catStmt->close();
 
     if (empty($items)) {
         header('Content-Type: application/json');
@@ -442,6 +566,25 @@ if ($action === 'create') {
 
 
     $progressionId = intval($_POST['progression_id'] ?? 0) ?: null;
+
+    if ($progressionId !== null) {
+        if (!bomOwnProgression($conn, $progressionId, $quotationId, $currentUserId)) {
+            bomJson(['success' => false, 'message' => 'The progress upload for this BOM was not found. Please submit again.']);
+        }
+        // "Retry BOM": kung may BOM na pala ang upload na ito (hal. naputol ang sagot), huwag nang gumawa ng bago
+        $dup = $conn->prepare("SELECT id, bom_number FROM noblecrm_bom WHERE progression_id = ? AND bom_number NOT LIKE 'TEMP-%' ORDER BY id DESC LIMIT 1");
+        $dup->bind_param('i', $progressionId);
+        $dup->execute();
+        $existing = $dup->get_result()->fetch_assoc();
+        $dup->close();
+        if ($existing) {
+            bomJson(['success' => true, 'message' => 'Bill of Materials already saved.', 'id' => (int) $existing['id'], 'bom_number' => $existing['bom_number']]);
+        }
+    }
+
+    // Lahat (BOM + number + items) sabay na mase-save, o walang mase-save kapag may pumalya
+    $conn->begin_transaction();
+    try {
 
     $stmt = $conn->prepare("
         INSERT INTO noblecrm_bom
@@ -502,6 +645,12 @@ if ($action === 'create') {
         $itemStmt->execute();
     }
     $itemStmt->close();
+
+    $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        throw $e;
+    }
 
     header('Content-Type: application/json');
     echo json_encode([

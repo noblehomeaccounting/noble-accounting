@@ -1,0 +1,59 @@
+/* ewoodfile.css — styles ng ewoodfile.php (Cutting Files & Progress) */
+
+/* Active row in the list */
+.ewood-row.is-active {
+    background: #fffbeb;
+}
+
+.ewood-row.is-active .ewood-row-name {
+    color: #92400e;
+}
+
+/* History timeline rail */
+.ewood-timeline {
+    position: relative;
+}
+
+.ewood-timeline::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: #e5e7eb;
+}
+
+/* Thin scrollbars */
+#ewoodList,
+#ewoodDetailBody,
+#ewoodBomViewModal {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+/* Mobile: show either the list or the detail, not both */
+@media (max-width: 1023px) {
+    #ewoodMain[data-view="detail"] #ewoodSidebar {
+        display: none;
+    }
+
+    #ewoodMain[data-view="list"] #ewoodDetailPane {
+        display: none;
+    }
+}
+
+/* Construction hazard strip */
+.ewood-hazard {
+    background: repeating-linear-gradient(-45deg, #f59e0b 0 10px, #1f2937 10px 20px);
+}
+
+/* Job progress stepper (header) */
+.ewood-step-line {
+    height: 2px;
+    background: #e5e7eb;
+}
+
+.ewood-step-line[data-on="1"] {
+    background: #10b981;
+}

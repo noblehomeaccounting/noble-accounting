@@ -11,12 +11,15 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 
 $svError = '';
+$svFormError = '';          // error sa form mismo (ipinapakita sa taas ng form, hindi tinatago ang page)
 $svSuccess = false;
+$svOld = [];                // para hindi mawala ang tinype kapag may error
 $currentDesignerId = intval($_SESSION['account_id'] ?? 0);
 // NOTE: adjust this to whatever session key actually holds the designer's display name.
 $currentDesignerName = $_SESSION['account_name'] ?? $_SESSION['fullname'] ?? ('Designer #' . $currentDesignerId);
 
 $inquiryId = intval($_GET['id'] ?? $_POST['inquiry_id'] ?? 0);
+$inquiry = null;
 
 if ($inquiryId <= 0) {
     $svError = 'Missing or invalid inquiry reference.';
@@ -56,18 +59,74 @@ if (empty($svError) && $inquiryId > 0) {
     $notifStmt->close();
 }
 
+// Convert each uploaded picture to WEBP using GD
+function svConvertToWebp(string $tmpPath, string $ext): ?string
+{
+    $ext = strtolower($ext);
+
+    switch ($ext) {
+        case 'jpg':
+        case 'jpeg':
+            $src = @imagecreatefromjpeg($tmpPath);
+            break;
+        case 'png':
+            $src = @imagecreatefrompng($tmpPath);
+            if ($src) {
+                // Preserve transparency for PNG
+                imagepalettetotruecolor($src);
+                imagealphablending($src, true);
+                imagesavealpha($src, true);
+            }
+            break;
+        case 'webp':
+            $src = @imagecreatefromwebp($tmpPath);
+            break;
+        default:
+            $src = false;
+    }
+
+    if (!$src) {
+        return null;
+    }
+
+    $webpTmp = tempnam(sys_get_temp_dir(), 'svwebp_') . '.webp';
+    $ok = imagewebp($src, $webpTmp, 82); // 82 = quality
+    imagedestroy($src);
+
+    return $ok ? $webpTmp : null;
+}
+
 // --- Handle submit ---
 if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_sitevisit'])) {
 
     $visitAddress = trim($inquiry['address'] ?? '');
-    $visitDatetime = trim($_POST['visit_datetime'] ?? '');
+    $visitDatetimeRaw = trim($_POST['visit_datetime'] ?? '');
     $visited = trim($_POST['visited'] ?? '');
     $measurements = ''; // legacy text column — hindi na ginagamit ng form (PDF upload na)
     $siteConditions = trim($_POST['site_conditions'] ?? '');
     $clientRequirements = trim($_POST['client_requirements'] ?? '');
     $existingStructure = trim($_POST['existing_structure'] ?? '');
 
-    $deadlineRaw = trim($_POST['deadline'] ?? '');
+    $svOld = [
+        'visit_datetime' => $visitDatetimeRaw,
+        'visited' => $visited,
+        'deadline' => trim($_POST['deadline'] ?? ''),
+        'site_conditions' => $siteConditions,
+        'client_requirements' => $clientRequirements,
+        'existing_structure' => $existingStructure,
+    ];
+
+    // datetime-local (Y-m-d\TH:i) → Y-m-d H:i:s para sa MySQL strict mode
+    $visitDatetime = '';
+    foreach (['Y-m-d\TH:i', 'Y-m-d\TH:i:s', 'Y-m-d H:i', 'Y-m-d H:i:s'] as $fmt) {
+        $dt = DateTime::createFromFormat($fmt, $visitDatetimeRaw);
+        if ($dt && $dt->format($fmt) === $visitDatetimeRaw) {
+            $visitDatetime = $dt->format('Y-m-d H:i:s');
+            break;
+        }
+    }
+
+    $deadlineRaw = $svOld['deadline'];
     $deadline = null;
     if ($deadlineRaw !== '') {
         $d = DateTime::createFromFormat('Y-m-d', $deadlineRaw);
@@ -76,8 +135,14 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         }
     }
 
-    if (empty($visitAddress) || empty($visitDatetime) || !in_array($visited, ['yes', 'no'], true)) {
-        $svError = 'Please fill out all required fields.';
+    if (empty($visitAddress)) {
+        $svFormError = 'This inquiry has no registered address. Ask the sales staff to update it first.';
+    } elseif ($visitDatetimeRaw === '' || !in_array($visited, ['yes', 'no'], true)) {
+        $svFormError = 'Please fill out all required fields.';
+    } elseif ($visitDatetime === '') {
+        $svFormError = 'The date & time of visit is not valid.';
+    } elseif ($deadlineRaw !== '' && $deadline === null) {
+        $svFormError = 'The deadline date is not valid.';
     } else {
 
         // --- Upload pictures (optional, multiple allowed) ---
@@ -88,43 +153,6 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         }
 
         $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
-
-        // Convert each uploaded picture to WEBP using GD
-        function svConvertToWebp(string $tmpPath, string $ext): ?string
-        {
-            $ext = strtolower($ext);
-
-            switch ($ext) {
-                case 'jpg':
-                case 'jpeg':
-                    $src = @imagecreatefromjpeg($tmpPath);
-                    break;
-                case 'png':
-                    $src = @imagecreatefrompng($tmpPath);
-                    if ($src) {
-                        // Preserve transparency for PNG
-                        imagepalettetotruecolor($src);
-                        imagealphablending($src, true);
-                        imagesavealpha($src, true);
-                    }
-                    break;
-                case 'webp':
-                    $src = @imagecreatefromwebp($tmpPath);
-                    break;
-                default:
-                    $src = false;
-            }
-
-            if (!$src) {
-                return null;
-            }
-
-            $webpTmp = tempnam(sys_get_temp_dir(), 'svwebp_') . '.webp';
-            $ok = imagewebp($src, $webpTmp, 82); // 82 = quality
-            imagedestroy($src);
-
-            return $ok ? $webpTmp : null;
-        }
 
         if (!empty($_FILES['photos']) && is_array($_FILES['photos']['name'])) {
             foreach ($_FILES['photos']['name'] as $i => $fileName) {
@@ -222,7 +250,7 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;
         } else {
-            $svError = 'Something went wrong while saving. Please try again.';
+            $svFormError = 'Something went wrong while saving. Please try again.';
             $stmt->close();
         }
     }
@@ -250,6 +278,30 @@ if (empty($svError) && $inquiryId > 0) {
 }
 
 $crmDesignerListUrl = BASE_URL . '/crmdesigner';
+$crm2dQuotationUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
+
+$svAlreadyDone = !empty($svHistory);
+$svOldVal = fn($k) => htmlspecialchars($svOld[$k] ?? '');
+
+// Mga helper para sa view
+function svDaysLabel(?string $date): ?array
+{
+    if (empty($date)) return null;
+    $ts = strtotime($date);
+    if (!$ts) return null;
+    $days = (int) round((strtotime(date('Y-m-d', $ts)) - strtotime('today')) / 86400);
+    if ($days === 0) return ['Due today', 'amber'];
+    if ($days === 1) return ['Due tomorrow', 'amber'];
+    if ($days > 1) return [$days . ' days left', $days <= 3 ? 'amber' : 'gray'];
+    return [abs($days) . ' day' . (abs($days) === 1 ? '' : 's') . ' overdue', 'red'];
+}
+function svNotes(?string $txt): string
+{
+    return !empty($txt)
+        ? '<p class="text-[13px] text-gray-800 leading-relaxed">' . nl2br(htmlspecialchars($txt)) . '</p>'
+        : '<p class="text-[13px] text-gray-400 italic">None provided</p>';
+}
+$svToneText = ['amber' => 'text-amber-700', 'red' => 'text-red-600', 'gray' => 'text-gray-500'];
 ?>
 
 <!DOCTYPE html>
@@ -261,476 +313,469 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
     <title>Site Visit Record</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
-    <style>
-        .sv-card {
-            background: #fff;
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-        }
-
-        .sv-field {
-            width: 100%;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            padding: 0.55rem 0.75rem;
-            font-size: 14px;
-            color: #111827;
-            background: #fff;
-        }
-
-        .sv-field:focus {
-            outline: none;
-            border-color: #2563EB;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-        }
-
-        .sv-field::placeholder {
-            color: #9CA3AF;
-        }
-
-        .sv-field-sm {
-            padding: 0.4rem 0.6rem;
-            font-size: 13px;
-        }
-    </style>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/crm-management/css/crm/crmsitevisit.css?v=<?= @filemtime(ROOT_PATH . '/admin/crm-management/css/crm/crmsitevisit.css') ?: 1 ?>">
 </head>
 
 <body class="bg-gray-50 font-['Barlow_Condensed']">
-    <main class="ml-56 min-h-screen p-7 sv-scope bg-[#F5F6FA]">
+    <main class="ml-56 min-h-screen p-7 sv-scope bg-[#F5F6FA] overflow-x-hidden">
 
         <div class="max-w-6xl mx-auto">
 
-            <!-- Page header -->
-            <div class="flex items-start justify-between gap-4 mb-6">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Site Visit Record</h1>
-                    <p class="text-sm text-gray-500 mt-1">
-                        Track site visit status, notes, and photos for this inquiry.
-                        <?php if (!empty($inquiry['control_no'])): ?>
-                            &nbsp;·&nbsp;Ref. <?= htmlspecialchars($inquiry['control_no']) ?>
-                        <?php endif; ?>
-                    </p>
-                </div>
-                <a href="<?= htmlspecialchars($crmDesignerListUrl) ?>"
-                    class="shrink-0 inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to assigned list
-                </a>
-            </div>
-
             <?php if (!empty($svError)): ?>
-                <div class="sv-card px-5 py-4 flex items-start gap-3 border-red-200 bg-red-50">
-                    <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                    </svg>
-                    <p class="text-sm text-red-800"><?= htmlspecialchars($svError) ?></p>
-                </div>
-            <?php endif; ?>
 
-            <?php if (empty($svError) && $inquiry): ?>
-
-                <?php $svAlreadyDone = !empty($svHistory); ?>
-
-                <!-- Info cards row -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-
-                    <div class="sv-card p-4">
-                        <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-0.5">Client</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate">
-                            <?= htmlspecialchars($inquiry['client_name']) ?></p>
+                <div class="sv-card overflow-hidden">
+                    <div class="sv-hazard h-1.5"></div>
+                    <div class="px-6 py-10 text-center">
+                        <span class="w-12 h-12 mx-auto rounded-xl bg-red-50 text-red-500 flex items-center justify-center mb-3"><i class="fa-solid fa-triangle-exclamation text-lg"></i></span>
+                        <p class="text-sm font-semibold text-gray-900"><?= htmlspecialchars($svError) ?></p>
+                        <a href="<?= htmlspecialchars($crmDesignerListUrl) ?>"
+                            class="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg px-4 py-2">
+                            <i class="fa-solid fa-arrow-left"></i> Back to assigned list
+                        </a>
                     </div>
-
-                    <div class="sv-card p-4">
-                        <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
-                            <i class="fa-solid fa-clock"></i>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-0.5">Status</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($inquiry['status']) ?>
-                        </p>
-                    </div>
-
-                    <div class="sv-card p-4">
-                        <div
-                            class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
-                            <i class="fa-solid fa-phone"></i>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-0.5">Contact no.</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate">
-                            <?= htmlspecialchars($inquiry['contact_number']) ?></p>
-                    </div>
-
-                    <div class="sv-card p-4">
-                        <div class="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
-                            <i class="fa-solid fa-pen-ruler"></i>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-0.5">Assigned designer</p>
-                        <p class="text-sm font-semibold text-gray-900 truncate">
-                            <?= htmlspecialchars($currentDesignerName) ?></p>
-                    </div>
-
                 </div>
 
-                <!-- Registered address strip -->
-                <div class="sv-card px-5 py-3.5 mb-6 flex items-center gap-3">
-                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                    </svg>
-                    <p class="text-sm text-gray-700"><?= htmlspecialchars($inquiry['address']) ?></p>
-                </div>
+            <?php elseif ($inquiry): ?>
 
-                <?php if (!empty($inquiry['deadline'])): ?>
-                    <?php
-                    $deadlineTs = strtotime($inquiry['deadline']);
-                    $isOverdue = $deadlineTs < strtotime('today') && $inquiry['status'] !== 'Approved';
-                    ?>
-                    <div
-                        class="sv-card px-5 py-3.5 mb-6 flex items-center gap-3 <?= $isOverdue ? 'bg-red-50 border-red-100' : '' ?>">
-                        <svg class="w-4 h-4 shrink-0 <?= $isOverdue ? 'text-red-500' : 'text-gray-400' ?>" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                        </svg>
-                        <p class="text-sm <?= $isOverdue ? 'text-red-700 font-medium' : 'text-gray-700' ?>">
-                           Initial Deadline for 2D &amp; Quotation:
-                            <?= htmlspecialchars(date('F d, Y', $deadlineTs)) ?>
-                            <?= $isOverdue ? ' — overdue' : '' ?>
-                        </p>
+                <?php
+                $dl = svDaysLabel($inquiry['deadline'] ?? null);
+                $latestVisit = $svAlreadyDone ? $svHistory[0] : null;
+                $latestVisited = $latestVisit && $latestVisit['visited'] === 'yes';
+                $stepState = $svAlreadyDone ? ($latestVisited ? 2 : 1) : 1; // 0 assigned, 1 site visit, 2 2D & quotation
+                ?>
+
+                <!-- ═══ HEADER ═══ -->
+                <section class="sv-card overflow-hidden mb-4">
+                    <div class="sv-hazard h-1.5"></div>
+                    <div class="p-5 flex flex-wrap items-start justify-between gap-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-ruler-combined text-lg"></i></span>
+                            <div class="min-w-0">
+                                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">CRM · Designer · Site Visit</p>
+                                <h1 class="text-gray-900 text-lg font-semibold leading-tight truncate capitalize"><?= htmlspecialchars($inquiry['client_name']) ?></h1>
+                                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                    <span class="font-mono text-[11px] font-semibold text-amber-700"><?= htmlspecialchars($inquiry['control_no']) ?></span>
+                                    <?php if ($svAlreadyDone): ?>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border <?= $latestVisited ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200' ?>">
+                                            <span class="w-1.5 h-1.5 rounded-full <?= $latestVisited ? 'bg-emerald-500' : 'bg-amber-500' ?>"></span><?= $latestVisited ? 'Site visit done' : 'Not visited' ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>For site visit</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="<?= htmlspecialchars($crmDesignerListUrl) ?>"
+                                class="inline-flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3.5 py-2 hover:bg-gray-50">
+                                <i class="fa-solid fa-arrow-left"></i> Assigned list
+                            </a>
+                            <?php if ($svAlreadyDone && $inquiry['status'] === 'In Progress'): ?>
+                                <a href="<?= htmlspecialchars($crm2dQuotationUrl) ?>"
+                                    class="inline-flex items-center gap-2 text-xs font-semibold text-white bg-blue-700 rounded-lg px-3.5 py-2 hover:bg-blue-800 shadow-sm">
+                                    <i class="fa-solid fa-file-pen"></i> 2D &amp; Quotation
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                <?php endif; ?>
+
+                    <!-- Stepper -->
+                    <div class="px-5 pb-4">
+                        <div class="flex items-center gap-2 text-[11px] font-semibold">
+                            <?php
+                            $steps = [['fa-user-check', 'Assigned'], ['fa-ruler-combined', 'Site visit'], ['fa-file-pen', '2D & Quotation']];
+                            foreach ($steps as $si => [$ic, $lbl]):
+                                $done = $si < $stepState || ($si === 1 && $svAlreadyDone && $latestVisited);
+                                $cur = $si === $stepState && !$done;
+                                ?>
+                                <?php if ($si > 0): ?><span class="sv-step-line <?= $si <= $stepState ? 'sv-done' : '' ?>"></span><?php endif; ?>
+                                <span class="inline-flex items-center gap-1.5 whitespace-nowrap <?= $done ? 'text-amber-800' : ($cur ? 'text-gray-900' : 'text-gray-400') ?>">
+                                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] <?= $done ? 'bg-amber-700 text-white' : ($cur ? 'bg-amber-50 text-amber-700 ring-2 ring-amber-600' : 'bg-gray-100 text-gray-400') ?>">
+                                        <i class="fa-solid <?= $done ? 'fa-check' : $ic ?>"></i>
+                                    </span>
+                                    <span class="hidden sm:inline"><?= htmlspecialchars($lbl) ?></span>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══ INFO STRIP ═══ -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <div class="sv-card px-4 py-3 lg:col-span-2 min-w-0">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i class="fa-solid fa-location-dot mr-1"></i>Site address</p>
+                        <p class="text-[13px] font-medium text-gray-900 mt-0.5 break-words"><?= htmlspecialchars($inquiry['address'] ?: '—') ?></p>
+                        <?php if (!empty($inquiry['address'])): ?>
+                            <a href="https://www.google.com/maps/search/?api=1&query=<?= urlencode($inquiry['address']) ?>" target="_blank" rel="noopener"
+                                class="text-[11px] font-semibold text-amber-700 hover:underline"><i class="fa-solid fa-map-location-dot mr-1"></i>Open in Maps</a>
+                        <?php endif; ?>
+                    </div>
+                    <div class="sv-card px-4 py-3 min-w-0">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i class="fa-solid fa-phone mr-1"></i>Contact no.</p>
+                        <?php if (!empty($inquiry['contact_number'])): ?>
+                            <a href="tel:<?= htmlspecialchars(preg_replace('/[^\d+]/', '', $inquiry['contact_number'])) ?>" class="block text-[13px] font-semibold text-amber-700 hover:underline mt-0.5 truncate"><?= htmlspecialchars($inquiry['contact_number']) ?></a>
+                        <?php else: ?>
+                            <p class="text-[13px] text-gray-400 mt-0.5">—</p>
+                        <?php endif; ?>
+                        <p class="text-[11px] text-gray-400 mt-0.5 truncate">Designer: <?= htmlspecialchars($currentDesignerName) ?></p>
+                    </div>
+                    <div class="sv-card px-4 py-3 min-w-0 <?= $dl && $dl[1] === 'red' && $inquiry['status'] !== 'Approved' ? 'border-red-200 bg-red-50' : '' ?>">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i class="fa-regular fa-flag mr-1"></i>2D &amp; Quotation deadline</p>
+                        <?php if (!empty($inquiry['deadline'])): ?>
+                            <p class="text-[13px] font-semibold text-gray-900 mt-0.5"><?= htmlspecialchars(date('M d, Y', strtotime($inquiry['deadline']))) ?></p>
+                            <?php if ($dl && $inquiry['status'] !== 'Approved'): ?><p class="text-[11px] font-semibold <?= $svToneText[$dl[1]] ?>"><?= htmlspecialchars($dl[0]) ?></p><?php endif; ?>
+                        <?php else: ?>
+                            <p class="text-[13px] text-gray-400 mt-0.5"><?= $svAlreadyDone ? 'Not set' : 'Set it in the form below' ?></p>
+                        <?php endif; ?>
+                    </div>
+                </section>
 
                 <?php if ($svAlreadyDone): ?>
 
-                    <?php $latestVisit = $svHistory[0]; ?>
-                    <?php $latestPhotos = array_filter(explode(',', $latestVisit['photos'] ?? '')); ?>
-                    <?php $latestMeasFiles = array_values(array_filter(explode(',', $latestVisit['measurement_files'] ?? ''))); ?>
-                    <?php $latestVisited = $latestVisit['visited'] === 'yes'; ?>
+                    <?php
+                    $latestPhotos = array_values(array_filter(explode(',', $latestVisit['photos'] ?? '')));
+                    $latestMeasFiles = array_values(array_filter(explode(',', $latestVisit['measurement_files'] ?? '')));
+                    ?>
 
-                    <div class="grid lg:grid-cols-3 gap-6">
+                    <!-- Next step -->
+                    <div class="rounded-xl border px-4 py-3.5 mb-4 flex flex-wrap items-center gap-3 <?= $latestVisited ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900' ?>">
+                        <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid <?= $latestVisited ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold"><?= $latestVisited ? 'Ready to proceed' : 'Site not yet visited' ?></p>
+                            <p class="text-xs opacity-80"><?= $latestVisited
+                                ? 'The site visit is recorded. You can now prepare the 2D layout and quotation.'
+                                : 'Schedule a revisit with the client so this inquiry can proceed.' ?></p>
+                        </div>
+                        <?php if ($latestVisited && $inquiry['status'] === 'In Progress'): ?>
+                            <a href="<?= htmlspecialchars($crm2dQuotationUrl) ?>"
+                                class="inline-flex items-center gap-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg px-3.5 py-2 shrink-0">
+                                Go to 2D &amp; Quotation <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="grid lg:grid-cols-3 gap-4">
 
                         <!-- Left column -->
-                        <div class="lg:col-span-2 space-y-6">
+                        <div class="lg:col-span-2 space-y-4 min-w-0">
 
                             <!-- Visit details -->
-                            <div class="sv-card p-5">
-                                <h2 class="text-sm font-semibold text-gray-900 mb-4">Visit details</h2>
-                                <div class="divide-y divide-gray-100">
-                                    <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
-                                        <p class="text-gray-500">Address visited</p>
-                                        <p class="text-gray-900"><?= htmlspecialchars($latestVisit['address']) ?></p>
+                            <section class="sv-card overflow-hidden">
+                                <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-clipboard-check mr-1.5 text-amber-700"></i>Visit details</p>
+                                <dl class="grid sm:grid-cols-2 gap-px bg-gray-100">
+                                    <div class="bg-white px-5 py-3">
+                                        <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Date &amp; time of visit</dt>
+                                        <dd class="text-[13px] font-semibold text-gray-900 mt-0.5"><?= htmlspecialchars(date('F d, Y · g:i A', strtotime($latestVisit['visit_datetime']))) ?></dd>
                                     </div>
-                                    <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
-                                        <p class="text-gray-500">Date &amp; time</p>
-                                        <p class="text-gray-900">
-                                            <?= htmlspecialchars(date('F d, Y — g:i A', strtotime($latestVisit['visit_datetime']))) ?>
-                                        </p>
+                                    <div class="bg-white px-5 py-3">
+                                        <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Visited</dt>
+                                        <dd class="mt-1">
+                                            <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full <?= $latestVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
+                                                <i class="fa-solid <?= $latestVisited ? 'fa-check' : 'fa-xmark' ?>"></i><?= $latestVisited ? 'Yes — proceed to 2D & Quotation' : 'No — not visited' ?>
+                                            </span>
+                                        </dd>
                                     </div>
-                                    <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm items-center">
-                                        <p class="text-gray-500">Visited</p>
-                                        <span
-                                            class="inline-flex w-fit items-center text-xs font-medium px-2.5 py-1 rounded-full <?= $latestVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
-                                            <?= $latestVisited ? 'Yes — proceed to 2D & Quotation' : 'No — not visited' ?>
-                                        </span>
+                                    <div class="bg-white px-5 py-3 sm:col-span-2">
+                                        <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Address visited</dt>
+                                        <dd class="text-[13px] text-gray-900 mt-0.5 break-words"><?= htmlspecialchars($latestVisit['address']) ?></dd>
                                     </div>
-                                    <?php if (!empty($inquiry['deadline'])): ?>
-                                        <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
-                                            <p class="text-gray-500">Deadline (2D &amp; Quotation)</p>
-                                            <p class="text-gray-900">
-                                                <?= htmlspecialchars(date('F d, Y', strtotime($inquiry['deadline']))) ?></p>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
-                                        <p class="text-gray-500">Logged on</p>
-                                        <p class="text-gray-500">
-                                            <?= htmlspecialchars(date('F d, Y / g:i A', strtotime($latestVisit['created_at']))) ?>
-                                        </p>
+                                    <div class="bg-white px-5 py-3 sm:col-span-2">
+                                        <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Logged on</dt>
+                                        <dd class="text-[12.5px] text-gray-500 mt-0.5"><?= htmlspecialchars(date('F d, Y · g:i A', strtotime($latestVisit['created_at']))) ?></dd>
                                     </div>
-                                </div>
-                            </div>
+                                </dl>
+                            </section>
 
                             <!-- Site notes -->
-                            <div class="sv-card p-5">
-                                <h2 class="text-sm font-semibold text-gray-900 mb-4">Site notes</h2>
-                                <div class="grid sm:grid-cols-2 gap-5">
-                                    <div class="sm:col-span-2">
-                                        <p class="text-xs font-medium text-gray-500 mb-1">Measurements</p>
-                                        <?php if (!empty($latestMeasFiles)): ?>
-                                            <ul class="space-y-1">
-                                                <?php foreach ($latestMeasFiles as $mi => $mPath): ?>
-                                                    <li>
-                                                        <a href="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" target="_blank"
-                                                            rel="noopener"
-                                                            class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline">
-                                                            <i class="fa-solid fa-file-pdf"></i> Measurement PDF <?= $mi + 1 ?>
-                                                        </a>
-                                                    </li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        <?php elseif (!empty($latestVisit['measurements'])): ?>
-                                            <p class="text-sm text-gray-800">
-                                                <?= nl2br(htmlspecialchars($latestVisit['measurements'])) ?></p>
-                                        <?php else: ?>
-                                            <span class="text-sm text-gray-400 italic">None provided</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs font-medium text-gray-500 mb-1">Site conditions</p>
-                                        <p class="text-sm text-gray-800">
-                                            <?= !empty($latestVisit['site_conditions']) ? nl2br(htmlspecialchars($latestVisit['site_conditions'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs font-medium text-gray-500 mb-1">Client requirements</p>
-                                        <p class="text-sm text-gray-800">
-                                            <?= !empty($latestVisit['client_requirements']) ? nl2br(htmlspecialchars($latestVisit['client_requirements'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs font-medium text-gray-500 mb-1">Existing structure</p>
-                                        <p class="text-sm text-gray-800">
-                                            <?= !empty($latestVisit['existing_structure']) ? nl2br(htmlspecialchars($latestVisit['existing_structure'])) : '<span class="text-gray-400 italic">None provided</span>' ?>
-                                        </p>
-                                    </div>
+                            <section class="sv-card overflow-hidden">
+                                <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-note-sticky mr-1.5 text-amber-700"></i>Site notes</p>
+                                <div class="p-5 grid sm:grid-cols-3 gap-4">
+                                    <?php foreach ([
+                                        ['fa-mountain-sun', 'Site conditions', $latestVisit['site_conditions']],
+                                        ['fa-user-pen', 'Client requirements', $latestVisit['client_requirements']],
+                                        ['fa-house-chimney-crack', 'Existing structure', $latestVisit['existing_structure']],
+                                    ] as [$ic, $lbl, $val]): ?>
+                                        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3.5 min-w-0">
+                                            <p class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5"><i class="fa-solid <?= $ic ?> mr-1 text-gray-400"></i><?= $lbl ?></p>
+                                            <div class="break-words"><?= svNotes($val) ?></div>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
-                            </div>
+                            </section>
+
+                            <!-- Measurements -->
+                            <section class="sv-card overflow-hidden">
+                                <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-ruler mr-1.5 text-amber-700"></i>Measurements</p>
+                                <div class="p-5">
+                                    <?php if (!empty($latestMeasFiles)): ?>
+                                        <div class="grid sm:grid-cols-2 gap-2">
+                                            <?php foreach ($latestMeasFiles as $mi => $mPath): ?>
+                                                <a href="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" target="_blank" rel="noopener"
+                                                    class="flex items-center gap-3 rounded-xl border border-gray-200 px-3.5 py-2.5 hover:border-amber-600 hover:bg-amber-50/40 transition-colors min-w-0">
+                                                    <span class="w-9 h-9 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-pdf"></i></span>
+                                                    <span class="min-w-0 flex-1">
+                                                        <span class="block text-[13px] font-semibold text-gray-900">Measurement PDF <?= $mi + 1 ?></span>
+                                                        <span class="block text-[11px] text-gray-400 truncate"><?= htmlspecialchars(basename($mPath)) ?></span>
+                                                    </span>
+                                                    <i class="fa-solid fa-arrow-up-right-from-square text-[11px] text-gray-400"></i>
+                                                </a>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php elseif (!empty($latestVisit['measurements'])): ?>
+                                        <?= svNotes($latestVisit['measurements']) ?>
+                                    <?php else: ?>
+                                        <p class="text-[13px] text-gray-400 italic">No measurement files were uploaded.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </section>
 
                             <!-- Prior entries -->
                             <?php if (count($svHistory) > 1): ?>
-                                <div class="sv-card p-5">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <h2 class="text-sm font-semibold text-gray-900">Prior entries</h2>
-                                    </div>
-                                    <table class="w-full text-sm">
-                                        <thead>
-                                            <tr class="text-left text-xs text-gray-500 border-b border-gray-100">
-                                                <th class="font-medium pb-2 pr-4">Address</th>
-                                                <th class="font-medium pb-2 pr-4">Date</th>
-                                                <th class="font-medium pb-2 pr-4">Photos</th>
-                                                <th class="font-medium pb-2">Result</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-100">
-                                            <?php foreach (array_slice($svHistory, 1) as $entry): ?>
-                                                <?php
-                                                $entryVisited = $entry['visited'] === 'yes';
-                                                $entryPhotos = array_filter(explode(',', $entry['photos'] ?? ''));
-                                                ?>
-                                                <tr>
-                                                    <td class="py-2.5 pr-4 text-gray-800"><?= htmlspecialchars($entry['address']) ?>
-                                                    </td>
-                                                    <td class="py-2.5 pr-4 text-gray-500 whitespace-nowrap">
-                                                        <?= htmlspecialchars(date('M d, Y g:i A', strtotime($entry['visit_datetime']))) ?>
-                                                    </td>
-                                                    <td class="py-2.5 pr-4 text-gray-500"><?= count($entryPhotos) ?></td>
-                                                    <td class="py-2.5">
-                                                        <span
-                                                            class="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full <?= $entryVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
-                                                            <?= $entryVisited ? 'Visited' : 'Not visited' ?>
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <section class="sv-card overflow-hidden">
+                                    <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-clock-rotate-left mr-1.5 text-amber-700"></i>Prior entries</p>
+                                    <ul class="divide-y divide-gray-100">
+                                        <?php foreach (array_slice($svHistory, 1) as $entry): ?>
+                                            <?php
+                                            $entryVisited = $entry['visited'] === 'yes';
+                                            $entryPhotos = array_filter(explode(',', $entry['photos'] ?? ''));
+                                            ?>
+                                            <li class="px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
+                                                <span class="font-semibold text-gray-900 whitespace-nowrap"><?= htmlspecialchars(date('M d, Y g:i A', strtotime($entry['visit_datetime']))) ?></span>
+                                                <span class="text-gray-500 min-w-0 flex-1 truncate"><?= htmlspecialchars($entry['address']) ?></span>
+                                                <span class="text-gray-400 whitespace-nowrap"><i class="fa-regular fa-image mr-1"></i><?= count($entryPhotos) ?></span>
+                                                <span class="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full <?= $entryVisited ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' ?>">
+                                                    <?= $entryVisited ? 'Visited' : 'Not visited' ?>
+                                                </span>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </section>
                             <?php endif; ?>
 
                         </div>
 
                         <!-- Right column -->
-                        <div class="space-y-6">
-
-                            <!-- Photos -->
-                            <div class="sv-card p-5">
-                                <h2 class="text-sm font-semibold text-gray-900 mb-4">
-                                    Photographs
-                                    <?php if (!empty($latestPhotos)): ?>
-                                        <span class="text-gray-400 font-normal">(<?= count($latestPhotos) ?>)</span>
+                        <div class="space-y-4 min-w-0">
+                            <section class="sv-card overflow-hidden">
+                                <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                    <i class="fa-solid fa-camera mr-1.5 text-amber-700"></i>Photographs
+                                    <?php if (!empty($latestPhotos)): ?><span class="text-gray-400 font-semibold">(<?= count($latestPhotos) ?>)</span><?php endif; ?>
+                                </p>
+                                <div class="p-4">
+                                    <?php if (empty($latestPhotos)): ?>
+                                        <div class="rounded-xl border-2 border-dashed border-gray-200 px-4 py-8 text-center">
+                                            <i class="fa-regular fa-image text-xl text-gray-300"></i>
+                                            <p class="text-[12.5px] text-gray-400 mt-1">No photographs were submitted for this visit.</p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="grid grid-cols-3 gap-2">
+                                            <?php foreach ($latestPhotos as $pi => $photoPath): ?>
+                                                <button type="button" data-sv-photo="<?= $pi ?>"
+                                                    class="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-amber-600 transition">
+                                                    <img src="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>" alt="Site photo <?= $pi + 1 ?>" loading="lazy"
+                                                        class="w-full h-full object-cover">
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
                                     <?php endif; ?>
-                                </h2>
-                                <?php if (empty($latestPhotos)): ?>
-                                    <p class="text-sm text-gray-400 italic">No photographs were submitted for this visit.</p>
-                                <?php else: ?>
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <?php foreach ($latestPhotos as $photoPath): ?>
-                                            <a href="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>" target="_blank"
-                                                class="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity">
-                                                <img src="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>"
-                                                    class="w-full h-full object-cover">
-                                            </a>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Status alert -->
-                            <div
-                                class="sv-card p-5 <?= $latestVisited ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100' ?>">
-                                <div class="flex items-start gap-3">
-                                    <svg class="w-5 h-5 shrink-0 mt-0.5 <?= $latestVisited ? 'text-emerald-600' : 'text-amber-600' ?>"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <?php if ($latestVisited): ?>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        <?php else: ?>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                                        <?php endif; ?>
-                                    </svg>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">
-                                            <?= $latestVisited ? 'Ready to proceed' : 'Site not yet visited' ?>
-                                        </p>
-                                        <p class="text-sm text-gray-600 mt-0.5">
-                                            <?= $latestVisited
-                                                ? 'This inquiry can move forward to 2D layout and quotation.'
-                                                : 'Schedule a revisit so this inquiry can proceed.' ?>
-                                        </p>
-                                    </div>
                                 </div>
-                            </div>
-
+                            </section>
                         </div>
 
                     </div>
 
+                    <!-- Photo lightbox -->
+                    <?php if (!empty($latestPhotos)): ?>
+                        <div id="svLightbox" class="fixed inset-0 z-[9998] hidden bg-black/80 flex-col items-center justify-center p-4" role="dialog" aria-modal="true">
+                            <div class="w-full max-w-4xl flex items-center justify-between text-white mb-3">
+                                <span id="svLbCount" class="text-xs font-semibold opacity-80"></span>
+                                <div class="flex items-center gap-1">
+                                    <a id="svLbOpen" href="#" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10" aria-label="Open original"><i class="fa-solid fa-up-right-from-square text-sm"></i></a>
+                                    <button type="button" id="svLbClose" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10 shrink-0" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                                </div>
+                            </div>
+                            <div class="relative w-full max-w-4xl flex items-center justify-center">
+                                <button type="button" id="svLbPrev" class="absolute left-0 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+                                <img id="svLbImg" src="" alt="" class="max-w-full rounded-lg object-contain">
+                                <button type="button" id="svLbNext" class="absolute right-0 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                        <script>
+                            window.SV_PHOTOS = <?= json_encode(array_map(fn($p) => BASE_URL . '/' . $p, $latestPhotos)) ?>;
+                        </script>
+                    <?php endif; ?>
+
                 <?php else: ?>
 
-                    <div class="sv-card p-6 w-full">
-                        <h2 class="text-sm font-semibold text-gray-900 mb-0.5">New record</h2>
-                        <p class="text-xs text-gray-400 italic mb-5">No site visits have been recorded yet for this inquiry.</p>
+                    <!-- ═══ NEW RECORD FORM ═══ -->
+                    <form id="svForm" method="POST" action="" enctype="multipart/form-data" novalidate
+                        class="grid lg:grid-cols-3 gap-4 items-start">
 
-                        <!-- Site Visit Form -->
-                        <form method="POST" action="" enctype="multipart/form-data" class="space-y-5">
+                        <input type="hidden" name="inquiry_id" value="<?= (int) $inquiry['id'] ?>">
+                        <input type="hidden" name="submit_sitevisit" value="1">
 
-                            <input type="hidden" name="inquiry_id" value="<?= (int) $inquiry['id'] ?>">
+                        <div class="lg:col-span-2 space-y-4 min-w-0">
 
-                            <!-- Row 1: Address / Date / Visited -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div class="lg:col-span-2">
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">
-                                        Address
-                                    </label>
-                                    <input type="text" name="visit_address" readonly
-                                        value="<?= htmlspecialchars($inquiry['address']) ?>"
-                                        class="sv-field sv-field-sm h-[38px] bg-gray-100 text-gray-600 cursor-not-allowed focus:border-gray-300 focus:shadow-none"
-                                        placeholder="Site visit address">
+                            <?php if (!empty($svFormError)): ?>
+                                <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5">
+                                    <i class="fa-solid fa-circle-exclamation text-red-500 mt-0.5"></i>
+                                    <p class="text-[13px] text-red-800"><?= htmlspecialchars($svFormError) ?> <span class="text-red-600">Please re-attach your files.</span></p>
                                 </div>
+                            <?php endif; ?>
 
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">
-                                        Date &amp; time of visit <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="datetime-local" name="visit_datetime" required
-                                        class="sv-field sv-field-sm h-[38px]">
-                                </div>
-
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">
-                                        Did the site visit happen? <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="grid grid-cols-2 rounded-lg border border-gray-300 overflow-hidden h-[38px]">
-                                        <label class="cursor-pointer">
-                                            <input type="radio" name="visited" value="yes" class="peer sr-only" required>
-                                            <span
-                                                class="flex items-center justify-center h-full text-xs text-gray-600 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">Yes</span>
-                                        </label>
-                                        <label class="cursor-pointer border-l border-gray-300">
-                                            <input type="radio" name="visited" value="no" class="peer sr-only" required>
-                                            <span
-                                                class="flex items-center justify-center h-full text-xs text-gray-600 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">No</span>
-                                        </label>
+                            <!-- 1. Visit -->
+                            <section class="sv-card p-5">
+                                <div class="flex items-center gap-2.5 mb-4">
+                                    <span class="sv-num">1</span>
+                                    <div>
+                                        <h2 class="text-sm font-semibold text-gray-900 leading-tight">Visit details</h2>
+                                        <p class="text-[11px] text-gray-400">When did you go, and did the visit happen?</p>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Row 2: Deadline -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">
-                                        Initial Deadline for 2D &amp; Quotation
-                                    </label>
-                                    <input type="date" name="deadline" class="sv-field sv-field-sm h-[38px]"
-                                        min="<?= htmlspecialchars(date('Y-m-d')) ?>">
-                                </div>
-                            </div>
-
-                            <!-- Row 3: Notes (3 equal columns) -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Site conditions / notes</label>
-                                    <textarea name="site_conditions" rows="4" class="sv-field sv-field-sm resize-none"
-                                        placeholder="Terrain, access, utilities, hazards..."></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Client requirements</label>
-                                    <textarea name="client_requirements" rows="4" class="sv-field sv-field-sm resize-none"
-                                        placeholder="Preferences, budget notes, must-haves..."></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Existing structure
-                                        information</label>
-                                    <textarea name="existing_structure" rows="4" class="sv-field sv-field-sm resize-none"
-                                        placeholder="Age, condition, materials, any structures already on site..."></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Row 4: Uploads (2 equal columns) -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Measurements (PDF) -->
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Measurements (PDF)</label>
-                                    <label for="sv_meas_pdfs"
-                                        class="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 h-[38px] cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-full">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                        <span class="text-xs text-gray-600">Upload PDF(s), max 15MB each</span>
-                                    </label>
-                                    <input id="sv_meas_pdfs" type="file" name="measurement_pdfs[]" accept="application/pdf"
-                                        multiple class="hidden">
-                                    <ul id="sv_meas_list" class="mt-2 space-y-1"></ul>
+                                <div class="grid sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="sv-label" for="sv_datetime">Date &amp; time of visit <span class="text-red-500">*</span></label>
+                                        <input id="sv_datetime" type="datetime-local" name="visit_datetime" required
+                                            value="<?= $svOldVal('visit_datetime') ?>" class="sv-field h-[40px]">
+                                        <p class="sv-err hidden text-[11px] text-red-600 mt-1">Enter the date and time of the visit.</p>
+                                    </div>
+                                    <div>
+                                        <label class="sv-label" for="sv_deadline">Initial deadline for 2D &amp; Quotation</label>
+                                        <input id="sv_deadline" type="date" name="deadline" value="<?= $svOldVal('deadline') ?>"
+                                            class="sv-field h-[40px]" min="<?= htmlspecialchars(date('Y-m-d')) ?>">
+                                        <p id="sv_deadline_hint" class="text-[11px] text-gray-400 mt-1">Optional — when you expect to finish the 2D &amp; quotation.</p>
+                                    </div>
                                 </div>
 
-                                <!-- Photos -->
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Attach photograph(s)</label>
-                                    <label for="sv_photos"
-                                        class="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 h-[38px] cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors w-full">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                        <span class="text-xs text-gray-600">Upload photographs (JPG, PNG, WEBP)</span>
-                                    </label>
-                                    <input id="sv_photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp"
-                                        multiple class="hidden">
-                                    <div id="sv_photo_preview"
-                                        class="mt-2 grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-10 gap-1.5"></div>
+                                <div class="mt-4">
+                                    <p class="sv-label">Did the site visit happen? <span class="text-red-500">*</span></p>
+                                    <div id="sv_visited_group" class="grid sm:grid-cols-2 gap-2">
+                                        <label class="sv-choice cursor-pointer">
+                                            <input type="radio" name="visited" value="yes" class="sr-only" <?= ($svOld['visited'] ?? '') === 'yes' ? 'checked' : '' ?>>
+                                            <span class="sv-choice-box"><i class="fa-solid fa-circle-check text-emerald-600"></i><span><b class="font-semibold">Yes, visited</b><span class="block text-[11px] opacity-75 font-normal">Proceed to 2D &amp; Quotation</span></span></span>
+                                        </label>
+                                        <label class="sv-choice cursor-pointer">
+                                            <input type="radio" name="visited" value="no" class="sr-only" <?= ($svOld['visited'] ?? '') === 'no' ? 'checked' : '' ?>>
+                                            <span class="sv-choice-box"><i class="fa-solid fa-circle-xmark text-amber-600"></i><span><b class="font-semibold">No, not visited</b><span class="block text-[11px] opacity-75 font-normal">Client unavailable, rescheduled, etc.</span></span></span>
+                                        </label>
+                                    </div>
+                                    <p class="sv-err hidden text-[11px] text-red-600 mt-1">Choose Yes or No.</p>
                                 </div>
-                            </div>
 
-                            <div class="pt-1 flex justify-end">
-                                <button type="submit" name="submit_sitevisit"
-                                    class="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-                                    Save record
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                                <div class="mt-4">
+                                    <label class="sv-label">Address</label>
+                                    <input type="text" name="visit_address" readonly value="<?= htmlspecialchars($inquiry['address']) ?>" class="sv-field h-[40px]">
+                                    <p class="text-[11px] text-gray-400 mt-1"><i class="fa-solid fa-lock mr-1"></i>Taken from the inquiry.</p>
+                                </div>
+                            </section>
+
+                            <!-- 2. Notes -->
+                            <section class="sv-card p-5">
+                                <div class="flex items-center gap-2.5 mb-4">
+                                    <span class="sv-num">2</span>
+                                    <div>
+                                        <h2 class="text-sm font-semibold text-gray-900 leading-tight">Site notes</h2>
+                                        <p class="text-[11px] text-gray-400">What you saw and what the client asked for.</p>
+                                    </div>
+                                </div>
+                                <div class="grid md:grid-cols-3 gap-4">
+                                    <?php foreach ([
+                                        ['site_conditions', 'Site conditions / notes', 'Terrain, access, utilities, hazards...'],
+                                        ['client_requirements', 'Client requirements', 'Preferences, budget notes, must-haves...'],
+                                        ['existing_structure', 'Existing structure', 'Age, condition, materials, structures on site...'],
+                                    ] as [$nm, $lbl, $ph]): ?>
+                                        <div>
+                                            <label class="sv-label" for="sv_<?= $nm ?>"><?= $lbl ?></label>
+                                            <textarea id="sv_<?= $nm ?>" name="<?= $nm ?>" rows="5" class="sv-field resize-y min-h-[110px]" placeholder="<?= htmlspecialchars($ph) ?>"><?= $svOldVal($nm) ?></textarea>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+
+                            <!-- 3. Files -->
+                            <section class="sv-card p-5">
+                                <div class="flex items-center gap-2.5 mb-4">
+                                    <span class="sv-num">3</span>
+                                    <div>
+                                        <h2 class="text-sm font-semibold text-gray-900 leading-tight">Measurements &amp; photos</h2>
+                                        <p class="text-[11px] text-gray-400">Click or drag files into the boxes. You can add more than once.</p>
+                                    </div>
+                                </div>
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div class="min-w-0">
+                                        <p class="sv-label">Measurements (PDF)</p>
+                                        <label for="sv_meas_pdfs" id="sv_meas_drop" class="sv-drop">
+                                            <span class="w-9 h-9 rounded-lg bg-red-50 text-red-500 flex items-center justify-center"><i class="fa-solid fa-file-pdf"></i></span>
+                                            <span class="text-[12.5px] font-semibold text-gray-700">Upload measurement PDF(s)</span>
+                                            <span class="text-[11px] text-gray-400">PDF only · max 15MB each</span>
+                                        </label>
+                                        <input id="sv_meas_pdfs" type="file" name="measurement_pdfs[]" accept="application/pdf" multiple class="hidden">
+                                        <ul id="sv_meas_list" class="mt-2 space-y-1.5"></ul>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="sv-label">Photographs</p>
+                                        <label for="sv_photos" id="sv_photo_drop" class="sv-drop">
+                                            <span class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-camera"></i></span>
+                                            <span class="text-[12.5px] font-semibold text-gray-700">Upload site photos</span>
+                                            <span class="text-[11px] text-gray-400">JPG, PNG, WEBP</span>
+                                        </label>
+                                        <input id="sv_photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
+                                        <div id="sv_photo_preview" class="mt-2 grid grid-cols-4 sm:grid-cols-5 gap-1.5"></div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Sidebar: checklist + save -->
+                        <aside class="space-y-4 lg:sticky lg:top-4 min-w-0">
+                            <section class="sv-card overflow-hidden">
+                                <div class="sv-hazard h-1"></div>
+                                <div class="p-5">
+                                    <h2 class="text-sm font-semibold text-gray-900">Record checklist</h2>
+                                    <p class="text-[11px] text-gray-400 mb-3">Required items must be done before saving.</p>
+                                    <ul id="sv_checklist" class="space-y-2 text-[12.5px]">
+                                        <?php foreach ([
+                                            ['datetime', 'Date & time of visit', true],
+                                            ['visited', 'Visited: Yes or No', true],
+                                            ['deadline', '2D & Quotation deadline', false],
+                                            ['notes', 'Site notes', false],
+                                            ['meas', 'Measurement PDF', false],
+                                            ['photos', 'Site photos', false],
+                                        ] as [$k, $lbl, $req]): ?>
+                                            <li data-check="<?= $k ?>" class="flex items-center gap-2 text-gray-500">
+                                                <span class="sv-ck w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-[9px] text-transparent shrink-0"><i class="fa-solid fa-check"></i></span>
+                                                <span class="flex-1"><?= htmlspecialchars($lbl) ?></span>
+                                                <span class="text-[10px] font-semibold uppercase <?= $req ? 'text-red-500' : 'text-gray-300' ?>"><?= $req ? 'Required' : 'Optional' ?></span>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+
+                                    <div id="sv_save_area" class="mt-5">
+                                        <button type="button" id="sv_save_btn"
+                                            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg shadow-sm">
+                                            <i class="fa-solid fa-floppy-disk"></i> Save site visit record
+                                        </button>
+                                    </div>
+
+                                    <!-- Inline confirm -->
+                                    <div id="sv_confirm" class="hidden mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+                                        <p class="text-[12.5px] font-semibold text-amber-900"><i class="fa-solid fa-circle-question mr-1"></i>Save this record?</p>
+                                        <p id="sv_confirm_text" class="text-[11.5px] text-amber-800 mt-1"></p>
+                                        <p class="text-[11px] text-amber-700 mt-1">The record can't be edited after saving.</p>
+                                        <div class="grid grid-cols-2 gap-2 mt-3">
+                                            <button type="button" id="sv_confirm_no" class="px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                                            <button type="button" id="sv_confirm_yes" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg">
+                                                <i class="fa-solid fa-check"></i> Yes, save
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p id="sv_draft_note" class="hidden text-[11px] text-gray-400 mt-3"><i class="fa-solid fa-cloud mr-1"></i>Draft saved on this device. Files are not saved in drafts.</p>
+                                </div>
+                            </section>
+                        </aside>
+                    </form>
 
                 <?php endif; ?>
 
@@ -755,9 +800,10 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
             translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
                 toast.innerHTML = `
             <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white ${palette.icon}">${palette.symbol}</span>
-            <span class="flex-1 leading-relaxed">${message}</span>
-            <button type="button" class="shrink-0 text-gray-400 hover:text-gray-600 text-base leading-none" aria-label="Close">&times;</button>
+            <span class="flex-1 leading-relaxed"></span>
+            <button type="button" class="shrink-0 inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600" aria-label="Close"><i class="fa-solid fa-xmark text-xs"></i></button>
         `;
+                toast.querySelector('.flex-1').textContent = message;
                 container.appendChild(toast);
                 requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
                 const remove = () => {
@@ -768,37 +814,83 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                 if (duration > 0) setTimeout(remove, duration);
             }
 
+            const SV_INQUIRY_ID = <?= (int) $inquiryId ?>;
+            const SV_DRAFT_KEY = 'svDraft_' + SV_INQUIRY_ID;
+
             <?php if ($svSuccess): ?>
+                try { localStorage.removeItem(SV_DRAFT_KEY); } catch (e) { }
                 crmShowToast(<?= json_encode($svSuccess) ?>, 'success');
             <?php endif; ?>
 
-            // Photo upload — nag-iipon kada pili (hindi napapalitan), may thumbnail + remove button
-            const svPhotosInput = document.getElementById('sv_photos');
-            if (svPhotosInput) {
+            // ═══════════════ PHOTO LIGHTBOX (saved record) ═══════════════
+            (function () {
+                const lb = document.getElementById('svLightbox');
+                if (!lb || !window.SV_PHOTOS) return;
+                const img = document.getElementById('svLbImg');
+                let idx = 0;
+                const show = i => {
+                    idx = (i + SV_PHOTOS.length) % SV_PHOTOS.length;
+                    img.src = SV_PHOTOS[idx];
+                    document.getElementById('svLbOpen').href = SV_PHOTOS[idx];
+                    document.getElementById('svLbCount').textContent = `Photo ${idx + 1} of ${SV_PHOTOS.length}`;
+                    const multi = SV_PHOTOS.length > 1;
+                    document.getElementById('svLbPrev').style.display = multi ? '' : 'none';
+                    document.getElementById('svLbNext').style.display = multi ? '' : 'none';
+                };
+                const open = i => { show(i); lb.classList.remove('hidden'); lb.classList.add('flex'); };
+                const close = () => { lb.classList.add('hidden'); lb.classList.remove('flex'); };
+                document.querySelectorAll('[data-sv-photo]').forEach(b => b.addEventListener('click', () => open(+b.dataset.svPhoto)));
+                document.getElementById('svLbClose').addEventListener('click', close);
+                document.getElementById('svLbPrev').addEventListener('click', () => show(idx - 1));
+                document.getElementById('svLbNext').addEventListener('click', () => show(idx + 1));
+                lb.addEventListener('click', e => { if (e.target === lb) close(); });
+                document.addEventListener('keydown', e => {
+                    if (lb.classList.contains('hidden')) return;
+                    if (e.key === 'Escape') close();
+                    if (e.key === 'ArrowLeft') show(idx - 1);
+                    if (e.key === 'ArrowRight') show(idx + 1);
+                });
+            })();
+
+            // ═══════════════ NEW RECORD FORM ═══════════════
+            (function () {
+                const form = document.getElementById('svForm');
+                if (!form) return;
+
+                const fmtSize = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+                const MAX_PDF = 15 * 1024 * 1024;
+
+                // Drag & drop sa label
+                function svWireDrop(dropId, onFiles) {
+                    const drop = document.getElementById(dropId);
+                    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('sv-drag'); }));
+                    ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('sv-drag'); }));
+                    drop.addEventListener('drop', e => onFiles(Array.from(e.dataTransfer.files || [])));
+                }
+
+                // ── Photos ──
+                const svPhotosInput = document.getElementById('sv_photos');
                 const svPhotoDt = new DataTransfer();
                 const svPhotoPreview = document.getElementById('sv_photo_preview');
-                const svPhotoUrls = new Map(); // File -> object URL, para ma-revoke pag tinanggal
+                const svPhotoUrls = new Map();
                 const svPhotoTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
                 function svRenderPhotoPreview() {
                     svPhotoPreview.innerHTML = '';
                     Array.from(svPhotoDt.files).forEach((file, idx) => {
                         if (!svPhotoUrls.has(file)) svPhotoUrls.set(file, URL.createObjectURL(file));
-
                         const wrap = document.createElement('div');
                         wrap.className = 'relative';
-
                         const img = document.createElement('img');
                         img.src = svPhotoUrls.get(file);
                         img.title = file.name;
-                        img.className = 'w-full h-16 object-cover rounded-md border border-gray-200';
+                        img.className = 'w-full aspect-square object-cover rounded-lg border border-gray-200';
                         wrap.appendChild(img);
-
                         const rm = document.createElement('button');
                         rm.type = 'button';
                         rm.setAttribute('aria-label', 'Remove photo');
-                        rm.className = 'absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gray-700 text-white text-[11px] leading-none flex items-center justify-center hover:bg-red-600';
-                        rm.innerHTML = '&times;';
+                        rm.className = 'absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-800 text-white flex items-center justify-center hover:bg-red-600 shadow';
+                        rm.innerHTML = '<i class="fa-solid fa-xmark text-[10px] leading-none"></i>';
                         rm.addEventListener('click', () => {
                             const removed = svPhotoDt.files[idx];
                             URL.revokeObjectURL(svPhotoUrls.get(removed));
@@ -808,25 +900,26 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                             svRenderPhotoPreview();
                         });
                         wrap.appendChild(rm);
-
                         svPhotoPreview.appendChild(wrap);
                     });
+                    svUpdateChecklist();
                 }
-
-                svPhotosInput.addEventListener('change', function () {
-                    Array.from(this.files).forEach(file => {
-                        const isDup = Array.from(svPhotoDt.files).some(f =>
-                            f.name === file.name && f.size === file.size && f.lastModified === file.lastModified);
-                        if (svPhotoTypes.includes(file.type) && !isDup) svPhotoDt.items.add(file);
+                function svAddPhotos(files) {
+                    let skipped = 0;
+                    files.forEach(file => {
+                        const isDup = Array.from(svPhotoDt.files).some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified);
+                        if (!svPhotoTypes.includes(file.type)) { skipped++; return; }
+                        if (!isDup) svPhotoDt.items.add(file);
                     });
-                    this.files = svPhotoDt.files;
+                    svPhotosInput.files = svPhotoDt.files;
                     svRenderPhotoPreview();
-                });
-            }
+                    if (skipped) crmShowToast(`${skipped} file(s) skipped — only JPG, PNG or WEBP photos are allowed.`, 'warning');
+                }
+                svPhotosInput.addEventListener('change', function () { svAddPhotos(Array.from(this.files)); });
+                svWireDrop('sv_photo_drop', svAddPhotos);
 
-            // Measurement PDFs — nag-iipon ng files kada pili (hindi napapalitan), may remove button
-            const svMeasInput = document.getElementById('sv_meas_pdfs');
-            if (svMeasInput) {
+                // ── Measurement PDFs ──
+                const svMeasInput = document.getElementById('sv_meas_pdfs');
                 const svMeasDt = new DataTransfer();
                 const svMeasList = document.getElementById('sv_meas_list');
 
@@ -834,41 +927,187 @@ $crmDesignerListUrl = BASE_URL . '/crmdesigner';
                     svMeasList.innerHTML = '';
                     Array.from(svMeasDt.files).forEach((file, idx) => {
                         const li = document.createElement('li');
-                        li.className = 'text-xs text-gray-600 flex items-center gap-1.5';
-                        li.innerHTML = '<i class="fa-solid fa-file-pdf text-red-500"></i>';
-
-                        const name = document.createElement('span');
-                        name.className = 'truncate max-w-xs';
-                        name.textContent = file.name;
-                        li.appendChild(name);
-
+                        li.className = 'flex items-center gap-2.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 min-w-0';
+                        li.innerHTML = '<span class="w-7 h-7 rounded-md bg-red-50 text-red-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-pdf text-xs"></i></span>';
+                        const info = document.createElement('span');
+                        info.className = 'min-w-0 flex-1';
+                        const nm = document.createElement('span');
+                        nm.className = 'block text-[12px] font-medium text-gray-800 truncate';
+                        nm.textContent = file.name;
+                        const sz = document.createElement('span');
+                        sz.className = 'block text-[10.5px] text-gray-400';
+                        sz.textContent = fmtSize(file.size);
+                        info.append(nm, sz);
+                        li.appendChild(info);
                         const rm = document.createElement('button');
                         rm.type = 'button';
-                        rm.className = 'text-gray-400 hover:text-red-600 text-base leading-none ml-1';
+                        rm.className = 'inline-flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0';
                         rm.setAttribute('aria-label', 'Remove file');
-                        rm.innerHTML = '&times;';
+                        rm.innerHTML = '<i class="fa-solid fa-xmark text-sm leading-none"></i>';
                         rm.addEventListener('click', () => {
                             svMeasDt.items.remove(idx);
                             svMeasInput.files = svMeasDt.files;
                             svRenderMeasList();
                         });
                         li.appendChild(rm);
-
                         svMeasList.appendChild(li);
                     });
+                    svUpdateChecklist();
+                }
+                function svAddPdfs(files) {
+                    let notPdf = 0, tooBig = 0;
+                    files.forEach(file => {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        if (!isPdf) { notPdf++; return; }
+                        if (file.size > MAX_PDF) { tooBig++; return; }
+                        const isDup = Array.from(svMeasDt.files).some(f => f.name === file.name && f.size === file.size);
+                        if (!isDup) svMeasDt.items.add(file);
+                    });
+                    svMeasInput.files = svMeasDt.files;
+                    svRenderMeasList();
+                    if (notPdf) crmShowToast(`${notPdf} file(s) skipped — measurements must be PDF.`, 'warning');
+                    if (tooBig) crmShowToast(`${tooBig} PDF(s) skipped — over 15MB.`, 'warning');
+                }
+                svMeasInput.addEventListener('change', function () { svAddPdfs(Array.from(this.files)); });
+                svWireDrop('sv_meas_drop', svAddPdfs);
+
+                // ── Checklist ──
+                const elDt = document.getElementById('sv_datetime');
+                const elDeadline = document.getElementById('sv_deadline');
+                const notesEls = ['site_conditions', 'client_requirements', 'existing_structure'].map(n => document.getElementById('sv_' + n));
+                const visitedVal = () => (form.querySelector('input[name="visited"]:checked') || {}).value || '';
+
+                function svSetCheck(key, ok) {
+                    const li = document.querySelector(`#sv_checklist [data-check="${key}"]`);
+                    if (!li) return;
+                    const ck = li.querySelector('.sv-ck');
+                    li.classList.toggle('text-gray-900', ok);
+                    li.classList.toggle('text-gray-500', !ok);
+                    ck.className = 'sv-ck w-5 h-5 rounded-full flex items-center justify-center text-[9px] shrink-0 ' +
+                        (ok ? 'bg-emerald-500 border border-emerald-500 text-white' : 'border border-gray-300 text-transparent');
+                }
+                function svUpdateChecklist() {
+                    svSetCheck('datetime', !!elDt.value);
+                    svSetCheck('visited', !!visitedVal());
+                    svSetCheck('deadline', !!elDeadline.value);
+                    svSetCheck('notes', notesEls.some(t => t.value.trim() !== ''));
+                    svSetCheck('meas', svMeasDt.files.length > 0);
+                    svSetCheck('photos', svPhotoDt.files.length > 0);
                 }
 
-                svMeasInput.addEventListener('change', function () {
-                    const picked = Array.from(this.files);
-                    picked.forEach(file => {
-                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-                        const isDup = Array.from(svMeasDt.files).some(f => f.name === file.name && f.size === file.size);
-                        if (isPdf && !isDup) svMeasDt.items.add(file);
-                    });
-                    this.files = svMeasDt.files;
-                    svRenderMeasList();
+                // Deadline hint (ilang araw pa)
+                function svDeadlineHint() {
+                    const hint = document.getElementById('sv_deadline_hint');
+                    if (!elDeadline.value) { hint.textContent = 'Optional — when you expect to finish the 2D & quotation.'; hint.className = 'text-[11px] text-gray-400 mt-1'; return; }
+                    const a = new Date(); a.setHours(0, 0, 0, 0);
+                    const b = new Date(elDeadline.value + 'T00:00:00');
+                    const d = Math.round((b - a) / 864e5);
+                    hint.textContent = d === 0 ? 'Due today' : d === 1 ? 'Due tomorrow' : d > 1 ? `${d} days from today` : 'This date has passed';
+                    hint.className = 'text-[11px] mt-1 font-semibold ' + (d < 0 ? 'text-red-600' : d <= 3 ? 'text-amber-700' : 'text-gray-500');
+                }
+
+                // ── Draft (text fields only) ──
+                const draftFields = ['visit_datetime', 'deadline', 'site_conditions', 'client_requirements', 'existing_structure'];
+                const hasServerOld = <?= !empty($svOld) ? 'true' : 'false' ?>;
+                let draftTimer = null;
+                function svSaveDraft() {
+                    clearTimeout(draftTimer);
+                    draftTimer = setTimeout(() => {
+                        const data = { visited: visitedVal() };
+                        draftFields.forEach(n => data[n] = form.elements[n].value);
+                        const empty = Object.values(data).every(v => !v);
+                        try {
+                            if (empty) localStorage.removeItem(SV_DRAFT_KEY);
+                            else localStorage.setItem(SV_DRAFT_KEY, JSON.stringify(data));
+                            document.getElementById('sv_draft_note').classList.toggle('hidden', empty);
+                        } catch (e) { }
+                    }, 400);
+                }
+                function svLoadDraft() {
+                    if (hasServerOld) return; // galing sa server (may error) ang laman — mas bago iyon
+                    let data = null;
+                    try { data = JSON.parse(localStorage.getItem(SV_DRAFT_KEY) || 'null'); } catch (e) { }
+                    if (!data) return;
+                    draftFields.forEach(n => { if (data[n]) form.elements[n].value = data[n]; });
+                    if (data.visited) {
+                        const r = form.querySelector(`input[name="visited"][value="${data.visited}"]`);
+                        if (r) r.checked = true;
+                    }
+                    if (elDeadline.value && elDeadline.value < elDeadline.min) elDeadline.value = '';
+                    document.getElementById('sv_draft_note').classList.remove('hidden');
+                    crmShowToast('Your unsaved draft was restored. Re-attach files if you had any.', 'success', 5000);
+                }
+
+                // ── Validation ──
+                function svClearErr(el) {
+                    const wrap = el.closest('div');
+                    el.classList.remove('sv-invalid');
+                    const err = wrap && wrap.querySelector('.sv-err'); if (err) err.classList.add('hidden');
+                }
+                function svValidate() {
+                    let ok = true, first = null;
+                    if (!elDt.value) {
+                        ok = false; first = first || elDt;
+                        elDt.classList.add('sv-invalid');
+                        elDt.parentElement.querySelector('.sv-err').classList.remove('hidden');
+                    }
+                    if (!visitedVal()) {
+                        ok = false; first = first || document.getElementById('sv_visited_group');
+                        document.querySelectorAll('.sv-choice').forEach(c => c.classList.add('sv-invalid'));
+                        document.getElementById('sv_visited_group').parentElement.querySelector('.sv-err').classList.remove('hidden');
+                    }
+                    if (elDeadline.value && elDeadline.value < elDeadline.min) {
+                        ok = false; first = first || elDeadline;
+                        elDeadline.classList.add('sv-invalid');
+                    }
+                    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return ok;
+                }
+
+                form.addEventListener('input', e => {
+                    if (e.target.classList) svClearErr(e.target);
+                    if (e.target === elDeadline) svDeadlineHint();
+                    svUpdateChecklist(); svSaveDraft();
                 });
-            }
+                form.addEventListener('change', e => {
+                    if (e.target.name === 'visited') {
+                        document.querySelectorAll('.sv-choice').forEach(c => c.classList.remove('sv-invalid'));
+                        document.getElementById('sv_visited_group').parentElement.querySelector('.sv-err').classList.add('hidden');
+                    }
+                    if (e.target === elDeadline) { elDeadline.classList.remove('sv-invalid'); svDeadlineHint(); }
+                    svUpdateChecklist(); svSaveDraft();
+                });
+                form.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.preventDefault(); // walang aksidenteng submit
+                });
+
+                // ── Save → inline confirm → submit ──
+                const saveArea = document.getElementById('sv_save_area');
+                const confirmBox = document.getElementById('sv_confirm');
+                document.getElementById('sv_save_btn').addEventListener('click', () => {
+                    if (!svValidate()) { crmShowToast('Please complete the required fields.', 'warning'); return; }
+                    const when = new Date(elDt.value).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+                    const v = visitedVal() === 'yes' ? 'Visited' : 'Not visited';
+                    const files = `${svMeasDt.files.length} PDF · ${svPhotoDt.files.length} photo${svPhotoDt.files.length === 1 ? '' : 's'}`;
+                    document.getElementById('sv_confirm_text').textContent = `${v} on ${when} — ${files}.`;
+                    saveArea.classList.add('hidden');
+                    confirmBox.classList.remove('hidden');
+                });
+                document.getElementById('sv_confirm_no').addEventListener('click', () => {
+                    confirmBox.classList.add('hidden');
+                    saveArea.classList.remove('hidden');
+                });
+                document.getElementById('sv_confirm_yes').addEventListener('click', function () {
+                    this.disabled = true;
+                    document.getElementById('sv_confirm_no').disabled = true;
+                    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+                    form.submit();
+                });
+
+                svLoadDraft();
+                svDeadlineHint();
+                svUpdateChecklist();
+            })();
         </script>
 
     </main>

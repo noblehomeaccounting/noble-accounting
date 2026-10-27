@@ -1,0 +1,6 @@
+/* ewood.css — styles ng ewood.php (QR Approvals) */
+
+/* Construction hazard strip */
+.ewood-hazard {
+    background: repeating-linear-gradient(-45deg, #f59e0b 0 10px, #1f2937 10px 20px);
+}

@@ -738,12 +738,10 @@ function q2dResolveEditableEntry(mysqli $conn, int $inquiryId, string $slot, boo
         return [$latest, ''];
     }
 
-    // Approved na submission pero may open feedback sa 2D → pwedeng palitan ang 2D file.
-    if ($slot === '2d' && $latest && $latest['status'] === 'Approved' && (int) $latest['design_2d_done'] === 0) {
-        if (!q2dHasUnresolvedFeedback($conn, (int) $latest['id'])) {
-            return [null, 'No open feedback on this file.'];
-        }
-        return [$latest, ''];
+    // Approved na submission + feedback ng Cutting → HINDI na pinapalitan ang 2D dito.
+    // Bagong revision na ito (crm2drevisionajax.php) para manatili ang lumang file sa history.
+    if ($slot === '2d' && $latest && $latest['status'] === 'Approved') {
+        return [null, 'Use "Upload a revised 2D" in the Feedback panel. The previous 2D file is kept in the revision history.'];
     }
 
     if ($latest && $latest['status'] === 'Approved') {
@@ -1201,14 +1199,8 @@ if ($action === 'unlock_slot') {
     if ($slot === '2d') {
         $latestApproved = q2dGetLatestEntry($conn, $inquiryId);
         if ($latestApproved && $latestApproved['status'] === 'Approved') {
-            if (!q2dHasUnresolvedFeedback($conn, (int) $latestApproved['id'])) {
-                q2dRespond(false, 'No open feedback on this file.');
-            }
-            $stmt = $conn->prepare("UPDATE noblecrm_2dquotation SET design_2d_done = 0 WHERE id = ?");
-            $stmt->bind_param("i", $latestApproved['id']);
-            $stmt->execute();
-            $stmt->close();
-            q2dRespond(true, 'Unlocked for revision.');
+            // Hindi na ina-unlock/pinapalitan ang approved 2D — revision history na ang gamit.
+            q2dRespond(false, 'Use "Upload a revised 2D" in the Feedback panel. The previous 2D file is kept in the revision history.');
         }
     }
 

@@ -38,93 +38,83 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
     <title>Initial 2D Quotation Approval</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/ui-designer/css/crm/checkdesigner2dquotation.css?v=<?= @filemtime(ROOT_PATH . '/admin/ui-designer/css/crm/checkdesigner2dquotation.css') ?: 1 ?>">
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
+    <main class="ml-56 min-h-screen p-5 lg:p-7 bg-[#F5F6FA] overflow-x-hidden">
 
         <div class="max-w-6xl mx-auto">
 
-            <!-- Header -->
-            <div class="mb-4">
-                <div class="mb-3">
-                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Design
-                        Management</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">
-                        2D &amp; Quotation Approval
-                        <span
-                            class="align-middle ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border bg-amber-50 text-amber-700 border-amber-200">Initial</span>
-                    </h1>
-                </div>
-
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="relative w-full sm:w-64 min-w-0">
-                        <input id="dchkSearch" type="text" placeholder="Search control no. / client / contact"
-                            class="w-full pl-8 pr-5 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
-                        <i
-                            class="fa-brands fa-sistrix absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                        <button type="button" id="dchkSearchClear"
-                            class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
+            <!-- ═══ HEADER ═══ -->
+            <section class="dchk-card overflow-hidden mb-4">
+                <div class="dchk-hazard h-1.5"></div>
+                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-clipboard-check text-lg"></i></span>
+                        <div class="min-w-0">
+                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Design Management · Designer Head</p>
+                            <h1 class="text-gray-900 text-lg font-semibold leading-tight flex flex-wrap items-center gap-2">
+                                2D &amp; Quotation Approval
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">Initial</span>
+                            </h1>
+                            <p class="text-gray-400 text-[11px] mt-0.5">Open a submission, approve or send back each file, then submit your review.</p>
+                        </div>
                     </div>
 
-                    <div id="dchkTabs" class="flex items-center gap-1.5">
+                    <!-- Counters = tabs -->
+                    <div id="dchkTabs" class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
                         <?php
-                        $tabs = [['', 'All'], ['Waiting for Approval', 'Queuing'], ['Approved', 'Approved'], ['For Revision', 'For Revision']];
-                        foreach ($tabs as [$val, $label]): ?>
+                        $tabs = [
+                            ['', 'All', 'text-gray-900'],
+                            ['Waiting for Approval', 'Queuing', 'text-amber-700'],
+                            ['For Revision', 'For Revision', 'text-red-600'],
+                            ['Approved', 'Approved', 'text-emerald-700'],
+                        ];
+                        foreach ($tabs as [$val, $label, $cls]): ?>
                             <button type="button" data-status="<?= htmlspecialchars($val) ?>"
-                                class="dchk-tab px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5">
-                                <?= $label ?>
-                                <span
-                                    class="dchk-tab-count inline-flex items-center justify-center min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[10px] font-bold bg-black/10">0</span>
+                                class="dchk-tab text-left rounded-xl border px-3.5 py-2 transition-colors lg:min-w-[110px]">
+                                <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80"><?= $label ?></span>
+                                <span class="dchk-tab-count block text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span>
                             </button>
                         <?php endforeach; ?>
                     </div>
                 </div>
-            </div>
-
-            <!-- Table -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr
-                                class="bg-gray-50 border-b border-gray-200 text-left text-[10px] uppercase tracking-wide text-gray-500">
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Control No.</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Client</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">2D File</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Quotation File</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">3D File</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Contract Amount</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Submitted</th>
-                                <th class="px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
-                                <th class="px-4 py-2.5 font-semibold text-right whitespace-nowrap">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dchkTbody" class="divide-y divide-gray-100"></tbody>
-                    </table>
+                <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex flex-wrap items-center gap-2">
+                    <div class="relative flex-1 min-w-[200px] max-w-md">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                        <input id="dchkSearch" type="text" placeholder="Search control no., client or contact…"
+                            class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-8 pr-8 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                        <button type="button" id="dchkSearchClear" aria-label="Clear search"
+                            class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100"><i class="fa-solid fa-xmark text-xs leading-none"></i></button>
+                    </div>
+                    <span id="dchkCount" class="ml-auto text-[11px] text-gray-400"></span>
                 </div>
-            </div>
+            </section>
 
-            <p id="dchkCount" class="text-[11px] text-gray-400 mt-2.5"></p>
+            <!-- ═══ LIST ═══ -->
+            <div id="dchkTbody" class="dchk-scroll dchk-list space-y-2.5"></div>
         </div>
 
-        <!-- Right-side review panel -->
+        <!-- ═══ REVIEW PANEL ═══ -->
         <div id="dchkOverlay" class="fixed inset-0 bg-black/30 hidden z-40" onclick="dchkClosePanel()"></div>
 
         <div id="dchkPanel" class="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 flex flex-col
                    translate-x-full transition-transform duration-300 ease-out">
-            <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between shrink-0">
-                <div>
-                    <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">Initial
-                        Submission Review</p>
+            <div class="dchk-hazard h-1.5 shrink-0"></div>
+            <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase">Initial submission review</p>
                     <h3 id="dchkModalControlNo" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
+                    <p id="dchkModalClient" class="text-[15px] font-semibold text-gray-900 truncate capitalize"></p>
+                    <div id="dchkModalBadges" class="mt-1 flex flex-wrap items-center gap-1.5"></div>
                 </div>
-                <button type="button" onclick="dchkClosePanel()"
-                    class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                <button type="button" onclick="dchkClosePanel()" aria-label="Close"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
-            <div id="dchkModalBody" class="px-5 py-4 overflow-y-auto space-y-0.5 flex-1"></div>
-            <!-- Walang scroll dito; ang listahan ng files ang may sariling scroll para laging kita ang Submit button -->
-            <div id="dchkModalFooter" class="px-5 py-4 bg-gray-50 border-t border-gray-100 shrink-0"></div>
+            <div id="dchkModalBody" class="dchk-scroll px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60"></div>
+            <!-- Ang listahan ng files ang may sariling scroll para laging kita ang Submit button -->
+            <div id="dchkModalFooter" class="px-5 py-4 bg-white border-t border-gray-100 shrink-0"></div>
         </div>
 
         <div id="crmToastContainer"
@@ -137,16 +127,17 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         function crmShowToast(message, type = 'success', duration = 4000) {
             const container = document.getElementById('crmToastContainer');
             const palette = type === 'success'
-                ? { wrap: 'bg-green-50 border-green-200 text-green-700', icon: 'bg-green-200 text-green-700', symbol: '✓' }
-                : { wrap: 'bg-red-50 border-red-200 text-red-700', icon: 'bg-red-200 text-red-700', symbol: '!' };
+                ? { icon: 'bg-emerald-500', symbol: '✓' }
+                : { icon: 'bg-red-600', symbol: '!' };
 
             const toast = document.createElement('div');
-            toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm ${palette.wrap}
+            toast.className = `pointer-events-auto flex items-start gap-2.5 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-800
                 translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
             toast.innerHTML = `
-                <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${palette.icon}">${palette.symbol}</span>
-                <span class="flex-1 leading-relaxed">${message}</span>
-                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>`;
+                <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white ${palette.icon}">${palette.symbol}</span>
+                <span class="flex-1 leading-relaxed"></span>
+                <button type="button" class="shrink-0 inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600" aria-label="Close"><i class="fa-solid fa-xmark text-xs"></i></button>`;
+            toast.querySelector('.flex-1').textContent = message;
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
             const remove = () => {
@@ -192,18 +183,39 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             try { localStorage.setItem(DCHK_VIEWED_KEY, JSON.stringify([...viewed])); } catch (e) { }
         }
 
+        const dchkToDate = v => { if (!v) return null; const d = new Date(String(v).replace(' ', 'T')); return isNaN(d.getTime()) ? null : d; };
+
         function dchkFormatDate(value) {
             if (!value) return '—';
-            const dt = new Date(value.replace(' ', 'T'));
-            if (isNaN(dt.getTime())) return value;
+            const dt = dchkToDate(value);
+            if (!dt) return value;
             return dt.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
         }
 
         function dchkFormatDateTimeLong(value) {
             if (!value) return '—';
-            const dt = new Date(value.replace(' ', 'T'));
-            if (isNaN(dt.getTime())) return value;
+            const dt = dchkToDate(value);
+            if (!dt) return value;
             return dt.toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        // "3 days ago", "Today"
+        function dchkAgo(value) {
+            const dt = dchkToDate(value); if (!dt) return '';
+            const a = new Date(); a.setHours(0, 0, 0, 0);
+            const b = new Date(dt); b.setHours(0, 0, 0, 0);
+            const d = Math.round((a - b) / 864e5);
+            return d <= 0 ? 'Today' : d === 1 ? 'Yesterday' : `${d} days ago`;
+        }
+        // "in 12 days", "3 days overdue"
+        function dchkDaysLeft(value) {
+            const dt = dchkToDate(value); if (!dt) return null;
+            const a = new Date(); a.setHours(0, 0, 0, 0);
+            const b = new Date(dt); b.setHours(0, 0, 0, 0);
+            const d = Math.round((b - a) / 864e5);
+            if (d < 0) return { text: `${-d} day${d === -1 ? '' : 's'} overdue`, cls: 'text-red-600' };
+            if (d === 0) return { text: 'Due today', cls: 'text-amber-700' };
+            return { text: `in ${d} day${d === 1 ? '' : 's'}`, cls: d <= 7 ? 'text-amber-700' : 'text-gray-500' };
         }
 
         function dchkFormatCurrency(value) {
@@ -214,35 +226,39 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 
         function dchkStatusBadge(status, compact = false) {
             const map = {
-                'Approved': 'bg-green-50 text-green-700 border-green-200',
+                'Approved': 'bg-emerald-50 text-emerald-700 border-emerald-200',
                 'For Revision': 'bg-red-50 text-red-700 border-red-200',
                 'Waiting for Approval': 'bg-amber-50 text-amber-700 border-amber-200',
             };
-            const dotMap = { 'Approved': 'bg-green-500', 'For Revision': 'bg-red-500', 'Waiting for Approval': 'bg-amber-500' };
+            const dotMap = { 'Approved': 'bg-emerald-500', 'For Revision': 'bg-red-500', 'Waiting for Approval': 'bg-amber-500' };
             const cls = map[status] || 'bg-gray-50 text-gray-600 border-gray-200';
             const dot = dotMap[status] || 'bg-gray-400';
-            const size = compact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]';
+            const size = compact ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-0.5 text-[10.5px]';
             return `<span class="inline-flex items-center gap-1.5 ${size} rounded-full font-semibold border whitespace-nowrap ${cls}">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0 ${dot}"></span>${dchkEscapeHtml(status)}</span>`;
+        }
+
+        function dchkMiniChip(text, cls) {
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${cls}">${text}</span>`;
         }
 
         function dchkStatusBadgeWithRow(row) {
             let out = dchkStatusBadge(row.status);
             if (row.status === 'Approved' && row.design_3d_stage === 'Waiting for Approval') {
-                out += ` <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-amber-200 bg-amber-50 text-amber-700 whitespace-nowrap ml-1">3D Waiting</span>`;
+                out += ' ' + dchkMiniChip('<i class="fa-solid fa-cube text-[8px] mr-1"></i>3D waiting', 'border-amber-200 bg-amber-50 text-amber-700');
             }
             if (row.status === 'Approved' && row.design_3d_stage === 'For Revision') {
-                out += ` <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-red-200 bg-red-50 text-red-700 whitespace-nowrap ml-1">3D Revision</span>`;
+                out += ' ' + dchkMiniChip('<i class="fa-solid fa-cube text-[8px] mr-1"></i>3D revision', 'border-red-200 bg-red-50 text-red-700');
             }
             if (row.is_late) {
-                out += ` <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-red-200 bg-white text-red-700 whitespace-nowrap ml-1">Late</span>`;
+                out += ' ' + dchkMiniChip('<i class="fa-solid fa-clock text-[8px] mr-1"></i>Late', 'border-red-200 bg-white text-red-700');
             }
             return out;
         }
 
         function dchkReviewBadge(status) {
             const map = {
-                'Approved': 'bg-green-50 text-green-700 border-green-200',
+                'Approved': 'bg-emerald-50 text-emerald-700 border-emerald-200',
                 'For Revision': 'bg-red-50 text-red-700 border-red-200',
                 'Pending': 'bg-gray-50 text-gray-500 border-gray-200',
             };
@@ -250,43 +266,53 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${cls}">${dchkEscapeHtml(status || 'Pending')}</span>`;
         }
 
-        // ── MULTI-FILE: listahan ng links (ginagamit ng detail panel — inline, walang dropdown) ──
-        function dchkFileLinksHtml(files, linkClass = 'block px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50 whitespace-nowrap', wrapperClass = '') {
+        function dchkFileIcon(name) {
+            return /\.(jpe?g|png|webp)$/i.test(name || '') ? 'fa-file-image text-violet-500' : 'fa-file-pdf text-red-500';
+        }
+
+        // ── MULTI-FILE: listahan ng links (floating dropdown) ──
+        function dchkFileLinksHtml(files, linkClass = 'flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-amber-50 hover:text-amber-800 whitespace-nowrap', wrapperClass = '') {
             if (!files || !files.length) return '';
             const links = files.map((f, i) => `
                 <a href="${dchkEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${dchkEscapeHtml(f.name)}"
-                    class="${linkClass}">${files.length > 1 ? `View File ${i + 1}` : 'View File'}</a>`).join('');
+                    class="${linkClass}"><i class="fa-solid ${dchkFileIcon(f.name)} text-[11px]"></i><span class="truncate max-w-[220px]">${dchkEscapeHtml(f.name || (files.length > 1 ? `File ${i + 1}` : 'View File'))}</span></a>`).join('');
             return wrapperClass ? `<div class="${wrapperClass}">${links}</div>` : links;
         }
 
-        // Registry ng files na naka-attach sa bawat "N Files" button (para di na kailangang i-encode sa DOM)
+        // Registry ng files na naka-attach sa bawat chip (para di na kailangang i-encode sa DOM)
         let dchkFileRegistry = {};
 
-        // Para sa table cell: 1 file = plain link; marami = "N Files ▾" na compact button,
-        // ang listahan ay lumulutang (fixed position, naka-attach sa <body>) para hindi na-cut ng overflow-x-auto ng table.
-        function dchkFileLinks(files, uploaderName, uploaderRole) {
-            if (!files || !files.length) return `<span class="text-gray-300">—</span>`;
-
-            const uploaderLine = `<p class="text-[10px] text-gray-400 whitespace-nowrap">${dchkEscapeHtml(uploaderName)} (${dchkEscapeHtml(uploaderRole)})</p>`;
+        // Chip bawat slot: 1 file = direktang link; marami = dropdown na lumulutang (naka-attach sa <body>).
+        const DCHK_SLOT_META = {
+            '2d': { label: '2D', icon: 'fa-compass-drafting', cls: 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' },
+            quotation: { label: 'Quotation', icon: 'fa-file-invoice-dollar', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100' },
+            '3d': { label: '3D', icon: 'fa-cube', cls: 'text-violet-700 bg-violet-50 border-violet-200 hover:bg-violet-100' },
+        };
+        function dchkFileLinks(files, uploaderName, uploaderRole, slot = '2d') {
+            const m = DCHK_SLOT_META[slot];
+            const base = 'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold border rounded-lg whitespace-nowrap';
+            if (!files || !files.length) {
+                return `<span class="${base} text-gray-300 bg-white border-dashed border-gray-200"><i class="fa-solid ${m.icon} text-[10px]"></i>${m.label} —</span>`;
+            }
+            const title = uploaderName ? `title="Uploaded by ${dchkEscapeHtml(uploaderName)} (${dchkEscapeHtml(uploaderRole)})"` : '';
 
             if (files.length === 1) {
-                return `<a href="${dchkEscapeHtml(files[0].url)}" target="_blank" rel="noopener"
-                    class="text-amber-700 hover:underline font-medium text-xs whitespace-nowrap">View File</a>${uploaderLine}`;
+                return `<a href="${dchkEscapeHtml(files[0].url)}" target="_blank" rel="noopener" ${title}
+                    class="${base} ${m.cls}"><i class="fa-solid ${m.icon} text-[10px]"></i>${m.label}<i class="fa-solid fa-arrow-up-right-from-square text-[8px] opacity-60"></i></a>`;
             }
 
             const key = `k${Math.random().toString(36).slice(2, 9)}`;
             dchkFileRegistry[key] = files;
 
             return `
-                <button type="button" data-file-toggle-key="${key}" onclick="dchkToggleFileDropdown(event, '${key}')"
-                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 border border-amber-200 bg-amber-50 rounded-md hover:bg-amber-100 whitespace-nowrap">
-                    ${files.length} Files
-                    <i class="fa-solid fa-chevron-down text-[9px]"></i>
-                </button>
-                ${uploaderLine}`;
+                <button type="button" data-file-toggle-key="${key}" onclick="dchkToggleFileDropdown(event, '${key}')" ${title}
+                    class="${base} ${m.cls}">
+                    <i class="fa-solid ${m.icon} text-[10px]"></i>${m.label} · ${files.length}
+                    <i class="fa-solid fa-chevron-down text-[8px] opacity-60"></i>
+                </button>`;
         }
 
-        // ── Floating dropdown: hiwalay sa table, naka-attach sa <body>, positioned via getBoundingClientRect ──
+        // ── Floating dropdown: hiwalay sa list, naka-attach sa <body>, positioned via getBoundingClientRect ──
         function dchkCloseFileDropdown() {
             const existing = document.getElementById('dchkFloatingDropdown');
             if (existing) existing.remove();
@@ -307,7 +333,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             const dropdown = document.createElement('div');
             dropdown.id = 'dchkFloatingDropdown';
             dropdown.dataset.key = key;
-            dropdown.className = 'fixed z-[9998] min-w-[130px] bg-white border border-gray-200 rounded-lg shadow-lg py-1';
+            dropdown.className = 'dchk-scroll fixed z-[9998] min-w-[180px] max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg py-1.5';
             dropdown.innerHTML = dchkFileLinksHtml(files);
             dropdown.addEventListener('click', e => e.stopPropagation());
 
@@ -322,10 +348,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             let top = openUpward ? (rect.top - dropdownHeight - 4) : (rect.bottom + 4);
             let left = rect.left;
 
-            // wag lalampas sa kanang gilid ng viewport
-            if (left + dropdownWidth > window.innerWidth - 8) {
-                left = window.innerWidth - dropdownWidth - 8;
-            }
+            if (left + dropdownWidth > window.innerWidth - 8) left = window.innerWidth - dropdownWidth - 8;
             if (left < 8) left = 8;
             if (top < 8) top = 8;
 
@@ -334,14 +357,20 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         }
 
         document.addEventListener('click', dchkCloseFileDropdown);
-        window.addEventListener('scroll', dchkCloseFileDropdown, true);
+        window.addEventListener('scroll', e => {
+            const dd = document.getElementById('dchkFloatingDropdown');
+            if (dd && dd.contains(e.target)) return;
+            dchkCloseFileDropdown();
+        }, true);
         window.addEventListener('resize', dchkCloseFileDropdown);
 
         // ── tabs ──
         function dchkInitTabs() {
+            try { dchkStatusFilter = sessionStorage.getItem('dchkStatusFilter') ?? ''; } catch (e) { }
             document.querySelectorAll('.dchk-tab').forEach(btn => {
                 btn.addEventListener('click', () => {
                     dchkStatusFilter = btn.dataset.status;
+                    try { sessionStorage.setItem('dchkStatusFilter', dchkStatusFilter); } catch (e) { }
                     dchkLastSignature = '';
                     dchkRenderTabs();
                     dchkFetchList();
@@ -353,12 +382,12 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         function dchkRenderTabs() {
             document.querySelectorAll('.dchk-tab').forEach(btn => {
                 const active = btn.dataset.status === dchkStatusFilter;
-                btn.classList.toggle('bg-amber-700', active);
-                btn.classList.toggle('text-white', active);
-                btn.classList.toggle('border-amber-700', active);
+                btn.classList.toggle('border-amber-600', active);
+                btn.classList.toggle('bg-amber-50', active);
+                btn.classList.toggle('ring-1', active);
+                btn.classList.toggle('ring-amber-600', active);
+                btn.classList.toggle('border-gray-200', !active);
                 btn.classList.toggle('bg-white', !active);
-                btn.classList.toggle('text-gray-600', !active);
-                btn.classList.toggle('border-gray-300', !active);
                 btn.classList.toggle('hover:bg-gray-50', !active);
             });
         }
@@ -379,27 +408,29 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             } catch (e) { console.error('dchkFetchCounts:', e); }
         }
 
-        // ── table ──
-        function dchkSkeletonRows(count = 5) {
-            document.getElementById('dchkTbody').innerHTML = Array.from({ length: count }).map(() => `
-                <tr>${Array.from({ length: 9 }).map(() => `<td class="px-4 py-3"><div class="h-3 rounded bg-gray-100 animate-pulse"></div></td>`).join('')}</tr>`).join('');
+        // ── list ──
+        function dchkSkeletonRows(count = 4) {
+            document.getElementById('dchkTbody').innerHTML = Array.from({ length: count }).map(() =>
+                `<div class="h-[84px] rounded-xl bg-white border border-gray-200 animate-pulse"></div>`).join('');
         }
 
         function dchkEmptyState() {
-            const message = dchkSearchTerm ? `No submissions match "${dchkEscapeHtml(dchkSearchTerm)}".` : 'No submissions found.';
-            return `<tr><td colspan="9" class="p-0">
-                <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                    <p class="text-gray-400 text-xs">${message}</p>
-                </div></td></tr>`;
+            const message = dchkSearchTerm ? `No submissions match "${dchkEscapeHtml(dchkSearchTerm)}".`
+                : dchkStatusFilter === 'Waiting for Approval' ? 'Nothing in the queue — all caught up.' : 'No submissions found.';
+            return `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl px-6 py-12 text-center">
+                <div class="w-12 h-12 mx-auto rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mb-2"><i class="fa-regular fa-folder-open"></i></div>
+                <p class="text-sm font-semibold text-gray-700">${message}</p></div>`;
         }
 
         function dchkActionButton(row) {
             if (row.review_target && row.review_target !== 'none') {
                 return `<button type="button" onclick="dchkOpenPanel(${row.id})"
-                    class="px-3 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-800 transition-colors whitespace-nowrap">Review</button>`;
+                    class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-clipboard-check"></i> ${row.review_target === '3d_only' ? 'Review 3D' : 'Review'}</button>`;
             }
             return `<button type="button" onclick="dchkOpenPanel(${row.id})"
-                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">View</button>`;
+                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 whitespace-nowrap">
+                <i class="fa-regular fa-eye"></i> View</button>`;
         }
 
         function dchkRenderRows(rows) {
@@ -411,39 +442,39 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             if (rows.length === 0) { tbody.innerHTML = dchkEmptyState(); return; }
 
             const viewed = dchkGetViewedIds();
+            const barMap = { 'Approved': 'bg-emerald-500', 'For Revision': 'bg-red-500', 'Waiting for Approval': 'bg-amber-400' };
 
             tbody.innerHTML = rows.map(row => {
                 const isViewed = viewed.has(row.id);
                 const isActive = dchkCurrentId === row.id;
-
-                let rowBg = '';
-                if (isActive) rowBg = 'bg-amber-100';
-                else if (!isViewed) rowBg = 'bg-amber-50/30';
-
-                const accent = isActive ? 'border-l-4 border-l-amber-600 pl-3' : 'border-l-4 border-l-transparent pl-3';
-                const dot = isViewed ? '' : `<span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Not yet viewed"></span>`;
-                const viewedLabel = isViewed ? `<span class="text-[10px] text-gray-400 whitespace-nowrap">Viewed</span>` : '';
+                const show3d = row.include_3d || row.design_3d_stage !== 'Locked';
 
                 return `
-                <tr class="hover:bg-amber-50/40 transition-colors cursor-pointer ${rowBg}" onclick="dchkOpenPanel(${row.id})">
-                    <td class="pr-4 py-2.5 ${accent}">
-                        <div class="flex items-center gap-1.5">
-                            ${dot}
-                            <span class="font-mono text-[11px] font-semibold text-amber-700 whitespace-nowrap">${dchkEscapeHtml(row.control_no)}</span>
+                <article class="relative bg-white border rounded-xl overflow-hidden cursor-pointer transition ${isActive ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}"
+                    onclick="dchkOpenPanel(${row.id})">
+                    <span class="absolute left-0 top-0 bottom-0 w-1 ${barMap[row.status] || 'bg-gray-300'}"></span>
+                    <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
+                        <div class="min-w-0 flex-1 basis-[230px]">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                ${!isViewed ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-500 text-white">New</span>' : ''}
+                                <span class="font-mono text-[11px] font-semibold text-amber-700 whitespace-nowrap">${dchkEscapeHtml(row.control_no)}</span>
+                                ${dchkStatusBadgeWithRow(row)}
+                            </div>
+                            <p class="mt-1 text-sm font-semibold text-gray-900 truncate capitalize">${dchkEscapeHtml(row.client_name)}</p>
+                            <p class="text-[11px] text-gray-500">
+                                <i class="fa-regular fa-calendar text-gray-300 mr-1"></i>${dchkFormatDate(row.submitted_at)}
+                                ${row.submitted_at ? `<span class="text-gray-300 mx-1">·</span>${dchkAgo(row.submitted_at)}` : ''}
+                                <span class="text-gray-300 mx-1">·</span><span class="font-semibold text-gray-700">${dchkFormatCurrency(row.contract_amount)}</span>
+                            </p>
                         </div>
-                        ${viewedLabel ? `<div class="mt-0.5">${viewedLabel}</div>` : ''}
-                    </td>
-                    <td class="px-4 py-2.5 text-gray-800">${dchkEscapeHtml(row.client_name)}</td>
-                    <td class="px-4 py-2.5 whitespace-nowrap" onclick="event.stopPropagation()">${dchkFileLinks(row.design_2d_files, row.design_2d_uploader_name, row.design_2d_uploaded_role)}</td>
-                    <td class="px-4 py-2.5 whitespace-nowrap" onclick="event.stopPropagation()">${dchkFileLinks(row.quotation_files, row.quotation_uploader_name, row.quotation_uploaded_role)}</td>
-                    <td class="px-4 py-2.5 whitespace-nowrap" onclick="event.stopPropagation()">${(row.include_3d || row.design_3d_stage !== 'Locked')
-                        ? dchkFileLinks(row.design_3d_files, row.design_3d_uploader_name, row.design_3d_uploaded_role)
-                        : '<span class="text-gray-300 text-xs">Not yet</span>'}</td>
-                    <td class="px-4 py-2.5 text-gray-800 font-medium whitespace-nowrap">${dchkFormatCurrency(row.contract_amount)}</td>
-                    <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${dchkFormatDate(row.submitted_at)}</td>
-                    <td class="px-4 py-2.5">${dchkStatusBadgeWithRow(row)}</td>
-                    <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">${dchkActionButton(row)}</td>
-                </tr>`;
+                        <div class="flex flex-wrap items-center gap-1.5" onclick="event.stopPropagation()">
+                            ${dchkFileLinks(row.design_2d_files, row.design_2d_uploader_name, row.design_2d_uploaded_role, '2d')}
+                            ${dchkFileLinks(row.quotation_files, row.quotation_uploader_name, row.quotation_uploaded_role, 'quotation')}
+                            ${show3d ? dchkFileLinks(row.design_3d_files, row.design_3d_uploader_name, row.design_3d_uploaded_role, '3d') : ''}
+                        </div>
+                        <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${dchkActionButton(row)}</div>
+                    </div>
+                </article>`;
             }).join('');
         }
 
@@ -472,7 +503,9 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                 dchkFetchCounts();
             } catch (e) {
                 console.error('dchkFetchList:', e);
-                if (!silent) crmShowToast('Connection error while fetching submissions.', 'error');
+                if (!silent) {
+                    document.getElementById('dchkTbody').innerHTML = `<div class="bg-white border border-red-200 rounded-xl px-6 py-10 text-center text-xs text-red-600">Could not load submissions. <button type="button" onclick="dchkFetchList()" class="font-semibold underline">Retry</button></div>`;
+                }
             }
         }
 
@@ -515,68 +548,77 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 
         // ── review panel ──
         function dchkDetailRow(label, value) {
-            return `<div class="flex justify-between gap-3 py-2 border-b border-gray-100 text-[13px] last:border-b-0">
+            return `<div class="flex justify-between gap-3 py-2 border-b border-gray-100 text-[12.5px] last:border-b-0">
                 <span class="text-gray-400 whitespace-nowrap">${label}</span>
-                <span class="text-gray-800 font-medium text-right">${value}</span></div>`;
+                <span class="text-gray-800 font-medium text-right min-w-0 break-words">${value}</span></div>`;
         }
 
-        function dchkDetailRowHighlight(label, value) {
-            return `<div class="flex justify-between items-center gap-3 py-2.5 px-3 my-1 rounded-lg bg-slate-50 border border-slate-300 text-[13px]">
-                <span class="text-slate-600 font-medium">${label}</span>
-                <span class="text-slate-900 font-semibold text-right">${value}</span></div>`;
+        function dchkTile(label, icon, value, sub = '') {
+            return `<div class="bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 min-w-0">
+                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-400"><i class="fa-solid ${icon} mr-1"></i>${label}</p>
+                <p class="text-[13px] font-semibold text-gray-900 mt-0.5 truncate">${value}</p>
+                ${sub ? `<p class="text-[10.5px] font-semibold">${sub}</p>` : ''}
+            </div>`;
         }
 
-        // Slot-level summary. Ang remarks ay galing sa per-file remarks ("File 2: ...").
-        function dchkFileReviewSummary(label, reviewStatus, remarks) {
-            const remarksHtml = remarks
-                ? `<p class="text-xs text-red-700 mt-1 max-w-[260px] ml-auto text-right whitespace-pre-line">${dchkEscapeHtml(remarks)}</p>` : '';
-            return `<div class="flex items-start justify-between gap-3 py-2 border-b border-gray-100 text-[13px] last:border-b-0">
-                <span class="text-gray-400 whitespace-nowrap pt-0.5">${dchkEscapeHtml(label)}</span>
-                <div class="text-right">${dchkReviewBadge(reviewStatus)}${remarksHtml}</div></div>`;
+        // Kasalukuyang review status ng isang slot (galing sa server)
+        function dchkSlotSummary(label, slot, reviewStatus, remarks, files, name, role) {
+            const m = DCHK_SLOT_META[slot];
+            const count = (files || []).length;
+            return `<div class="bg-white border border-gray-200 rounded-xl p-3 min-w-0">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid ${m.icon} text-xs text-gray-400"></i>
+                    <span class="text-[12px] font-semibold text-gray-800">${label}</span>
+                    <span class="text-[10.5px] text-gray-400">${count} file${count === 1 ? '' : 's'}</span>
+                    <span class="ml-auto">${dchkReviewBadge(reviewStatus)}</span>
+                </div>
+                ${name ? `<p class="text-[10.5px] text-gray-400 mt-1"><i class="fa-solid fa-user-pen mr-1"></i>${dchkEscapeHtml(name)} (${dchkEscapeHtml(role)})</p>` : ''}
+                ${remarks ? `<p class="text-[11.5px] text-red-700 mt-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5 whitespace-pre-line">${dchkEscapeHtml(remarks)}</p>` : ''}
+            </div>`;
         }
 
-        // Detail panel: lahat ng files + uploader (naka-stack pa rin dito, ok lang kasi may sarili itong scroll)
+        // (Lumang helpers — iniwan para sa compatibility)
+        function dchkDetailRowHighlight(label, value) { return dchkDetailRow(label, value); }
+        function dchkFileReviewSummary(label, reviewStatus, remarks) { return dchkDetailRow(dchkEscapeHtml(label), dchkReviewBadge(reviewStatus) + (remarks ? `<span class="block text-xs text-red-700 mt-1 whitespace-pre-line">${dchkEscapeHtml(remarks)}</span>` : '')); }
         function dchkFileDetail(files, name, role) {
             if (!files || !files.length) return '—';
-            const links = dchkFileLinksHtml(files, 'text-amber-700 hover:underline', 'flex flex-col items-end');
-            return `${links}<span class="text-gray-400 font-normal text-xs">(${dchkEscapeHtml(name)}, ${dchkEscapeHtml(role)})</span>`;
+            return dchkFileLinksHtml(files, 'text-amber-700 hover:underline', 'flex flex-col items-end') + `<span class="text-gray-400 font-normal text-xs">(${dchkEscapeHtml(name)}, ${dchkEscapeHtml(role)})</span>`;
         }
 
         // ═══════════════════════════════════════════════════
         // PER-FILE DECISIONS
         // ═══════════════════════════════════════════════════
-        const DCHK_BTN_BASE = 'px-2.5 py-1 text-[11px] font-medium rounded-md border transition-colors whitespace-nowrap';
-
         function dchkFileDecisionRow(f, index, total) {
-            const linkText = total > 1 ? `View File ${index + 1}` : 'View File';
+            const name = f.name || (total > 1 ? `File ${index + 1}` : 'View File');
             const link = `<a href="${dchkEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${dchkEscapeHtml(f.name)}"
-                class="text-amber-700 hover:underline text-xs font-medium whitespace-nowrap">${linkText}</a>`;
+                class="flex items-center gap-2 min-w-0 flex-1 text-[12px] font-medium text-gray-800 hover:text-amber-700">
+                <i class="fa-solid ${dchkFileIcon(f.name)} text-[12px] shrink-0"></i>
+                <span class="truncate hover:underline">${dchkEscapeHtml(name)}</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-gray-400 shrink-0"></i></a>`;
 
             // Naka-lock na ang file na approved na dati
             if (f.id > 0 && f.review_status === 'Approved') {
-                return `<div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-md bg-green-50/60">
-                    ${link}${dchkReviewBadge('Approved')}</div>`;
+                return `<div class="dchk-file flex items-center gap-2" data-decision="approved">
+                    ${link}<span class="text-[10.5px] font-semibold text-emerald-700 whitespace-nowrap"><i class="fa-solid fa-lock text-[9px] mr-1"></i>Approved before</span></div>`;
             }
 
             // Lumang data na walang row sa files table (id = 0) — hindi pwedeng i-review per file
             if (!f.id) {
-                return `<div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-md bg-red-50/60">
-                    ${link}<span class="text-[10px] text-red-600">Legacy file – run backfill SQL</span></div>`;
+                return `<div class="dchk-file flex items-center gap-2 bg-red-50/60">
+                    ${link}<span class="text-[10px] text-red-600 whitespace-nowrap">Legacy file – run backfill SQL</span></div>`;
             }
 
-            return `<div class="rounded-md border border-gray-200 bg-white p-2" data-file-row="${f.id}">
-                <div class="flex items-center justify-between gap-2">
+            return `<div class="dchk-file" data-file-row="${f.id}" data-decision="">
+                <div class="flex items-center gap-2">
                     ${link}
-                    <div class="flex items-center gap-1.5">
-                        <button type="button" data-fbtn="approve" onclick="dchkSetFileDecision(${f.id}, 'Approved')"
-                            class="${DCHK_BTN_BASE} border-gray-300 text-gray-600 hover:bg-gray-50">Approve</button>
-                        <button type="button" data-fbtn="revise" onclick="dchkSetFileDecision(${f.id}, 'For Revision')"
-                            class="${DCHK_BTN_BASE} border-gray-300 text-gray-600 hover:bg-gray-50">Revision</button>
+                    <div class="dchk-seg">
+                        <button type="button" data-fbtn="approve" onclick="dchkSetFileDecision(${f.id}, 'Approved')"><i class="fa-solid fa-check text-[10px]"></i>Approve</button>
+                        <button type="button" data-fbtn="revise" onclick="dchkSetFileDecision(${f.id}, 'For Revision')"><i class="fa-solid fa-rotate-left text-[10px]"></i>Revision</button>
                     </div>
                 </div>
-                <textarea data-fremarks placeholder="What needs to be revised?" rows="2"
+                <textarea data-fremarks placeholder="What needs to be revised? (required)" rows="2"
                     oninput="dchkSetFileRemarks(${f.id}, this.value)"
-                    class="hidden mt-2 w-full text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500"></textarea>
+                    class="dchk-remarks hidden mt-2"></textarea>
             </div>`;
         }
 
@@ -584,19 +626,21 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             files = files || [];
             const total = files.length;
             const pending = files.filter(f => f.id > 0 && f.review_status !== 'Approved').length;
-            const countLabel = total > 1 ? ` <span class="text-[10px] text-gray-400 font-normal">(${total} files)</span>` : '';
+            const metaKey = slot === 'design_2d' ? '2d' : slot === 'design_3d' ? '3d' : 'quotation';
+            const m = DCHK_SLOT_META[metaKey];
             const approveAll = pending > 1
                 ? `<button type="button" onclick="dchkApproveAll('${slot}')"
-                    class="text-[11px] font-medium text-green-700 hover:underline whitespace-nowrap">Approve all</button>` : '';
+                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline whitespace-nowrap"><i class="fa-solid fa-check-double text-[10px]"></i>Approve all</button>` : '';
             const body = total
                 ? files.map((f, i) => dchkFileDecisionRow(f, i, total)).join('')
-                : `<span class="text-gray-300 text-xs">No file</span>`;
+                : `<p class="text-gray-300 text-xs">No file</p>`;
 
-            return `<div class="border border-gray-200 rounded-lg p-2.5" data-decision-slot="${slot}">
+            return `<div class="border border-gray-200 rounded-xl p-3 bg-gray-50/60" data-decision-slot="${slot}">
                 <div class="flex items-center justify-between gap-2 mb-2">
-                    <p class="text-xs font-semibold text-gray-600">${label}${countLabel}</p>${approveAll}
+                    <p class="text-[12px] font-semibold text-gray-700 flex items-center gap-1.5"><i class="fa-solid ${m.icon} text-gray-400 text-[11px]"></i>${label}
+                        ${total > 1 ? `<span class="text-[10.5px] text-gray-400 font-normal">${total} files</span>` : ''}</p>${approveAll}
                 </div>
-                <div class="space-y-1.5">${body}</div>
+                <div class="dchk-scroll dchk-file-list space-y-1.5 pr-1">${body}</div>
             </div>`;
         }
 
@@ -608,20 +652,13 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 
             const row = document.querySelector(`[data-file-row="${fileId}"]`);
             if (!row) return;
-            const approveBtn = row.querySelector('[data-fbtn="approve"]');
-            const reviseBtn = row.querySelector('[data-fbtn="revise"]');
             const textarea = row.querySelector('[data-fremarks]');
-
-            const approved = decision === 'Approved';
-            ['bg-green-700', 'text-white', 'border-green-700', 'hover:bg-green-800'].forEach(k => approveBtn.classList.toggle(k, approved));
-            ['text-gray-600', 'border-gray-300', 'hover:bg-gray-50'].forEach(k => approveBtn.classList.toggle(k, !approved));
-
             const revise = decision === 'For Revision';
-            ['bg-red-700', 'text-white', 'border-red-700', 'hover:bg-red-800'].forEach(k => reviseBtn.classList.toggle(k, revise));
-            ['text-gray-600', 'border-gray-300', 'hover:bg-gray-50'].forEach(k => reviseBtn.classList.toggle(k, !revise));
 
+            row.dataset.decision = revise ? 'revise' : 'approved';
             textarea.classList.toggle('hidden', !revise);
             if (!revise) textarea.value = '';
+            else setTimeout(() => textarea.focus(), 0);
 
             dchkUpdateSubmitState();
         }
@@ -641,11 +678,30 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         function dchkUpdateSubmitState() {
             const btn = document.getElementById('dchkSubmitReviewBtn');
             if (!btn) return;
-            btn.disabled = !Object.values(dchkDecisions).every(d => {
+            const all = Object.values(dchkDecisions);
+            const ok = all.every(d => {
                 if (!d.decision) return false;
                 if (d.decision === 'For Revision' && d.remarks.trim() === '') return false;
                 return true;
             });
+            btn.disabled = !ok;
+
+            // progress line
+            const decided = all.filter(d => d.decision).length;
+            const missingRemarks = all.filter(d => d.decision === 'For Revision' && d.remarks.trim() === '').length;
+            const prog = document.getElementById('dchkDecisionProgress');
+            if (prog) {
+                prog.innerHTML = ok
+                    ? `<span class="text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>All ${all.length} file${all.length === 1 ? '' : 's'} reviewed.</span>`
+                    : missingRemarks && decided === all.length
+                        ? `<span class="text-red-600"><i class="fa-solid fa-pen mr-1"></i>Add remarks to ${missingRemarks} file${missingRemarks === 1 ? '' : 's'} for revision.</span>`
+                        : `<span class="text-gray-500">${decided} of ${all.length} file${all.length === 1 ? '' : 's'} reviewed</span>`;
+            }
+            const bar = document.getElementById('dchkDecisionBar');
+            if (bar) bar.style.width = all.length ? `${Math.round(decided / all.length * 100)}%` : '0%';
+
+            // isara ang confirm kapag nagbago ang desisyon
+            dchkAskConfirm(false);
         }
 
         function dchkBuildDecisions(slots) {
@@ -663,34 +719,80 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             }));
         }
 
+        // Inline confirm bago i-submit ang review (walang popup)
+        let dchkPendingSubmitFn = null;
+        function dchkAskConfirm(show) {
+            const idle = document.getElementById('dchkSubmitIdle');
+            const conf = document.getElementById('dchkSubmitConfirm');
+            if (!idle || !conf) return;
+            if (show) {
+                const all = Object.values(dchkDecisions);
+                const nA = all.filter(d => d.decision === 'Approved').length;
+                const nR = all.filter(d => d.decision === 'For Revision').length;
+                document.getElementById('dchkConfirmText').innerHTML = nR
+                    ? `<b class="text-emerald-700">${nA} approved</b> · <b class="text-red-700">${nR} for revision</b> — the submission will go back to the designer.`
+                    : `<b class="text-emerald-700">All ${nA} file${nA === 1 ? '' : 's'} approved.</b>`;
+            }
+            idle.classList.toggle('hidden', !!show);
+            conf.classList.toggle('hidden', !show);
+        }
+        async function dchkConfirmYes(btn) {
+            if (!dchkPendingSubmitFn) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting…';
+            await window[dchkPendingSubmitFn]();
+            if (document.body.contains(btn)) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Yes, submit'; }
+        }
+
         function dchkRenderFooter(record) {
             const footer = document.getElementById('dchkModalFooter');
-            const listClass = 'space-y-2.5 mb-2.5 max-h-[45vh] overflow-y-auto pr-1';
-            const submitBtn = (fn) => `
-                <div class="flex items-center justify-end gap-2">
-                    <button type="button" id="dchkSubmitReviewBtn" onclick="${fn}()" disabled
-                        class="px-3.5 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">Submit Review</button>
+            // Ang mga desisyon ay nasa scrollable body; sa footer ang progress + Submit para laging kita
+            const area = document.getElementById('dchkDecisionArea') || footer;
+            const listClass = 'space-y-2.5 mb-3';
+            const submitBtn = (fn) => {
+                dchkPendingSubmitFn = fn;
+                return `
+                <div class="mb-2.5">
+                    <div class="flex items-center justify-between text-[11px] font-semibold mb-1"><span id="dchkDecisionProgress"></span></div>
+                    <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden"><div id="dchkDecisionBar" class="h-full bg-amber-600 rounded-full transition-all duration-300" style="width:0%"></div></div>
+                </div>
+                <div id="dchkSubmitIdle" class="flex items-center justify-end gap-2">
+                    <button type="button" onclick="dchkClosePanel()" class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button type="button" id="dchkSubmitReviewBtn" onclick="dchkAskConfirm(true)" disabled
+                        class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-paper-plane"></i> Submit review</button>
+                </div>
+                <div id="dchkSubmitConfirm" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p class="text-[12.5px] font-semibold text-amber-900"><i class="fa-solid fa-circle-question mr-1"></i>Submit this review?</p>
+                    <p id="dchkConfirmText" class="text-[11.5px] text-gray-700 mt-1"></p>
+                    <div class="flex justify-end gap-2 mt-2.5">
+                        <button type="button" onclick="dchkAskConfirm(false)" class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Go back</button>
+                        <button type="button" onclick="dchkConfirmYes(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg"><i class="fa-solid fa-check"></i> Yes, submit</button>
+                    </div>
                 </div>`;
+            };
 
             if (record.review_target === '3d_only') {
                 dchkBuildDecisions([['design_3d', record.design_3d_files]]);
-                footer.innerHTML = `
+                area.innerHTML = `
+                    <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-gavel mr-1 text-amber-700"></i>Your decision · 3D only</p>
                     <div class="${listClass}">${dchkSlotDecisionCard('design_3d', '3D File', record.design_3d_files)}</div>
-                    ${submitBtn('dchkSubmitReview3d')}
-                    <p class="text-[11px] text-gray-400 mt-2">Sending any 3D file back for revision will also reopen the 2D file for rework, since 3D is derived from it.</p>`;
+                    <p class="text-[11px] text-gray-500 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1.5"><i class="fa-solid fa-circle-info mr-1 text-violet-500"></i>Sending any 3D file back for revision will also reopen the 2D file for rework, since 3D is derived from it.</p>`;
+                footer.innerHTML = submitBtn('dchkSubmitReview3d');
                 dchkUpdateSubmitState();
                 return;
             }
 
             if (record.review_target === 'none') {
                 dchkDecisions = {};
+                dchkPendingSubmitFn = null;
                 const reviewedLine = record.reviewed_at
-                    ? `<p class="text-[11px] text-gray-400">Reviewed ${dchkFormatDateTimeLong(record.reviewed_at)}</p>` : '';
+                    ? `<p class="text-[11px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>Reviewed ${dchkFormatDateTimeLong(record.reviewed_at)}</p>` : '';
                 footer.innerHTML = `
                     <div class="flex items-center justify-between gap-3">
-                        <div>${dchkStatusBadgeWithRow(record)}${reviewedLine}</div>
+                        <div class="min-w-0"><div class="flex flex-wrap gap-1">${dchkStatusBadgeWithRow(record)}</div>${reviewedLine}</div>
                         <button type="button" onclick="dchkClosePanel()"
-                            class="px-3.5 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+                            class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Close</button>
                     </div>`;
                 return;
             }
@@ -699,14 +801,15 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             if (record.include_3d) slots.push(['design_3d', record.design_3d_files]);
             dchkBuildDecisions(slots);
 
-            footer.innerHTML = `
+            area.innerHTML = `
+                <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-gavel mr-1 text-amber-700"></i>Your decision</p>
                 <div class="${listClass}">
                     ${dchkSlotDecisionCard('design_2d', '2D File', record.design_2d_files)}
                     ${dchkSlotDecisionCard('quotation', 'Quotation File', record.quotation_files)}
                     ${record.include_3d ? dchkSlotDecisionCard('design_3d', '3D File', record.design_3d_files) : ''}
                 </div>
-                ${submitBtn('dchkSubmitReview')}
-                ${record.include_3d ? `<p class="text-[11px] text-gray-400 mt-2">Sending any 3D file back for revision will also send the 2D files back, since 3D is derived from them.</p>` : ''}`;
+                ${record.include_3d ? `<p class="text-[11px] text-gray-500 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1.5"><i class="fa-solid fa-circle-info mr-1 text-violet-500"></i>Sending any 3D file back for revision will also send the 2D files back, since 3D is derived from them.</p>` : ''}`;
+            footer.innerHTML = submitBtn('dchkSubmitReview');
 
             dchkUpdateSubmitState();
         }
@@ -723,7 +826,9 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             if (dchkLastRows.length) dchkRenderRows(dchkLastRows);
 
             document.getElementById('dchkModalControlNo').textContent = 'Loading…';
-            body.innerHTML = `<div class="space-y-2 py-1">${Array.from({ length: 6 }).map(() => `<div class="h-4 rounded bg-gray-100 animate-pulse"></div>`).join('')}</div>`;
+            document.getElementById('dchkModalClient').textContent = '';
+            document.getElementById('dchkModalBadges').innerHTML = '';
+            body.innerHTML = `<div class="space-y-3">${Array.from({ length: 4 }).map(() => `<div class="h-14 rounded-xl bg-gray-100 animate-pulse"></div>`).join('')}</div>`;
             footer.innerHTML = '';
 
             overlay.classList.remove('hidden');
@@ -732,6 +837,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             try {
                 const res = await fetch(`${DCHK_AJAX_URL}?action=detail&id=${id}`);
                 const data = await res.json();
+                if (dchkCurrentId !== id) return;
 
                 if (!data.success) {
                     body.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">${dchkEscapeHtml(data.message || 'Record not found.')}</p>`;
@@ -740,22 +846,39 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 
                 const r = data.record;
                 document.getElementById('dchkModalControlNo').textContent = r.control_no;
+                document.getElementById('dchkModalClient').textContent = r.client_name || '';
+                document.getElementById('dchkModalBadges').innerHTML = dchkStatusBadgeWithRow(r);
                 const showsThreeD = r.include_3d || r.design_3d_stage !== 'Locked';
+                const due = dchkDaysLeft(r.target_completion_date);
 
-                body.innerHTML = [
-                    dchkDetailRow('Client', dchkEscapeHtml(r.client_name)),
-                    dchkDetailRow('Contact Number', dchkEscapeHtml(r.contact_number)),
-                    dchkDetailRow('Project Type', dchkEscapeHtml(r.project_type) || '—'),
-                    dchkDetailRow('Contract Amount', dchkFormatCurrency(r.contract_amount)),
-                    dchkDetailRowHighlight('Target Completion Date', dchkFormatDate(r.target_completion_date)),
-                    dchkDetailRow('2D File', dchkFileDetail(r.design_2d_files, r.design_2d_uploader_name, r.design_2d_uploaded_role)),
-                    dchkDetailRow('Quotation File', dchkFileDetail(r.quotation_files, r.quotation_uploader_name, r.quotation_uploaded_role)),
-                    showsThreeD ? dchkDetailRow('3D File', dchkFileDetail(r.design_3d_files, r.design_3d_uploader_name, r.design_3d_uploaded_role)) : '',
-                    dchkDetailRow('Submitted', dchkFormatDateTimeLong(r.submitted_at)),
-                    dchkFileReviewSummary('2D Review', r.design_2d_review_status, r.design_2d_remarks),
-                    dchkFileReviewSummary('Quotation Review', r.quotation_review_status, r.quotation_remarks),
-                    showsThreeD ? dchkFileReviewSummary('3D Review', r.design_3d_review_status, r.design_3d_remarks) : '',
-                ].join('');
+                body.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            ${dchkTile('Contract amount', 'fa-peso-sign', dchkFormatCurrency(r.contract_amount))}
+                            ${dchkTile('Target completion', 'fa-flag', dchkFormatDate(r.target_completion_date), due ? `<span class="${due.cls}">${due.text}</span>` : '')}
+                        </div>
+
+                        <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                            <p class="px-4 py-2.5 border-b border-gray-100 text-[10.5px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-user mr-1 text-amber-700"></i>Client &amp; project</p>
+                            <div class="px-4 py-1">
+                                ${dchkDetailRow('Client', `<span class="capitalize">${dchkEscapeHtml(r.client_name)}</span>`)}
+                                ${dchkDetailRow('Contact number', r.contact_number ? `<a href="tel:${dchkEscapeHtml(String(r.contact_number).replace(/[^\d+]/g, ''))}" class="text-amber-700 hover:underline">${dchkEscapeHtml(r.contact_number)}</a>` : '—')}
+                                ${dchkDetailRow('Project type', `<span class="capitalize">${dchkEscapeHtml(r.project_type) || '—'}</span>`)}
+                                ${dchkDetailRow('Submitted', dchkFormatDateTimeLong(r.submitted_at))}
+                            </div>
+                        </section>
+
+                        <section>
+                            <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-clipboard-list mr-1 text-amber-700"></i>Current review status</p>
+                            <div class="space-y-2">
+                                ${dchkSlotSummary('2D', '2d', r.design_2d_review_status, r.design_2d_remarks, r.design_2d_files, r.design_2d_uploader_name, r.design_2d_uploaded_role)}
+                                ${dchkSlotSummary('Quotation', 'quotation', r.quotation_review_status, r.quotation_remarks, r.quotation_files, r.quotation_uploader_name, r.quotation_uploaded_role)}
+                                ${showsThreeD ? dchkSlotSummary('3D', '3d', r.design_3d_review_status, r.design_3d_remarks, r.design_3d_files, r.design_3d_uploader_name, r.design_3d_uploaded_role) : ''}
+                            </div>
+                        </section>
+
+                        <section id="dchkDecisionArea" class="pt-1"></section>
+                    </div>`;
 
                 dchkRenderFooter(r);
             } catch (e) {
