@@ -149,6 +149,25 @@ function bomFetchOne(mysqli $conn, int $bomId): ?array
     if (!$bom)
         return null;
 
+    // Walang naka-save na pirma ng nag-request (hal. ginawa ang BOM bago naidagdag ang column):
+    // kunin ang kasalukuyang pirma ng gumawa ng BOM at i-save na rin para sa susunod.
+    if (empty($bom['requested_by_signature_path']) && (int) ($bom['created_by'] ?? 0) > 0) {
+        $sig = bomFetchRequesterInfo($conn, (int) $bom['created_by'])['signature_path'] ?? null;
+        if ($sig) {
+            $bom['requested_by_signature_path'] = $sig;
+            if (array_key_exists('requested_by_signature_path', $bom)) {
+                try {
+                    $fix = $conn->prepare("UPDATE noblecrm_bom SET requested_by_signature_path = ? WHERE id = ? AND (requested_by_signature_path IS NULL OR requested_by_signature_path = '')");
+                    $fix->bind_param('si', $sig, $bomId);
+                    $fix->execute();
+                    $fix->close();
+                } catch (Throwable $e) {
+                    // display lang kung hindi ma-save
+                }
+            }
+        }
+    }
+
     $itemsStmt = $conn->prepare("SELECT * FROM noblecrm_bom_items WHERE bom_id = ? ORDER BY item_no ASC");
     $itemsStmt->bind_param('i', $bomId);
     $itemsStmt->execute();
