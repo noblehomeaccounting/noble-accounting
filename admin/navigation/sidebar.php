@@ -97,9 +97,9 @@ if ($role === ROLE_ACCOUNTING) {
         $add('Manage', $I('/accountinggeneralsheet', 'fa-solid fa-clipboard-list', 'General Sheet'));
         $add('Manage', $I('/cashvoucherdashboard', 'fa-solid fa-ticket-simple', 'Approval & Voucher', 'unpreparedVoucher', 'Approval Cash Voucher'));
 
-        $add('CRM Manage', $I('/crmaccounting', 'fa-solid fa-folder-tree', 'CRM List'));
-        $add('PO Manage', $I('/accountingpurchaseorder', 'fa-solid fa-cart-flatbed', 'Purchase Order List'));
-        $add('Billing', $I('/accountingbilling', 'fa-solid fa-file-invoice-dollar', 'Progress Billing', null, 'Billing'));
+        $add('CRM Manage', $I('/crmaccounting', 'fa-solid fa-folder-tree', 'CRM List', 'depositWaiting'));
+        $add('PO Manage', $I('/accountingpurchaseorder', 'fa-solid fa-cart-flatbed', 'Purchase Order List', 'poToReview'));
+        $add('Billing', $I('/accountingbilling', 'fa-solid fa-file-invoice-dollar', 'Progress Billing', 'billingPending', 'Billing'));
     }
     if ($isStaff) {
         $add('Main', $I('/accountingstaffdashboard', 'fa-solid fa-chart-column', 'Dashboard Records'));
@@ -147,15 +147,15 @@ if ($role === ROLE_DESIGNER) {
     }
     $add('Manage', $I('/crmdesigner', 'fa-solid fa-compass-drafting', 'CRM Designer'));
     if ($isHead) {
-        $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Check Designer Quotation'));
+        $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Check Designer Quotation', 'designerReview'));
     }
 }
 
 if ($role === ROLE_SUPERADMIN) {
     if ($isMainBranch) {
-        $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Quotation', null, '2D & Quotation Approval'));
+        $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Quotation', 'finalReview', '2D & Quotation Approval'));
     }
-    $add('Main', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'E-Wood Management'));
+    $add('Main', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'E-Wood Management', 'ewoodPending'));
 
     $add('Tracking', $I('/monitoring', 'fa-solid fa-chart-simple', 'Monitoring & WorkBench', null, 'Monitoring'));
     $add('Tracking', $I('/purchaseorderapproval', 'fa-solid fa-file-signature', 'Purchase Order Approval', null, 'Purchase Order'));

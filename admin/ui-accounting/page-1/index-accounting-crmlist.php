@@ -33,7 +33,7 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
                 <div>
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Accounting · CRM</p>
                     <h1 class="text-gray-900 text-xl font-semibold">Approved 2D &amp; Quotation</h1>
-                    <p class="text-gray-400 text-xs mt-0.5">Log the client's deposit to give the <b class="text-gray-600">Notice to Proceed</b> — production starts after that.</p>
+                    <p class="text-gray-400 text-xs mt-0.5">Record each client payment with its receipt, then give the <b class="text-gray-600">Notice to Proceed</b> — production starts after that.</p>
                 </div>
                 <a href="<?= BASE_URL ?>/accountingpaymentmethods"
                     class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-amber-700 transition-colors whitespace-nowrap">
@@ -168,6 +168,9 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
         const acctIsNtp = r => r.deposit_status === 'Notice to Proceed';
 
         function acctListDepositBadge(r) {
+            if (!acctIsNtp(r) && Number(r.payment_count) > 0) {
+                return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-sky-50 text-sky-700 border-sky-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>Paid · waiting for NTP</span>`;
+            }
             return acctIsNtp(r)
                 ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-green-50 text-green-700 border-green-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Notice to Proceed</span>`
                 : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Hold · waiting for deposit</span>`;
@@ -242,7 +245,7 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
                               row.project_type ? acctListEscapeHtml(row.project_type) : ''].filter(Boolean).join('<span class="mx-1.5 text-gray-300">·</span>');
                 const action = ntp
                     ? `<button type="button" onclick="acctListGoToDetail(${row.id})" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 whitespace-nowrap">View <i class="fa-solid fa-chevron-right text-[9px]"></i></button>`
-                    : `<button type="button" onclick="acctListGoToDetail(${row.id})" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm whitespace-nowrap"><i class="fa-solid fa-money-bill-wave"></i> Log Deposit</button>`;
+                    : `<button type="button" onclick="acctListGoToDetail(${row.id})" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm whitespace-nowrap"><i class="fa-solid ${Number(row.payment_count) > 0 ? 'fa-flag-checkered' : 'fa-money-bill-wave'}"></i> ${Number(row.payment_count) > 0 ? 'Payments / NTP' : 'Record Payment'}</button>`;
                 return `
                 <article class="relative bg-white border ${row.is_read ? 'border-gray-200 hover:border-gray-300' : 'border-amber-200 hover:border-amber-300'} rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-sm" onclick="acctListGoToDetail(${row.id})">
                     <span class="absolute left-0 top-0 bottom-0 w-1 ${ntp ? 'bg-green-500' : 'bg-amber-400'}"></span>
@@ -261,6 +264,7 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
                         <div class="basis-[150px]">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">Contract</p>
                             <p class="text-gray-900 text-sm font-bold tabular-nums mt-0.5">${acctListCurrency(row.contract_amount)}</p>
+                            ${Number(row.payment_count) > 0 ? `<p class="text-[10.5px] text-gray-500 tabular-nums">Paid <b class="text-green-700">${acctListCurrency(row.paid_total)}</b>${Number(row.balance) > 0 ? ` · Bal <b class="text-amber-700">${acctListCurrency(row.balance)}</b>` : ' · <b class="text-green-700">Fully paid</b>'}</p>` : '<p class="text-[10.5px] text-gray-400">No payment yet</p>'}
                         </div>
                         <div class="basis-[170px]">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Deposit</p>
@@ -284,7 +288,7 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
                     if (!silent) crmShowToast('Failed to load submissions.', 'error');
                     return;
                 }
-                const signature = JSON.stringify(data.rows.map(r => `${r.id}:${r.is_read}:${r.deposit_status}`)) + acctListSearchTerm;
+                const signature = JSON.stringify(data.rows.map(r => `${r.id}:${r.is_read}:${r.deposit_status}:${r.paid_total}:${r.payment_count}`)) + acctListSearchTerm;
                 if (signature !== acctListLastSignature || !silent) {
                     acctListRows = data.rows;
                     acctListLastSignature = signature;

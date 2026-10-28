@@ -6,6 +6,9 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 $crmListResetUrl = BASE_URL . '/crmlistresetajax';
 // Pag-edit ng inquiry — binubuksan ang buong New Client Inquiry form (crm-main.php) sa edit mode
 $crmInquiryFormUrl = BASE_URL . '/crmsales';
+// Track ng bawat inquiry (nasaan na, at kung kailangan nang ilagay ang contract) — hiwalay na endpoint
+$crmListProgressUrl = BASE_URL . '/crmlistprogressajax';
+$crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
 ?>
 
 <div class="max-w-6xl mx-auto">
@@ -25,13 +28,14 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
         </div>
 
         <!-- Stage counters (= quick filter) -->
-        <div id="crmStageTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div id="crmStageTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <?php foreach ([
                 ['', 'All', 'fa-layer-group', 'text-gray-900'],
                 ['schedule', 'To schedule', 'fa-calendar-plus', 'text-amber-700'],
                 ['sitevisit', 'Site visit', 'fa-ruler-combined', 'text-orange-700'],
                 ['quotation', '2D & Quotation', 'fa-file-pen', 'text-blue-700'],
                 ['stopped', 'Not proceeding', 'fa-ban', 'text-red-600'],
+                ['contract', 'Needs contract', 'fa-file-signature', 'text-rose-700'],
             ] as [$val, $label, $icon, $cls]): ?>
                 <button type="button" data-stage="<?= $val ?>"
                     class="crm-stage-tab text-left rounded-xl border px-3.5 py-2 transition-colors">
@@ -242,6 +246,10 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
     const CRM_2D_QUOTATION_URL = <?= json_encode($crm2dQuotationUrl) ?>;
     const CRM_RESET_URL = <?= json_encode($crmListResetUrl) ?>;
     const CRM_INQUIRY_FORM_URL = <?= json_encode($crmInquiryFormUrl) ?>;
+    const CRM_PROGRESS_URL = <?= json_encode($crmListProgressUrl) ?>;
+    const CRM_2D_FINAL_URL = <?= json_encode($crm2dQuotationFinalUrl) ?>;
+    let crmProgress = {};          // { [inquiryId]: { phase, phase_label, status, tone, note, contract } }
+    let crmProgressSig = '';
     let crmDetailRecord = null;
     const CRM_CURRENT_USER_ID = <?= (int) ($_SESSION['account_id'] ?? 0) ?>;
     const CRM_POLL_INTERVAL_MS = 8000;
@@ -287,7 +295,9 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
 
     function crmFilteredRows(rows, ignoreStage = false) {
         return rows.filter(r => {
-            if (!ignoreStage && crmStageFilter && crmStageOf(r) !== crmStageFilter) return false;
+            if (!ignoreStage && crmStageFilter === 'contract') {
+                if (!crmNeedsContract(r)) return false;
+            } else if (!ignoreStage && crmStageFilter && crmStageOf(r) !== crmStageFilter) return false;
             if (crmFilters.status && r.status !== crmFilters.status) return false;
 
             if (crmFilters.designer === '__none__') {
@@ -527,6 +537,13 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
                    </button>`;
         }
 
+        if (crmNeedsContract(row)) {
+            return `<a href="${CRM_2D_FINAL_URL}?id=${encodeURIComponent(row.id)}"
+                    class="${sizeCls} inline-flex items-center gap-1.5 font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 shadow-sm">
+                    <i class="fa-solid fa-file-signature"></i> Set contract
+               </a>`;
+        }
+
         const isDone = row.status === 'In Progress';
         return isDone
             ? `<button type="button" onclick="crm2dQuotation(${row.id})"
@@ -582,9 +599,76 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
     // ═══════════════════════════════════════════════════════════
     function crmRenderStageCounts(allRows) {
         const base = crmFilteredRows(allRows, true);
-        const counts = { '': base.length, schedule: 0, sitevisit: 0, quotation: 0, stopped: 0 };
-        base.forEach(r => counts[crmStageOf(r)]++);
+        const counts = { '': base.length, schedule: 0, sitevisit: 0, quotation: 0, stopped: 0, contract: 0 };
+        base.forEach(r => { counts[crmStageOf(r)]++; if (crmNeedsContract(r)) counts.contract++; });
         document.querySelectorAll('[data-stage-count]').forEach(el => el.textContent = counts[el.dataset.stageCount] ?? 0);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TRACK (crmlistprogressajax): nasaan na + kailangan na ba ang contract
+    // ═══════════════════════════════════════════════════════════
+    const CRM_TRACK_STEPS = ['Schedule', 'Site visit', 'Initial 2D', 'Customer', 'Final & Contract', 'Cutting'];
+    const CRM_TONE = {
+        amber: { text: 'text-amber-800', dot: 'bg-amber-500', box: 'bg-amber-50 border-amber-200 text-amber-900' },
+        blue: { text: 'text-blue-700', dot: 'bg-blue-500', box: 'bg-blue-50 border-blue-200 text-blue-900' },
+        red: { text: 'text-red-700', dot: 'bg-red-500', box: 'bg-red-50 border-red-200 text-red-900' },
+        green: { text: 'text-emerald-700', dot: 'bg-emerald-500', box: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+        gray: { text: 'text-gray-500', dot: 'bg-gray-400', box: 'bg-gray-50 border-gray-200 text-gray-700' },
+    };
+    const crmNeedsContract = r => crmProgress[r.id]?.contract === 'needed';
+
+    // 6 na segment; tapos = amber-700, kasalukuyan = kulay ng tone
+    function crmTrackBar(p, size = 'sm') {
+        const h = size === 'lg' ? 'h-2' : 'h-1.5';
+        return `<div class="flex items-center gap-1" aria-label="Step ${p.phase} of 6">${CRM_TRACK_STEPS.map((_, i) => {
+            const n = i + 1;
+            const cls = p.phase === 0 ? 'bg-gray-200'
+                : n < p.phase ? 'bg-amber-700'
+                : n === p.phase ? (CRM_TONE[p.tone] || CRM_TONE.blue).dot
+                : 'bg-gray-200';
+            return `<span class="flex-1 ${h} rounded-full ${cls}"></span>`;
+        }).join('')}</div>`;
+    }
+
+    function crmContractChip(p) {
+        if (!p) return '';
+        if (p.contract === 'needed') return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold border whitespace-nowrap bg-rose-50 text-rose-700 border-rose-200"><span class="relative flex w-1.5 h-1.5"><span class="absolute inline-flex w-full h-full rounded-full bg-rose-400 opacity-75 animate-ping"></span><span class="relative inline-flex w-1.5 h-1.5 rounded-full bg-rose-500"></span></span>Contract needed</span>`;
+        if (p.contract === 'set') return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fa-solid fa-check text-[9px]"></i>Contract set</span>`;
+        if (p.contract === 'locked') return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap bg-gray-50 text-gray-600 border-gray-200"><i class="fa-solid fa-lock text-[9px]"></i>Contract locked</span>`;
+        return '';
+    }
+
+    function crmTrackRow(row) {
+        const p = crmProgress[row.id];
+        if (!p) return `<div class="pl-5 pr-4 pb-3 -mt-1"><div class="h-1.5 rounded-full bg-gray-100 animate-pulse"></div></div>`;
+        const t = CRM_TONE[p.tone] || CRM_TONE.blue;
+        return `<div class="pl-5 pr-4 pb-3 -mt-1">
+            ${crmTrackBar(p)}
+            <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                <span class="font-bold uppercase tracking-wide text-[9.5px] text-gray-400">${p.phase ? `Step ${p.phase}/6 · ` : ''}${crmEscapeHtml(p.phase_label)}</span>
+                <span class="font-semibold ${t.text}">${crmEscapeHtml(p.status)}</span>
+                <span class="text-gray-400 min-w-0 truncate basis-full sm:basis-auto sm:flex-1">${crmEscapeHtml(p.note)}</span>
+                ${crmContractChip(p)}
+            </div>
+        </div>`;
+    }
+
+    async function crmFetchProgress(rows) {
+        const ids = rows.map(r => r.id).join(',');
+        if (!ids) { crmProgress = {}; return false; }
+        try {
+            const res = await fetch(`${CRM_PROGRESS_URL}?action=summary&ids=${encodeURIComponent(ids)}`, { cache: 'no-store' });
+            const data = await res.json();
+            if (!data.success) { console.warn('crmFetchProgress:', data.message); return false; }
+            const sig = JSON.stringify(data.items || {});
+            if (sig === crmProgressSig) return false;
+            crmProgressSig = sig;
+            crmProgress = data.items || {};
+            return true;
+        } catch (e) {
+            console.error('crmFetchProgress:', e);
+            return false;
+        }
     }
 
     function crmRowCard(row) {
@@ -637,6 +721,7 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
                 </dl>
                 <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${crmActionButton(row)}</div>
             </div>
+            ${crmTrackRow(row)}
         </article>`;
     }
 
@@ -675,6 +760,11 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
             if (signature !== crmListLastSignature) {
                 crmRenderRows(data.rows);
                 crmListLastSignature = signature;
+            }
+            // Track: kapag may nagbago (hal. umusad ang designer), i-render ulit
+            if (await crmFetchProgress(data.rows)) {
+                crmRenderRows(crmListRawRows);
+                if (crmDetailCurrentId) crmRenderDetailTrack(crmDetailCurrentId);
             }
 
         } catch (e) {
@@ -829,6 +919,7 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
                     <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid ${next[1]}"></i></span>
                     <div class="min-w-0"><p class="text-sm font-semibold">${next[2]}</p><p class="text-xs opacity-80 mt-0.5">${next[3]}</p></div>
                 </div>
+                <div id="crmDetailTrack"></div>
                 ${crmCanManage(r) ? `<div class="flex justify-end -mb-1">
                     <a href="${CRM_INQUIRY_FORM_URL}?edit=${encodeURIComponent(r.id)}"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
@@ -855,11 +946,53 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
                 ].join(''))}
                 ${crmResetSection(r)}
             </div>`;
+            crmRenderDetailTrack(r.id);
 
         } catch (e) {
             console.error('crmOpenDetailModal:', e);
             body.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">Connection error. Please try again.</p>`;
         }
+    }
+
+    // Track sa detail panel: 6 na hakbang + contract
+    function crmRenderDetailTrack(id) {
+        const box = document.getElementById('crmDetailTrack');
+        const p = crmProgress[id];
+        if (!box || !p || crmDetailCurrentId !== id) return;
+        const t = CRM_TONE[p.tone] || CRM_TONE.blue;
+        const r = crmDetailRecord || {};
+        const steps = CRM_TRACK_STEPS.map((label, i) => {
+            const n = i + 1, done = p.phase > n, cur = p.phase === n;
+            return `<li class="flex items-center gap-2 text-[12px] ${cur ? 'font-semibold text-gray-900' : done ? 'text-gray-600' : 'text-gray-400'}">
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${done ? 'bg-amber-700 text-white' : cur ? t.dot + ' text-white' : 'bg-gray-100 text-gray-400'}">${done ? '<i class="fa-solid fa-check text-[9px]"></i>' : n}</span>
+                ${label}${cur ? `<span class="ml-auto text-[11px] font-semibold ${t.text}">${crmEscapeHtml(p.status)}</span>` : ''}
+            </li>`;
+        }).join('');
+
+        let contract = '';
+        if (p.contract === 'needed') {
+            contract = `<div class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 flex flex-wrap items-center gap-2">
+                <p class="flex-1 min-w-[180px] text-[12px] text-rose-900"><i class="fa-solid fa-file-signature mr-1"></i><b>Time to set the contract.</b> ${crmEscapeHtml(p.note)}</p>
+                <a href="${CRM_2D_FINAL_URL}?id=${encodeURIComponent(id)}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shrink-0">Set contract <i class="fa-solid fa-arrow-right text-[10px]"></i></a>
+            </div>`;
+        } else if (p.contract === 'set') {
+            contract = `<p class="mt-3 text-[11.5px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><i class="fa-solid fa-circle-check mr-1"></i>Contract set · ${crmFormatCurrency(r.contract_amount)}. You can still change it until the Final is submitted.</p>`;
+        } else if (p.contract === 'locked') {
+            contract = `<p class="mt-3 text-[11.5px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"><i class="fa-solid fa-lock mr-1"></i>Contract locked · ${crmFormatCurrency(r.contract_amount)}.</p>`;
+        } else if (p.phase > 0) {
+            contract = `<p class="mt-3 text-[11px] text-gray-400"><i class="fa-regular fa-clock mr-1"></i>The contract is set in step 5 (Final), after the customer approves the Initial files.</p>`;
+        }
+
+        box.innerHTML = `<section class="bg-white border border-gray-200 rounded-xl p-4">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-route mr-1 text-amber-700"></i>Track</p>
+                <span class="text-[11px] text-gray-400">${p.phase ? `Step ${p.phase} of 6` : crmEscapeHtml(p.phase_label)}</span>
+            </div>
+            ${crmTrackBar(p, 'lg')}
+            <p class="mt-2 text-[12px] ${t.text}">${crmEscapeHtml(p.note)}</p>
+            <ol class="mt-3 space-y-1.5">${steps}</ol>
+            ${contract}
+        </section>`;
     }
 
     // ═══════════════════════════════════════════════════════════

@@ -40,6 +40,12 @@ if (!function_exists('getSidebarCounts')) {
             'toRelease' => 0,
             'followupWaiting' => 0,
             'ewoodTodo' => 0,
+            'ewoodPending' => 0,
+            'designerReview' => 0,
+            'finalReview' => 0,
+            'depositWaiting' => 0,
+            'poToReview' => 0,
+            'billingPending' => 0,
         ];
 
         // Pending na inquiry ng sales user (CRM List)
@@ -134,6 +140,96 @@ if (!function_exists('getSidebarCounts')) {
                 );
             } catch (Throwable $e) {
                 error_log('sidebar ewoodTodo: ' . $e->getMessage());
+            }
+        }
+
+        // E-Wood Management (Superadmin): mga upload ng Cutting na naghihintay ng QR approval
+        // (parehong kondisyon ng "To review" sa ewood.php)
+        if ($role === ROLE_SUPERADMIN) {
+            try {
+                $c['ewoodPending'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblecrm_cuttinglistprogression
+                     WHERE COALESCE(qr_approved, 0) = 0
+                       AND COALESCE(qr_rejected, 0) = 0
+                       AND photos IS NOT NULL AND photos <> ''"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar ewoodPending: ' . $e->getMessage());
+            }
+        }
+
+        // Check Designer Quotation (Designer Head): Initial 2D & Quotation na kailangang i-review —
+        // "Queuing" (Waiting for Approval) + approved na 2D na may 3D na naghihintay ng approval
+        if ($role === ROLE_DESIGNER && $isHead) {
+            try {
+                $c['designerReview'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblecrm_2dquotation
+                     WHERE status = 'Waiting for Approval'
+                        OR (status = 'Approved' AND design_3d_stage = 'Waiting for Approval')"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar designerReview: ' . $e->getMessage());
+            }
+        }
+
+        // 2D & Quotation (Superadmin, Final): pinakabagong Final ng bawat inquiry na may "Review" —
+        // Waiting for Approval, o approved na may 3D na naghihintay (parehong review_target ng check2dquotationajax)
+        if ($role === ROLE_SUPERADMIN) {
+            try {
+                $c['finalReview'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrm_2dquotation_final q
+                     JOIN (SELECT inquiry_id, MAX(id) AS max_id FROM noblecrm_2dquotation_final GROUP BY inquiry_id) latest
+                         ON latest.max_id = q.id
+                     JOIN noblecrminquiry i ON i.id = q.inquiry_id
+                     WHERE q.status = 'Waiting for Approval'
+                        OR (q.status = 'Approved' AND COALESCE(q.design_3d_stage, 'Locked') = 'Waiting for Approval')"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar finalReview: ' . $e->getMessage());
+            }
+        }
+
+        // CRM List (Accounting Head): approved na 2D & Quotation na naghihintay ng deposit
+        // (parehong "Waiting for deposit" ng index-accounting-crmlist.php — pinakabagong record bawat inquiry)
+        if ($role === ROLE_ACCOUNTING && $isHead) {
+            try {
+                $c['depositWaiting'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrm_2dquotation q
+                     JOIN (SELECT inquiry_id, MAX(id) AS max_id FROM noblecrm_2dquotation GROUP BY inquiry_id) latest
+                         ON latest.max_id = q.id
+                     JOIN noblecrminquiry i ON i.id = q.inquiry_id
+                     WHERE q.status = 'Approved'
+                       AND COALESCE(q.deposit_status, 'Hold') <> 'Notice to Proceed'"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar depositWaiting: ' . $e->getMessage());
+            }
+        }
+
+        if ($role === ROLE_ACCOUNTING && $isHead) {
+            // Purchase Order List: approved na ng CEO pero hindi pa nire-review/pinipirmahan ng Accounting Head
+            try {
+                $c['poToReview'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepurchaserequest WHERE status = 'Approved' AND reviewed_at IS NULL"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar poToReview: ' . $e->getMessage());
+            }
+            // Progress Billing: ipinasa ng PC, naghihintay ng pirma ng Accounting Head (Noted by)
+            try {
+                $c['billingPending'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepc_billing WHERE status = 'pending_head'"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar billingPending: ' . $e->getMessage());
             }
         }
 

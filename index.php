@@ -321,6 +321,7 @@ $adminRoutes = [
     'crmdesignerfeedbackajax',
     'crmdesignerprogressajax',
     'crmlistresetajax',
+    'crmlistprogressajax',
 
 ];
 
@@ -636,6 +637,7 @@ $routes = [
     'crmdesignerfeedbackajax'          => 'admin/crm-management/backend/page-3/crmdesignerfeedbackajax.php',
     'crmdesignerprogressajax'          => 'admin/crm-management/backend/page-3/crmdesignerprogressajax.php',
     'crmlistresetajax'                 => 'admin/crm-management/backend/page-2/crmlistresetajax.php',
+    'crmlistprogressajax'              => 'admin/crm-management/backend/page-2/crmlistprogressajax.php',
 ];
 
 
