@@ -280,6 +280,13 @@ $supPageUrl = BASE_URL . '/crmsupplier';
                                     </div>
 
                                     <div class="p-5 space-y-4">
+                                        <!-- Revise mode: naibalik ng Superadmin → ayusin ang dating BOM (parehong BOM number) -->
+                                        <div id="ewoodBomReviseNote" class="hidden rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-[11.5px] text-red-900 leading-relaxed">
+                                            <p class="font-semibold"><i class="fa-solid fa-pen-to-square mr-1"></i>Fix the BOM if needed — <span id="ewoodBomReviseNo" class="font-mono"></span></p>
+                                            <p id="ewoodBomReviseReason" class="hidden mt-1 break-words"></p>
+                                            <p class="mt-1 text-red-800/80">The items below are from the BOM that was sent back. Change, add or remove items, then submit. The BOM number stays the same.</p>
+                                            <p id="ewoodBomReviseMissing" class="hidden mt-1.5 font-semibold text-red-700"></p>
+                                        </div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
                                                 <label class="block text-[11px] font-semibold text-gray-600 mb-1.5">Date Needed</label>
@@ -727,7 +734,7 @@ $supPageUrl = BASE_URL . '/crmsupplier';
             if (!isNtp) { tone = 'gray'; icon = 'fa-hourglass-half'; title = 'Waiting for Notice to Proceed'; body = 'Accounting gives the Notice to Proceed once the deposit is in. Uploads stay locked until then.'; }
             else if (!isVerified) { tone = 'gray'; icon = 'fa-hourglass-half'; title = 'Waiting for the 2D file to be verified'; body = 'Verify the 2D file in Cutting List → Verify 2D. Uploads unlock after that.'; }
             else if (!ewoodOv.loaded) { tone = 'gray'; icon = 'fa-spinner fa-spin'; title = 'Checking the latest submission…'; body = ''; }
-            else if (appr === 'Rejected') { tone = 'red'; icon = 'fa-rotate-left'; title = 'Sent back for revision'; body = latest.rejection_remarks ? `Superadmin: “${ewoodEscapeHtml(latest.rejection_remarks)}”. Fix it and upload again.` : 'Fix it and upload again.'; action = 'Upload again'; }
+            else if (appr === 'Rejected') { tone = 'red'; icon = 'fa-rotate-left'; title = 'Sent back for revision'; body = latest.rejection_remarks ? `Superadmin: “${ewoodEscapeHtml(latest.rejection_remarks)}”. Fix it and upload again — you can also correct the BOM.` : 'Fix it and upload again — you can also correct the BOM.'; action = 'Upload again'; }
             else if (appr === 'Pending') { tone = 'blue'; icon = 'fa-qrcode'; title = 'Waiting for the Superadmin’s QR approval'; body = 'Your latest upload and BOM were sent. You can upload again once it is approved or sent back.'; }
             else if (appr === 'Approved' && latest.status === 'Completed') { tone = 'green'; icon = 'fa-circle-check'; title = 'Completed and approved'; body = 'Nothing else to upload for this job.'; }
             else { tone = 'amber'; icon = 'fa-cloud-arrow-up'; title = latest ? 'Ready for the next upload' : 'Ready to upload'; body = 'Choose the progress files, then fill in the Bill of Materials. Both are sent to the Superadmin together.'; action = 'Upload progress'; }
@@ -1361,6 +1368,8 @@ $supPageUrl = BASE_URL . '/crmsupplier';
         const EWOOD_SUBMIT_HTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Submit progress &amp; BOM';
         const EWOOD_RELINK_HTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Submit to Superadmin';
         let ewoodExistingBom = null;   // hindi pa approved na BOM ng job (kung meron)
+        let ewoodReviseBomId = 0;      // > 0 kapag inaayos ang BOM na naibalik (parehong BOM number)
+        const EWOOD_REVISE_HTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Submit progress &amp; updated BOM';
         let ewoodSubmitting = false;
         let ewoodBomConfirmed = false;      // true kapag dumaan na sa double confirmation
         let ewoodUploadQuotationId = null;   // job ng naipadalang progress (para sa discard)
@@ -1378,7 +1387,12 @@ $supPageUrl = BASE_URL . '/crmsupplier';
             ewoodBomConfirmed = false;
             ewoodCurrentProgressionId = null;
             ewoodExistingBom = null;
+            ewoodReviseBomId = 0;
             ewoodSubmitting = false;
+            ewoodBomReviseUi(null);
+            const ewoodForm = document.getElementById('ewoodUploadForm');
+            ewoodForm.querySelector('[name="date_needed"]').value = 'ASAP';
+            ewoodForm.querySelector('[name="general_scope"]').value = 'GENERAL SCOPE';
 
             document.querySelectorAll('#ewoodUploadFields input[name="archive"], #ewoodUploadFields input[name="images[]"], #ewoodUploadFields textarea[name="remarks"]')
                 .forEach(el => { el.disabled = false; el.value = ''; });
@@ -1502,6 +1516,77 @@ $supPageUrl = BASE_URL . '/crmsupplier';
             el.classList.toggle('hidden', !msg);
         }
 
+        // ── Revise mode UI ──
+        function ewoodBomReviseUi(bom, reason = '', missing = 0) {
+            const note = document.getElementById('ewoodBomReviseNote');
+            const btn = document.getElementById('ewoodCreateBomBtn');
+            if (!bom) {
+                note.classList.add('hidden');
+                if (btn && !ewoodSubmitting) btn.innerHTML = EWOOD_SUBMIT_HTML;
+                return;
+            }
+            document.getElementById('ewoodBomReviseNo').textContent = bom.bom_number || '';
+            const r = document.getElementById('ewoodBomReviseReason');
+            r.textContent = reason ? `Superadmin: “${reason}”` : '';
+            r.classList.toggle('hidden', !reason);
+            const m = document.getElementById('ewoodBomReviseMissing');
+            m.textContent = missing ? `${missing} item${missing === 1 ? '' : 's'} could not be matched to the current supplier list (highlighted). Choose the supplier and product again.` : '';
+            m.classList.toggle('hidden', !missing);
+            note.classList.remove('hidden');
+            btn.innerHTML = EWOOD_REVISE_HTML;
+        }
+
+        // Ilagay sa form ang items ng dating BOM; ibinabalik kung ilan ang hindi tumugma sa supplier list
+        function ewoodBomFillRows(items) {
+            const tbody = document.getElementById('ewoodBomItemsBody');
+            tbody.innerHTML = '';
+            ewoodBomRowIndex = 0;
+            let missing = 0;
+            items.forEach(it => {
+                const supName = String(it.supplier || '').trim();
+                const isOut = supName.toUpperCase() === 'OUTSOURCE';
+                const sup = isOut ? null : ewoodCatalog.find(x => x.name.trim().toLowerCase() === supName.toLowerCase());
+                const inCatalog = isOut || (sup && sup.items.some(x => x.item_code === it.item_code));
+                ewoodBomAddRow({ supplier_value: isOut ? EWOOD_OUTSOURCE : (inCatalog ? String(sup.id) : ''), quantity: ewoodQtyFmt(it.quantity) });
+                const tr = tbody.lastElementChild;
+                if (inCatalog) {
+                    tr.querySelector('[name="item_code[]"]').value = it.item_code || '';
+                    tr.querySelector('[name="item_description[]"]').value = it.item_description || '';
+                    tr.querySelector('[name="unit[]"]').value = it.unit || '';
+                } else {
+                    missing++;
+                    tr.classList.add('ring-1', 'ring-red-300');
+                    tr.querySelector('[name="item_description[]"]').placeholder = `Was: ${supName || '—'} · ${it.item_description || it.item_code || ''}`;
+                }
+            });
+            if (!items.length) for (let i = 0; i < 3; i++) ewoodBomAddRow();
+            return missing;
+        }
+
+        // Kunin ang naibalik na BOM at ilagay sa form (true kapag tagumpay)
+        async function ewoodBomLoadForRevise(bomId) {
+            try {
+                if (!ewoodCatalogLoaded) await ewoodLoadCatalog();
+                const res = await fetch(`${BOM_AJAX_URL}?action=view&bom_id=${encodeURIComponent(bomId)}`, { cache: 'no-store' });
+                const data = await ewoodJson(res);
+                if (!data.success || !data.bom) throw new Error(data.message || 'Could not load the BOM.');
+                const bom = data.bom;
+                const form = document.getElementById('ewoodUploadForm');
+                form.querySelector('[name="date_needed"]').value = bom.date_needed || 'ASAP';
+                form.querySelector('[name="general_scope"]').value = bom.general_scope || 'GENERAL SCOPE';
+                const missing = ewoodBomFillRows(bom.items || []);
+                ewoodReviseBomId = Number(bom.id) || 0;
+                ewoodBomConfirmed = false;
+                ewoodBomReviseUi(bom, ewoodOv?.latest?.approval_status === 'Rejected' ? (ewoodOv.latest.rejection_remarks || '') : '', missing);
+                return ewoodReviseBomId > 0;
+            } catch (e) {
+                console.error('ewoodBomLoadForRevise:', e);
+                ewoodReviseBomId = 0;
+                ewoodBomReviseUi(null);
+                return false;
+            }
+        }
+
         // Unang hindi pa approved na BOM ng job (para ikabit imbes na gumawa ng bago)
         async function ewoodBomFindUnapproved(quotationId) {
             try {
@@ -1538,7 +1623,12 @@ $supPageUrl = BASE_URL . '/crmsupplier';
             btn.innerHTML = 'Next: Bill of Materials <i class="fa-solid fa-arrow-right ml-1"></i>';
 
             ewoodStep1Lock(true);
-            if (ewoodExistingBom) {
+            // Naibalik ang BOM → buksan ang form na naka-fill para maayos (kapag nabasa nang maayos)
+            if (ewoodExistingBom && (ewoodReviseBomId === Number(ewoodExistingBom.id) || await ewoodBomLoadForRevise(ewoodExistingBom.id))) {
+                document.getElementById('ewoodBomRelinkedNotice').classList.add('hidden');
+                document.getElementById('ewoodBomSection').classList.remove('hidden');
+                document.getElementById('ewoodBomSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (ewoodExistingBom) {
                 document.getElementById('ewoodBomExistingNo').textContent = ewoodExistingBom.bom_number || '';
                 document.getElementById('ewoodBomSection').classList.add('hidden');
                 document.getElementById('ewoodBomRelinkedNotice').classList.remove('hidden');
@@ -1615,11 +1705,14 @@ $supPageUrl = BASE_URL . '/crmsupplier';
                 formData.delete('images[]');
                 formData.append('progression_id', progressionId);
                 formData.append('confirm_bom', ewoodBomConfirmed ? '1' : '0');
+                if (ewoodReviseBomId > 0) formData.append('bom_id', ewoodReviseBomId);
                 const res = await fetch(`${BOM_AJAX_URL}?action=create`, { method: 'POST', body: formData });
                 const data = await ewoodJson(res);
                 if (!data.success) throw new Error(data.message || 'Could not create the BOM.');
 
-                crmShowToast('Progress and BOM submitted to the Superadmin.', 'success');
+                crmShowToast(data.revised ? `Progress and the updated ${ewoodEscapeHtml(data.bom_number || 'BOM')} were submitted to the Superadmin.` : 'Progress and BOM submitted to the Superadmin.', 'success');
+                ewoodReviseBomId = 0;
+                document.getElementById('ewoodBomReviseNote').classList.add('hidden');
                 document.querySelectorAll('#ewoodBomSection input').forEach(el => { el.disabled = true; });
                 btn.innerHTML = 'Submitted';
                 ewoodSubmitting = false;
@@ -1711,7 +1804,7 @@ $supPageUrl = BASE_URL . '/crmsupplier';
             document.body.style.overflow = 'hidden';
             if (mode === 'create') {
                 ewoodCf.rows = ewoodCfRowsFromForm();
-                ewoodCf.bom = { bom_number: 'New BOM', date_needed: document.querySelector('#ewoodUploadForm [name="date_needed"]').value, general_scope: document.querySelector('#ewoodUploadForm [name="general_scope"]').value };
+                ewoodCf.bom = { bom_number: ewoodReviseBomId > 0 ? `${ewoodExistingBom?.bom_number || 'BOM'} (updated)` : 'New BOM', date_needed: document.querySelector('#ewoodUploadForm [name="date_needed"]').value, general_scope: document.querySelector('#ewoodUploadForm [name="general_scope"]').value };
                 ewoodCfReview();
             } else {
                 ewoodCfSteps(1);
@@ -1826,7 +1919,7 @@ $supPageUrl = BASE_URL . '/crmsupplier';
                 <div class="py-6 text-center max-w-md mx-auto">
                     <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3"><i class="fa-solid fa-paper-plane text-xl"></i></div>
                     <p class="text-base font-semibold text-gray-900">Send this to the Superadmin?</p>
-                    <p class="text-xs text-gray-500 mt-1.5 leading-relaxed">${ewoodCf.mode === 'create' ? `The progress upload and the BOM with <b>${n} item${n === 1 ? '' : 's'}</b>` : `The progress upload with <b>${ewoodEscapeHtml(ewoodCf.bom?.bom_number || 'the existing BOM')}</b>`} will be sent for QR approval.</p>
+                    <p class="text-xs text-gray-500 mt-1.5 leading-relaxed">${ewoodCf.mode === 'create' ? `The progress upload and the ${ewoodReviseBomId > 0 ? `updated <b>${ewoodEscapeHtml(ewoodExistingBom?.bom_number || 'BOM')}</b>` : 'BOM'} with <b>${n} item${n === 1 ? '' : 's'}</b>` : `The progress upload with <b>${ewoodEscapeHtml(ewoodCf.bom?.bom_number || 'the existing BOM')}</b>`} will be sent for QR approval.</p>
                     <div class="mt-4 text-left rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[11.5px] text-red-800 space-y-1">
                         <p><i class="fa-solid fa-lock mr-1"></i>You <b>cannot edit</b> the BOM after sending.</p>
                         <p><i class="fa-solid fa-rotate-left mr-1"></i>If something is wrong, the Superadmin has to send it back first.</p>

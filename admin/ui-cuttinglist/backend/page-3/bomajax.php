@@ -582,38 +582,105 @@ if ($action === 'create') {
         }
     }
 
+    // ── Revise mode: inayos na BOM pagkatapos ibalik ng Superadmin (parehong BOM number) ──
+    // Puwede lang kapag hindi pa approved ang BOM, at ang huling upload na nakakabit dito ay na-reject na.
+    $reviseBomId = intval($_POST['bom_id'] ?? 0);
+    $reviseBom = null;
+    if ($reviseBomId > 0) {
+        if ($progressionId === null) {
+            bomJson(['success' => false, 'message' => 'Upload the progress first before updating the BOM.']);
+        }
+        $rb = $conn->prepare("
+            SELECT b.id, b.bom_number, b.progression_id, b.approved_at,
+                   p.qr_rejected AS prog_rejected, p.qr_approved AS prog_approved
+            FROM noblecrm_bom b
+            LEFT JOIN noblecrm_cuttinglistprogression p ON p.id = b.progression_id
+            WHERE b.id = ? AND b.quotation_id = ? AND b.bom_number NOT LIKE 'TEMP-%'
+            LIMIT 1
+        ");
+        $rb->bind_param('ii', $reviseBomId, $quotationId);
+        $rb->execute();
+        $reviseBom = $rb->get_result()->fetch_assoc();
+        $rb->close();
+
+        if (!$reviseBom) {
+            bomJson(['success' => false, 'message' => 'The BOM to update was not found for this job.']);
+        }
+        if (!empty($reviseBom['approved_at'])) {
+            bomJson(['success' => false, 'message' => 'This BOM is already approved, so it can no longer be changed.']);
+        }
+        $linkedProg = (int) ($reviseBom['progression_id'] ?? 0);
+        $wasSentBack = $linkedProg === 0 || $reviseBom['prog_rejected'] === null || (int) $reviseBom['prog_rejected'] === 1;
+        if (!$wasSentBack && $linkedProg !== $progressionId) {
+            bomJson(['success' => false, 'message' => 'This BOM is still waiting for the Superadmin, so it cannot be changed yet.']);
+        }
+    }
+
     // Lahat (BOM + number + items) sabay na mase-save, o walang mase-save kapag may pumalya
     $conn->begin_transaction();
     try {
 
-    $stmt = $conn->prepare("
-        INSERT INTO noblecrm_bom
-            (quotation_id, progression_id, bom_number, page, date_submitted, date_needed, client_name, general_scope,
-             requested_by, requested_by_title, requested_by_signature_path, noted_by, noted_by_title,
-             received_by, received_by_title, approved_by, approved_by_title, created_by, created_at)
-        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    ");
+    if ($reviseBom) {
+        // Header: bagong petsa, requester at link sa bagong upload — parehong id at BOM number
+        $sets = 'progression_id = ?, date_submitted = ?, date_needed = ?, general_scope = ?, requested_by = ?, requested_by_title = ?';
+        $types = 'isssss';
+        $vals = [$progressionId, $today, $dateNeeded, $generalScope, $requestedBy, $requestedByTitle];
+        try {
+            $colRes = $conn->query("SHOW COLUMNS FROM noblecrm_bom LIKE 'requested_by_signature_path'");
+            if ($colRes && $colRes->num_rows > 0) {
+                $sets .= ', requested_by_signature_path = ?';
+                $types .= 's';
+                $vals[] = $requestedBySignaturePath;
+            }
+        } catch (Throwable $e) {
+            // walang column → walang pirma
+        }
+        $types .= 'i';
+        $vals[] = $reviseBomId;
+        $stmt = $conn->prepare("UPDATE noblecrm_bom SET {$sets} WHERE id = ? AND approved_at IS NULL");
+        $stmt->bind_param($types, ...$vals);
+        $stmt->execute();
+        $stmt->close();
 
-    $stmt->bind_param(
-        'iissssssssssssssi',
-        $quotationId,
-        $progressionId,
-        $placeholderNumber,
-        $today,
-        $dateNeeded,
-        $quotation['client_name'],
-        $generalScope,
-        $requestedBy,
-        $requestedByTitle,
-        $requestedBySignaturePath,
-        $notedBy,
-        $notedByTitle,
-        $receivedBy,
-        $receivedByTitle,
-        $approvedBy,
-        $approvedByTitle,
-        $currentUserId
+        // Palitan ang lahat ng items ng bagong listahan
+        $del = $conn->prepare("DELETE FROM noblecrm_bom_items WHERE bom_id = ?");
+        $del->bind_param('i', $reviseBomId);
+        $del->execute();
+        $del->close();
+
+        $bomId = $reviseBomId;
+        $bomNumber = (string) $reviseBom['bom_number'];
+    } else {
+
+    // Kapag wala pa ang column na requested_by_signature_path sa live DB, i-save pa rin ang BOM
+    // (walang pirma lang sa PDF). Patakbuhin ang noblecrm_bom_add_signature.sql para lumabas ang pirma.
+    $bomHasReqSig = false;
+    try {
+        $colRes = $conn->query("SHOW COLUMNS FROM noblecrm_bom LIKE 'requested_by_signature_path'");
+        $bomHasReqSig = $colRes && $colRes->num_rows > 0;
+    } catch (Throwable $e) {
+        $bomHasReqSig = false;
+    }
+
+    $bomCols = ['quotation_id', 'progression_id', 'bom_number', 'date_submitted', 'date_needed', 'client_name', 'general_scope',
+        'requested_by', 'requested_by_title'];
+    $bomTypes = 'iisssssss';
+    $bomVals = [$quotationId, $progressionId, $placeholderNumber, $today, $dateNeeded, $quotation['client_name'], $generalScope,
+        $requestedBy, $requestedByTitle];
+    if ($bomHasReqSig) {
+        $bomCols[] = 'requested_by_signature_path';
+        $bomTypes .= 's';
+        $bomVals[] = $requestedBySignaturePath;
+    }
+    array_push($bomCols, 'noted_by', 'noted_by_title', 'received_by', 'received_by_title', 'approved_by', 'approved_by_title', 'created_by');
+    $bomTypes .= 'ssssssi';
+    array_push($bomVals, $notedBy, $notedByTitle, $receivedBy, $receivedByTitle, $approvedBy, $approvedByTitle, $currentUserId);
+
+    $stmt = $conn->prepare(
+        'INSERT INTO noblecrm_bom (' . implode(', ', $bomCols) . ', page, created_at) VALUES ('
+        . implode(', ', array_fill(0, count($bomCols), '?')) . ', 1, NOW())'
     );
+    $stmt->bind_param($bomTypes, ...$bomVals);
     $stmt->execute();
     $bomId = $stmt->insert_id;
     $stmt->close();
@@ -625,6 +692,7 @@ if ($action === 'create') {
     $upd->bind_param('si', $bomNumber, $bomId);
     $upd->execute();
     $upd->close();
+    } // end: bagong BOM
 
     $itemStmt = $conn->prepare("
         INSERT INTO noblecrm_bom_items (bom_id, item_no, item_code, item_description, quantity, unit, supplier)
@@ -655,9 +723,10 @@ if ($action === 'create') {
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
-        'message' => 'Bill of Materials saved.',
+        'message' => $reviseBom ? 'Bill of Materials updated.' : 'Bill of Materials saved.',
         'id' => $bomId,
         'bom_number' => $bomNumber,
+        'revised' => (bool) $reviseBom,
     ]);
     exit;
 }

@@ -400,8 +400,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             if (act === 'revise') {
                 let draft = ''; try { draft = localStorage.getItem('nh-ewood-rev-' + id) || ''; } catch (e) { }
                 box.innerHTML = `<div class="rounded-lg border border-red-200 bg-red-50 p-3">
-                    <label class="block text-[11px] font-semibold text-red-800 mb-1.5"><i class="fa-solid fa-rotate-left mr-1"></i>What should cutting fix? <span class="text-red-500">*</span></label>
-                    <textarea rows="2" maxlength="1000" class="ewood-rev w-full text-xs border border-red-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-y" placeholder="e.g. The QR is blurry, please retake the photo.">${ewoodEscapeHtml(draft)}</textarea>
+                    <label class="block text-[11px] font-semibold text-red-800 mb-1.5"><i class="fa-solid fa-rotate-left mr-1"></i>What should cutting fix — the QR/photos or the BOM? <span class="text-red-500">*</span></label>
+                    <textarea rows="2" maxlength="1000" class="ewood-rev w-full text-xs border border-red-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-y" placeholder="e.g. The QR is blurry, please retake the photo. / BOM row 3: quantity should be 12 pcs.">${ewoodEscapeHtml(draft)}</textarea>
+                    <p class="text-[10.5px] text-red-700/80 mt-1"><i class="fa-solid fa-file-invoice mr-1"></i>Cutting uploads again and can correct the BOM. It keeps the same BOM number.</p>
                     <p class="ewood-rev-err hidden text-[11px] text-red-600 mt-1"></p>
                     <div class="flex justify-end gap-2 mt-2">
                         <button type="button" data-act="cancel" class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg">Cancel</button>
