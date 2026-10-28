@@ -11,6 +11,12 @@ $crmSiteVisitUrl = BASE_URL . '/crmsitevisit';
 // URL to the 2D & Quotation page — unlocked once the site visit is done
 $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
+// Feedback summary (Cutting / Designer Head / Customer) — hiwalay na endpoint
+$crmDesignerFeedbackUrl = BASE_URL . '/crmdesignerfeedbackajax';
+
+// Nasaang bahagi na: Site visit → Initial → Customer review → Final → Cutting — hiwalay na endpoint
+$crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
+
 ?>
 <div class="max-w-6xl mx-auto">
 
@@ -27,16 +33,23 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                 </div>
             </div>
             <!-- Counters = filter -->
-            <div id="crmCounters" class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+            <div id="crmCounters" class="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full lg:w-auto">
                 <?php foreach ([
                     ['', 'All', 'text-gray-900'],
                     ['new', 'New', 'text-amber-700'],
                     ['Pending', 'Site visit', 'text-amber-800'],
                     ['In Progress', '2D & Quotation', 'text-blue-700'],
+                    ['feedback', 'Feedback', 'text-red-600'],
                 ] as [$val, $label, $cls]): ?>
                     <button type="button" data-filter="<?= htmlspecialchars($val) ?>"
-                        class="crm-counter text-left rounded-xl border px-3.5 py-2 transition-colors lg:min-w-[112px]">
-                        <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80"><?= htmlspecialchars($label) ?></span>
+                        class="crm-counter relative text-left rounded-xl border px-3.5 py-2 transition-colors lg:min-w-[112px]">
+                        <?php if ($val === 'feedback'): ?>
+                            <span id="crmFeedbackPing" class="hidden absolute top-2 right-2 flex w-2.5 h-2.5">
+                                <span class="absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                                <span class="relative inline-flex w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                            </span>
+                        <?php endif; ?>
+                        <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80"><?php if ($val === 'feedback'): ?><i class="fa-solid fa-comment-dots mr-1"></i><?php endif; ?><?= htmlspecialchars($label) ?></span>
                         <span data-count="<?= htmlspecialchars($val === '' ? 'all' : $val) ?>" class="block text-xl font-bold leading-tight tabular-nums <?= $cls ?>">—</span>
                     </button>
                 <?php endforeach; ?>
@@ -56,8 +69,19 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         </div>
     </section>
 
+    <!-- ═══ FEEDBACK BANNER (lumalabas lang kapag may feedback) ═══ -->
+    <button type="button" id="crmFeedbackBanner" onclick="crmSetFilter('feedback')"
+        class="hidden w-full mb-3 text-left flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 hover:bg-red-100/70 transition">
+        <span class="w-9 h-9 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-comment-dots"></i></span>
+        <span class="min-w-0 flex-1">
+            <span id="crmFeedbackBannerTitle" class="block text-sm font-semibold text-red-800"></span>
+            <span id="crmFeedbackBannerText" class="block text-[11px] text-red-700/80 truncate"></span>
+        </span>
+        <span class="shrink-0 text-[11px] font-semibold text-red-700">Show <i class="fa-solid fa-arrow-right ml-0.5"></i></span>
+    </button>
+
     <!-- ═══ LIST ═══ -->
-    <div id="crmDesignerList" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[320px] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] p-1 pr-2 -m-1">
+    <div id="crmDesignerList" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[320px] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] py-1 pr-1.5">
         <div class="bg-white border border-gray-200 rounded-xl px-6 py-12 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading assigned inquiries…</div>
     </div>
 
@@ -67,7 +91,9 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 <!-- ═══ DETAIL PANEL (galing sa kanan) ═══ -->
 <div id="crmDetailOverlay" class="fixed inset-0 bg-black/30 hidden z-40" onclick="crmCloseDetailPanel()"></div>
 
-<div id="crmDetailPanel" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col
+<!-- wrapper: para hindi magka-horizontal scroll habang nakatago ang panel -->
+<div class="fixed inset-y-0 right-0 w-full max-w-md overflow-hidden z-50 pointer-events-none">
+<div id="crmDetailPanel" class="pointer-events-auto h-full w-full bg-white shadow-2xl flex flex-col
            translate-x-full transition-transform duration-300 ease-out">
     <div class="bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)] h-1.5 shrink-0"></div>
     <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
@@ -96,6 +122,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
             </button>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Toast container -->
@@ -129,7 +156,31 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     const CRM_DESIGNER_AJAX_URL = <?= json_encode($crmDesignerAjaxUrl) ?>;
     const CRM_SITEVISIT_URL = <?= json_encode($crmSiteVisitUrl) ?>;
     const CRM_2D_QUOTATION_URL = <?= json_encode($crm2dQuotationUrl) ?>;
+    const CRM_FEEDBACK_URL = <?= json_encode($crmDesignerFeedbackUrl) ?>;
+    const CRM_PROGRESS_URL = <?= json_encode($crmDesignerProgressUrl) ?>;
+
+    // inquiry_id → { phase (1-5), phase_label, status, tone, note, next }
+    let crmProgress = {};
+    const crmPg = id => crmProgress[String(id)] || null;
+    const CRM_PHASES = ['Site visit', 'Initial', 'Customer review', 'Final', 'Cutting'];
+    const CRM_PG_TONE = {
+        amber: { chip: 'bg-amber-50 text-amber-800 border-amber-200', seg: 'bg-amber-500', text: 'text-amber-800', box: 'bg-amber-50 border-amber-200 text-amber-900' },
+        blue:  { chip: 'bg-blue-50 text-blue-700 border-blue-200',   seg: 'bg-blue-500',  text: 'text-blue-700',  box: 'bg-blue-50 border-blue-200 text-blue-900' },
+        red:   { chip: 'bg-red-50 text-red-700 border-red-200',      seg: 'bg-red-500',   text: 'text-red-700',   box: 'bg-red-50 border-red-200 text-red-900' },
+        green: { chip: 'bg-emerald-50 text-emerald-700 border-emerald-200', seg: 'bg-emerald-500', text: 'text-emerald-700', box: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+    };
     const CRM_POLL_INTERVAL_MS = 8000;
+
+    // inquiry_id → { total, entries: [{ kind, label, count, at, messages?, slots? }] }
+    let crmFeedback = {};
+    let crmFeedbackLoaded = false;
+    const crmFb = id => crmFeedback[String(id)] || null;
+    const CRM_FB_STYLE = {
+        cutting:  { icon: 'fa-scissors', chip: 'bg-red-50 text-red-700 border-red-200', short: 'Cutting' },
+        head:     { icon: 'fa-user-tie', chip: 'bg-red-50 text-red-700 border-red-200', short: 'Designer Head' },
+        customer: { icon: 'fa-user', chip: 'bg-orange-50 text-orange-700 border-orange-200', short: 'Customer' },
+        '3d':     { icon: 'fa-cube', chip: 'bg-orange-50 text-orange-700 border-orange-200', short: '3D' },
+    };
 
     let crmAllRows = [];
     let crmDesignerLastSignature = '';
@@ -137,7 +188,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
     let crmDetailCurrentId = null;
 
     let crmSearchTerm = '';
-    let crmStatusFilterValue = '';     // '' | 'new' | 'Pending' | 'In Progress'
+    let crmStatusFilterValue = '';     // '' | 'new' | 'Pending' | 'In Progress' | 'feedback'
     let crmTypeFilterValue = '';
     let crmSearchDebounce = null;
 
@@ -215,9 +266,12 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         const isActive = crmDetailCurrentId === row.id;
         const done = row.status === 'In Progress';
         const rel = !done && row.measurement_datetime ? crmRelDay(row.measurement_datetime) : null;
-        const bar = done ? 'bg-blue-500' : 'bg-amber-400';
+        const fb = crmFb(row.id);
+        const bar = fb ? 'bg-red-500' : done ? 'bg-blue-500' : 'bg-amber-400';
 
-        const action = done
+        const action = fb
+            ? `<button type="button" data-act="2d" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm"><i class="fa-solid fa-comment-dots"></i> Open feedback</button>`
+            : done
             ? `<button type="button" data-act="2d" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 shadow-sm"><i class="fa-solid fa-file-pen"></i> 2D &amp; Quotation</button>`
             : `<button type="button" data-act="visit" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-ruler-combined"></i> Start site visit</button>`;
 
@@ -231,6 +285,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                             ${isNew ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-500 text-white">New</span>' : ''}
                             <span class="notranslate font-mono text-[11px] font-semibold text-amber-700">${crmEscapeHtml(row.control_no)}</span>
                             ${crmStatusBadge(row.status, row.mode)}
+                            ${fb ? fb.entries.map(crmFbChip).join('') : ''}
                         </div>
                         <p class="mt-1 text-sm font-semibold text-gray-900 truncate capitalize">${crmEscapeHtml(row.client_name)}</p>
                         <p class="text-[11px] text-gray-500 truncate">
@@ -239,6 +294,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                             <span class="text-gray-300 mx-1.5">·</span>by ${crmEscapeHtml(row.sales_name) || '—'}
                         </p>
                     </div>
+                    ${crmStageBlock(row)}
                     <dl class="grid grid-cols-2 gap-x-5 text-[11px] basis-[260px] grow sm:grow-0">
                         <div>
                             <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">${crmIsReady(row) ? 'Mode' : 'Site visit'}</dt>
@@ -252,21 +308,86 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                     </dl>
                     <div class="ml-auto shrink-0">${action}</div>
                 </div>
+                ${fb ? `<div class="flex items-start gap-2 ml-5 mr-4 mb-3 -mt-1 rounded-lg bg-red-50/70 border border-red-100 px-3 py-2 text-[11.5px] text-red-800">
+                    <i class="fa-solid fa-quote-left text-[10px] mt-0.5 text-red-400"></i>
+                    <p class="min-w-0 flex-1 truncate">${crmEscapeHtml(crmFbPreview(fb))}</p>
+                </div>` : ''}
             </article>`;
+    }
+
+    // Stage indicator sa card: "Initial · For approval" + 5 na hakbang
+    function crmStageBlock(row) {
+        const pg = crmPg(row.id);
+        if (!pg) return '';
+        const t = CRM_PG_TONE[pg.tone] || CRM_PG_TONE.amber;
+        const segs = CRM_PHASES.map((name, i) => {
+            const n = i + 1;
+            const cls = n < pg.phase || (n === pg.phase && pg.tone === 'green') ? 'bg-amber-600' : n === pg.phase ? t.seg : 'bg-gray-200';
+            return `<span title="${n}. ${name}" class="h-1.5 flex-1 rounded-full ${cls}"></span>`;
+        }).join('');
+        return `<div class="basis-[190px] sm:max-w-[200px] grow sm:grow-0 min-w-0">
+                <p class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Stage <span class="normal-case tracking-normal text-gray-300">· ${pg.phase} of 5</span></p>
+                <p class="mt-0.5"><span title="${crmEscapeHtml(pg.note)}" class="inline-flex flex-wrap items-center gap-x-1 px-2 py-0.5 rounded-lg border text-[10.5px] font-bold leading-tight max-w-full ${t.chip}">${crmEscapeHtml(pg.phase_label)}<span class="font-semibold opacity-80">· ${crmEscapeHtml(pg.status)}</span></span></p>
+                <div class="mt-1.5 flex gap-0.5 max-w-[160px]" aria-label="Stage ${pg.phase} of 5">${segs}</div>
+            </div>`;
+    }
+
+    // Stage stepper sa detail panel
+    function crmStageDetail(id) {
+        const pg = crmPg(id);
+        if (!pg) return '';
+        const t = CRM_PG_TONE[pg.tone] || CRM_PG_TONE.amber;
+        const steps = CRM_PHASES.map((name, i) => {
+            const n = i + 1;
+            const done = n < pg.phase || (n === pg.phase && pg.tone === 'green');
+            const cur = n === pg.phase;
+            const dot = done ? 'bg-amber-700 text-white' : cur ? `bg-white ring-2 ${t.text} ring-current` : 'bg-gray-100 text-gray-400';
+            return `<li class="relative flex-1 flex flex-col items-center text-center min-w-0">
+                    ${n > 1 ? `<span class="absolute top-3.5 right-1/2 w-full h-0.5 ${n <= pg.phase ? 'bg-amber-600' : 'bg-gray-200'}"></span>` : ''}
+                    <span class="relative z-[1] w-7 h-7 rounded-full flex items-center justify-center text-[10.5px] font-bold ${dot}">${done ? '<i class="fa-solid fa-check text-[10px]"></i>' : n}</span>
+                    <span class="mt-1 text-[10px] font-semibold leading-tight ${cur ? 'text-gray-900' : done ? 'text-amber-800' : 'text-gray-400'}">${name}</span>
+                </li>`;
+        }).join('');
+        return `<section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <p class="px-4 py-2.5 border-b border-gray-100 text-[10.5px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-route mr-1 text-amber-700"></i>Stage</p>
+                <div class="px-3 pt-3"><ol class="flex items-start">${steps}</ol></div>
+                <div class="m-3 mt-3 rounded-lg border px-3 py-2 ${t.box}">
+                    <p class="text-[12px] font-semibold">${crmEscapeHtml(pg.phase_label)} · ${crmEscapeHtml(pg.status)}</p>
+                    <p class="text-[11.5px] opacity-80">${crmEscapeHtml(pg.note)}</p>
+                    <p class="text-[10.5px] font-semibold mt-1 opacity-70">Next: ${crmEscapeHtml(pg.next)}</p>
+                </div>
+            </section>`;
+    }
+
+    function crmFbChip(e) {
+        const st = CRM_FB_STYLE[e.kind] || CRM_FB_STYLE.cutting;
+        const text = e.kind === 'cutting' ? `${e.count} from Cutting` : `Revision · ${st.short}`;
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap ${st.chip}"><i class="fa-solid ${st.icon} text-[9px]"></i>${crmEscapeHtml(text)}</span>`;
+    }
+    // Isang linyang buod ng pinakabagong feedback (para sa card)
+    function crmFbPreview(fb) {
+        const e = fb.entries[0];
+        if (e.kind === 'cutting' && e.messages?.length) return `${e.messages[0].by}: ${e.messages[0].message}`;
+        const withRemarks = (e.slots || []).find(s => s.remarks);
+        if (withRemarks) return `${withRemarks.label}: ${withRemarks.remarks}`;
+        return e.label + ((e.slots || []).length ? ' — ' + e.slots.map(s => s.label).join(', ') : '');
     }
 
     function crmFilterRows(rows) {
         const viewed = crmGetViewedIds();
         let out = rows;
         if (crmStatusFilterValue === 'new') out = out.filter(r => !viewed.has(r.id));
+        else if (crmStatusFilterValue === 'feedback') out = out.filter(r => crmFb(r.id));
         else if (crmStatusFilterValue) out = out.filter(r => r.status === crmStatusFilterValue);
         if (crmTypeFilterValue) out = out.filter(r => (r.project_type || '') === crmTypeFilterValue);
         if (crmSearchTerm) {
             const t = crmSearchTerm.toLowerCase();
             out = out.filter(r => `${r.control_no || ''} ${r.client_name || ''} ${r.contact_number || ''}`.toLowerCase().includes(t));
         }
-        // Pending muna (pinakamalapit na site visit), saka In Progress
+        // May feedback muna, tapos Pending (pinakamalapit na site visit), saka In Progress
         return [...out].sort((a, b) => {
+            const fa = crmFb(a.id) ? 1 : 0, fbb = crmFb(b.id) ? 1 : 0;
+            if (fa !== fbb) return fbb - fa;
             if (a.status !== b.status) return a.status === 'Pending' ? -1 : 1;
             const ad = crmToDate(a.measurement_datetime)?.getTime() ?? crmToDate(a.created_at)?.getTime() ?? 0;
             const bd = crmToDate(b.measurement_datetime)?.getTime() ?? crmToDate(b.created_at)?.getTime() ?? 0;
@@ -295,23 +416,33 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
             new: crmAllRows.filter(r => !viewed.has(r.id)).length,
             'Pending': crmAllRows.filter(r => r.status === 'Pending').length,
             'In Progress': crmAllRows.filter(r => r.status === 'In Progress').length,
+            feedback: crmAllRows.filter(r => crmFb(r.id)).length,
         };
+        crmRenderFeedbackBanner(counts.feedback);
         document.querySelectorAll('#crmCounters [data-count]').forEach(el => el.textContent = counts[el.dataset.count] ?? 0);
         document.querySelectorAll('#crmCounters .crm-counter').forEach(b => {
             const on = b.dataset.filter === crmStatusFilterValue;
+            if (b.dataset.filter === 'feedback' && counts.feedback && !on) {
+                b.classList.add('border-red-300', 'bg-red-50/60');
+            } else {
+                b.classList.remove('border-red-300', 'bg-red-50/60');
+            }
             b.classList.toggle('border-amber-600', on);
             b.classList.toggle('bg-amber-50', on);
             b.classList.toggle('ring-1', on);
             b.classList.toggle('ring-amber-600', on);
-            b.classList.toggle('border-gray-200', !on);
-            b.classList.toggle('bg-white', !on);
+            const fbHot = b.dataset.filter === 'feedback' && counts.feedback && !on;
+            b.classList.toggle('border-gray-200', !on && !fbHot);
+            b.classList.toggle('bg-white', !on && !fbHot);
         });
 
         const rows = crmFilterRows(crmAllRows);
         const list = document.getElementById('crmDesignerList');
         if (!rows.length) {
             const msg = !crmAllRows.length ? 'No inquiries assigned to you yet.'
-                : crmStatusFilterValue === 'new' ? 'You have opened all your inquiries.' : 'No inquiries match your search or filter.';
+                : crmStatusFilterValue === 'new' ? 'You have opened all your inquiries.'
+                : crmStatusFilterValue === 'feedback' ? 'No feedback to work on. You\'re all caught up.'
+                : 'No inquiries match your search or filter.';
             list.innerHTML = `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl px-6 py-12 text-center">
                 <div class="w-12 h-12 mx-auto rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mb-2"><i class="fa-regular fa-folder-open"></i></div>
                 <p class="text-sm font-semibold text-gray-700">${msg}</p></div>`;
@@ -321,6 +452,52 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         document.getElementById('crmAllCount').textContent = `Showing ${rows.length} of ${crmAllRows.length}`;
         document.getElementById('crmDesignerCount').textContent = `${crmAllRows.length} inquir${crmAllRows.length === 1 ? 'y' : 'ies'} assigned to you`;
     }
+
+    function crmRenderFeedbackBanner(n) {
+        const banner = document.getElementById('crmFeedbackBanner');
+        document.getElementById('crmFeedbackPing').classList.toggle('hidden', !n);
+        if (!n || crmStatusFilterValue === 'feedback') { banner.classList.add('hidden'); return; }
+        const rows = crmAllRows.filter(r => crmFb(r.id));
+        document.getElementById('crmFeedbackBannerTitle').textContent =
+            `${n} inquir${n === 1 ? 'y has' : 'ies have'} feedback to work on`;
+        document.getElementById('crmFeedbackBannerText').textContent =
+            rows.slice(0, 3).map(r => `${r.control_no} · ${r.client_name}`).join('   |   ') + (rows.length > 3 ? `  +${rows.length - 3} more` : '');
+        banner.classList.remove('hidden');
+    }
+
+    function crmSetFilter(value) {
+        crmStatusFilterValue = value;
+        try { sessionStorage.setItem('crmDesignerFilter', crmStatusFilterValue); } catch (e) { }
+        crmRenderRows();
+        document.getElementById('crmDesignerList').scrollTop = 0;
+    }
+
+    // Feedback summary — hindi dapat masira ang listahan kapag pumalya ito
+    async function crmFetchFeedback() {
+        try {
+            const res = await fetch(`${CRM_FEEDBACK_URL}?action=summary`, { cache: 'no-store' });
+            const data = await res.json();
+            if (!data.success) { console.warn('crmFetchFeedback:', data.message); return crmFeedback; }
+            return data.items || {};
+        } catch (e) {
+            console.warn('crmFetchFeedback:', e);
+            return crmFeedback;
+        }
+    }
+    // Stage summary — hindi dapat masira ang listahan kapag pumalya ito
+    async function crmFetchProgress() {
+        try {
+            const res = await fetch(`${CRM_PROGRESS_URL}?action=summary`, { cache: 'no-store' });
+            const data = await res.json();
+            if (!data.success) { console.warn('crmFetchProgress:', data.message); return crmProgress; }
+            return data.items || {};
+        } catch (e) {
+            console.warn('crmFetchProgress:', e);
+            return crmProgress;
+        }
+    }
+    const crmPgSignature = items => Object.keys(items).sort().map(k => k + ':' + items[k].phase + items[k].status).join('|');
+    const crmFbSignature = items => Object.keys(items).sort().map(k => k + ':' + items[k].total + ':' + items[k].entries.map(e => e.kind + (e.at_raw || '')).join(',')).join('|');
 
     // Isang listener para sa lahat ng row (buong card = buksan ang detail; buttons = diretso)
     document.getElementById('crmDesignerList').addEventListener('click', e => {
@@ -336,21 +513,43 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
     async function crmFetchList({ silent = false } = {}) {
         try {
-            const res = await fetch(`${CRM_DESIGNER_AJAX_URL}?action=list`, { cache: 'no-store' });
+            const [res, fbItems, pgItems] = await Promise.all([
+                fetch(`${CRM_DESIGNER_AJAX_URL}?action=list`, { cache: 'no-store' }),
+                crmFetchFeedback(),
+                crmFetchProgress(),
+            ]);
             const data = await res.json();
             if (!data.success) {
                 if (!silent) crmShowToast(data.message || 'Failed to load assigned inquiries.', 'error');
                 return;
             }
-            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.mode + ':' + (r.measurement_datetime || '')));
+            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.mode + ':' + (r.measurement_datetime || ''))) + '#' + crmFbSignature(fbItems) + '#' + crmPgSignature(pgItems);
             const prevIds = new Set(crmAllRows.map(r => r.id));
             const fresh = silent && crmAllRows.length ? data.rows.filter(r => !prevIds.has(r.id)).length : 0;
+
+            // Bagong feedback mula noong huling check → toast
+            const newFb = crmFeedbackLoaded
+                ? data.rows.filter(r => {
+                    const now = fbItems[String(r.id)], before = crmFeedback[String(r.id)];
+                    return now && (!before || now.total > before.total);
+                })
+                : [];
+            crmFeedback = fbItems;
+            crmFeedbackLoaded = true;
+            crmProgress = pgItems;
             crmAllRows = data.rows;
             if (signature !== crmDesignerLastSignature) {
                 crmRenderRows();
                 crmDesignerLastSignature = signature;
             }
             if (fresh) crmShowToast(`${fresh} new inquir${fresh === 1 ? 'y was' : 'ies were'} assigned to you.`);
+            if (newFb.length) {
+                crmShowToast(newFb.length === 1
+                    ? `New feedback on ${newFb[0].control_no} (${newFb[0].client_name}).`
+                    : `New feedback on ${newFb.length} inquiries.`, 'error', 7000);
+            }
+            // Kung bukas ang detail panel, i-refresh ang feedback section nito
+            if (crmDetailCurrentId) crmRenderDetailFeedback(crmDetailCurrentId);
         } catch (e) {
             console.error('crmFetchList:', e);
             if (!silent) {
@@ -377,11 +576,7 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
         crmTypeFilterValue = this.value;
         crmRenderRows();
     });
-    document.querySelectorAll('#crmCounters .crm-counter').forEach(b => b.addEventListener('click', () => {
-        crmStatusFilterValue = b.dataset.filter;
-        try { sessionStorage.setItem('crmDesignerFilter', crmStatusFilterValue); } catch (e) { }
-        crmRenderRows();
-    }));
+    document.querySelectorAll('#crmCounters .crm-counter').forEach(b => b.addEventListener('click', () => crmSetFilter(b.dataset.filter)));
     try { crmStatusFilterValue = sessionStorage.getItem('crmDesignerFilter') || ''; } catch (e) { }
 
     crmFetchList().then(crmStartPolling);
@@ -469,11 +664,35 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
             // target completion
             const tgt = crmRelDay(r.target_completion_date);
 
+            // Mas eksakto ang susunod na hakbang galing sa stage (Initial / Customer / Final / Cutting)
+            const pgNow = crmPg(id);
+            if (pgNow && pgNow.phase >= 2) {
+                tone = (CRM_PG_TONE[pgNow.tone] || CRM_PG_TONE.amber).box;
+                icon = pgNow.phase === 5 ? 'fa-circle-check' : pgNow.tone === 'blue' ? 'fa-hourglass-half' : 'fa-file-pen';
+                title = pgNow.phase === 5 ? 'Done: with Cutting' : `Next: ${pgNow.next}`;
+                text = pgNow.note;
+            }
+            if (crmFb(id)) {
+                tone = 'bg-red-50 border-red-200 text-red-900'; icon = 'fa-comment-dots'; title = 'Next: Work on the feedback';
+                text = 'Open the 2D & Quotation page to revise and re-upload. The details are below.';
+            }
+            quotationBtn.innerHTML = crmFb(id)
+                ? '<i class="fa-solid fa-comment-dots"></i> Open feedback'
+                : '<i class="fa-solid fa-file-pen"></i> 2D &amp; Quotation';
+            quotationBtn.classList.toggle('bg-red-600', !!crmFb(id));
+            quotationBtn.classList.toggle('hover:bg-red-700', !!crmFb(id));
+            quotationBtn.classList.toggle('bg-blue-700', !crmFb(id));
+            quotationBtn.classList.toggle('hover:bg-blue-800', !crmFb(id));
+
             body.innerHTML = `<div class="space-y-3">
                 <div class="rounded-xl border px-4 py-3 flex items-start gap-3 ${tone}">
                     <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid ${icon}"></i></span>
                     <div class="min-w-0"><p class="text-sm font-semibold">${title}</p><p class="text-xs opacity-80 mt-0.5">${crmEscapeHtml(text)}</p></div>
                 </div>
+
+                <div id="crmDetailFeedback"></div>
+
+                ${crmStageDetail(id)}
 
                 <div class="grid grid-cols-2 gap-2">
                     <div class="bg-white border border-gray-200 rounded-xl px-3.5 py-2.5">
@@ -507,10 +726,45 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                     crmDetailRow('Date assigned', crmEscapeHtml(crmFormatDateTimeLong(r.created_at))),
                 ].join(''))}
             </div>`;
+            crmRenderDetailFeedback(id);
         } catch (e) {
             console.error('crmOpenDetailPanel:', e);
             body.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">Connection error. Please try again.</p>`;
         }
+    }
+
+    // Feedback section sa detail panel (Cutting messages / mga ibinalik na slot)
+    function crmRenderDetailFeedback(id) {
+        const box = document.getElementById('crmDetailFeedback');
+        if (!box || crmDetailCurrentId !== id) return;
+        const fb = crmFb(id);
+        if (!fb) { box.innerHTML = ''; return; }
+
+        box.innerHTML = fb.entries.map(e => {
+            const st = CRM_FB_STYLE[e.kind] || CRM_FB_STYLE.cutting;
+            let items = '';
+            if (e.kind === 'cutting') {
+                items = (e.messages || []).map(m => `
+                    <li class="px-4 py-2.5">
+                        <p class="text-[12.5px] text-gray-800 whitespace-pre-line break-words">${crmEscapeHtml(m.message)}</p>
+                        <p class="text-[10.5px] text-gray-400 mt-0.5"><i class="fa-regular fa-user mr-1"></i>${crmEscapeHtml(m.by)} · ${crmEscapeHtml(m.at || '')}</p>
+                    </li>`).join('');
+                if (e.count > (e.messages || []).length) items += `<li class="px-4 py-2 text-[11px] text-gray-400">+${e.count - e.messages.length} more on the 2D &amp; Quotation page</li>`;
+            } else {
+                items = (e.slots || []).map(s => `
+                    <li class="px-4 py-2.5">
+                        <p class="text-[11px] font-semibold text-gray-700"><i class="fa-solid fa-rotate-left text-[9px] mr-1 text-red-500"></i>${crmEscapeHtml(s.label)}</p>
+                        <p class="text-[12.5px] text-gray-800 mt-0.5 whitespace-pre-line break-words">${s.remarks ? crmEscapeHtml(s.remarks) : '<span class="text-gray-400">No remarks given.</span>'}</p>
+                    </li>`).join('') || '<li class="px-4 py-2.5 text-[12px] text-gray-500">Needs revision.</li>';
+            }
+            return `<section class="bg-white border border-red-200 rounded-xl overflow-hidden mb-3 last:mb-0">
+                <div class="px-4 py-2.5 border-b border-red-100 bg-red-50/60 flex items-center justify-between gap-2">
+                    <p class="text-[10.5px] font-bold uppercase tracking-wider text-red-700"><i class="fa-solid ${st.icon} mr-1"></i>${crmEscapeHtml(e.label)}${e.kind === 'cutting' ? ` · ${e.count}` : ''}</p>
+                    ${e.at ? `<span class="text-[10.5px] text-red-700/70 whitespace-nowrap">${crmEscapeHtml(e.at)}</span>` : ''}
+                </div>
+                <ul class="divide-y divide-gray-100 max-h-56 overflow-y-auto overscroll-contain [scrollbar-width:thin]">${items}</ul>
+            </section>`;
+        }).join('');
     }
 
     function crmCloseDetailPanel() {

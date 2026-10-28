@@ -308,22 +308,18 @@ $adminRoutes = [
 
     // crm management page 1
     'crmajax',
-
-    // crm management page 2
     'crmlistajax',
     'crm2dquotationajax',
-
-    // crm management page 3
     'crmdesignerajax',
     'crmsitevisitajax',
     'crm2dquotationajaxfinal',
-
-    // crm management sub page 3
     'crm2dquotationfinal',
     'crmsitevisit',     
     'crm2dquotation',
     'crm2dcustomerreview',
     'crm2drevisionajax',
+    'crmdesignerfeedbackajax',
+    'crmdesignerprogressajax',
 
 
 ];
@@ -625,24 +621,20 @@ $routes = [
     //profile
     'profile'                          => 'admin/navigation/ui-profile/profile.php',
 
-    // crm management page 1
+    // crm management
     'crmajax'                          => 'admin/crm-management/backend/page-1/crm-options-ajax.php',
-
-    // crm management page 2
     'crmlistajax'                      => 'admin/crm-management/backend/page-2/crmlistajax.php',
     'crm2dquotationajax'               => 'admin/crm-management/backend/page-2/crm2dquotationajax.php',
-    
-    // crm management page 3
     'crmdesignerajax'                  => 'admin/crm-management/backend/page-3/crmdesignerajax.php',
     'crmsitevisitajax'                 => 'admin/crm-management/backend/page-3/subpage-3/crmsitevisitajax.php',
     'crm2dquotationajaxfinal'          => 'admin/crm-management/backend/page-3/subpage-3/crm2dquotationajaxfinal.php',
-
-    // crm management page 3
     'crm2dquotationfinal'              => 'admin/crm-management/page-3/subpage-3/2d-and-quotation-final.php',
     'crmsitevisit'                     => 'admin/crm-management/page-3/subpage-3/sitevisitform.php',
     'crm2dquotation'                   => 'admin/crm-management/page-3/subpage-3/2d-and-quotation.php',
     'crm2dcustomerreview'              => 'admin/crm-management/page-3/subpage-3/crm-2d-customer-review.php',
     'crm2drevisionajax'                => 'admin/crm-management/backend/page-3/subpage-3/crm2drevisionajax.php',
+    'crmdesignerfeedbackajax'          => 'admin/crm-management/backend/page-3/crmdesignerfeedbackajax.php',
+    'crmdesignerprogressajax'          => 'admin/crm-management/backend/page-3/crmdesignerprogressajax.php',
 ];
 
 
