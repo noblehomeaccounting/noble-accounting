@@ -66,9 +66,43 @@
                 lb.addEventListener('click', e => { if (e.target === lb) close(); });
                 document.addEventListener('keydown', e => {
                     if (lb.classList.contains('hidden')) return;
-                    if (e.key === 'Escape') close();
+                    // unahin ang lightbox: huwag nang isara ang Space list modal sa parehong Escape
+                    if (e.key === 'Escape') { close(); e.stopImmediatePropagation(); }
                     if (e.key === 'ArrowLeft') show(idx - 1);
                     if (e.key === 'ArrowRight') show(idx + 1);
+                });
+            })();
+
+            // ═══════════════ SPACE LIST MODAL (saved record) ═══════════════
+            (function () {
+                const modal = document.getElementById('svListModal');
+                if (!modal) return;
+                const body = document.getElementById('svListBody');
+                const HL = ['bg-amber-50', 'ring-2', 'ring-inset', 'ring-amber-300'];
+                const open = n => {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.documentElement.classList.add('overflow-hidden');
+                    body.scrollTop = 0;
+                    const row = n ? document.getElementById('sv-space-' + n) : null;
+                    if (row) {
+                        body.scrollTop = Math.max(0, row.getBoundingClientRect().top - body.getBoundingClientRect().top - 44); // 44 = sticky header
+                        row.classList.add(...HL);
+                        setTimeout(() => row.classList.remove(...HL), 1800);
+                    }
+                    modal.querySelector('[data-sv-list-close]').focus({ preventScroll: true });
+                };
+                const close = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    document.documentElement.classList.remove('overflow-hidden');
+                };
+                document.querySelectorAll('[data-sv-list-open]').forEach(b =>
+                    b.addEventListener('click', () => open(+b.dataset.svListOpen || 0)));
+                modal.querySelectorAll('[data-sv-list-close]').forEach(b => b.addEventListener('click', close));
+                modal.addEventListener('click', e => { if (e.target === modal) close(); });
+                document.addEventListener('keydown', e => {
+                    if (e.key === 'Escape' && !modal.classList.contains('hidden')) close();
                 });
             })();
 
