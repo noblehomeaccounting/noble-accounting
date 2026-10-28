@@ -54,6 +54,7 @@ if ($sessionBranch !== '') {
 require_once ROOT_PATH . '/admin/navigation/sidebar-counts.php';
 $counts = getSidebarCounts($conn, $role, $position, $user_id);
 
+
 $roleColors = [
     ROLE_IT => '#2563EB',
     ROLE_DESIGNER => '#0D9488',
@@ -168,7 +169,7 @@ if ($role === ROLE_CUTTING) {
     if ($isMainBranch) {
         $add('Main', $I('/crmcuttinglist', 'fa-solid fa-pen-ruler', 'Cutting List', null, '2D & Quotation Approval'));
     }
-    $add('Main', $I('/crmewood', 'fa-solid fa-tree', 'E-Woodfile', null, 'Wood Working'));
+    $add('Main', $I('/crmewood', 'fa-solid fa-tree', 'E-Woodfile', 'ewoodTodo', 'Wood Working'));
 }
 
 if ($role === ROLE_IT) {

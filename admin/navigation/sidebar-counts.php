@@ -39,6 +39,7 @@ if (!function_exists('getSidebarCounts')) {
             'unpreparedVoucher' => 0,
             'toRelease' => 0,
             'followupWaiting' => 0,
+            'ewoodTodo' => 0,
         ];
 
         // Pending na inquiry ng sales user (CRM List)
@@ -106,6 +107,34 @@ if (!function_exists('getSidebarCounts')) {
                 $conn,
                 "SELECT COUNT(*) FROM noblebudgetrequest WHERE attachment_status = 'follow_up'"
             );
+        }
+
+        // E-Woodfile (Cutting): na-verify na ang 2D sa Cutting List at may NTP, at may gagawin pa ang Cutting —
+        // wala pang upload, naibalik (rejected), o approved pero hindi pa Completed.
+        // Hindi kasama ang naghihintay sa Superadmin at ang Completed na.
+        if ($role === ROLE_CUTTING) {
+            try {
+                $c['ewoodTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrm_2dquotation q
+                     JOIN (SELECT inquiry_id, MAX(id) AS max_id FROM noblecrm_2dquotation GROUP BY inquiry_id) latest
+                         ON latest.max_id = q.id
+                     WHERE q.status = 'Approved'
+                       AND q.deposit_status = 'Notice to Proceed'
+                       AND COALESCE(q.design_2d_verified_by_cutting, 0) <> 0
+                       AND NOT EXISTS (
+                           SELECT 1 FROM noblecrm_cuttinglistprogression p
+                           WHERE p.id = (SELECT MAX(p2.id) FROM noblecrm_cuttinglistprogression p2 WHERE p2.quotation_id = q.id)
+                             AND (
+                                 (COALESCE(p.qr_approved, 0) = 0 AND COALESCE(p.qr_rejected, 0) = 0)
+                                 OR (COALESCE(p.qr_approved, 0) = 1 AND p.status = 'Completed')
+                             )
+                       )"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar ewoodTodo: ' . $e->getMessage());
+            }
         }
 
         return $c;
