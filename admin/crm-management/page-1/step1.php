@@ -3,6 +3,9 @@
 // Tailwind-only. Ang $crmInputCls / $crmSelectCls ay galing sa crm-main.php (may fallback dito).
 $crmInputCls = $crmInputCls ?? 'w-full h-11 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
 $crmSelectCls = $crmSelectCls ?? $crmInputCls . ' appearance-none pr-9 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed';
+// $crmForm = POST (failed submit) o naka-save na record (edit mode) — galing sa crm-main.php
+$crmForm = $crmForm ?? $_POST;
+$crmEditMode = $crmEditMode ?? false;
 ?>
 <div class="crm-step-panel" id="crm-step-1">
     <div class="flex items-center gap-3 mb-5">
@@ -22,7 +25,7 @@ $crmSelectCls = $crmSelectCls ?? $crmInputCls . ' appearance-none pr-9 cursor-po
                 <div class="relative">
                     <i class="fa-regular fa-user absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-300 pointer-events-none"></i>
                     <input type="text" name="client_name" id="crm_client_name"
-                        value="<?= htmlspecialchars($_POST['client_name'] ?? '') ?>" placeholder="Juan Dela Cruz"
+                        value="<?= htmlspecialchars($crmForm['client_name'] ?? '') ?>" placeholder="Juan Dela Cruz"
                         class="<?= $crmInputCls ?> pl-9" autocomplete="off">
                 </div>
                 <p class="crm-error hidden mt-1.5 text-[11px] text-red-600" data-error-for="crm_client_name"></p>
@@ -33,7 +36,7 @@ $crmSelectCls = $crmSelectCls ?? $crmInputCls . ' appearance-none pr-9 cursor-po
                 <div class="relative">
                     <i class="fa-solid fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-300 pointer-events-none"></i>
                     <input type="text" name="contact_number" id="crm_contact_number"
-                        value="<?= htmlspecialchars($_POST['contact_number'] ?? '') ?>" placeholder="09XXXXXXXXX"
+                        value="<?= htmlspecialchars($crmForm['contact_number'] ?? '') ?>" placeholder="09XXXXXXXXX"
                         inputmode="numeric" pattern="[0-9]*" maxlength="11"
                         oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11); crmContactCount();"
                         class="<?= $crmInputCls ?> pl-9 pr-14 font-mono tracking-wide">
@@ -48,12 +51,24 @@ $crmSelectCls = $crmSelectCls ?? $crmInputCls . ' appearance-none pr-9 cursor-po
     <section class="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
         <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400 mb-3">Project Address</p>
 
+        <?php if ($crmEditMode): ?>
+            <!-- Edit mode: lumang address na hindi tumugma sa dropdowns — pinapanatili hangga't walang bagong pinipili -->
+            <div id="crm_keep_address_note" class="hidden mb-4 flex items-start gap-2.5 rounded-xl bg-blue-50 border border-blue-200 px-3.5 py-2.5">
+                <i class="fa-solid fa-circle-info text-blue-600 mt-0.5 text-sm"></i>
+                <div class="min-w-0 text-xs text-blue-900 leading-relaxed">
+                    <p class="font-semibold">Saved address: <span id="crm_keep_address_saved" class="font-normal break-words"></span></p>
+                    <p class="text-blue-800/80 mt-0.5">This address couldn't be matched to the dropdowns, so it will be kept as is. To change it, fill in House No. / Street and pick the Region, City and Barangay below.</p>
+                </div>
+            </div>
+            <input type="hidden" name="keep_address" id="crm_keep_address" value="<?= htmlspecialchars(($crmForm['keep_address'] ?? '') === '1' ? '1' : '') ?>">
+        <?php endif; ?>
+
         <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1.5" for="crm_house_street">House No. / Street <span class="text-red-500">*</span></label>
             <div class="relative">
                 <i class="fa-solid fa-house absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-300 pointer-events-none"></i>
                 <input type="text" name="house_street" id="crm_house_street" placeholder="e.g. Unit 2B, 123 Rizal Street"
-                    class="<?= $crmInputCls ?> pl-9">
+                    value="<?= htmlspecialchars($crmForm['house_street'] ?? '') ?>" class="<?= $crmInputCls ?> pl-9">
             </div>
             <p class="crm-error hidden mt-1.5 text-[11px] text-red-600" data-error-for="crm_house_street"></p>
         </div>

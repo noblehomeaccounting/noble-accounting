@@ -4,6 +4,8 @@ $crmListAjaxUrl = BASE_URL . '/crmlistajax';
 $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 // Reset ng inquiry (binubura lahat ng nakakabit, pati files) — hiwalay na endpoint
 $crmListResetUrl = BASE_URL . '/crmlistresetajax';
+// Pag-edit ng inquiry — binubuksan ang buong New Client Inquiry form (crm-main.php) sa edit mode
+$crmInquiryFormUrl = BASE_URL . '/crmsales';
 ?>
 
 <div class="max-w-6xl mx-auto">
@@ -109,7 +111,7 @@ $crmListResetUrl = BASE_URL . '/crmlistresetajax';
     </section>
 
     <!-- ═══ LIST (may sariling scroll) ═══ -->
-    <div id="crmListCards" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[260px] overflow-y-auto p-[3px] pr-2 -m-[3px] [scrollbar-width:thin]"></div>
+    <div id="crmListCards" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[260px] overflow-y-auto py-[3px] px-[3px] [scrollbar-width:thin]"></div>
     <!-- (compat: dating table body — hindi na ginagamit) -->
     <div id="crmListTbody" class="hidden"></div>
 </div>
@@ -239,6 +241,8 @@ $crmListResetUrl = BASE_URL . '/crmlistresetajax';
     const CRM_LIST_AJAX_URL = <?= json_encode($crmListAjaxUrl) ?>;
     const CRM_2D_QUOTATION_URL = <?= json_encode($crm2dQuotationUrl) ?>;
     const CRM_RESET_URL = <?= json_encode($crmListResetUrl) ?>;
+    const CRM_INQUIRY_FORM_URL = <?= json_encode($crmInquiryFormUrl) ?>;
+    let crmDetailRecord = null;
     const CRM_CURRENT_USER_ID = <?= (int) ($_SESSION['account_id'] ?? 0) ?>;
     const CRM_POLL_INTERVAL_MS = 8000;
 
@@ -666,7 +670,7 @@ $crmListResetUrl = BASE_URL . '/crmlistresetajax';
             crmListRawRows = data.rows;
             crmPopulateFilterOptions(data.rows);
 
-            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id + ':' + r.client_status + ':' + r.measurement_datetime + ':' + r.contract_amount))
+            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id + ':' + r.client_status + ':' + r.measurement_datetime + ':' + r.contract_amount + ':' + r.client_name + ':' + r.contact_number + ':' + r.project_type))
                 + crmSortKey + crmSortDir + crmFilterSig();
             if (signature !== crmListLastSignature) {
                 crmRenderRows(data.rows);
@@ -793,6 +797,7 @@ $crmListResetUrl = BASE_URL . '/crmlistresetajax';
             }
 
             const r = data.record;
+            crmDetailRecord = r;
             const isDone = r.status === 'In Progress';
             const stage = crmStageOf(r);
 
@@ -824,6 +829,11 @@ $crmListResetUrl = BASE_URL . '/crmlistresetajax';
                     <span class="w-9 h-9 rounded-lg bg-white/70 flex items-center justify-center shrink-0"><i class="fa-solid ${next[1]}"></i></span>
                     <div class="min-w-0"><p class="text-sm font-semibold">${next[2]}</p><p class="text-xs opacity-80 mt-0.5">${next[3]}</p></div>
                 </div>
+                ${crmCanManage(r) ? `<div class="flex justify-end -mb-1">
+                    <a href="${CRM_INQUIRY_FORM_URL}?edit=${encodeURIComponent(r.id)}"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
+                        <i class="fa-solid fa-pen"></i> Edit inquiry
+                    </a></div>` : ''}
                 ${crmDetailGroup('Client', 'fa-user', [
                     crmDetailRow('Name', `<span class="capitalize">${crmEscapeHtml(r.client_name)}</span>`),
                     crmDetailRow('Contact', r.contact_number ? `<a href="tel:${crmEscapeHtml(String(r.contact_number).replace(/[^\d+]/g, ''))}" class="text-amber-700 hover:underline">${crmEscapeHtml(r.contact_number)}</a>` : '—'),
@@ -855,8 +865,13 @@ $crmListResetUrl = BASE_URL . '/crmlistresetajax';
     // ═══════════════════════════════════════════════════════════
     // RESET INQUIRY (binubura lahat ng nakakabit, pati files)
     // ═══════════════════════════════════════════════════════════
+    // May-ari lang (sales na nag-file) ang puwedeng mag-edit / mag-reset — sinusuri rin sa server
+    function crmCanManage(r) {
+        return r.sales_staff_id == null || Number(r.sales_staff_id) === CRM_CURRENT_USER_ID;
+    }
+
     function crmResetSection(r) {
-        if (r.sales_staff_id != null && Number(r.sales_staff_id) !== CRM_CURRENT_USER_ID) return '';
+        if (!crmCanManage(r)) return '';
         return `<section class="bg-white border border-red-200 rounded-xl overflow-hidden">
             <p class="px-4 py-2.5 border-b border-red-100 bg-red-50/60 text-[10.5px] font-bold uppercase tracking-wider text-red-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Danger zone</p>
             <div class="px-4 py-3">

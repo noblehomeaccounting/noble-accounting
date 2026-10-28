@@ -31,6 +31,81 @@ function fetchCrmOptions($conn, $table)
 $measuringSpaceOptions = fetchCrmOptions($conn, 'noblecrm_measuring_space');
 $projectScopeOptions = fetchCrmOptions($conn, 'noblecrm_project_scope');
 
+// ═══════════════════════════════════════════════════════════
+// EDIT MODE — ?edit=<id>  (same form, naka-prefill, UPDATE imbes na INSERT)
+// ═══════════════════════════════════════════════════════════
+$crmEditId = intval($_GET['edit'] ?? 0);
+$crmEditMode = $crmEditId > 0;
+$crmEditRow = null;
+$crmEditBlocked = '';      // may laman = hindi puwedeng i-edit (hindi kanya / wala)
+$crmNatureLocked = '';     // may laman = bawal palitan ang Project Nature (umusad na)
+$crmEditAddr = ['house_street' => '', 'barangay' => '', 'city' => '', 'province' => '', 'region' => '', 'parsed' => false];
+
+// Hinihiwalay ang naka-save na address ("House, Brgy. X, City, Province, Region")
+// pabalik sa mga parte para ma-prefill ang Region/Province/City/Barangay dropdowns.
+function crmSplitAddress(string $address): array
+{
+    $out = ['house_street' => '', 'barangay' => '', 'city' => '', 'province' => '', 'region' => '', 'parsed' => false];
+    $parts = array_map('trim', explode(',', $address));
+    $brgyIdx = null;
+    foreach ($parts as $i => $p) {
+        if (preg_match('/^Brgy\.\s+/i', $p)) $brgyIdx = $i; // huling "Brgy." ang gamitin
+    }
+    if ($brgyIdx === null || $brgyIdx === 0) {
+        $out['house_street'] = $address;
+        return $out;
+    }
+    $after = array_slice($parts, $brgyIdx + 1);
+    if (count($after) < 2 || count($after) > 3) {
+        $out['house_street'] = $address;
+        return $out;
+    }
+    $out['house_street'] = implode(', ', array_slice($parts, 0, $brgyIdx));
+    $out['barangay'] = trim(preg_replace('/^Brgy\.\s+/i', '', $parts[$brgyIdx]));
+    $out['city'] = $after[0];
+    $out['province'] = count($after) === 3 ? $after[1] : '';
+    $out['region'] = end($after);
+    $out['parsed'] = true;
+    return $out;
+}
+
+function crmInquiryHasProgress(mysqli $conn, array $row): string
+{
+    if ((int) ($row['designer_id'] ?? 0) > 0) return 'A designer is already assigned';
+    foreach (['noblecrm_sitevisit' => 'The site visit has started', 'noblecrm_2dquotation' => 'The 2D & Quotation has started'] as $table => $why) {
+        try {
+            $st = $conn->prepare("SELECT 1 FROM {$table} WHERE inquiry_id = ? LIMIT 1");
+            $st->bind_param('i', $row['id']);
+            $st->execute();
+            $has = (bool) $st->get_result()->fetch_row();
+            $st->close();
+            if ($has) return $why;
+        } catch (Throwable $e) {
+            // walang table → walang progress doon
+        }
+    }
+    return '';
+}
+
+if ($crmEditMode) {
+    $st = $conn->prepare("SELECT * FROM noblecrminquiry WHERE id = ? LIMIT 1");
+    $st->bind_param('i', $crmEditId);
+    $st->execute();
+    $crmEditRow = $st->get_result()->fetch_assoc();
+    $st->close();
+
+    if (!$crmEditRow) {
+        $crmEditBlocked = 'This inquiry no longer exists.';
+    } elseif ((int) $crmEditRow['sales_staff_id'] !== $currentSalesId) {
+        $crmEditBlocked = 'Only the sales staff who filed this inquiry can edit it.';
+    } else {
+        $why = crmInquiryHasProgress($conn, $crmEditRow);
+        if ($why !== '') $crmNatureLocked = $why . ', so the project nature can no longer be changed.';
+        $crmEditAddr = crmSplitAddress((string) $crmEditRow['address']);
+    }
+}
+$crmListUrl = BASE_URL . '/crmsaleslist';
+
 function getBranchId($conn, $branchName)
 {
     $id = null;
@@ -78,7 +153,7 @@ function generateCrmControlNo($conn, $branchId)
 }
 
 // --- Handle submit ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
+if (!$crmEditMode && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
     $clientName = trim($_POST['client_name'] ?? '');
     $contactNumber = trim($_POST['contact_number'] ?? '');
     $projectType = trim($_POST['project_type'] ?? '');
@@ -183,11 +258,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_inquiry'])) {
     }
 }
 
-// Ginagamit sa pag-check ng mga naka-checked na checkbox pagkatapos ng failed submit
-$postedMeasuringSpace = (array) ($_POST['measuring_space'] ?? []);
-$postedProjectScope = (array) ($_POST['project_scope'] ?? []);
-$postedMode = $_POST['inquiry_mode'] ?? '';
-$postedNature = $_POST['project_nature'] ?? '';
+// --- Handle update (edit mode) ---
+if ($crmEditMode && $crmEditRow && $crmEditBlocked === '' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_inquiry'])) {
+    $clean = fn($v) => trim(preg_replace('/\s+/u', ' ', (string) $v));
+    $toList = function ($v) use ($clean): string {
+        $items = is_array($v) ? $v : explode(',', (string) $v);
+        return implode(', ', array_values(array_unique(array_filter(array_map($clean, $items), fn($x) => $x !== ''))));
+    };
+
+    $clientName = $clean($_POST['client_name'] ?? '');
+    $contactNumber = preg_replace('/\D/', '', (string) ($_POST['contact_number'] ?? ''));
+    $projectType = $clean($_POST['project_type'] ?? '');
+    $projectScope = $toList($_POST['project_scope'] ?? []);
+    $measuringSpace = $toList($_POST['measuring_space'] ?? []);
+
+    $houseStreet = $clean($_POST['house_street'] ?? '');
+    $regionName = $clean($_POST['region_name'] ?? '');
+    $provinceName = $clean($_POST['province_name'] ?? '');
+    $cityName = $clean($_POST['city_name'] ?? '');
+    $barangayName = $clean($_POST['barangay_name'] ?? '');
+    $keepAddress = ($_POST['keep_address'] ?? '') === '1';
+
+    // Project Nature: kapag naka-lock, laging yung naka-save (hindi galing sa POST)
+    $oldNature = (string) $crmEditRow['project_nature'];
+    $projectNature = $crmNatureLocked !== '' ? $oldNature : trim($_POST['project_nature'] ?? '');
+    if (!in_array($projectNature, ['modular', 'material'], true)) $projectNature = $crmNatureLocked !== '' ? $oldNature : '';
+
+    if ($keepAddress && $cityName === '' && $barangayName === '') {
+        // hindi tumugma sa dropdowns ang lumang address at hindi ginalaw — panatilihin
+        $address = (string) $crmEditRow['address'];
+    } else {
+        $keepAddress = false;
+        $address = implode(', ', array_filter([
+            $houseStreet,
+            $barangayName !== '' ? 'Brgy. ' . $barangayName : '',
+            $cityName,
+            $provinceName,
+            $regionName,
+        ]));
+    }
+
+    if ($clientName === '' || $contactNumber === '' || $projectNature === ''
+        || (!$keepAddress && ($houseStreet === '' || $cityName === '' || $barangayName === ''))) {
+        $formError = 'Please fill out all required fields.';
+    } elseif (!preg_match('/^[0-9]{11}$/', $contactNumber)) {
+        $formError = 'Contact Number must be exactly 11 digits.';
+    } elseif (mb_strlen($clientName) > 150) {
+        $formError = 'Client name is too long (max 150 characters).';
+    } elseif (mb_strlen($address) > 255) {
+        $formError = 'Address is too long (max 255 characters).';
+    } elseif (mb_strlen($projectType) > 100) {
+        $formError = 'Type of project is too long (max 100 characters).';
+    } elseif (mb_strlen($projectScope) > 1000 || mb_strlen($measuringSpace) > 1000) {
+        $formError = 'Too many scope items selected.';
+    } else {
+        // Mode/Status: binabago lang kapag talagang pinalitan ang Project Nature (at hindi pa naka-lock)
+        $mode = (string) ($crmEditRow['mode'] ?? '');
+        $status = (string) ($crmEditRow['status'] ?? '');
+        if ($projectNature !== $oldNature || $mode === '') {
+            $mode = $projectNature === 'material' ? 'ready_for_quotation' : 'site_visit';
+            if ($projectNature !== $oldNature) $status = $mode === 'ready_for_quotation' ? 'In Progress' : 'Pending';
+        }
+
+        $st = $conn->prepare("
+            UPDATE noblecrminquiry
+            SET client_name = ?, contact_number = ?, address = ?, project_type = ?, project_nature = ?,
+                project_scope = ?, measuring_space = ?, mode = ?, status = ?
+            WHERE id = ? AND sales_staff_id = ?
+        ");
+        $st->bind_param('sssssssssii', $clientName, $contactNumber, $address, $projectType, $projectNature,
+            $projectScope, $measuringSpace, $mode, $status, $crmEditId, $currentSalesId);
+        if ($st->execute()) {
+            $st->close();
+            $_SESSION['crm_flash_success'] = 'Inquiry updated.';
+            $_SESSION['crm_flash_control_no'] = (string) $crmEditRow['control_no'];
+            header('Location: ' . $_SERVER['REQUEST_URI']);
+            exit;
+        }
+        $st->close();
+        $formError = 'Something went wrong. Please try again.';
+    }
+}
+
+// Mga value na ipapakita sa form: POST (kapag may error) → naka-save na record (edit) → blank (new)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $crmForm = $_POST;
+} elseif ($crmEditRow && $crmEditBlocked === '') {
+    $splitList = fn($v) => array_values(array_filter(array_map('trim', explode(',', (string) $v)), fn($x) => $x !== ''));
+    $crmForm = [
+        'client_name' => (string) $crmEditRow['client_name'],
+        'contact_number' => (string) $crmEditRow['contact_number'],
+        'house_street' => $crmEditAddr['house_street'],
+        'project_type' => (string) $crmEditRow['project_type'],
+        'project_nature' => (string) $crmEditRow['project_nature'],
+        'inquiry_mode' => ($crmEditRow['project_nature'] ?? '') === 'material' ? 'ready_for_quotation' : 'site_visit',
+        'project_scope' => $splitList($crmEditRow['project_scope']),
+        'measuring_space' => $splitList($crmEditRow['measuring_space']),
+    ];
+} else {
+    $crmForm = [];
+}
+
+// Ginagamit sa pag-check ng mga naka-checked na checkbox (failed submit o edit prefill)
+$postedMeasuringSpace = (array) ($crmForm['measuring_space'] ?? []);
+$postedProjectScope = (array) ($crmForm['project_scope'] ?? []);
+$postedMode = $crmForm['inquiry_mode'] ?? '';
+$postedNature = $crmForm['project_nature'] ?? '';
+
+// Kapag may naka-save na scope/area na wala na sa options list, ipakita pa rin (naka-check)
+foreach ([[&$projectScopeOptions, $postedProjectScope], [&$measuringSpaceOptions, $postedMeasuringSpace]] as $pair) {
+    $labels = array_map(fn($o) => mb_strtolower($o['label']), $pair[0]);
+    foreach ($pair[1] as $val) {
+        if (!in_array(mb_strtolower($val), $labels, true)) {
+            $pair[0][] = ['id' => 0, 'label' => $val];
+            $labels[] = mb_strtolower($val);
+        }
+    }
+}
+unset($pair);
 
 // Folder kung saan nakatago ang bawat step's markup (palitan kung iba ang gusto mong path)
 $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
@@ -204,7 +392,7 @@ $crmSteps = [
     ['Client Info', 'Name & address', 'fa-user'],
     ['Project Details', 'Nature & scope', 'fa-ruler-combined'],
     ['Assignment', 'Who handles it', 'fa-users-gear'],
-    ['Review', 'Check & submit', 'fa-clipboard-check'],
+    ['Review', $crmEditMode ? 'Check & save' : 'Check & submit', 'fa-clipboard-check'],
 ];
 ?>
 
@@ -216,7 +404,37 @@ $crmSteps = [
         controlNo: <?= json_encode($generatedControlNo) ?>
     };
     const CRM_CHIP_CLS = <?= json_encode($crmChipCls) ?>;
+    // Edit mode: naka-prefill ang form mula sa naka-save na inquiry (walang localStorage draft)
+    const CRM_EDIT = <?= json_encode(($crmEditRow && $crmEditBlocked === '') ? [
+        'id' => $crmEditId,
+        'control_no' => (string) $crmEditRow['control_no'],
+        'address' => (string) $crmEditRow['address'],
+        'addr' => $_SERVER['REQUEST_METHOD'] === 'POST' ? [
+            'house_street' => (string) ($_POST['house_street'] ?? ''),
+            'region' => (string) ($_POST['region_name'] ?? ''),
+            'province' => (string) ($_POST['province_name'] ?? ''),
+            'city' => (string) ($_POST['city_name'] ?? ''),
+            'barangay' => (string) ($_POST['barangay_name'] ?? ''),
+            'parsed' => ($_POST['city_name'] ?? '') !== '' && ($_POST['barangay_name'] ?? '') !== '',
+        ] : $crmEditAddr,
+        'failed_post' => $_SERVER['REQUEST_METHOD'] === 'POST',
+        'nature_locked' => $crmNatureLocked,
+    ] : null, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 </script>
+
+<?php if ($crmEditMode && $crmEditBlocked !== ''): ?>
+<div class="max-w-xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+        <div class="p-6 text-center">
+            <span class="w-12 h-12 mx-auto rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center"><i class="fa-solid fa-lock"></i></span>
+            <h1 class="mt-3 text-base font-semibold text-gray-900">Can't edit this inquiry</h1>
+            <p class="mt-1 text-sm text-gray-500"><?= htmlspecialchars($crmEditBlocked) ?></p>
+            <a href="<?= htmlspecialchars($crmListUrl) ?>" class="mt-4 inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold"><i class="fa-solid fa-arrow-left text-[11px]"></i> Back to Sales &amp; Market List</a>
+        </div>
+    </div>
+</div>
+<?php else: ?>
 
 <div class="crm-doc max-w-6xl mx-auto">
 
@@ -236,10 +454,10 @@ $crmSteps = [
                             <img src="<?= BASE_URL ?>/icon/logo.webp" class="h-9 w-9 object-contain" alt="logo">
                         </span>
                         <div class="min-w-0">
-                            <p class="text-amber-700 text-[10px] font-bold tracking-[0.18em] uppercase">CRM · Inquiry Form</p>
-                            <h1 class="text-gray-900 text-xl leading-tight font-semibold">New Client Inquiry</h1>
+                            <p class="text-amber-700 text-[10px] font-bold tracking-[0.18em] uppercase">CRM · <?= $crmEditMode ? 'Edit Inquiry' : 'Inquiry Form' ?></p>
+                            <h1 class="text-gray-900 text-xl leading-tight font-semibold"><?= $crmEditMode ? 'Update Client Inquiry' : 'New Client Inquiry' ?></h1>
                             <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
-                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500"><i class="fa-regular fa-calendar text-amber-700"></i> <?= date('F d, Y') ?></span>
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500"><i class="fa-regular fa-calendar text-amber-700"></i> <?= $crmEditMode ? 'Filed ' . htmlspecialchars(date('F d, Y', strtotime((string) $crmEditRow['created_at']) ?: time())) : date('F d, Y') ?></span>
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500 capitalize"><i class="fa-solid fa-code-branch text-amber-700"></i> <?= htmlspecialchars($_SESSION['branch'] ?? '—') ?></span>
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500"><i class="fa-regular fa-user text-amber-700"></i> <?= htmlspecialchars($currentSalesName) ?></span>
                             </div>
@@ -248,13 +466,23 @@ $crmSteps = [
                     <div class="text-right shrink-0 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2">
                         <p class="text-[9px] text-gray-400 uppercase tracking-[0.16em]">Reference No.</p>
                         <p class="text-gray-900 font-mono font-semibold text-sm">
-                            <?= !empty($generatedControlNo)
-                                ? htmlspecialchars($generatedControlNo)
-                                : '<span class="text-gray-400 font-sans text-xs">Assigned on submit</span>' ?>
+                            <?= $crmEditMode
+                                ? htmlspecialchars((string) $crmEditRow['control_no'])
+                                : (!empty($generatedControlNo)
+                                    ? htmlspecialchars($generatedControlNo)
+                                    : '<span class="text-gray-400 font-sans text-xs">Assigned on submit</span>') ?>
                         </p>
                     </div>
                 </div>
             </div>
+
+            <?php if ($crmEditMode): ?>
+                <div class="mx-5 md:mx-7 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5">
+                    <i class="fa-solid fa-pen-to-square text-amber-700"></i>
+                    <p class="flex-1 min-w-[12rem] text-[12px] text-amber-900 leading-relaxed">You're editing an existing inquiry. Changes are saved to the same record and show up everywhere it appears.</p>
+                    <a href="<?= htmlspecialchars($crmListUrl) ?>" class="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-amber-800 px-2.5 py-1 rounded-lg bg-white border border-amber-200 hover:bg-amber-100"><i class="fa-solid fa-arrow-left text-[10px]"></i> Back to list</a>
+                </div>
+            <?php endif; ?>
 
             <!-- Step Indicator -->
             <div class="flex items-start px-5 md:px-8 pt-5 pb-1">
@@ -309,7 +537,9 @@ $crmSteps = [
             </section>
             <section class="rounded-2xl border border-dashed border-gray-300 bg-white/60 px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
                 <p class="font-semibold text-gray-700 mb-1"><i class="fa-solid fa-lightbulb text-amber-600 mr-1"></i>Tip</p>
-                Your progress is saved on this device as you type, so you can refresh or come back later.
+                <?= $crmEditMode
+                    ? 'Nothing changes until you press <b>Save changes</b> on the Review step. Designer, schedule and contract stay in the Sales &amp; Market List.'
+                    : 'Your progress is saved on this device as you type, so you can refresh or come back later.' ?>
             </section>
         </aside>
     </div>
@@ -483,6 +713,7 @@ $crmSteps = [
         ];
         for (const [id, label] of required) {
             const el = document.getElementById(id);
+            if (crmKeepAddress() && ['crm_house_street', 'crm_city', 'crm_barangay'].includes(id)) continue;
             if (!el.value.trim()) {
                 crmClearErrors();
                 crmFieldError(id, `Please fill out ${label}.`);
@@ -609,8 +840,9 @@ $crmSteps = [
         } catch (e) { console.error('crmLoadRegions:', e); }
     }
 
-    document.getElementById('crm_region').addEventListener('change', async function () {
-        const code = this.value;
+    // Awaitable na loaders (ginagamit ng listener, ng draft restore, at ng edit prefill)
+    async function crmOnRegionChange() {
+        const code = document.getElementById('crm_region').value;
         const isNCR = (code === CRM_NCR_CODE);
         const wrapper = document.getElementById('crm_province_wrapper');
         const provSel = document.getElementById('crm_province');
@@ -641,10 +873,10 @@ $crmSteps = [
                 crmPopulateSelect(provSel, provinces, 'code', 'name', '— Select Province —');
             } catch (e) { console.error('crm provinces:', e); }
         }
-    });
+    }
 
-    document.getElementById('crm_province').addEventListener('change', async function () {
-        const code = this.value;
+    async function crmOnProvinceChange() {
+        const code = document.getElementById('crm_province').value;
         crmResetSelect(document.getElementById('crm_city'), '— Select City / Municipality —');
         crmResetSelect(document.getElementById('crm_barangay'), '— Select Barangay —');
         document.getElementById('crm_postal_code').value = '';
@@ -658,12 +890,13 @@ $crmSteps = [
                 [...cities, ...munis].sort((a, b) => a.name.localeCompare(b.name)),
                 'code', 'name', '— Select City / Municipality —');
         } catch (e) { console.error('crm cities:', e); }
-    });
+    }
 
-    document.getElementById('crm_city').addEventListener('change', async function () {
-        const code = this.value;
+    async function crmOnCityChange() {
+        const cityEl = document.getElementById('crm_city');
+        const code = cityEl.value;
         crmResetSelect(document.getElementById('crm_barangay'), '— Select Barangay —');
-        const sel = this.options[this.selectedIndex];
+        const sel = cityEl.options[cityEl.selectedIndex];
         document.getElementById('crm_postal_code').value = sel.dataset.zip || '';
         if (!code) return;
         try {
@@ -671,7 +904,62 @@ $crmSteps = [
             barangays.sort((a, b) => a.name.localeCompare(b.name));
             crmPopulateSelect(document.getElementById('crm_barangay'), barangays, 'code', 'name', '— Select Barangay —');
         } catch (e) { console.error('crm barangays:', e); }
-    });
+    }
+
+    document.getElementById('crm_region').addEventListener('change', crmOnRegionChange);
+    document.getElementById('crm_province').addEventListener('change', crmOnProvinceChange);
+    document.getElementById('crm_city').addEventListener('change', crmOnCityChange);
+
+    // ── Edit mode: "Keep saved address" kapag hindi tumugma sa dropdowns ang lumang address ──
+    function crmKeepAddress() {
+        return document.getElementById('crm_keep_address')?.value === '1';
+    }
+    function crmSetKeepAddress(on) {
+        const k = document.getElementById('crm_keep_address');
+        if (k) k.value = on ? '1' : '';
+        const note = document.getElementById('crm_keep_address_note');
+        if (note) note.classList.toggle('hidden', !on);
+    }
+    // kapag ang user mismo ang pumili ng bagong Region/City/Barangay → bagong address na ang gagamitin
+    ['crm_region', 'crm_province', 'crm_city', 'crm_barangay'].forEach(id =>
+        document.getElementById(id).addEventListener('change', () => { if (crmKeepAddress()) crmSetKeepAddress(false); }));
+
+    const crmNorm = v => String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    // piliin ang option ayon sa pangalan; true kapag may tumugma
+    async function crmPickByName(id, name, after) {
+        const el = document.getElementById(id);
+        const want = crmNorm(name);
+        if (!want || el.disabled) return false;
+        const opt = Array.from(el.options).find(o => o.value && crmNorm(o.text) === want);
+        if (!opt) return false;
+        el.value = opt.value;
+        if (after) await after();
+        return true;
+    }
+
+    async function crmPrefillEdit() {
+        const a = CRM_EDIT.addr || {};
+        let ok = !!a.parsed;
+        if (ok) ok = await crmPickByName('crm_region', a.region, crmOnRegionChange);
+        if (ok && a.province) ok = await crmPickByName('crm_province', a.province, crmOnProvinceChange);
+        if (ok) ok = await crmPickByName('crm_city', a.city, crmOnCityChange);
+        if (ok) ok = await crmPickByName('crm_barangay', a.barangay, null);
+
+        if (!ok) {
+            // ibalik sa blangko ang dropdowns; ang lumang address ay mananatili hangga't walang bagong pinipili
+            document.getElementById('crm_region').value = '';
+            await crmOnRegionChange();
+            if (!a.parsed && !CRM_EDIT.failed_post) document.getElementById('crm_house_street').value = '';
+            const saved = document.getElementById('crm_keep_address_saved');
+            if (saved) saved.textContent = CRM_EDIT.address || '—';
+            crmSetKeepAddress(!!CRM_EDIT.address);
+        }
+        crmSyncAddressHiddenFields();
+        crmUpdateAddressPreview();
+        crmContactCount();
+        crmSyncModeFromNature();
+        crmUpdateSummary();
+    }
 
     function crmSelectedText(id) {
         const el = document.getElementById(id);
@@ -689,6 +977,7 @@ $crmSteps = [
             crmSelectedText('crm_province'),
             crmSelectedText('crm_region'),
         ].filter(Boolean);
+        if (crmKeepAddress() && CRM_EDIT) parts.splice(0, parts.length, CRM_EDIT.address);
         el.textContent = parts.length ? parts.join(', ') : 'The full address will appear here as you fill it in.';
         el.classList.toggle('text-gray-400', !parts.length);
         el.classList.toggle('text-gray-700', !!parts.length);
@@ -755,7 +1044,7 @@ $crmSteps = [
             { title: 'Client', icon: 'fa-user', step: 1, rows: [
                 ['Client Name', document.getElementById('crm_client_name').value || '—'],
                 ['Contact Number', document.getElementById('crm_contact_number').value || '—'],
-                ['Address', addressParts.join(', ') || '—'],
+                ['Address', (crmKeepAddress() && CRM_EDIT ? CRM_EDIT.address : addressParts.join(', ')) || '—'],
             ] },
             { title: 'Project', icon: 'fa-ruler-combined', step: 2, rows: [
                 ['Project Nature', crmSelectedNatureLabel()],
@@ -790,6 +1079,7 @@ $crmSteps = [
     const CRM_DRAFT_KEY = 'crmInquiryDraft_v1';
 
     function crmSaveDraft() {
+        if (CRM_EDIT) return; // edit mode: walang draft — ang naka-save na record ang source
         const form = document.getElementById('crmInquiryForm');
         const data = {};
 
@@ -837,29 +1127,20 @@ $crmSteps = [
         if (data.crm_region) {
             const regionSel = document.getElementById('crm_region');
             regionSel.value = data.crm_region;
-            await new Promise(resolve => {
-                regionSel.dispatchEvent(new Event('change'));
-                setTimeout(resolve, 500);
-            });
+            await crmOnRegionChange();
         }
         if (data.crm_province) {
             const provinceSel = document.getElementById('crm_province');
             if (!provinceSel.disabled) {
                 provinceSel.value = data.crm_province;
-                await new Promise(resolve => {
-                    provinceSel.dispatchEvent(new Event('change'));
-                    setTimeout(resolve, 500);
-                });
+                await crmOnProvinceChange();
             }
         }
         if (data.crm_city) {
             const citySel = document.getElementById('crm_city');
             if (!citySel.disabled) {
                 citySel.value = data.crm_city;
-                await new Promise(resolve => {
-                    citySel.dispatchEvent(new Event('change'));
-                    setTimeout(resolve, 500);
-                });
+                await crmOnCityChange();
             }
         }
         if (data.crm_barangay) {
@@ -909,7 +1190,7 @@ $crmSteps = [
         crmSyncAddressHiddenFields();
         const btn = document.getElementById('crm_submit_btn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> Submitting…';
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> ${CRM_EDIT ? 'Saving…' : 'Submitting…'}`;
     });
     // Enter sa text field: huwag i-submit ang form (lumipat lang sa susunod na field)
     document.getElementById('crmInquiryForm').addEventListener('keydown', function (e) {
@@ -924,13 +1205,15 @@ $crmSteps = [
         if (!box) return;
         const v = id => (document.getElementById(id)?.value || '').trim();
         const checked = name => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(c => c.value);
-        const addr = [v('crm_house_street'), crmSelectedText('crm_barangay') ? 'Brgy. ' + crmSelectedText('crm_barangay') : '', crmSelectedText('crm_city'), crmSelectedText('crm_province')].filter(Boolean).join(', ');
+        const keep = crmKeepAddress() && !!CRM_EDIT;
+        const addr = keep ? CRM_EDIT.address : [v('crm_house_street'), crmSelectedText('crm_barangay') ? 'Brgy. ' + crmSelectedText('crm_barangay') : '', crmSelectedText('crm_city'), crmSelectedText('crm_province')].filter(Boolean).join(', ');
+        const addrOk = keep || !!(v('crm_house_street') && crmSelectedText('crm_city') && crmSelectedText('crm_barangay'));
         const nature = document.querySelector('input[name="project_nature"]:checked')?.value || '';
         const scope = checked('project_scope[]');
         const area = checked('measuring_space[]');
         const phoneOk = /^[0-9]{11}$/.test(v('crm_contact_number'));
 
-        const required = [!!v('crm_client_name'), phoneOk, !!v('crm_house_street'), !!crmSelectedText('crm_city'), !!crmSelectedText('crm_barangay'), !!nature];
+        const required = [!!v('crm_client_name'), phoneOk, keep || !!v('crm_house_street'), keep || !!crmSelectedText('crm_city'), keep || !!crmSelectedText('crm_barangay'), !!nature];
         const pct = Math.round(required.filter(Boolean).length / required.length * 100);
         document.getElementById('crm_sum_pct').textContent = pct + '%';
         document.getElementById('crm_sum_bar').style.width = pct + '%';
@@ -951,7 +1234,7 @@ $crmSteps = [
         box.innerHTML = [
             row('fa-user', 'Client', v('crm_client_name'), !!v('crm_client_name')),
             row('fa-phone', 'Contact', v('crm_contact_number') + (v('crm_contact_number') && !phoneOk ? ' (needs 11 digits)' : ''), phoneOk),
-            row('fa-location-dot', 'Address', addr, !!(v('crm_house_street') && crmSelectedText('crm_city') && crmSelectedText('crm_barangay'))),
+            row('fa-location-dot', 'Address', addr, addrOk),
             row('fa-cubes', 'Project nature', nature ? (nature === 'modular' ? 'Modular · Site visit needed' : 'Material Only · Ready for quotation') : '', !!nature),
             row('fa-building', 'Type of project', v('crm_project_type'), !!v('crm_project_type')),
             `<div class="pt-1 border-t border-gray-100"><dt class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mt-1.5">Scope of project</dt>${chips(scope)}</div>`,
@@ -978,10 +1261,10 @@ $crmSteps = [
             ? `${crmToastData.success} Reference No. <strong>${crmToastData.controlNo}</strong>`
             : crmToastData.success;
         crmShowToast(msg, 'success');
-        try { localStorage.removeItem('crmInquiryDraft_v1'); } catch (e) { }
+        if (!CRM_EDIT) { try { localStorage.removeItem('crmInquiryDraft_v1'); } catch (e) { } }
     }
 
-    crmLoadRegions().then(crmRestoreDraft);
+    crmLoadRegions().then(CRM_EDIT ? crmPrefillEdit : crmRestoreDraft);
 
     // ═══════════════════════════════════════════════════════════
     // OPTIONS MODAL (Scope of Project / Measuring Space CRUD)
@@ -1157,3 +1440,4 @@ $crmSteps = [
         if (e.target === this) closeOptionsModal();
     });
 </script>
+<?php endif; ?>
