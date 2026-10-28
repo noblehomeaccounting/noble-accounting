@@ -635,7 +635,7 @@ $routes = [
     'crm2drevisionajax'                => 'admin/crm-management/backend/page-3/subpage-3/crm2drevisionajax.php',
     'crmdesignerfeedbackajax'          => 'admin/crm-management/backend/page-3/crmdesignerfeedbackajax.php',
     'crmdesignerprogressajax'          => 'admin/crm-management/backend/page-3/crmdesignerprogressajax.php',
-    'crmlistresetajax'                 => 'admin/crm-management/backend/page-3/crmlistresetajax.php',
+    'crmlistresetajax'                 => 'admin/crm-management/backend/page-2/crmlistresetajax.php',
 ];
 
 
