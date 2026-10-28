@@ -2,6 +2,8 @@
 //crmlist.php
 $crmListAjaxUrl = BASE_URL . '/crmlistajax';
 $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
+// Reset ng inquiry (binubura lahat ng nakakabit, pati files) — hiwalay na endpoint
+$crmListResetUrl = BASE_URL . '/crmlistresetajax';
 ?>
 
 <div class="max-w-6xl mx-auto">
@@ -236,6 +238,8 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
 
     const CRM_LIST_AJAX_URL = <?= json_encode($crmListAjaxUrl) ?>;
     const CRM_2D_QUOTATION_URL = <?= json_encode($crm2dQuotationUrl) ?>;
+    const CRM_RESET_URL = <?= json_encode($crmListResetUrl) ?>;
+    const CRM_CURRENT_USER_ID = <?= (int) ($_SESSION['account_id'] ?? 0) ?>;
     const CRM_POLL_INTERVAL_MS = 8000;
 
     let crmListSearchTerm = '';
@@ -839,11 +843,121 @@ $crm2dQuotationUrl = BASE_URL . '/crm2dquotation';
                     crmDetailRow('Filed by', crmEscapeHtml(r.sales_name)),
                     crmDetailRow('Date filed', crmFormatDateTimeLong(r.created_at)),
                 ].join(''))}
+                ${crmResetSection(r)}
             </div>`;
 
         } catch (e) {
             console.error('crmOpenDetailModal:', e);
             body.innerHTML = `<p class="text-sm text-red-500 py-6 text-center">Connection error. Please try again.</p>`;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // RESET INQUIRY (binubura lahat ng nakakabit, pati files)
+    // ═══════════════════════════════════════════════════════════
+    function crmResetSection(r) {
+        if (r.sales_staff_id != null && Number(r.sales_staff_id) !== CRM_CURRENT_USER_ID) return '';
+        return `<section class="bg-white border border-red-200 rounded-xl overflow-hidden">
+            <p class="px-4 py-2.5 border-b border-red-100 bg-red-50/60 text-[10.5px] font-bold uppercase tracking-wider text-red-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Danger zone</p>
+            <div class="px-4 py-3">
+                <p class="text-[12.5px] font-semibold text-gray-900">Reset this inquiry</p>
+                <p class="text-[11.5px] text-gray-500 mt-0.5">Deletes everything connected to it — schedule, designer, site visit, 2D &amp; Quotation, Final, cutting, PC records — and all their files. The client and project details stay, and it goes back to <b>To schedule</b>. This cannot be undone.</p>
+                <div id="crmResetBox" class="mt-3">
+                    <button type="button" onclick="crmResetLoad(${r.id})"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50">
+                        <i class="fa-solid fa-rotate-left"></i> Reset this inquiry…
+                    </button>
+                </div>
+            </div>
+        </section>`;
+    }
+
+    async function crmResetLoad(id) {
+        const box = document.getElementById('crmResetBox');
+        if (!box) return;
+        box.innerHTML = '<p class="text-[12px] text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Checking what will be deleted…</p>';
+        try {
+            const res = await fetch(`${CRM_RESET_URL}?action=preview&id=${id}`, { cache: 'no-store' });
+            const data = await res.json();
+            if (crmDetailCurrentId !== id) return;
+            if (!data.success) {
+                box.innerHTML = `<p class="text-[12px] text-red-600">${crmEscapeHtml(data.message || 'Could not check this inquiry.')}</p>`;
+                return;
+            }
+            const groups = data.groups || [];
+            if (!groups.length && !data.files) {
+                box.innerHTML = `<p class="text-[12px] text-gray-500"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Nothing to reset yet — this inquiry has no connected records or files.</p>`;
+                return;
+            }
+            const cn = String(data.control_no || '');
+            box.innerHTML = `
+                <div class="rounded-lg border border-red-200 bg-red-50/50 p-3">
+                    <p class="text-[11.5px] font-semibold text-red-800 mb-1.5">This will permanently delete:</p>
+                    <ul class="max-h-44 overflow-y-auto overscroll-contain [scrollbar-width:thin] divide-y divide-red-100 text-[12px]">
+                        ${groups.map(g => `<li class="flex justify-between gap-3 py-1"><span class="text-gray-700">${crmEscapeHtml(g.label)}</span><span class="font-semibold tabular-nums text-gray-900">${g.rows}</span></li>`).join('')}
+                        <li class="flex justify-between gap-3 py-1"><span class="text-gray-700"><i class="fa-regular fa-file mr-1"></i>Files on the server</span><span class="font-semibold tabular-nums text-gray-900">${data.files}</span></li>
+                    </ul>
+                    <label class="block mt-3 text-[11.5px] text-red-800">Type <b class="font-mono">${crmEscapeHtml(cn)}</b> to confirm</label>
+                    <input id="crmResetConfirm" type="text" autocomplete="off" spellcheck="false"
+                        class="mt-1 w-full h-9 px-3 text-sm font-mono text-gray-900 bg-white border border-red-300 rounded-lg outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100">
+                    <div class="grid grid-cols-2 gap-2 mt-3">
+                        <button type="button" onclick="crmResetCancel(${id})" class="px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                        <button type="button" id="crmResetGo" disabled onclick="crmResetDo(${id})"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-rotate-left"></i> Reset now
+                        </button>
+                    </div>
+                </div>`;
+            const input = document.getElementById('crmResetConfirm');
+            input.addEventListener('input', () => {
+                document.getElementById('crmResetGo').disabled = input.value.trim().toLowerCase() !== cn.toLowerCase();
+            });
+            input.addEventListener('keydown', e => { if (e.key === 'Enter' && !document.getElementById('crmResetGo').disabled) crmResetDo(id); });
+            input.focus();
+        } catch (e) {
+            console.error('crmResetLoad:', e);
+            box.innerHTML = '<p class="text-[12px] text-red-600">Connection error. Please try again.</p>';
+        }
+    }
+
+    function crmResetCancel(id) {
+        const box = document.getElementById('crmResetBox');
+        if (!box) return;
+        box.innerHTML = `<button type="button" onclick="crmResetLoad(${id})"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50">
+            <i class="fa-solid fa-rotate-left"></i> Reset this inquiry…</button>`;
+    }
+
+    async function crmResetDo(id) {
+        const btn = document.getElementById('crmResetGo');
+        const input = document.getElementById('crmResetConfirm');
+        if (!btn || !input) return;
+        btn.disabled = true;
+        input.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting…';
+        const fd = new FormData();
+        fd.append('action', 'reset');
+        fd.append('id', id);
+        fd.append('confirm', input.value.trim());
+        try {
+            const res = await fetch(CRM_RESET_URL, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) {
+                crmShowToast(crmEscapeHtml(data.message || 'Reset failed.'), 'error', 8000);
+                btn.disabled = false; input.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Reset now';
+                return;
+            }
+            crmShowToast(`Inquiry reset — ${data.deleted_rows} record${data.deleted_rows === 1 ? '' : 's'} and ${data.deleted_files} file${data.deleted_files === 1 ? '' : 's'} removed.`, 'success', 6000);
+            if (data.warning) crmShowToast(crmEscapeHtml(data.warning), 'error', 8000);
+            crmListLastSignature = '';
+            await crmFetchList();
+            if (crmDetailCurrentId === id) crmOpenDetailModal(id);
+        } catch (e) {
+            console.error('crmResetDo:', e);
+            crmShowToast('Could not reach the server. Nothing was changed if the page shows no success message.', 'error', 8000);
+            btn.disabled = false; input.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Reset now';
         }
     }
 
