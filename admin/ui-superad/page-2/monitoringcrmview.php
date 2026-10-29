@@ -178,6 +178,35 @@ $inquiryId = intval($_GET['id'] ?? 0);
         }
 
         monLoadTimeline();
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // May galaw sa project (DR, labor, billing, turnover, PR, atbp.) → i-load ulit ang record, hindi gumagalaw ang scroll.
+        (function monViewHookRealtime() {
+            const TYPES = /^(crm|bom|pr_|po_|transmittal|pc_|dr_|labor_|billing_|turnover_)/i;
+            let t = null, missed = false, busy = false;
+            const sync = async () => {
+                if (document.hidden) { missed = true; return; }
+                if (busy) { missed = true; return; }
+                missed = false; busy = true;
+                const y = window.scrollY;
+                try { await monLoadTimeline(); } finally { busy = false; window.scrollTo(0, y); if (missed) sync(); }
+            };
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || monViewHookRealtime.done) return;
+                monViewHookRealtime.done = true;
+                window.NH_RT.on('*', 'changed', payload => {
+                    const type = String(payload?.type || '');
+                    if (type && !TYPES.test(type)) return;
+                    const inq = Number(payload?.inquiry_id || 0);
+                    if (inq && inq !== Number(MON_INQUIRY_ID)) return;   // ibang inquiry
+                    clearTimeout(t);
+                    t = setTimeout(sync, 600);
+                });
+            };
+            hook();
+            if (!monViewHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden && missed) sync(); });
+        })();
     </script>
 </body>
 

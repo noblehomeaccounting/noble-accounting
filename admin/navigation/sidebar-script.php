@@ -70,7 +70,8 @@
 
     // ── Desktop Sidebar Collapse ──────────────────────────────
     const SIDEBAR_KEY = 'sidebar_collapsed';
-    let sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === 'true';
+    let sidebarCollapsed = false;
+    try { sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch (e) { }
 
     function applySidebarState() {
         const sidebar = document.getElementById('sidebar');
@@ -84,7 +85,7 @@
     }
     function toggleSidebar() {
         sidebarCollapsed = !sidebarCollapsed;
-        localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed);
+        try { localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed); } catch (e) { }
         applySidebarState();
     }
     applySidebarState();
@@ -92,11 +93,15 @@
 
     // ══════════════════════════════════════════════════════════
     //  ISANG POLLING LANG: heartbeat + cleanup + badges + notif
+    //  + REALTIME: kapag may signal sa NH_RT (sidebar.php), poll agad
     // ══════════════════════════════════════════════════════════
-    const POLL_MS = 20000;
+    const POLL_MS = 20000;      // kapag hindi Live ang realtime
+    const POLL_LIVE_MS = 60000; // kapag Live — fallback lang, ang signal na ang nagpapabilis
     let notifPanelOpen = false;
     let polling = false;
+    let pollAgain = false;
     let lastNotifSig = null;
+    let pollTimer = null;
 
     function setDot(online) {
         document.querySelectorAll('#presence-dot').forEach(dot => {
@@ -104,18 +109,37 @@
         });
     }
 
+    // Isang beses lang ang "pop", at kapag TUMAAS lang ang bilang.
+    // Tinatanggal ang class pagkatapos ng animation para hindi na umulit
+    // (hal. kapag nabuksan/nasara ang drawer, na-collapse ang sidebar, o bumalik sa tab).
+    (function () {
+        if (document.getElementById('nh-badge-pop-style')) return;
+        const st = document.createElement('style');
+        st.id = 'nh-badge-pop-style';
+        st.textContent = '@keyframes nhBadgePop{0%{transform:scale(1)}40%{transform:scale(1.3)}100%{transform:scale(1)}}'
+            + '[data-badge]{animation:none!important}'
+            + '[data-badge].nh-pop{animation:nhBadgePop .4s ease-out 1!important}';
+        document.head.appendChild(st);
+        document.addEventListener('animationend', e => {
+            if (e.target.matches && e.target.matches('[data-badge].nh-pop')) e.target.classList.remove('nh-pop');
+        });
+    })();
+
     function applyBadges(counts) {
         document.querySelectorAll('[data-badge]').forEach(el => {
             const n = parseInt(counts[el.dataset.badge] ?? 0, 10) || 0;
+            const prev = el.dataset.n !== undefined ? parseInt(el.dataset.n, 10) || 0
+                : (parseInt(el.textContent, 10) || 0);   // unang beses: ang galing sa server
+            el.dataset.n = n;
             const text = n > 99 ? '99+' : String(n);
-            const changed = el.textContent.trim() !== text;
-            el.textContent = text;
+            if (el.textContent.trim() !== text) el.textContent = text;
             el.classList.toggle('hidden', n <= 0);
             el.classList.toggle('flex', n > 0);
-            if (changed && n > 0) {
-                el.classList.remove('badge-pop');
+            el.classList.remove('badge-pop'); // lumang class (Tailwind bounce) — hindi na gamit
+            if (n > prev) {
+                el.classList.remove('nh-pop');
                 void el.offsetWidth;
-                el.classList.add('badge-pop');
+                el.classList.add('nh-pop');
             }
         });
     }
@@ -130,8 +154,10 @@
         });
     }
 
-    async function pollSidebar() {
-        if (polling || document.hidden) return;
+    // force = galing sa realtime signal: tuloy kahit nakatago ang tab (para may toast/sound)
+    async function pollSidebar(force) {
+        if (polling) { if (force) pollAgain = true; return; }
+        if (document.hidden && !force) return;
         polling = true;
         try {
             const res = await fetch(BASE_URL + '/sidebarpoll', { method: 'POST', cache: 'no-store' });
@@ -149,12 +175,37 @@
             setDot(false);
         } finally {
             polling = false;
+            if (pollAgain) { pollAgain = false; pollSidebar(true); } // may dumating na signal habang nagpo-poll
         }
     }
 
+    function isRealtimeLive() {
+        return !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+    }
+
+    function schedulePoll() {
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(() => { pollSidebar(); schedulePoll(); },
+            isRealtimeLive() ? POLL_LIVE_MS : POLL_MS);
+    }
+
     pollSidebar();
-    setInterval(pollSidebar, POLL_MS);
+    schedulePoll();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pollSidebar(); });
+
+    // Realtime: bawat signal sa channel ng user / department / position → refresh ng badges + notif.
+    // Debounce para isang fetch lang kahit sabay-sabay ang dating ng signal.
+    if (window.NH_RT && window.NH_RT.enabled) {
+        let rtDebounce = null;
+        window.NH_RT.on('*', '*', () => {
+            clearTimeout(rtDebounce);
+            rtDebounce = setTimeout(() => pollSidebar(true), 400);
+        });
+        window.NH_RT.onLive(live => {
+            schedulePoll(); // palitan ang bilis ng fallback polling
+            if (live) pollSidebar(); // habol sa mga na-miss habang offline
+        });
+    }
 
     // ── Notifications panel ───────────────────────────────────
     function toggleSidebarNotif() {

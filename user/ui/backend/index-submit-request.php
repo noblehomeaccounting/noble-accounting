@@ -139,6 +139,10 @@ if ($result && $stmt->affected_rows > 0) {
     ");
     $notif_stmt->bind_param("iiss", $sent_to, $new_request_id, $message, $link);
     $notif_stmt->execute();
+
+    // ─── REALTIME: "doorbell" sa approver para mag-refresh agad ang Budget Requests niya ───
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    nhRealtimeNotify($sent_to, 'changed', ['type' => 'new', 'id' => (int) $new_request_id]);
 }
 
 echo json_encode([

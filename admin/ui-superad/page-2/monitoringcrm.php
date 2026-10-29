@@ -332,7 +332,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             ['Delivery', ['TRANSMITTAL ISSUED', 'DELIVERED', 'DR CREATED', 'DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED']],
             ['Labor & timeline', ['FOREMAN ASSIGNED', 'LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET']],
             ['Progress billing', ['BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED', 'BILLING APPROVED', 'FULLY BILLED']],
-            ['Punch list & turnover', ['PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'TURNED OVER']],
+            ['Punch list & turnover', ['PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'PARTLY TURNED OVER', 'TURNED OVER']],
             ['Closed', ['NOT PROCEEDING']]
         ];
 
@@ -757,6 +757,36 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
         monSyncUI();
         monLoadOptions();
         monFetchList();
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Anumang galaw ng CRM / production / operations → kunin ulit ang listahan at ang napiling inquiry.
+        // Hindi kinukuha habang nakatago ang tab; hahabol pagbalik.
+        (function monHookRealtime() {
+            const TYPES = /^(crm|bom|pr_|po_|transmittal|pc_|dr_|labor_|billing_|turnover_)/i;
+            let t = null, missed = false;
+            const sync = () => {
+                if (document.hidden) { missed = true; return; }
+                missed = false;
+                monFetchList();
+                if (monSelectedId) {
+                    if (window.monBox1Show) window.monBox1Show(monSelectedId);
+                    if (window.monBox2Show) window.monBox2Show(monSelectedId);
+                }
+            };
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || monHookRealtime.done) return;
+                monHookRealtime.done = true;
+                window.NH_RT.on('*', 'changed', payload => {
+                    const type = String(payload?.type || '');
+                    if (type && !TYPES.test(type)) return;
+                    clearTimeout(t);
+                    t = setTimeout(sync, 600);
+                });
+            };
+            hook();
+            if (!monHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden && missed) sync(); });
+        })();
     </script>
 
 </body>

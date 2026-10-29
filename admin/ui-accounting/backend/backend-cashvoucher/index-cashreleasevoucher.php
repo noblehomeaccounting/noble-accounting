@@ -20,6 +20,10 @@ $voucher_id = intval($body['voucher_id'] ?? 0);
 $user_id = intval($_SESSION['account_id'] ?? 0);
 $manual_name = trim($body['manual_name'] ?? '');
 $manual_date = trim($body['manual_date'] ?? '');
+if ($manual_date !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $manual_date)) {
+    $manual_date = ''; // hindi valid na petsa → ngayong araw na lang
+}
+$manual_name = mb_substr($manual_name, 0, 150);
 
 if (!$voucher_id || !$user_id) {
     echo json_encode(['success' => false, 'error' => 'Invalid data']);
@@ -45,27 +49,41 @@ if (!$vRow) {
     exit;
 }
 
+if (($vRow['status'] ?? '') !== 'ready_to_release') {
+    echo json_encode(['success' => false, 'error' => 'This voucher is not ready to release, or it was already released.']);
+    exit;
+}
+
 // Kunin ang signature ng custodian assistant na nag-release
-$sigRow  = $conn->query("SELECT path FROM noblesignature WHERE user_id = $user_id AND is_active = 1 LIMIT 1");
-$sigPath = ($sigRow && $sigRow->num_rows) ? $sigRow->fetch_assoc()['path'] : null;
+$stmtSig = $conn->prepare("SELECT path FROM noblesignature WHERE user_id = ? AND is_active = 1 LIMIT 1");
+$stmtSig->bind_param('i', $user_id);
+$stmtSig->execute();
+$sigRes  = $stmtSig->get_result();
+$sigPath = $sigRes->num_rows ? $sigRes->fetch_assoc()['path'] : null;
+$stmtSig->close();
 
 if ($manual_name) {
     // Manual receiver
     $stmt = $conn->prepare("UPDATE noblevoucher 
         SET status = 'released', released_by = ?, released_at = NOW(), released_signature = ?,
             manual_receiver_name = ?, manual_receiver_date = ?
-        WHERE id = ?");
+        WHERE id = ? AND status = 'ready_to_release'");
     $manual_date_val = $manual_date ?: date('Y-m-d');
     $stmt->bind_param("isssi", $user_id, $sigPath, $manual_name, $manual_date_val, $voucher_id);
 } else {
     $stmt = $conn->prepare("UPDATE noblevoucher 
         SET status = 'released', released_by = ?, released_at = NOW(), released_signature = ?
-        WHERE id = ?");
+        WHERE id = ? AND status = 'ready_to_release'");
     $stmt->bind_param("isi", $user_id, $sigPath, $voucher_id);
 }
 
-$success = $stmt->execute();
+$success = $stmt->execute() && $stmt->affected_rows > 0; // 0 = na-release na ng iba (sabay na click)
 $stmt->close();
+
+if (!$success) {
+    echo json_encode(['success' => false, 'error' => 'This voucher was already released.']);
+    exit;
+}
 
 // Laging i-clear ang cache kapag nag-succeed (kahit walang email)
 if ($success) {
@@ -75,16 +93,24 @@ if ($success) {
     clearCache('staff_acknowledged_requests');
 }
 
+// Ibalik agad ang sagot at ipadala ang realtime signal BAGO ang email (para hindi maghintay sa mailer)
+include_once ROOT_PATH . '/network/realtime-helper.php';
+nhRealtimeNotifyGroup(ROLE_ACCOUNTING, null, 'changed', ['type' => 'voucher_released', 'id' => $voucher_id]);
+nhRealtimeNotify(intval($vRow['requestor_id'] ?? 0), 'changed', ['type' => 'voucher_released', 'id' => $voucher_id]);
+echo json_encode(['success' => true]);
+nhRealtimeFlush(); // ibinabalik ang sagot sa browser, tapos padala sa Supabase
+
 // Send email sa requestor
 if ($success && $vRow['requestor_email']) {
 
+    $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     $control_no = $vRow['control_no'];
-    $purpose = $vRow['purpose'];
-    $name = $vRow['requestor_name'];
+    $purpose = $h($vRow['purpose']);
+    $name = $h($vRow['requestor_name']);
 
     $subject = "Cash Voucher Released $control_no";
     // Kunin ang receiver name
-    $receiverName = $manual_name ?: ($vRow['receiver_name'] ?? 'the designated receiver');
+    $receiverName = $h($manual_name ?: ($vRow['receiver_name'] ?? 'the designated receiver'));
 
     $emailBody = "
 <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>
@@ -95,7 +121,7 @@ if ($success && $vRow['requestor_email']) {
         <p style='font-size:15px;'>Hi <strong>$name</strong>,</p>
         <p style='font-size:14px;color:#555;'>Your cash voucher request has been <strong style='color:#16a34a;'>released</strong>.</p>
         <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0;'>
-            <p style='margin:0 0 8px;font-size:13px;'><strong>Control No.:</strong> $control_no</p>
+            <p style='margin:0 0 8px;font-size:13px;'><strong>Control No.:</strong> {$h($control_no)}</p>
             <p style='margin:0 0 8px;font-size:13px;'><strong>Purpose:</strong> $purpose</p>
             <p style='margin:0;font-size:13px;'><strong>Received By:</strong> $receiverName</p>
         </div>
@@ -106,7 +132,5 @@ if ($success && $vRow['requestor_email']) {
     </div>
 </div>";
 
-    sendMail($vRow['requestor_email'], $name, $subject, $emailBody);
+    sendMail($vRow['requestor_email'], $vRow['requestor_name'], $subject, $emailBody);
 }
-
-echo json_encode(['success' => $success]);

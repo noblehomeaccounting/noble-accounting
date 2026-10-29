@@ -82,6 +82,32 @@ function praNotify(mysqli $conn, int $prId, int $senderId, string $message): voi
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang approval */ }
 }
 
+// Realtime: signal sa mga apektadong department + Sales/Designer ng inquiry (galing sa BOM ng PR)
+function praRealtime(mysqli $conn, int $prId, array $groups, string $type): void
+{
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $st = $conn->prepare("
+            SELECT b.quotation_id FROM noblepurchaserequest p
+            LEFT JOIN noblecrm_bom b ON b.id = p.bom_id
+            WHERE p.id = ? LIMIT 1
+        ");
+        $st->bind_param('i', $prId);
+        $st->execute();
+        $qid = (int) ($st->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $st->close();
+        if ($qid > 0) {
+            nhRtQuotation($conn, $qid, $groups, $type);
+        } else {
+            foreach ($groups as $g) {
+                nhRealtimeNotifyGroup((string) $g[0], isset($g[1]) ? (string) $g[1] : null, 'changed', ['type' => $type, 'pr_id' => $prId]);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('praRealtime: ' . $e->getMessage());
+    }
+}
+
 // ================= LIST =================
 if ($action === 'list') {
     $rows = $conn->query("
@@ -176,6 +202,9 @@ if ($action === 'approve') {
         }
         $n->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang approval */ }
+
+    // Superadmin (ibang CEO/badge), PO (listahan, Client Series), Accounting Head (susunod na ire-review)
+    praRealtime($conn, $id, [[ROLE_SUPERADMIN, null], [ROLE_PO, null], [ROLE_ACCOUNTING, POSITION_HEAD]], 'pr_approved');
     praOut(['success' => true, 'has_signature' => $ap['signature_path'] !== null]);
 }
 
@@ -199,6 +228,7 @@ if ($action === 'reject') {
     if ($affected < 1) praOut(['success' => false, 'message' => 'This request was already approved or returned. Refreshing the list.']);
 
     praNotify($conn, $id, $currentUserId, 'Your purchase request was returned: ' . $remarks);
+    praRealtime($conn, $id, [[ROLE_SUPERADMIN, null], [ROLE_PO, null]], 'pr_returned');
     praOut(['success' => true]);
 }
 

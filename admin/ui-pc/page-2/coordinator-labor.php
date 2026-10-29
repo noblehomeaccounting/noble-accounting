@@ -40,9 +40,12 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
                         make the labor quotation. You can print it once the Superadmin approves it.</p>
                 </div>
             </div>
+            <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="lpLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="lpLiveText">Auto-refresh</span></span>
             <a href="<?= htmlspecialchars($drPageUrl) ?>"
                 class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50"><i
                     class="fa-solid fa-truck-ramp-box"></i> Delivery Receipts</a>
+            </div>
         </div>
 
         <!-- ═══ STAT TABS ═══ -->
@@ -657,7 +660,69 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
                 if (want && rows.some(r => r.dr_id === want)) openLabor(want);
                 if (want) { try { const u = new URL(location.href); u.searchParams.delete('dr'); history.replaceState(null, '', u); } catch (e) { } }
             });
-            setInterval(() => { if (!document.hidden && !F('lbModal').classList.contains('flex')) load(true); }, 30000);
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // May signal mula sa ibang PC, Superadmin o Accounting Head → kunin agad ang listahan.
+            // Ang bukas na detalye ay nire-refresh din, pero HINDI habang may form na sinusulatan — hahabol pagkasara.
+            const RT_TYPES = /^(pc_|dr|labor|foreman|timeline|billing|punch|turnover)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => F('lbModal').classList.contains('flex') && !!(F('fmForm') || F('lqForm'));
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtRefreshOpen() {
+                // bukas ang Step 3 at walang sinusulatan → kunin ulit (hal. na-approve / na-return ang quotation)
+                if (!lb || !F('lbModal').classList.contains('flex')) return;
+                const id = lb.dr.id, keep = F('lbModal').scrollTop;
+                api('labor_get', { dr_id: id }).then(d => {
+                    if (!lb || lb.dr.id !== id || rtBusy() || !F('lbModal').classList.contains('flex')) return;
+                    Object.assign(lb, { dr: d.dr, foreman: d.foreman, quote: d.quote, me: d.me, preview: d.quote_preview, editingForeman: !d.foreman, editingQuote: false });
+                    renderLabor();
+                    F('lbModal').scrollTop = keep;
+                }).catch(() => { });
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtRefreshOpen();
+                rtMissed = false;
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !F('lbModal').classList.contains('flex')) rtLoad(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal (CRM/budget/PR) — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('lpLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('lpLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

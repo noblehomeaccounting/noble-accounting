@@ -170,6 +170,10 @@ if ($action === 'send_feedback') {
     $stmt->execute();
     $stmt->close();
 
+    // Realtime: Designer (2D page, Assigned Inquiries, badge) + Sales + ibang Cutting
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    nhRtQuotation($conn, $quotationId, [[ROLE_CUTTING, null]], 'crm_cut_feedback');
+
     echo json_encode(['success' => true, 'message' => 'Feedback sent to the designer.']);
     exit;
 }
@@ -218,6 +222,10 @@ if ($action === 'verify_2d') {
     $stmt->bind_param('ii', $currentUserId, $quotationId);
     $stmt->execute();
     $stmt->close();
+
+    // Realtime: buong Cutting (Cutting List + E-Woodfile badge) + Sales/Designer ng inquiry
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    nhRtQuotation($conn, $quotationId, [[ROLE_CUTTING, null]], 'crm_cut_verify');
 
     echo json_encode(['success' => true, 'message' => '2D file marked as verified.']);
     exit;
@@ -268,6 +276,51 @@ if ($action === 'list') {
         $rows[] = cutListFormatRow($row);
     }
     $stmt->close();
+
+    // ── Tracking ng E-Woodfile bawat job (pinakahuling upload + kalagayan ng BOM) ──
+    // Hiwalay na query para hindi bumigat ang base query; kapag pumalya, wala lang tracking.
+    try {
+        $ids = array_map(fn($r) => (int) $r['id'], $rows);
+        if ($ids) {
+            $in = implode(',', $ids);
+            $track = [];
+            $res = $conn->query("
+                SELECT p.quotation_id, p.id, p.status, p.qr_approved, p.qr_rejected, p.created_at, p.approved_at, p.rejected_at
+                FROM noblecrm_cuttinglistprogression p
+                JOIN (SELECT quotation_id, MAX(id) AS mid FROM noblecrm_cuttinglistprogression
+                      WHERE quotation_id IN ($in) GROUP BY quotation_id) l ON l.mid = p.id
+            ");
+            foreach ($res->fetch_all(MYSQLI_ASSOC) as $p) {
+                $approval = (int) $p['qr_approved'] === 1 ? 'Approved' : ((int) $p['qr_rejected'] === 1 ? 'Rejected' : 'Pending');
+                $track[(int) $p['quotation_id']] = [
+                    'upload_approval' => $approval,
+                    'upload_status'   => $p['status'],
+                    'upload_at'       => $approval === 'Approved' ? $p['approved_at'] : ($approval === 'Rejected' ? $p['rejected_at'] : $p['created_at']),
+                ];
+            }
+            // BOM: ilan ang approved at ilan ang naibalik (hindi pa approved, at wala nang naka-link o na-reject ang upload)
+            $res = $conn->query("
+                SELECT b.quotation_id,
+                       SUM(b.approved_at IS NOT NULL) AS approved_boms,
+                       SUM(b.approved_at IS NULL AND (COALESCE(b.progression_id, 0) = 0 OR p.id IS NULL OR p.qr_rejected = 1)) AS returned_boms
+                FROM noblecrm_bom b
+                LEFT JOIN noblecrm_cuttinglistprogression p ON p.id = b.progression_id
+                WHERE b.quotation_id IN ($in) AND b.bom_number NOT LIKE 'TEMP-%'
+                GROUP BY b.quotation_id
+            ");
+            $boms = [];
+            foreach ($res->fetch_all(MYSQLI_ASSOC) as $b) {
+                $boms[(int) $b['quotation_id']] = ['approved_boms' => (int) $b['approved_boms'], 'returned_boms' => (int) $b['returned_boms']];
+            }
+            foreach ($rows as &$r) {
+                $r['track'] = ($track[$r['id']] ?? ['upload_approval' => null, 'upload_status' => null, 'upload_at' => null])
+                    + ($boms[$r['id']] ?? ['approved_boms' => 0, 'returned_boms' => 0]);
+            }
+            unset($r);
+        }
+    } catch (Throwable $e) {
+        error_log('cutlist track: ' . $e->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

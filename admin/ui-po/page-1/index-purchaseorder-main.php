@@ -31,10 +31,11 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                 <div>
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
                     <h1 class="text-gray-900 text-xl font-semibold">Purchase Orders</h1>
-                    <p class="text-gray-400 text-xs mt-0.5">Bills of Materials approved by the Superadmin. Receive a BOM to sign it and unlock the full document.</p>
+                    <p class="text-gray-400 text-xs mt-0.5">Bills of Materials approved by the Superadmin. BOMs made together in Cutting come as one order: one receive, one purchase request, one transmittal.</p>
                 </div>
-                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Auto-refresh every 30s
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
+                    <span id="poLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span id="poLiveText">Auto-refresh every 30s</span>
                 </span>
             </div>
 
@@ -123,7 +124,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                         <i class="fa-solid fa-file-signature text-sm"></i>
                     </span>
                     <div>
-                        <p class="text-sm font-semibold text-gray-800">Receive this BOM?</p>
+                        <p id="poReceiveTitle" class="text-sm font-semibold text-gray-800">Receive this BOM?</p>
                         <p id="poReceiveNo" class="font-mono text-[11px] font-semibold text-amber-700"></p>
                     </div>
                 </div>
@@ -190,6 +191,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
 
             let rows = [];
             let tab = 'pending';
+            let loading = false, loadAgain = false;
             let receiveTarget = null;
 
             // ── helpers ──
@@ -327,7 +329,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                     { label: 'BOM Approved', done: !!bom.approved_at, at: bom.approved_at, who: bom.approved_by, role: bom.approved_by_title || 'Superadmin', sig: bom.approved_by_signature_path, desc: 'Approved by', wait: 'Waiting for approval' },
                     { label: 'BOM Received', done: !!bom.received_at, at: bom.received_at, who: bom.received_by, role: bom.received_by_title || 'Purchasing', sig: bom.received_by_signature_path, desc: 'Received by', wait: 'Waiting for Purchasing' },
                 ];
-                let html = card('<i class="fa-solid fa-layer-group text-amber-700 mr-1"></i> Bill of Materials', `<span class="font-mono text-[10.5px] text-gray-400">${esc(bom.bom_number)}</span>`, timeline(bomSteps, !prs.length));
+                let html = card('<i class="fa-solid fa-layer-group text-amber-700 mr-1"></i> Bill of Materials', `<span class="font-mono text-[10.5px] text-gray-400">${esc((bom.group_boms && bom.group_boms.length ? bom.group_boms.map(b => b.bom_number).join(', ') : bom.bom_number))}</span>`, timeline(bomSteps, !prs.length));
 
                 if (!prs.length) {
                     html += card('<i class="fa-solid fa-file-invoice text-amber-700 mr-1"></i> Purchase Request', '',
@@ -402,6 +404,16 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                 return `<a href="${PR_URL}?bom=${r.id}" class="${primary} bg-amber-700 hover:bg-amber-800">Next: Purchase Request <i class="fa-solid fa-arrow-right text-[10px]"></i></a>`;
             }
 
+            // Mga BOM ng order (sabay ginawa sa Cutting). Isa lang → dating itsura.
+            const bomsOf = r => (r.boms && r.boms.length ? r.boms : [{ id: r.id, bom_number: r.bom_number, item_count: r.item_count }]);
+            function bomList(r) {
+                const list = bomsOf(r);
+                if (list.length === 1) return `<p class="font-mono text-[12px] font-semibold text-amber-700">${esc(list[0].bom_number)}</p>`;
+                return `<p class="inline-flex items-center gap-1 mb-0.5 px-1.5 py-px rounded bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800"><i class="fa-solid fa-layer-group text-[9px]"></i>${list.length} BOMs · 1 order</p>
+                    ${list.map(b => `<p class="font-mono text-[11.5px] font-semibold text-amber-700 leading-snug whitespace-nowrap">${esc(b.bom_number)} <span class="font-sans font-normal text-gray-400">· ${b.item_count} item${b.item_count === 1 ? '' : 's'}</span></p>`).join('')}
+                    ${r.pr_count > 1 ? `<p class="text-[10.5px] text-orange-600 mt-0.5" title="Made before BOMs were combined"><i class="fa-solid fa-circle-info mr-0.5"></i>${r.pr_count} separate purchase requests</p>` : ''}`;
+            }
+
             // ── render list ──
             function render() {
                 const pending = rows.filter(r => !r.is_received);
@@ -415,7 +427,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
 
                 const q = document.getElementById('poSearch').value.trim().toLowerCase();
                 const source = tab === 'pending' ? pending : received;
-                const list = source.filter(r => !q || `${r.bom_number} ${r.control_no ?? ''} ${r.client_name}`.toLowerCase().includes(q));
+                const list = source.filter(r => !q || `${bomsOf(r).map(b => b.bom_number).join(' ')} ${r.control_no ?? ''} ${r.client_name}`.toLowerCase().includes(q));
 
                 const body = document.getElementById('poList');
                 if (!list.length) {
@@ -446,7 +458,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                         return `
                         <tr class="${rowTone(r)} transition-colors">
                             <td class="px-5 py-3.5">
-                                <p class="font-mono text-[12px] font-semibold text-amber-700">${esc(r.bom_number)}</p>
+                                ${bomList(r)}
                                 <p class="text-[11px] text-gray-400">Submitted ${fmtDate(r.date_submitted)}</p>
                             </td>
                             <td class="px-5 py-3.5 max-w-[220px]">
@@ -465,11 +477,14 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                     }).join('');
                 }
 
-                document.getElementById('poFooter').textContent = `Showing ${list.length} of ${source.length} BOM${source.length === 1 ? '' : 's'}`;
+                const bomN = list.reduce((n, r) => n + bomsOf(r).length, 0);
+                document.getElementById('poFooter').textContent = `Showing ${list.length} of ${source.length} order${source.length === 1 ? '' : 's'}` + (bomN > list.length ? ` · ${bomN} BOMs` : '');
             }
 
             // ── load ──
             async function load() {
+                if (loading) { loadAgain = true; return; }
+                loading = true;
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const data = await res.json();
@@ -479,6 +494,9 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                 } catch (e) {
                     console.error(e);
                     toast('Connection error while loading purchase orders.', 'error');
+                } finally {
+                    loading = false;
+                    if (loadAgain) { loadAgain = false; load(); }
                 }
             }
 
@@ -513,12 +531,14 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                     <button type="button" data-mact="history" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-md text-left">
                         <i class="fa-solid fa-clock-rotate-left w-4 text-center text-amber-700"></i> Status History
                     </button>
-                    <button type="button" data-mact="view" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-md text-left">
+                    ${bomsOf(row).map(b => `
+                    ${bomsOf(row).length > 1 ? `<p class="px-3 pt-1.5 font-mono text-[10px] font-semibold text-gray-400">${esc(b.bom_number)}</p>` : ''}
+                    <button type="button" data-mact="view" data-bom="${b.id}" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-md text-left">
                         <i class="fa-solid fa-eye w-4 text-center text-gray-500"></i> View BOM
                     </button>
-                    <a href="${AJAX}?action=pdf&bom_id=${id}" target="_blank" data-mact="pdf" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-md">
+                    <a href="${AJAX}?action=pdf&bom_id=${b.id}" target="_blank" data-mact="pdf" class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-md">
                         <i class="fa-solid fa-file-pdf w-4 text-center text-red-500"></i> Download PDF
-                    </a>`;
+                    </a>`).join('')}`;
                 rowMenu.classList.remove('hidden');
                 const r = btn.getBoundingClientRect(), mw = rowMenu.offsetWidth, mh = rowMenu.offsetHeight;
                 const top = (r.bottom + 6 + mh > window.innerHeight) ? r.top - mh - 6 : r.bottom + 6;
@@ -531,7 +551,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                 const id = menuFor, act = it.dataset.mact;
                 closeRowMenu();
                 if (act === 'history') openHistory(id);
-                if (act === 'view') openBom(id);
+                if (act === 'view') openBom(+(it.dataset.bom || id));
             });
             document.addEventListener('click', e => { if (menuFor !== null && !e.target.closest('#poRowMenu, [data-menu]')) closeRowMenu(); });
             window.addEventListener('scroll', closeRowMenu, true);
@@ -543,9 +563,11 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                 const r = rows.find(x => x.id === id);
                 if (!r) return;
                 receiveTarget = r;
-                document.getElementById('poReceiveNo').textContent = r.bom_number;
+                const list = bomsOf(r);
+                document.getElementById('poReceiveTitle').textContent = list.length > 1 ? `Receive these ${list.length} BOMs?` : 'Receive this BOM?';
+                document.getElementById('poReceiveNo').textContent = list.map(b => b.bom_number).join(', ');
                 document.getElementById('poReceiveClient').textContent = r.client_name;
-                document.getElementById('poReceiveItems').textContent = `${r.item_count} item${r.item_count === 1 ? '' : 's'}`;
+                document.getElementById('poReceiveItems').textContent = `${r.item_count} item${r.item_count === 1 ? '' : 's'}` + (list.length > 1 ? ` in ${list.length} BOMs (received together)` : '');
                 openModal('poReceiveModal');
             }
 
@@ -571,7 +593,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                         return;
                     }
                     toast(data.has_signature
-                        ? 'BOM received and signed.'
+                        ? ((data.count || 1) > 1 ? `${data.count} BOMs received and signed.` : 'BOM received and signed.')
                         : 'BOM received. No saved signature was found, so only your name was placed.',
                         data.has_signature ? 'success' : 'error', 6000);
                     await load();
@@ -716,7 +738,52 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
             // ── init + auto refresh ──
             setTab(memo.get('tab') === 'received' ? 'received' : 'pending');
             load();
-            setInterval(() => { if (!document.hidden && !anyModalOpen()) load(); }, 30000);
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong approved BOM ng Superadmin, receive ng ibang PO, galaw ng Purchase Request / Transmittal → kunin agad.
+            // Hindi nire-refresh habang bukas ang modal o ang menu; hahabol pagkatapos.
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const busy = () => document.hidden || anyModalOpen() || menuFor !== null;
+            let missed = false, pollTimer = null;
+
+            function sync() {
+                if (busy()) { missed = true; return; }
+                missed = false;
+                load();
+            }
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                pollTimer = setInterval(() => { if (!busy()) load(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !/^(crm|po|pr|transmittal)/i.test(type)) return; // budget/voucher — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('poLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('poLiveText').textContent = live ? 'Live' : 'Auto-refresh every 30s';
+                        if (!document.hidden) startPolling();
+                        if (live && rows.length) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+
+            setInterval(() => { if (missed) sync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }
+                else { sync(); startPolling(); }
+            });
+            startPolling();
         })();
     </script>
 </body>

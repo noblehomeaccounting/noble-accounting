@@ -54,6 +54,9 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                 <p class="text-gray-400 text-xs mt-0.5">Pick a client tab to see its series. Gray cells come from the system; white cells are typed in and save on their own.</p>
             </div>
             <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-2">
+                    <span id="csLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="csLiveText">Connecting…</span>
+                </span>
                 <button type="button" id="csRefresh" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                     <i class="fa-solid fa-rotate"></i> Refresh
                 </button>
@@ -402,7 +405,10 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                 document.getElementById('csPeople').innerHTML = uniq(people).map(m => `<option value="${esc(m)}">`).join('');
             }
 
+            let loading = false, loadAgain = false;
             async function load() {
+                if (loading) { loadAgain = true; return; }
+                loading = true;
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const d = await res.json();
@@ -412,6 +418,10 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                     renderTabs();
                     render();
                 } catch (e) { toast('Connection error while loading.', 'error'); }
+                finally {
+                    loading = false;
+                    if (loadAgain) { loadAgain = false; load(); }
+                }
             }
 
             // ── auto-save ng manual na cell ──
@@ -487,6 +497,55 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
 
             client = memo.get('client') || ALL;
             load();
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong / naaprubahan / nabayarang Purchase Request, Transmittal, at sinave ng ibang PO → kunin agad.
+            // Hindi nire-render habang may tina-type o naka-focus sa isang cell; hahabol pagka-alis sa cell.
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const ME = typeof CURRENT_USER_ID !== 'undefined' ? Number(CURRENT_USER_ID) : 0;
+            const editing = () => !!document.activeElement?.closest?.('#csBody [data-field], #csSearch, #csFrom, #csTo');
+            let missed = false, pollTimer = null;
+
+            function sync() {
+                if (document.hidden || editing()) { missed = true; return; }
+                missed = false;
+                load();
+            }
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(() => { if (!document.hidden && !editing()) load(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !/^(crm|po|pr|transmittal)/i.test(type)) return;
+                        if (type === 'po_clientseries' && ME && Number(payload?.by) === ME) return;   // sariling save
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('csLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('csLiveText').textContent = live ? 'Live' : 'Auto-refresh 30s';
+                        if (!document.hidden) startPolling();
+                        if (live && rows.length) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+                if (!window.NH_RT || !window.NH_RT.enabled) document.getElementById('csLiveText').textContent = 'Auto-refresh 30s';
+            })();
+            // pagka-alis sa cell (naka-save na), habulin ang na-miss
+            document.getElementById('csBody').addEventListener('focusout', () => setTimeout(() => { if (missed) sync(); }, 300));
+            setInterval(() => { if (missed) sync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }
+                else { sync(); startPolling(); }
+            });
+            startPolling();
         })();
     </script>
 </body>

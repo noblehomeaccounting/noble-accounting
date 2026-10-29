@@ -1,6 +1,7 @@
 <?php
 // admin/requestcentral/fetch-requests.php
 // Gamit: /fetchrequests?month=YYYY-MM  (kapag walang month, ibabalik ang lahat tulad ng dati)
+//        &fresh=1  → huwag gamitin ang cache (ginagamit kapag may realtime signal)
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
@@ -35,7 +36,10 @@ if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
     $cacheKey = "budget_requests_{$user_id}_all";
 }
 
-$cached = getCache($cacheKey, 20);
+// May realtime signal (may bagong request / may nagbago) → laktawan ang cache para siguradong bago ang data
+$fresh = ($_GET['fresh'] ?? '') === '1';
+
+$cached = $fresh ? false : getCache($cacheKey, 20);
 if ($cached !== false) {
     echo $cached;
     exit;

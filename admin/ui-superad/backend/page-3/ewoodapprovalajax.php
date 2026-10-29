@@ -71,9 +71,14 @@ function ewoodNotifyUploaderRun(mysqli $conn, int $progressId, int $superadminId
         ? ($row['client_name'] ? "{$controlNo} — {$row['client_name']}" : $controlNo)
         : 'your submission';
 
-    $message = $decision === 'approved'
-        ? "Your cutting progress upload for {$label} has been approved."
-        : "Your cutting progress upload for {$label} was rejected" . ($reason !== '' ? ": {$reason}" : '.');
+    if ($decision === 'partial') {
+        // may BOM na naaprubahan at may naibalik
+        $message = "Your cutting progress upload for {$label} was approved, but some BOMs were sent back: {$reason}";
+    } else {
+        $message = $decision === 'approved'
+            ? "Your cutting progress upload for {$label} has been approved."
+            : "Your cutting progress upload for {$label} was rejected" . ($reason !== '' ? ": {$reason}" : '.');
+    }
 
     $link = '/crmewood';
 
@@ -93,6 +98,51 @@ function ewoodNotifyUploaderRun(mysqli $conn, int $progressId, int $superadminId
     );
     $notifStmt->execute();
     $notifStmt->close();
+}
+
+// Realtime: Cutting (E-Woodfile / Cutting List), ibang Superadmin (E-Wood Management),
+// at PO kapag approved (lalabas ang BOM sa Purchase Order) + Sales/Designer ng inquiry.
+// Signal lang ito — kapag pumalya, hindi nito pinipigilan ang approve/revision.
+function ewoodRealtime(mysqli $conn, int $progressId, string $type, bool $approved): void
+{
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $st = $conn->prepare("SELECT quotation_id FROM noblecrm_cuttinglistprogression WHERE id = ? LIMIT 1");
+        $st->bind_param('i', $progressId);
+        $st->execute();
+        $quotationId = (int) ($st->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $st->close();
+
+        $groups = [[ROLE_CUTTING, null], [ROLE_SUPERADMIN, null]];
+        if ($approved) {
+            $groups[] = [ROLE_PO, null];
+        }
+
+        if ($quotationId > 0) {
+            nhRtQuotation($conn, $quotationId, $groups, $type);
+        } else {
+            foreach ($groups as $g) {
+                nhRealtimeNotifyGroup((string) $g[0], null, 'changed', ['type' => $type]);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('ewoodRealtime: ' . $e->getMessage());
+    }
+}
+
+// May returned_at / returned_by / return_remarks na ba ang noblecrm_bom? (noblecrm_bom_return.sql)
+function ewoodBomHasReturnCols(mysqli $conn): bool
+{
+    static $has = null;
+    if ($has === null) {
+        try {
+            $r = $conn->query("SHOW COLUMNS FROM noblecrm_bom LIKE 'return_remarks'");
+            $has = $r && $r->num_rows > 0;
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
 }
 
 // -----------------------------------------------------------------------
@@ -588,30 +638,129 @@ if ($action === 'approve') {
         exit;
     }
 
-    $stmt = $conn->prepare("
-        UPDATE noblecrm_cuttinglistprogression
-        SET qr_approved = 1, approved_by = ?, approved_at = NOW(), status = 'Completed'
-        WHERE id = ? AND COALESCE(qr_approved, 0) = 0 AND COALESCE(qr_rejected, 0) = 0
-    ");
-    $stmt->bind_param('ii', $currentUserId, $progressId);
-    $stmt->execute();
-    $changed = $stmt->affected_rows;
-    $stmt->close();
+    // Pinili ng Superadmin kung aling BOM ang iaapprove (kapag higit sa isa ang BOM ng upload).
+    // Ang hindi napili ay ibinabalik sa Cutting para ayusin (kasama ang dahilan).
+    // Walang bom_ids = lumang paraan: lahat ng BOM ng upload ay aaprubahan.
+    $approveIds = null;
+    $returned = [];       // id => bom_number
+    $approvedNos = [];
+    $remarks = trim((string) ($_POST['remarks'] ?? ''));
+    if (isset($_POST['bom_ids'])) {
+        $approveIds = array_values(array_unique(array_filter(array_map('intval', explode(',', (string) $_POST['bom_ids'])))));
+        if (!$approveIds) {
+            echo json_encode(['success' => false, 'message' => 'Select at least one BOM to approve, or use Send back.']);
+            exit;
+        }
+        $st = $conn->prepare("
+            SELECT id, bom_number FROM noblecrm_bom
+            WHERE progression_id = ? AND approved_at IS NULL AND bom_number NOT LIKE 'TEMP-%'
+        ");
+        $st->bind_param('i', $progressId);
+        $st->execute();
+        $linked = [];
+        foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+            $linked[(int) $r['id']] = (string) $r['bom_number'];
+        }
+        $st->close();
 
-    if ($changed !== 1) {
-        echo json_encode(['success' => false, 'message' => 'This submission was already approved or sent back for revision. Refresh the page.']);
-        exit;
+        foreach ($approveIds as $bid) {
+            if (!isset($linked[$bid])) {
+                echo json_encode(['success' => false, 'message' => 'The BOMs of this upload changed. Refresh the page and try again.']);
+                exit;
+            }
+            $approvedNos[] = $linked[$bid];
+        }
+        $returned = array_diff_key($linked, array_flip($approveIds));
+        if ($returned && mb_strlen($remarks) < 3) {
+            echo json_encode(['success' => false, 'message' => 'Tell cutting what to fix in the BOM(s) you did not approve.']);
+            exit;
+        }
+        if (mb_strlen($remarks) > 1000) {
+            echo json_encode(['success' => false, 'message' => 'The reason is too long (max 1000 characters).']);
+            exit;
+        }
     }
 
-    $bomUpdated = ewoodBomMarkApproved($conn, $progressId, $currentUserId);
+    $conn->begin_transaction();
+    try {
+        // May naibalik na BOM → hindi pa tapos ang job (In Progress), para makapag-upload ulit ang Cutting
+        $newStatus = $returned ? 'In Progress' : 'Completed';
+        $stmt = $conn->prepare("
+            UPDATE noblecrm_cuttinglistprogression
+            SET qr_approved = 1, approved_by = ?, approved_at = NOW(), status = ?
+            WHERE id = ? AND COALESCE(qr_approved, 0) = 0 AND COALESCE(qr_rejected, 0) = 0
+        ");
+        $stmt->bind_param('isi', $currentUserId, $newStatus, $progressId);
+        $stmt->execute();
+        $changed = $stmt->affected_rows;
+        $stmt->close();
 
-    // Let the cutting staff who uploaded this know it's been approved.
-    ewoodNotifyUploader($conn, $progressId, $currentUserId, 'approved');
+        if ($changed !== 1) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'This submission was already approved or sent back for revision. Refresh the page.']);
+            exit;
+        }
+
+        if ($approveIds === null) {
+            $bomUpdated = ewoodBomMarkApproved($conn, $progressId, $currentUserId);
+        } else {
+            // Pirma sa mga napiling BOM lang
+            $approver = ewoodBomApproverInfo($conn, $currentUserId);
+            $sign = $conn->prepare("
+                UPDATE noblecrm_bom
+                SET approved_by = ?, approved_by_title = ?, approved_by_signature_path = ?, approved_at = NOW()
+                WHERE id = ? AND progression_id = ? AND approved_at IS NULL
+            ");
+            $bomUpdated = 0;
+            foreach ($approveIds as $bid) {
+                $sign->bind_param('sssii', $approver['name'], $approver['title'], $approver['signature_path'], $bid, $progressId);
+                $sign->execute();
+                $bomUpdated += $sign->affected_rows;
+            }
+            $sign->close();
+
+            // Ang hindi napili: tanggalin sa upload na ito → lalabas ulit sa Cutting para ayusin (parehong BOM number)
+            if ($returned) {
+                if (ewoodBomHasReturnCols($conn)) {
+                    $ret = $conn->prepare("
+                        UPDATE noblecrm_bom
+                        SET progression_id = NULL, returned_at = NOW(), returned_by = ?, return_remarks = ?
+                        WHERE id = ? AND approved_at IS NULL
+                    ");
+                    foreach (array_keys($returned) as $bid) {
+                        $ret->bind_param('isi', $currentUserId, $remarks, $bid);
+                        $ret->execute();
+                    }
+                } else {
+                    $ret = $conn->prepare("UPDATE noblecrm_bom SET progression_id = NULL WHERE id = ? AND approved_at IS NULL");
+                    foreach (array_keys($returned) as $bid) {
+                        $ret->bind_param('i', $bid);
+                        $ret->execute();
+                    }
+                }
+                $ret->close();
+            }
+        }
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        throw $e;
+    }
+
+    // Abiso sa Cutting na nag-upload
+    if ($returned) {
+        ewoodNotifyUploader($conn, $progressId, $currentUserId, 'partial', implode(', ', $returned) . ' — ' . $remarks);
+    } else {
+        ewoodNotifyUploader($conn, $progressId, $currentUserId, 'approved');
+    }
+    ewoodRealtime($conn, $progressId, 'crm_ewood_approved', true);
 
     echo json_encode([
         'success' => true,
-        'message' => 'Approved.',
+        'message' => $returned ? 'Approved. Some BOMs were sent back.' : 'Approved.',
         'bom_updated' => $bomUpdated,
+        'approved_boms' => $approvedNos,
+        'returned_boms' => array_values($returned),
     ]);
     exit;
 }
@@ -652,6 +801,7 @@ if ($action === 'reject') {
     }
 
     ewoodNotifyUploader($conn, $progressId, $currentUserId, 'rejected', $remarks);
+    ewoodRealtime($conn, $progressId, 'crm_ewood_rejected', false);
 
     echo json_encode(['success' => true, 'message' => 'Rejected.']);
     exit;

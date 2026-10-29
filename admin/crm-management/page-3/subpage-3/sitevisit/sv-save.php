@@ -185,6 +185,10 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         }
 
         if ($saved) {
+            // Realtime: CRM List ng Sales (umusad sa "Site visit" / "Revisit needed") + ibang tab ng Designer
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            nhRtInquiry($conn, (int) $inquiryId, [], 'crm_sitevisit');
+
             $_SESSION['sv_flash_success'] = 'Site visit details saved.'
                 . ($skippedFiles ? ' ' . $skippedFiles . ' file(s) were skipped (wrong type or too large).' : '');
             header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -192,4 +196,3 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         }
     }
 }
-

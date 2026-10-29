@@ -17,8 +17,8 @@ if (!$voucher_id || !$user_id) {
     exit;
 }
 
-// Head lang ang pwedeng mag-approve
-if (($_SESSION['position'] ?? '') !== POSITION_HEAD) {
+// Accounting Head lang ang pwedeng mag-approve (role + position)
+if (($_SESSION['role'] ?? '') !== ROLE_ACCOUNTING || ($_SESSION['position'] ?? '') !== POSITION_HEAD) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Not allowed.']);
     exit;
@@ -79,5 +79,9 @@ if ($custodians) {
         $stmt2->execute();
     }
 }
+
+// Realtime: buong Accounting — "Ready to release" agad sa Custodian / Custodian Assistant
+include_once ROOT_PATH . '/network/realtime-helper.php';
+nhRealtimeNotifyGroup(ROLE_ACCOUNTING, null, 'changed', ['type' => 'voucher_approved', 'id' => $voucher_id]);
 
 echo json_encode(['success' => true]);

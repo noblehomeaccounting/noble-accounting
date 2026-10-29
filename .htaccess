@@ -22,6 +22,16 @@ RewriteRule ^(.+?)/?$ $1.php [L]
 # Route everything else to index.php
 RewriteRule ^(.*)$ index.php [QSA,L]
 
+# ── Seguridad: harangan ang mga nakatagong file (.env, .git, .htaccess, atbp.) ──
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # harangan din ang mga nakatagong folder (hal. /.git/config), pero hindi ang .well-known (SSL)
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+</IfModule>
 
 # Custom 404 error page
 ErrorDocument 404 /nobleaccounting/404.php

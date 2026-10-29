@@ -179,6 +179,24 @@ if ($action === 'review') {
         $n->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang review */ }
 
+    // Realtime: ibang Accounting Head (badge + listahan), Accounting Staff (ire-receive), PO, Superadmin + Sales/Designer ng inquiry
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $qq = $conn->prepare("SELECT b.quotation_id FROM noblepurchaserequest p LEFT JOIN noblecrm_bom b ON b.id = p.bom_id WHERE p.id = ? LIMIT 1");
+        $qq->bind_param('i', $id);
+        $qq->execute();
+        $qid = (int) ($qq->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $qq->close();
+        $groups = [[ROLE_ACCOUNTING, POSITION_HEAD], [ROLE_ACCOUNTING, POSITION_STAFF], [ROLE_PO, null], [ROLE_SUPERADMIN, null]];
+        if ($qid > 0) {
+            nhRtQuotation($conn, $qid, $groups, 'pr_reviewed');
+        } else {
+            foreach ($groups as $g) nhRealtimeNotifyGroup((string) $g[0], $g[1] !== null ? (string) $g[1] : null, 'changed', ['type' => 'pr_reviewed', 'pr_id' => $id]);
+        }
+    } catch (Throwable $e) {
+        error_log('pr review realtime: ' . $e->getMessage());
+    }
+
     apoOut(['success' => true, 'has_signature' => $me['signature_path'] !== null]);
 }
 

@@ -1065,10 +1065,33 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                     }
                 }
 
+                const q2dRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
                 function q2dStartPolling() {
                     if (q2dPollTimer) clearInterval(q2dPollTimer);
-                    q2dPollTimer = setInterval(() => q2dFetchState({ silent: true }), Q2D_POLL_INTERVAL_MS);
+                    // Live → 60s fallback lang; hindi Live → dating bilis
+                    q2dPollTimer = setInterval(() => q2dFetchState({ silent: true }), q2dRtLive() ? 60000 : Q2D_POLL_INTERVAL_MS);
                 }
+
+                // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+                // Signal para sa inquiry na ito lang (approve, revise, upload, customer review, contract…) → kunin agad.
+                (function q2dHookRealtime() {
+                    const hook = () => {
+                        if (!window.NH_RT || !window.NH_RT.enabled || q2dHookRealtime.done) return;
+                        q2dHookRealtime.done = true;
+                        let t = null;
+                        window.NH_RT.on('*', 'changed', (payload) => {
+                            if (Number(payload?.inquiry_id || 0) !== Number(Q2D_INQUIRY_ID)) return;
+                            clearTimeout(t);
+                            t = setTimeout(() => { if (!document.hidden) q2dFetchState({ silent: true }); }, 400);
+                        });
+                        window.NH_RT.onLive(live => {
+                            if (!document.hidden && q2dPollTimer) q2dStartPolling(); // palitan ang bilis ng fallback polling
+                            if (live) q2dFetchState({ silent: true });      // habol sa na-miss
+                        });
+                    };
+                    hook();
+                    if (!q2dHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+                })();
 
                 document.addEventListener('visibilitychange', () => {
                     if (document.hidden) {

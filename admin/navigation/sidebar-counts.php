@@ -47,6 +47,21 @@ if (!function_exists('getSidebarCounts')) {
             'poToReview' => 0,
             'billingPending' => 0,
             'poTodo' => 0,
+            'designerTodo' => 0,
+            'cuttingTodo' => 0,
+            'prApproval' => 0,
+            'prToReceive' => 0,
+            'prToRelease' => 0,
+            'pcDrTodo' => 0,
+            'pcLaborTodo' => 0,
+            'pcTimelineTodo' => 0,
+            'pcBillingTodo' => 0,
+            'pcTurnoverTodo' => 0,
+            'saDrPending' => 0,
+            'saLaborPending' => 0,
+            'saBillingPending' => 0,
+            'saTurnoverPending' => 0,
+            'poForDelivery' => 0,
         ];
 
         // Pending na inquiry ng sales user (CRM List)
@@ -144,6 +159,27 @@ if (!function_exists('getSidebarCounts')) {
             }
         }
 
+        // Cutting List (Cutting): may NTP na pero hindi pa na-verify ng Cutting ang 2D file
+        // (bago ito, nakatago pa ang files sa Cutting List kaya walang gagawin). Pinakabagong 2D bawat inquiry.
+        if ($role === ROLE_CUTTING) {
+            try {
+                $c['cuttingTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrm_2dquotation q
+                     JOIN (SELECT inquiry_id, MAX(id) AS max_id FROM noblecrm_2dquotation GROUP BY inquiry_id) latest
+                         ON latest.max_id = q.id
+                     JOIN noblecrminquiry i ON i.id = q.inquiry_id
+                     WHERE q.status = 'Approved'
+                       AND q.deposit_status = 'Notice to Proceed'
+                       AND COALESCE(q.design_2d_verified_by_cutting, 0) = 0
+                       AND COALESCE(q.design_2d_path, '') <> ''"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar cuttingTodo: ' . $e->getMessage());
+            }
+        }
+
         // E-Wood Management (Superadmin): mga upload ng Cutting na naghihintay ng QR approval
         // (parehong kondisyon ng "To review" sa ewood.php)
         if ($role === ROLE_SUPERADMIN) {
@@ -172,6 +208,92 @@ if (!function_exists('getSidebarCounts')) {
                 );
             } catch (Throwable $e) {
                 error_log('sidebar designerReview: ' . $e->getMessage());
+            }
+        }
+
+        // CRM Designer (bawat Designer, pati Head): mga inquiry na naka-assign sa kanya na may gagawin siya —
+        //   • site visit na hindi pa nagagawa (bagong assign)
+        //   • Initial na ibinalik (Designer Head o Customer) · standalone 3D na ibinalik
+        //   • Final na ibinalik (Superadmin) · bukas na feedback ng Cutting sa 2D
+        // Hindi kasama ang "Not proceeding" na client.
+        if ($role === ROLE_DESIGNER) {
+            try {
+                // may `stage` column ba ang feedback? (Initial at Final ay magkaibang table → puwedeng magkapareho ang id)
+                static $fbHasStage = null;
+                if ($fbHasStage === null) {
+                    $chk = @$conn->query("SHOW COLUMNS FROM noblecrm_2d_feedback LIKE 'stage'");
+                    $fbHasStage = $chk && $chk->num_rows > 0;
+                }
+                $fbStage = $fbHasStage ? " AND COALESCE(fb.stage, 'Initial') = 'Initial'" : '';
+
+                $c['designerTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrminquiry i
+                     LEFT JOIN noblecrm_2dquotation q ON q.id = (
+                         SELECT q2.id FROM noblecrm_2dquotation q2
+                         WHERE q2.inquiry_id = i.id AND q2.stage = 'Initial'
+                         ORDER BY q2.created_at DESC, q2.id DESC LIMIT 1)
+                     LEFT JOIN noblecrm_2dquotation_final f ON f.id = (
+                         SELECT f2.id FROM noblecrm_2dquotation_final f2
+                         WHERE f2.inquiry_id = i.id
+                         ORDER BY f2.created_at DESC, f2.id DESC LIMIT 1)
+                     WHERE i.designer_id = ?
+                       AND COALESCE(i.client_status, '') <> 'no'
+                       AND (
+                           (i.status = 'Pending' AND COALESCE(i.mode, 'site_visit') <> 'ready_for_quotation')
+                           OR q.status = 'For Revision'
+                           OR (q.status = 'Approved' AND COALESCE(q.include_3d, 0) = 0 AND q.design_3d_stage = 'For Revision')
+                           OR f.status = 'For Revision'
+                           OR EXISTS (SELECT 1 FROM noblecrm_2d_feedback fb
+                                      WHERE fb.quotation_id = q.id AND fb.is_resolved = 0{$fbStage})
+                       )",
+                    'i',
+                    [$user_id]
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar designerTodo: ' . $e->getMessage());
+            }
+        }
+
+        // Purchase Order Approval (Superadmin/CEO): Purchase Request na naghihintay ng approval
+        // (parehong "For Approval" ng PurchaseOrder.php)
+        if ($role === ROLE_SUPERADMIN) {
+            try {
+                $c['prApproval'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepurchaserequest WHERE status = 'Pending'"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar prApproval: ' . $e->getMessage());
+            }
+        }
+
+        // Receive Purchase (Accounting Staff): na-review na ng Accounting Head pero hindi pa nare-receive
+        // (parehong "To Receive" ng index-staff-purchase.php)
+        if ($role === ROLE_ACCOUNTING && $isStaff) {
+            try {
+                $c['prToReceive'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepurchaserequest
+                     WHERE status = 'Approved' AND reviewed_at IS NOT NULL AND staff_received_at IS NULL"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar prToReceive: ' . $e->getMessage());
+            }
+        }
+
+        // Purchase Request (Custodian / Custodian Assistant): na-receive na ng Staff pero hindi pa tapos —
+        // ire-release pa, o released na pero hindi pa Mark as Paid ("To Release" + "Waiting to be Paid")
+        if ($role === ROLE_ACCOUNTING && ($isCustodian || $isCustoAssist)) {
+            try {
+                $c['prToRelease'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepurchaserequest
+                     WHERE status = 'Approved' AND staff_received_at IS NOT NULL AND paid_at IS NULL"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar prToRelease: ' . $e->getMessage());
             }
         }
 
@@ -237,14 +359,18 @@ if (!function_exists('getSidebarCounts')) {
         // Purchase Order (PO): approved BOM na may gagawin pa ang PO — parehong mga button ng index-purchaseorder-main.php:
         //   Receive (hindi pa na-receive) · Next: Purchase Request (wala pa / ibinalik ang huling PR)
         //   · Next: Transmittal (bayad na ang PR pero wala pang transmittal)
+        // Bilang ng ORDER (mga BOM na sabay ginawa sa Cutting = isang row sa Purchase Orders)
         if ($role === ROLE_PO) {
             try {
+                include_once ROOT_PATH . '/network/po-bom-group.php';
+                $prOf = poPrOfBomSql($conn, 'b.id');
+                $gk = poGroupKeySql('b');
                 $c['poTodo'] = sidebarScalar(
                     $conn,
-                    "SELECT COUNT(*)
+                    "SELECT COUNT(DISTINCT $gk)
                      FROM noblecrm_bom b
-                     LEFT JOIN noblepurchaserequest pr ON pr.id = (SELECT MAX(p2.id) FROM noblepurchaserequest p2 WHERE p2.bom_id = b.id)
-                     WHERE b.approved_at IS NOT NULL
+                     LEFT JOIN noblepurchaserequest pr ON pr.id = $prOf
+                     WHERE b.approved_at IS NOT NULL AND b.bom_number NOT LIKE 'TEMP-%'
                        AND (
                            b.received_at IS NULL
                            OR pr.id IS NULL
@@ -255,6 +381,115 @@ if (!function_exists('getSidebarCounts')) {
                 );
             } catch (Throwable $e) {
                 error_log('sidebar poTodo: ' . $e->getMessage());
+            }
+        }
+
+        // Transmittal Summary (PO): na-save na ang transmittal pero hindi pa na-mark na Delivered ("For Delivery")
+        if ($role === ROLE_PO) {
+            try {
+                $c['poForDelivery'] = sidebarScalar($conn, "SELECT COUNT(*) FROM nobletransmittal WHERE delivered_at IS NULL");
+            } catch (Throwable $e) {
+                error_log('sidebar poForDelivery: ' . $e->getMessage());
+            }
+        }
+
+        // ── Superadmin: mga papel ng PC na naghihintay ng pirma mo (pareho ng "For signing" ng bawat page) ──
+        if ($role === ROLE_SUPERADMIN) {
+            foreach ([
+                'saDrPending' => "SELECT COUNT(*) FROM noblepc_dr WHERE COALESCE(status, 'pending') = 'pending'",
+                'saLaborPending' => "SELECT COUNT(*) FROM noblepc_laborquote WHERE status = 'pending'",
+                'saBillingPending' => "SELECT COUNT(*) FROM noblepc_billing WHERE status = 'pending_sa'",   // na-note na ng Accounting Head
+                'saTurnoverPending' => "SELECT COUNT(*) FROM noblepc_turnover WHERE status = 'pending_sa'",
+            ] as $key => $sql) {
+                try {
+                    $c[$key] = sidebarScalar($conn, $sql);
+                } catch (Throwable $e) {
+                    error_log("sidebar $key: " . $e->getMessage());
+                }
+            }
+        }
+
+        // ── Project Coordinator: may gagawin ang PC sa bawat page (pareho ng "To do" ng mga page) ──
+        if ($role === ROLE_PC) {
+            // Coordinator (Delivery Receipts): Delivered na ang transmittal pero wala pang DR, o ibinalik ng Superadmin ang DR
+            try {
+                $c['pcDrTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM nobletransmittal t
+                     LEFT JOIN noblepc_dr d ON d.transmittal_id = t.id
+                     WHERE (d.id IS NULL AND t.delivered_at IS NOT NULL) OR d.status = 'returned'"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar pcDrTodo: ' . $e->getMessage());
+            }
+            // Labor Quotation: approved na DR na wala pang foreman / labor quotation, o ibinalik ang quotation
+            try {
+                $c['pcLaborTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepc_dr d
+                     LEFT JOIN noblepc_foreman f ON f.dr_id = d.id
+                     LEFT JOIN noblepc_laborquote q ON q.dr_id = d.id
+                     WHERE d.status = 'approved' AND (f.id IS NULL OR q.id IS NULL OR q.status = 'returned')"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar pcLaborTodo: ' . $e->getMessage());
+            }
+            // Timeline: approved na labor quotation na wala pang timeline ("No timeline yet")
+            try {
+                $c['pcTimelineTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM noblepc_laborquote q
+                     JOIN noblepc_dr d ON d.id = q.dr_id
+                     LEFT JOIN noblepc_timeline tl ON tl.dr_id = d.id
+                     WHERE q.status = 'approved' AND tl.id IS NULL"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar pcTimelineTodo: ' . $e->getMessage());
+            }
+            // Billing: ibinalik ang huling billing, o puwede nang mag-bill (approved ang huli / wala pa) at may balanse pa
+            try {
+                $c['pcBillingTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM (
+                         SELECT q.total AS contract,
+                                (SELECT b.status FROM noblepc_billing b WHERE b.dr_id = q.dr_id ORDER BY b.seq DESC LIMIT 1) AS last_status,
+                                (SELECT b.change_orders FROM noblepc_billing b WHERE b.dr_id = q.dr_id ORDER BY b.seq DESC LIMIT 1) AS co,
+                                (SELECT COALESCE(SUM(b.this_period), 0) FROM noblepc_billing b WHERE b.dr_id = q.dr_id AND b.status = 'approved') AS approved_total,
+                                (SELECT COUNT(*) FROM noblepc_billing b WHERE b.dr_id = q.dr_id) AS n
+                         FROM noblepc_laborquote q
+                         JOIN noblepc_dr d ON d.id = q.dr_id
+                         WHERE q.status = 'approved'
+                     ) x
+                     WHERE x.last_status = 'returned'
+                        OR ((x.last_status IS NULL OR x.last_status = 'approved')
+                            AND (x.n = 0 OR x.approved_total < x.contract + COALESCE(x.co, 0) - 0.004))"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar pcBillingTodo: ' . $e->getMessage());
+            }
+            // Turnover Letter: ibinalik ang letter, pirmado na ng Superadmin (Complete Turnover na lang),
+            // o handa na (verified lahat ng punch item + kumpleto at approved ang billing) pero wala pang letter
+            try {
+                $c['pcTurnoverTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*) FROM (
+                         SELECT q.total AS contract, tv.status AS to_status,
+                                (SELECT COUNT(*) FROM noblepc_punch p WHERE p.dr_id = q.dr_id AND p.status <> 'verified') AS punch_open,
+                                (SELECT COUNT(*) FROM noblepc_billing b WHERE b.dr_id = q.dr_id) AS bill_n,
+                                (SELECT COUNT(*) FROM noblepc_billing b WHERE b.dr_id = q.dr_id AND b.status = 'approved') AS bill_a,
+                                (SELECT COALESCE(SUM(b.this_period), 0) FROM noblepc_billing b WHERE b.dr_id = q.dr_id AND b.status = 'approved') AS approved_total,
+                                (SELECT b.change_orders FROM noblepc_billing b WHERE b.dr_id = q.dr_id ORDER BY b.seq DESC LIMIT 1) AS co
+                         FROM noblepc_laborquote q
+                         JOIN noblepc_dr d ON d.id = q.dr_id
+                         LEFT JOIN noblepc_turnover tv ON tv.dr_id = q.dr_id
+                         WHERE q.status = 'approved'
+                     ) x
+                     WHERE x.to_status IN ('returned', 'approved')
+                        OR (x.to_status IS NULL AND x.punch_open = 0 AND x.bill_n > 0 AND x.bill_n = x.bill_a
+                            AND x.approved_total >= x.contract + COALESCE(x.co, 0) - 0.004)"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar pcTurnoverTodo: ' . $e->getMessage());
             }
         }
 

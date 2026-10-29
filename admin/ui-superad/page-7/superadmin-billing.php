@@ -76,7 +76,7 @@ $apAjaxUrl = BASE_URL . '/superadminbillingajax';
                     <p class="text-xs text-gray-500">Approve and sign the progress billings already noted by the Accounting Head. The PC can print and bill again after you approve.</p>
                 </div>
             </div>
-            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span><span id="apUpdated">Loading…</span></span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5"><span id="apLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="apLiveText">Auto-refresh</span><span class="text-gray-300">·</span><span id="apUpdated">Loading…</span></span>
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <?php foreach ([
@@ -325,8 +325,10 @@ $apAjaxUrl = BASE_URL . '/superadminbillingajax';
             F('amClose').addEventListener('click', closeM);
             F('apModal').addEventListener('click', e => { if (e.target === F('apModal')) closeM(); });
             document.addEventListener('keydown', e => { if (e.key === 'Escape' && cur) closeM(); });
-            async function openReview(id) {
-                let d; try { d = await api('get', { id }); } catch (e) { return toast(e.message, 'error'); }
+            // quiet = realtime refresh: walang error toast, at hindi na bubuksan kapag naisara / may ginagawa habang naglo-load
+            async function openReview(id, quiet) {
+                let d; try { d = await api('get', { id }); } catch (e) { return quiet ? null : toast(e.message, 'error'); }
+                if (quiet && (!cur || cur.a.id !== id || F('apModal').classList.contains('hidden') || rtBusy())) return;
                 const k = d.apps.length - 1, a = d.apps[k];
                 cur = { project: d.project, apps: d.apps, a };
                 F('amTitle').textContent = `${a.ref_no} · ${bpLabel(a)}`;
@@ -416,7 +418,60 @@ $apAjaxUrl = BASE_URL . '/superadminbillingajax';
             tab = memo.get('tab') || 'mine';
             if (!['mine', 'returned', 'approved', 'all'].includes(tab)) tab = 'mine';
             load();
-            setInterval(() => { if (!document.hidden && !cur) load(true); }, 30000);
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // Bagong ipinasa / inayos ng PC (o pinirmahan sa ibang tab) → kunin agad ang listahan.
+            // Ang bukas na papel ay nire-refresh din, pero HINDI habang may kumpirmasyon o sinusulat na remarks — hahabol pagkatapos.
+            const RT_TYPES = /^(pc_billing|billing_)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => !!cur && !!(F('amYes') || F('amReturnBox')?.open || document.activeElement === F('amRemarks'));
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtMissed = false;
+                if (!cur || F('apModal').classList.contains('hidden')) return;
+                const keep = F('apModal').scrollTop;
+                openReview(cur.a.id, true).then(() => { F('apModal').scrollTop = keep; });
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !cur) rtLoad(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('apLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('apLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

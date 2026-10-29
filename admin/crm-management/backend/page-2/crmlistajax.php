@@ -31,6 +31,22 @@ function crmListBaseQuery()
     ";
 }
 
+// Galaw ng project pagkatapos ng BOM approval (Purchasing → Delivery → Installation → Billing → Turnover).
+// Hindi kailanman sisirain ang listahan: kapag pumalya, wala lang "project" ang row.
+function crmListAttachProject(mysqli $conn, array &$rows): void
+{
+    try {
+        include_once ROOT_PATH . '/network/crm-project-stage.php';
+        $stages = crmProjectStages($conn, array_column($rows, 'id'));
+        foreach ($rows as &$r) {
+            $r['project'] = $stages[$r['id']] ?? null;
+        }
+        unset($r);
+    } catch (Throwable $e) {
+        error_log('crmlistajax project: ' . $e->getMessage());
+    }
+}
+
 function crmListFormatRow($row)
 {
     return [
@@ -85,6 +101,7 @@ if ($action === 'list') {
         $rows[] = crmListFormatRow($row);
     }
     $stmt->close();
+    crmListAttachProject($conn, $rows);
 
     echo json_encode([
         'success' => true,
@@ -116,9 +133,12 @@ if ($action === 'detail') {
         exit;
     }
 
+    $record = [crmListFormatRow($row)];
+    crmListAttachProject($conn, $record);
+
     echo json_encode([
         'success' => true,
-        'record'  => crmListFormatRow($row),
+        'record'  => $record[0],
     ]);
     exit;
 }
@@ -188,6 +208,8 @@ if ($action === 'assign') {
 
         if ($stmt->execute()) {
             $stmt->close();
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            nhRtInquiry($conn, $id, [], 'crm_client_status');
             echo json_encode(['success' => true]);
         } else {
             $stmt->close();
@@ -234,6 +256,10 @@ if ($action === 'assign') {
         );
         $notifStmt->execute();
         $notifStmt->close();
+
+        // Realtime: Sales (ibang tab) + bagong Designer (CRM Designer page + bell)
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        nhRtInquiry($conn, $id, [], 'crm_assign');
 
         echo json_encode(['success' => true]);
     } else {

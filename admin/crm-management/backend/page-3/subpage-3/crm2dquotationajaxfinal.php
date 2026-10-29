@@ -34,6 +34,16 @@ $table = $isFinal ? $TABLE_FINAL : $TABLE_INITIAL;
 
 function q2dRespond(bool $success, string $message = '', array $extra = []): void
 {
+    // Realtime: bawat matagumpay na save → signal sa Sales + Designer ng inquiry
+    // (at sa Superadmin kapag may naipasa para sa approval). Hindi kasama ang pagbasa (state).
+    global $conn, $action, $inquiryId;
+    static $writes = ['save_progress', 'confirm_customer', 'save_toggle', 'save_slot', 'unlock_slot',
+        'save_contract_amount', 'submit_final', 'submit_3d'];
+    if ($success && in_array($action, $writes, true) && $conn instanceof mysqli && (int) $inquiryId > 0) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $toAdmin = in_array($action, ['submit_final', 'submit_3d'], true);
+        nhRtInquiry($conn, (int) $inquiryId, $toAdmin ? [[ROLE_SUPERADMIN, null]] : [], 'crm_final');
+    }
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
     exit;
 }

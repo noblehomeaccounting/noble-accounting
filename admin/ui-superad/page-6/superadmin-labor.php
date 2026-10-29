@@ -68,7 +68,7 @@ $slAjaxUrl = BASE_URL . '/superadminlaborajax';
                 </div>
             </div>
             <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
-                <span class="w-2 h-2 rounded-full bg-green-500"></span><span id="slUpdated">Loading…</span>
+                <span id="slLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="slLiveText">Auto-refresh</span><span class="text-gray-300">·</span><span id="slUpdated">Loading…</span>
             </span>
         </div>
 
@@ -327,9 +327,11 @@ $slAjaxUrl = BASE_URL . '/superadminlaborajax';
             F('slModal').addEventListener('click', e => { if (e.target === F('slModal')) closeM(); });
             document.addEventListener('keydown', e => { if (e.key === 'Escape' && !F('slModal').classList.contains('hidden')) closeM(); });
 
-            async function openReview(id) {
+            // quiet = realtime refresh: walang error toast, at hindi na bubuksan kapag naisara / may ginagawa habang naglo-load
+            async function openReview(id, quiet) {
                 let d;
-                try { d = await api('quote', { id }); } catch (e) { return toast(e.message, 'error'); }
+                try { d = await api('quote', { id }); } catch (e) { return quiet ? null : toast(e.message, 'error'); }
+                if (quiet && (!cur || cur.id !== id || F('slModal').classList.contains('hidden') || rtBusy())) return;
                 cur = d.quote; curForeman = d.foreman;
                 F('slMTitle').textContent = `${cur.quote_no} · ${cur.project_name || ''}`;
                 F('slMSub').textContent = `DR# ${cur.dr_no} · Transmittal ${cur.ref_no} · prepared by ${cur.prepared_by || '—'}`;
@@ -456,7 +458,60 @@ $slAjaxUrl = BASE_URL . '/superadminlaborajax';
             tab = store.get('tab') || 'pending';
             if (!['pending', 'returned', 'approved', 'all'].includes(tab)) tab = 'pending';
             load();
-            setInterval(() => { if (!document.hidden && !cur) load(true); }, 30000);
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // Bagong ipinasa / inayos ng PC (o pinirmahan sa ibang tab) → kunin agad ang listahan.
+            // Ang bukas na papel ay nire-refresh din, pero HINDI habang may kumpirmasyon o sinusulat na remarks — hahabol pagkatapos.
+            const RT_TYPES = /^(pc_labor|pc_foreman|labor_)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => !!cur && !!(F('slYes') || F('slReturnBox')?.open || document.activeElement === F('slRemarks'));
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtMissed = false;
+                if (!cur || F('slModal').classList.contains('hidden')) return;
+                const keep = F('slModal').scrollTop;
+                openReview(cur.id, true).then(() => { F('slModal').scrollTop = keep; });
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !cur) rtLoad(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('slLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('slLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

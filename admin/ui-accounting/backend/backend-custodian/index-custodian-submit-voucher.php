@@ -110,6 +110,11 @@ if ($success) {
         }
         $stmt2->close();
     }
+
+    // Realtime: buong Accounting (Head, Staff, Custodian, Custodian Assistant) — iisang signal.
+    // Sa sidebar: badge + bell ng Head; sa Cash Vouchers page: "For approval" agad sa lahat.
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    nhRealtimeNotifyGroup(ROLE_ACCOUNTING, null, 'changed', ['type' => 'voucher_submitted', 'id' => $request_id]);
 }
 
 // Save to Sheet Two (noblepettycashcustodiantwo) kung may department

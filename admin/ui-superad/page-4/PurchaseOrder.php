@@ -48,8 +48,9 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                     <h1 class="text-gray-900 text-xl font-semibold">Purchase Request Approval</h1>
                     <p class="text-gray-400 text-xs mt-0.5">Review purchase requests from Purchasing. Approving signs the form as CEO.</p>
                 </div>
-                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Auto-refresh every 30s
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
+                    <span id="praLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span id="praLiveText">Auto-refresh every 30s</span>
                 </span>
             </div>
 
@@ -574,7 +575,10 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                 document.getElementById('praFooter').textContent = `Showing ${list.length} of ${source.length} request${source.length === 1 ? '' : 's'}`;
             }
 
+            let loading = false, loadAgain = false;
             async function load() {
+                if (loading) { loadAgain = true; return; }
+                loading = true;
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const data = await res.json();
@@ -582,6 +586,10 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                     rows = data.rows;
                     render();
                 } catch (e) { console.error(e); toast('Connection error while loading.', 'error'); }
+                finally {
+                    loading = false;
+                    if (loadAgain) { loadAgain = false; load(); }
+                }
             }
 
             document.getElementById('praList').addEventListener('click', e => {
@@ -590,14 +598,18 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
             });
 
             // ── review modal ──
-            async function openReview(id) {
+            async function openReview(id, quiet = false) {
                 const sheet = document.getElementById('praSheet');
-                sheet.innerHTML = `<p class="text-xs text-gray-400 text-center py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
-                document.getElementById('praNotice').classList.add('hidden');
-                openModal('praModal');
+                if (!quiet) {
+                    sheet.innerHTML = `<p class="text-xs text-gray-400 text-center py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
+                    document.getElementById('praNotice').classList.add('hidden');
+                    openModal('praModal');
+                }
                 try {
                     const res = await fetch(`${AJAX}?action=view&id=${id}`, { cache: 'no-store' });
                     const data = await res.json();
+                    // realtime refresh: huwag galawin kapag nagsara o lumipat na ng request
+                    if (quiet && (document.getElementById('praModal').classList.contains('hidden') || !current || current.id !== id)) return;
                     if (!data.success) { sheet.innerHTML = `<p class="text-xs text-red-500 text-center py-10">${esc(data.message)}</p>`; return; }
                     current = data.pr;
                     PRSheet.render(sheet, current, { base: BASE });
@@ -694,7 +706,56 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
 
             setTab('Pending');
             load();
-            setInterval(() => { if (!document.hidden && !anyOpen()) load(); }, 30000);
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong PR ng Purchasing, approve/return ng ibang Superadmin, review/release/paid ng Accounting → kunin agad.
+            // Ang listahan ay laging nire-refresh; ang bukas na form ay nire-refresh lang kapag walang bukas na Approve/Return.
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const confirmOpen = () => ['praRejectModal', 'praApproveModal'].some(id => !document.getElementById(id).classList.contains('hidden'));
+            let missed = false, pollTimer = null;
+
+            function sync() {
+                if (document.hidden) { missed = true; return; }
+                load();
+                const reviewOpen = !document.getElementById('praModal').classList.contains('hidden');
+                if (reviewOpen && current) {
+                    if (confirmOpen()) { missed = true; return; }
+                    openReview(current.id, true);
+                }
+                missed = false;
+            }
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                pollTimer = setInterval(() => { if (!document.hidden && !anyOpen()) load(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !/^(pr|po_receive|transmittal|crm_po)/i.test(type)) return;   // ibang CRM/budget signal — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('praLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('praLiveText').textContent = live ? 'Live' : 'Auto-refresh every 30s';
+                        if (!document.hidden) startPolling();
+                        if (live && rows.length) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (missed && !confirmOpen()) sync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }
+                else { sync(); startPolling(); }
+            });
+            startPolling();
         })();
     </script>
 </body>

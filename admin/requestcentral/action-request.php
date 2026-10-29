@@ -3,6 +3,7 @@
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
+include_once ROOT_PATH . '/admin/authentication/index-roles.php';
 include ROOT_PATH . '/network/cache-helper.php';
 
 header('Content-Type: application/json');
@@ -52,6 +53,8 @@ if ($success && $affected > 0) {
     }
     clearCache("budget_requests_{$user_id}_all");
     clearCache("budget_request_dates_{$user_id}");
+    // listahan ng Accounting Staff (index-staff-fetch-approved.php) — para bago agad ang makuha nila
+    clearCache('staff_approved_requests');
 
     $message = $action === 'approved'
         ? "Request $control_no has been approved."
@@ -68,11 +71,13 @@ if ($success && $affected > 0) {
     }
 
     // Notify ang accounting staff
-    $staffResult = $conn->query("
-        SELECT id FROM noblerole
-        WHERE role = 'ACCOUNTING AND FINANCE DEPARTMENT'
-        AND position = 'staff'
-    ");
+    $roleAcc  = ROLE_ACCOUNTING;
+    $posStaff = POSITION_STAFF;
+    $sq = $conn->prepare("SELECT id FROM noblerole WHERE role = ? AND position = ?");
+    $sq->bind_param("ss", $roleAcc, $posStaff);
+    $sq->execute();
+    $staffResult = $sq->get_result();
+    $sq->close();
 
     if ($staffResult) {
         $link  = '/accountingstaff';
@@ -86,6 +91,13 @@ if ($success && $affected > 0) {
             $stmt2->execute();
         }
     }
+
+    // ─── REALTIME ───
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    // 1) Accounting Staff: lalabas (o mawawala, kapag rejected) agad sa listahan nila
+    nhRealtimeNotifyGroup(ROLE_ACCOUNTING, POSITION_STAFF, 'changed', ['type' => $action, 'id' => $id]);
+    // 2) Ang Head mismo: mag-a-update din ang ibang bukas na tab / device niya
+    nhRealtimeNotify($user_id, 'changed', ['type' => $action, 'id' => $id]);
 }
 
 echo json_encode([

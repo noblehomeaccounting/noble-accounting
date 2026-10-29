@@ -126,6 +126,26 @@ if ($action === 'receive') {
         $n->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang pag-receive */ }
 
+    // Realtime: ibang Accounting Staff (listahan + badge), Custodian at Custodian Assistant (ire-release na),
+    // PO at Superadmin (status ng PR) + Sales/Designer ng inquiry
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $qq = $conn->prepare("SELECT b.quotation_id FROM noblepurchaserequest p LEFT JOIN noblecrm_bom b ON b.id = p.bom_id WHERE p.id = ? LIMIT 1");
+        $qq->bind_param('i', $id);
+        $qq->execute();
+        $qid = (int) ($qq->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $qq->close();
+        $groups = [[ROLE_ACCOUNTING, POSITION_STAFF], [ROLE_ACCOUNTING, POSITION_CUSTODIAN], [ROLE_ACCOUNTING, POSITION_CUSTOASSISTANT],
+                   [ROLE_PO, null], [ROLE_SUPERADMIN, null]];
+        if ($qid > 0) {
+            nhRtQuotation($conn, $qid, $groups, 'pr_staff_received');
+        } else {
+            foreach ($groups as $g) nhRealtimeNotifyGroup((string) $g[0], $g[1] !== null ? (string) $g[1] : null, 'changed', ['type' => 'pr_staff_received', 'pr_id' => $id]);
+        }
+    } catch (Throwable $e) {
+        error_log('pr staff receive realtime: ' . $e->getMessage());
+    }
+
     aspOut(['success' => true]);
 }
 

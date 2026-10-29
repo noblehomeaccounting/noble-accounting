@@ -43,6 +43,7 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
                             meaning it is marked <b class="text-slate-200">Delivered</b> in the Transmittal Summary.
                             Each DR goes to the <b class="text-slate-200">Superadmin</b> for signing, and you can print
                             it once it is approved.</p>
+                        <p class="mt-2"><span class="inline-flex items-center gap-1.5 text-[10.5px] text-slate-300 bg-white/5 border border-white/10 rounded-full px-2.5 py-1" title="Updates automatically when someone else makes a change"><span id="drLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="drLiveText">Auto-refresh</span></span></p>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full sm:w-auto">
                         <button type="button" data-filter="ready"
@@ -524,9 +525,11 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
 
             // ═════════════ VIEW / PRINT DR ═════════════
             let viewHtml = '', viewDr = null;
-            async function openView(id) {
+            // quiet = realtime refresh: walang error toast, at hindi na bubuksan ulit kapag naisara na habang naglo-load
+            async function openView(id, quiet) {
                 let d;
-                try { d = await api('dr', { id }); } catch (e) { return toast(e.message, 'error'); }
+                try { d = await api('dr', { id }); } catch (e) { return quiet ? null : toast(e.message, 'error'); }
+                if (quiet && (!viewDr || viewDr.id !== id || !F('drViewModal').classList.contains('flex') || F('drModal').classList.contains('flex'))) return;
                 viewDr = d.dr;
                 viewHtml = drDoc(d.dr);
                 F('drViewTitle').innerHTML = `DR# ${esc(d.dr.dr_no)} · Transmittal ${esc(d.dr.ref_no)} ${permitChip(d.dr.permit_required)}`;
@@ -621,8 +624,64 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
             if (filter === 'done') filter = 'pending';
             if (!TABS.some(t => t.key === filter)) filter = 'ready';
             load();
-            // tingnan bawat 30s kung may na-approve na ang Superadmin
-            setInterval(() => { if (!document.hidden && !F('drModal').classList.contains('flex')) load(true); }, 30000);
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // May signal mula sa ibang PC, Superadmin o Accounting Head → kunin agad ang listahan.
+            // Ang bukas na detalye ay nire-refresh din, pero HINDI habang may form na sinusulatan — hahabol pagkasara.
+            const RT_TYPES = /^(pc_|dr|labor|foreman|timeline|billing|punch|turnover|transmittal)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => F('drModal').classList.contains('flex');
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtRefreshOpen() {
+                // bukas ang View DR → kunin ulit (hal. na-approve / na-return ng Superadmin); hindi gagalaw ang scroll
+                if (!F('drViewModal').classList.contains('flex') || !viewDr) return;
+                const keep = F('drViewModal').scrollTop;
+                openView(viewDr.id, true).then(() => { F('drViewModal').scrollTop = keep; });
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtRefreshOpen();
+                rtMissed = false;
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !F('drModal').classList.contains('flex')) rtLoad(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal (CRM/budget/PR) — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('drLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('drLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

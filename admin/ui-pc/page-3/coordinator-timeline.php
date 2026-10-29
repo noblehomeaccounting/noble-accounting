@@ -40,9 +40,12 @@ $laborPageUrl = BASE_URL . '/coordinatorlabor';
                         Print it for the client and the site.</p>
                 </div>
             </div>
+            <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="tpLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="tpLiveText">Auto-refresh</span></span>
             <a href="<?= htmlspecialchars($laborPageUrl) ?>"
                 class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50"><i
                     class="fa-solid fa-helmet-safety"></i> Labor Quotations</a>
+            </div>
         </div>
 
         <!-- ═══ STAT TABS ═══ -->
@@ -844,7 +847,61 @@ $laborPageUrl = BASE_URL . '/coordinatorlabor';
                 if (want && rows.some(r => r.dr_id === want)) openEditor(want);
                 if (want) { try { const u = new URL(location.href); u.searchParams.delete('dr'); history.replaceState(null, '', u); } catch (e) { } }
             });
-            setInterval(() => { if (!document.hidden && !F('tlModal').classList.contains('flex')) load(true); }, 60000);
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // May signal mula sa ibang PC, Superadmin o Accounting Head → kunin agad ang listahan.
+            // Ang bukas na detalye ay nire-refresh din, pero HINDI habang may form na sinusulatan — hahabol pagkasara.
+            const RT_TYPES = /^(pc_|dr|labor|foreman|timeline|billing|punch|turnover)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => F('tlModal').classList.contains('flex');
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtRefreshOpen() {
+                // ang editor ay hindi nire-refresh nang kusa (puwedeng may binabago); listahan lang
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtRefreshOpen();
+                rtMissed = false;
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 60s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !F('tlModal').classList.contains('flex')) rtLoad(); }, rtLive() ? 60000 : 60000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal (CRM/budget/PR) — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('tpLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('tpLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

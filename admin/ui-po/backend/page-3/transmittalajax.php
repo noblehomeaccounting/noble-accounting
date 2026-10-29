@@ -12,11 +12,38 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
+include_once ROOT_PATH . '/network/po-bom-group.php';   // isang PR = lahat ng BOM ng order
+
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 // Gitnang bahagi ng Ref No (permanente): <taon>06-<sunod-sunod>, hal. 202606-01
 const TR_REF_MIDDLE = '06';
+
+// Realtime doorbell (Supabase Broadcast): PO, Project Coordinator, Superadmin + Sales/Designer ng inquiry.
+// Hindi kailanman pinipigilan ang save — kapag pumalya, naka-log lang.
+if (!function_exists('trRealtime')) {
+    function trRealtime(mysqli $conn, int $prId, string $type, array $groups): void
+    {
+        try {
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            $st = $conn->prepare("SELECT b.quotation_id FROM noblepurchaserequest p LEFT JOIN noblecrm_bom b ON b.id = p.bom_id WHERE p.id = ? LIMIT 1");
+            $st->bind_param('i', $prId);
+            $st->execute();
+            $qid = (int) ($st->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+            $st->close();
+            if ($qid > 0) {
+                nhRtQuotation($conn, $qid, $groups, $type);
+            } else {
+                foreach ($groups as [$role, $pos]) {
+                    nhRealtimeNotifyGroup((string) $role, $pos !== null ? (string) $pos : null, 'changed', ['type' => $type, 'pr_id' => $prId]);
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('trRealtime: ' . $e->getMessage());
+        }
+    }
+}
 
 function trOut(array $d): void
 {
@@ -100,7 +127,11 @@ if ($action === 'list') {
         ORDER BY t.id DESC
     ")->fetch_all(MYSQLI_ASSOC);
 
-    foreach ($ready as &$r) { $r['id'] = (int) $r['id']; $r['item_count'] = (int) $r['item_count']; }
+    foreach ($ready as &$r) {
+        $r['id'] = (int) $r['id'];
+        $r['item_count'] = (int) $r['item_count'];
+        $r['bom_number'] = poPrBomNumbers($conn, $r['id']) ?: $r['bom_number'];   // hal. "BOM-0003, BOM-0004"
+    }
     unset($r);
     foreach ($done as &$r) { $r['id'] = (int) $r['id']; $r['item_count'] = (int) $r['item_count']; }
     unset($r);
@@ -229,6 +260,7 @@ if ($action === 'create') {
         trOut(['success' => false, 'message' => 'Could not save the transmittal. Please try again.']);
     }
 
+    trRealtime($conn, $prId, 'transmittal_created', [[ROLE_PO, null], [ROLE_PC, null], [ROLE_SUPERADMIN, null]]);
     trOut(['success' => true, 'id' => $trId, 'ref_no' => $refNo, 'has_signature' => $me['signature_path'] !== null]);
 }
 

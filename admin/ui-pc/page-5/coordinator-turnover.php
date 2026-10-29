@@ -35,7 +35,10 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
                     <p class="text-xs text-gray-500">Inspect the work, fix and verify every item, then prepare the turnover letter. The project closes once the client signs.</p>
                 </div>
             </div>
+            <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="toLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="toLiveText">Auto-refresh</span></span>
             <a href="<?= htmlspecialchars($bpPageUrl) ?>" class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50"><i class="fa-solid fa-file-invoice-dollar"></i> Progress Billing</a>
+            </div>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
@@ -263,8 +266,10 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
             document.addEventListener('keydown', e => { if (e.key === 'Escape' && pj) closeM(); });
             document.querySelectorAll('.tm-tab').forEach(b => b.addEventListener('click', () => { if (pj) { pj.mtab = b.dataset.mtab; memo.set('mtab', pj.mtab); renderModal(); } }));
 
-            async function openProject(drId, keepTab) {
-                let d; try { d = await api('get', { dr_id: drId }); } catch (e) { return toast(e.message, 'error'); }
+            // quiet = realtime refresh: walang error toast, at hindi na bubuksan ulit kapag naisara / may sinimulang i-edit habang naglo-load
+            async function openProject(drId, keepTab, quiet) {
+                let d; try { d = await api('get', { dr_id: drId }); } catch (e) { return quiet ? null : toast(e.message, 'error'); }
+                if (quiet && (!pj || pj.project.dr_id !== drId || rtBusy())) return;
                 today = d.today || today;
                 const t = d.turnover;
                 const defTab = t || d.readiness.filter(c => c.required).every(c => c.ok) ? 'turnover' : 'punch';
@@ -548,7 +553,64 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
                 if (want && rows.some(r => r.dr_id === want)) openProject(want);
                 if (want) { try { const u = new URL(location.href); u.searchParams.delete('dr'); history.replaceState(null, '', u); } catch (e) { } }
             });
-            setInterval(() => { if (!document.hidden && !pj) load(true); }, 30000);
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // May signal mula sa ibang PC, Superadmin o Accounting Head → kunin agad ang listahan.
+            // Ang bukas na detalye ay nire-refresh din, pero HINDI habang may form na sinusulatan — hahabol pagkasara.
+            const RT_TYPES = /^(pc_|dr|labor|foreman|timeline|billing|punch|turnover)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => !!pj && !!(pj.editPunch || F('lForm') || F('cForm'));
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtRefreshOpen() {
+                // bukas ang project at walang sinusulatan → kunin ulit (hal. pinirmahan ng Superadmin, na-verify ng ibang PC)
+                if (!pj) return;
+                const keep = F('toModal').scrollTop;
+                openProject(pj.project.dr_id, pj.mtab, true).then(() => { F('toModal').scrollTop = keep; });
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtRefreshOpen();
+                rtMissed = false;
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !!!pj) rtLoad(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal (CRM/budget/PR) — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('toLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('toLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

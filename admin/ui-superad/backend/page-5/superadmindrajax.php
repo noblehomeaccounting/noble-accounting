@@ -17,6 +17,49 @@ $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
+// Realtime doorbell (Supabase Broadcast): sinasabihan ang PC (at iba pang bukas na page) na may nagbago.
+// Hindi kailanman pinipigilan ang pirma — kapag pumalya, naka-log lang.
+if (!function_exists('pcRealtime')) {
+    function pcRealtime(mysqli $conn, string $type, array $groups, array $payload = []): void
+    {
+        try {
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            $payload = ['type' => $type, 'by' => intval($_SESSION['account_id'] ?? 0)] + $payload;
+            foreach ($groups as [$role, $pos]) {
+                nhRealtimeNotifyGroup((string) $role, $pos !== null ? (string) $pos : null, 'changed', $payload);
+            }
+            // Sales + Designer ng inquiry → makikita agad sa CRM List ang galaw ng project hanggang Turnover
+            {
+                $drId = (int) ($payload['dr_id'] ?? 0);
+                foreach (['quote_id' => 'noblepc_laborquote', 'billing_id' => 'noblepc_billing', 'turnover_id' => 'noblepc_turnover'] as $key => $table) {
+                    if ($drId > 0 || empty($payload[$key])) continue;
+                    $st = $conn->prepare("SELECT dr_id FROM $table WHERE id = ? LIMIT 1");
+                    $id = (int) $payload[$key];
+                    $st->bind_param('i', $id);
+                    $st->execute();
+                    $drId = (int) ($st->get_result()->fetch_assoc()['dr_id'] ?? 0);
+                    $st->close();
+                }
+                if ($drId > 0) {
+                    $st = $conn->prepare("SELECT q.inquiry_id FROM noblepc_dr d
+                                          JOIN nobletransmittal t ON t.id = d.transmittal_id
+                                          JOIN noblepurchaserequest p ON p.id = t.pr_id
+                                          JOIN noblecrm_bom b ON b.id = p.bom_id
+                                          JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                                          WHERE d.id = ? LIMIT 1");
+                    $st->bind_param('i', $drId);
+                    $st->execute();
+                    $inq = (int) ($st->get_result()->fetch_assoc()['inquiry_id'] ?? 0);
+                    $st->close();
+                    if ($inq > 0) nhRtInquiry($conn, $inq, [], 'crm_project');
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('pcRealtime: ' . $e->getMessage());
+        }
+    }
+}
+
 function saOut(array $d): void
 {
     echo json_encode($d);
@@ -130,6 +173,7 @@ if ($action === 'approve') {
         if (!$e instanceof RuntimeException) error_log('[superadmindrajax approve] ' . $e->getMessage());
         saOut(['success' => false, 'message' => $e instanceof RuntimeException ? $e->getMessage() : 'Could not approve the DR. Please try again.']);
     }
+    pcRealtime($conn, 'dr_approved', [[ROLE_PC, null], [ROLE_SUPERADMIN, null]], ['dr_id' => $id]);
     saOut(['success' => true, 'dr_no' => $cur['dr_no'], 'signature_url' => saSigUrl($sigPath)]);
 }
 
@@ -151,6 +195,7 @@ if ($action === 'return') {
         $cur = saOne($conn, "SELECT status FROM noblepc_dr WHERE id = ?", 'i', [$id]);
         saOut(['success' => false, 'message' => !$cur ? 'DR not found.' : ($cur['status'] === 'approved' ? 'This DR is already approved.' : 'This DR was already returned.')]);
     }
+    pcRealtime($conn, 'dr_returned', [[ROLE_PC, null], [ROLE_SUPERADMIN, null]], ['dr_id' => $id]);
     saOut(['success' => true]);
 }
 

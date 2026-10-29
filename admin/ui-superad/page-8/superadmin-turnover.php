@@ -68,7 +68,7 @@ $saAjaxUrl = BASE_URL . '/superadminturnoverajax';
                     <h1 class="text-xl font-bold text-gray-900 leading-tight">Turnover Letter Approvals</h1>
                     <p class="text-xs text-gray-500">Sign the turnover letters prepared by the Project Coordinator. They print it for the client after you sign.</p></div>
             </div>
-            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span><span id="saUpdated">Loading…</span></span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5"><span id="saLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="saLiveText">Auto-refresh</span><span class="text-gray-300">·</span><span id="saUpdated">Loading…</span></span>
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <?php foreach ([
@@ -250,8 +250,10 @@ $saAjaxUrl = BASE_URL . '/superadminturnoverajax';
             document.addEventListener('keydown', e => { if (e.key === 'Escape' && cur) closeM(); });
             function fitDoc() { const d = F('smDoc').querySelector('.todoc'); if (!d) return; const w = F('smDoc').clientWidth - 34; if (w <= 0) return requestAnimationFrame(fitDoc); d.style.zoom = String(Math.max(.35, Math.min(1, w / 740))); }
             window.addEventListener('resize', () => { if (cur) fitDoc(); });
-            async function openReview(id) {
-                let d; try { d = await api('get', { id }); } catch (e) { return toast(e.message, 'error'); }
+            // quiet = realtime refresh: walang error toast, at hindi na bubuksan kapag naisara / may ginagawa habang naglo-load
+            async function openReview(id, quiet) {
+                let d; try { d = await api('get', { id }); } catch (e) { return quiet ? null : toast(e.message, 'error'); }
+                if (quiet && (!cur || cur.turnover.id !== id || F('saModal').classList.contains('hidden') || rtBusy())) return;
                 cur = d; const t = d.turnover;
                 F('smTitle').textContent = `${t.project} · ${t.client_name}`;
                 F('smSub').textContent = `DR# ${t.dr_no} · ${t.quote_no || ''} · prepared by ${t.prepared_by || ''}`;
@@ -299,7 +301,61 @@ $saAjaxUrl = BASE_URL . '/superadminturnoverajax';
             }
             F('smPrint').addEventListener('click', () => { if (cur && ['approved', 'closed'].includes(cur.turnover.status)) toPrint(toLetter(cur.turnover)); });
             tab = memo.get('tab') || 'pending_sa'; if (!['pending_sa', 'returned', 'approved', 'closed', 'all'].includes(tab)) tab = 'pending_sa';
-            load(); setInterval(() => { if (!document.hidden && !cur) load(true); }, 30000);
+            load();
+
+            // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════
+            // Bagong ipinasa / inayos ng PC (o pinirmahan sa ibang tab) → kunin agad ang listahan.
+            // Ang bukas na papel ay nire-refresh din, pero HINDI habang may kumpirmasyon o sinusulat na remarks — hahabol pagkatapos.
+            const RT_TYPES = /^(pc_turnover|pc_punch|turnover_)/i;
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const rtBusy = () => !!cur && !!(F('smYes') || F('smRet')?.open || document.activeElement === F('smRemarks'));
+            let rtMissed = false, rtPoll = null, rtLoading = false, rtAgain = false;
+            async function rtLoad() {
+                if (rtLoading) { rtAgain = true; return; }
+                rtLoading = true;
+                try { await load(true); } catch (e) { } finally { rtLoading = false; if (rtAgain) { rtAgain = false; rtLoad(); } }
+            }
+            function rtSync() {
+                if (document.hidden) { rtMissed = true; return; }
+                rtLoad();
+                if (rtBusy()) { rtMissed = true; return; }
+                rtMissed = false;
+                if (!cur || F('saModal').classList.contains('hidden')) return;
+                const keep = F('saModal').scrollTop;
+                openReview(cur.turnover.id, true).then(() => { F('saModal').scrollTop = keep; });
+            }
+            function rtStartPolling() {
+                if (rtPoll) clearInterval(rtPoll);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                rtPoll = setInterval(() => { if (!document.hidden && !cur) rtLoad(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !RT_TYPES.test(type)) return;   // ibang signal — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(rtSync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        F('saLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        F('saLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) rtStartPolling();
+                        if (live && lastSig) rtSync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (rtMissed && !document.hidden && !rtBusy()) rtSync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (rtPoll) clearInterval(rtPoll); }
+                else { rtSync(); rtStartPolling(); }
+            });
+            rtStartPolling();
         })();
     </script>
 </body>

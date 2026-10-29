@@ -85,6 +85,28 @@ function cpNotifyPo(mysqli $conn, int $id, int $sender, string $message): void
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang proseso */ }
 }
 
+// Realtime: Custodian at Custodian Assistant (parehong listahan + badge), PO (status / Next: Transmittal),
+// Superadmin + Sales/Designer ng inquiry
+function cpRealtime(mysqli $conn, int $id, string $type): void
+{
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $qq = $conn->prepare("SELECT b.quotation_id FROM noblepurchaserequest p LEFT JOIN noblecrm_bom b ON b.id = p.bom_id WHERE p.id = ? LIMIT 1");
+        $qq->bind_param('i', $id);
+        $qq->execute();
+        $qid = (int) ($qq->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $qq->close();
+        $groups = [[ROLE_ACCOUNTING, POSITION_CUSTODIAN], [ROLE_ACCOUNTING, POSITION_CUSTOASSISTANT], [ROLE_PO, null], [ROLE_SUPERADMIN, null]];
+        if ($qid > 0) {
+            nhRtQuotation($conn, $qid, $groups, $type);
+        } else {
+            foreach ($groups as $g) nhRealtimeNotifyGroup((string) $g[0], $g[1] !== null ? (string) $g[1] : null, 'changed', ['type' => $type, 'pr_id' => $id]);
+        }
+    } catch (Throwable $e) {
+        error_log('cpRealtime: ' . $e->getMessage());
+    }
+}
+
 // ================= LIST =================
 // Lahat ng na-receive na ng Accounting Staff
 if ($action === 'list') {
@@ -150,6 +172,7 @@ if ($action === 'release') {
     if ($affected < 1) cpOut(['success' => false, 'message' => 'This request was already released by the other custodian. Refreshing the list.']);
 
     cpNotifyPo($conn, $id, $currentUserId, 'Purchase request {req} has been released. Waiting to be paid.');
+    cpRealtime($conn, $id, 'pr_released');
     cpOut(['success' => true, 'has_signature' => $me['signature_path'] !== null]);
 }
 
@@ -172,6 +195,7 @@ if ($action === 'paid') {
     if ($affected < 1) cpOut(['success' => false, 'message' => 'This request is already marked as paid or not yet released.']);
 
     cpNotifyPo($conn, $id, $currentUserId, 'Purchase request {req} has been paid.');
+    cpRealtime($conn, $id, 'pr_paid');
     cpOut(['success' => true]);
 }
 

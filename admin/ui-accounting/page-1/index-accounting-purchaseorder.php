@@ -41,8 +41,9 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
                     <h1 class="text-gray-900 text-xl font-semibold">Purchase Request Review</h1>
                     <p class="text-gray-400 text-xs mt-0.5">Purchase requests approved by the CEO. Reviewing signs the form as Accounting Head.</p>
                 </div>
-                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Auto-refresh every 30s
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
+                    <span id="apoLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span id="apoLiveText">Auto-refresh every 30s</span>
                 </span>
             </div>
 
@@ -479,7 +480,10 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
                 document.getElementById('apoFooter').textContent = `Showing ${list.length} of ${source.length} request${source.length === 1 ? '' : 's'}`;
             }
 
+            let loading = false, loadAgain = false;
             async function load() {
+                if (loading) { loadAgain = true; return; }
+                loading = true;
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const data = await res.json();
@@ -487,6 +491,10 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
                     rows = data.rows;
                     render();
                 } catch (e) { console.error(e); toast('Connection error while loading.', 'error'); }
+                finally {
+                    loading = false;
+                    if (loadAgain) { loadAgain = false; load(); }
+                }
             }
 
             document.getElementById('apoList').addEventListener('click', e => {
@@ -495,14 +503,18 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
             });
 
             // ── review modal ──
-            async function openReview(id) {
+            async function openReview(id, quiet = false) {
                 const sheet = document.getElementById('apoSheet');
-                sheet.innerHTML = `<p class="text-xs text-gray-400 text-center py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
-                document.getElementById('apoNotice').classList.add('hidden');
-                openModal('apoModal');
+                if (!quiet) {
+                    sheet.innerHTML = `<p class="text-xs text-gray-400 text-center py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
+                    document.getElementById('apoNotice').classList.add('hidden');
+                    openModal('apoModal');
+                }
                 try {
                     const res = await fetch(`${AJAX}?action=view&id=${id}`, { cache: 'no-store' });
                     const data = await res.json();
+                    // realtime refresh: huwag galawin kapag nagsara o lumipat na ng request
+                    if (quiet && (document.getElementById('apoModal').classList.contains('hidden') || !current || current.id !== id)) return;
                     if (!data.success) { sheet.innerHTML = `<p class="text-xs text-red-500 text-center py-10">${esc(data.message)}</p>`; return; }
                     current = data.pr;
                     PRSheet.render(sheet, current, { base: BASE });
@@ -565,7 +577,55 @@ $apoAjaxUrl = BASE_URL . '/accountingpurchaseorderajax';
 
             setTab('pending');
             load();
-            setInterval(() => { if (!document.hidden && !anyOpen()) load(); }, 30000);
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong CEO-approved PR, review ng ibang Accounting Head, receive/release/paid → kunin agad.
+            // Hindi ginagalaw ang bukas na form habang bukas ang "Review this request?"; hahabol pagkasara.
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const confirmOpen = () => !document.getElementById('apoConfirmModal').classList.contains('hidden');
+            let missed = false, pollTimer = null;
+
+            function sync() {
+                if (document.hidden) { missed = true; return; }
+                load();
+                if (!document.getElementById('apoModal').classList.contains('hidden') && current) {
+                    if (confirmOpen()) { missed = true; return; }
+                    openReview(current.id, true);
+                }
+                missed = false;
+            }
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                pollTimer = setInterval(() => { if (!document.hidden && !anyOpen()) load(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !/^(pr|transmittal)/i.test(type)) return;   // ibang signal (budget/voucher/CRM) — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('apoLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('apoLiveText').textContent = live ? 'Live' : 'Auto-refresh every 30s';
+                        if (!document.hidden) startPolling();
+                        if (live && rows.length) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (missed && !confirmOpen()) sync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }
+                else { sync(); startPolling(); }
+            });
+            startPolling();
         })();
     </script>
 </body>

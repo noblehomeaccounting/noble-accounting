@@ -473,6 +473,19 @@
     .day-row-flash { animation: dayRowFlash .6s ease-in-out 5; }
 </style>
 
+<?php
+// ── Realtime (Supabase Broadcast): channel ng naka-login na approver ──
+include_once ROOT_PATH . '/network/realtime-helper.php';
+$brRealtime = [
+    'url' => NH_SUPABASE_URL,
+    'key' => NH_SUPABASE_ANON_KEY,   // anon/publishable lang — ang secret ay nasa PHP
+    'topic' => nhRealtimeTopic(intval($_SESSION['account_id'] ?? 0), 'budget'),
+    'enabled' => !str_contains(NH_SUPABASE_URL, 'YOUR-PROJECT-REF'),
+];
+?>
+<?php if (!defined('NH_RT_LOADED')): ?>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<?php endif; ?>
 <script>
     // ═══════════════════════════════════════════════════════
     //  requests-view.php: JAVASCRIPT (buong kapalit ng lumang <script>)
@@ -1338,9 +1351,70 @@
         if (document.visibilityState === 'visible') { fetchRequests(); fetchDates(); }
     });
 
+    // ─── Realtime (Supabase) ─────────────────────────────
+    // Ang Supabase ay "doorbell" lang: kapag may bagong request / nagbago, magpapadala ang PHP ng signal,
+    // tapos kukunin natin ulit ang data sa /fetchrequests (may session check). Walang data na dumadaan sa Supabase.
+    const BR_RT = <?= json_encode($brRealtime, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+    let brLive = false;
+    function brSetLive(on) {
+        brLive = on;
+        const el = document.getElementById('last-updated');
+        if (el && !el.dataset.touched) el.textContent = on ? 'Live' : 'Auto-refresh';
+        const dot = el?.previousElementSibling;
+        if (dot) dot.className = 'w-2 h-2 rounded-full animate-pulse ' + (on ? 'bg-green-500' : 'bg-amber-500');
+    }
+    (function brStartRealtime() {
+        // May iisang koneksyon na sa sidebar (window.NH_RT) → gamitin iyon, huwag nang gumawa ng pangalawa
+        if (window.NH_RT?.enabled && NH_RT.topics.includes(BR_RT.topic)) {
+            let t = null;
+            NH_RT.on(BR_RT.topic, 'changed', () => {
+                clearTimeout(t);
+                t = setTimeout(() => { brFetchFresh(); fetchDates(); }, 300);
+            });
+            NH_RT.onLive(brSetLive);
+            return;
+        }
+        if (!BR_RT.enabled || !window.supabase?.createClient) { brSetLive(false); return; }
+        try {
+            const sb = window.supabase.createClient(BR_RT.url, BR_RT.key, { auth: { persistSession: false } });
+            let t = null;
+            sb.channel(BR_RT.topic)
+                .on('broadcast', { event: 'changed' }, () => {
+                    // pagsamahin kapag sunod-sunod ang signal
+                    clearTimeout(t);
+                    t = setTimeout(() => { brFetchFresh(); fetchDates(); }, 300);
+                })
+                .subscribe(status => brSetLive(status === 'SUBSCRIBED'));
+        } catch (e) {
+            console.error('Realtime:', e);
+            brSetLive(false);
+        }
+    })();
+
+    // Kunin ulit nang hindi dumadaan sa 20s na cache ng server
+    function brFetchFresh() {
+        const month = calYear + '-' + String(calMonth + 1).padStart(2, '0');
+        return fetch(API + '/fetchrequests?month=' + month + '&fresh=1')
+            .then(r => r.json())
+            .then(data => {
+                if (!Array.isArray(data)) return;
+                allRequests = data;
+                lastSig = month + '|' + data.map(r => r.id + r.status + (r.received_by ?? '') + (r.attachment_status ?? '')).join('|');
+                renderCalendar();
+                if (selectedDate) openDayPanel(selectedDate, allRequests.filter(r => r.date_requested?.startsWith(selectedDate)), true);
+                document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH');
+            })
+            .catch(err => console.error('Realtime fetch error:', err));
+    }
+
+    // Polling bilang reserba: 10s kapag walang realtime, 60s kapag naka-live (sakaling may ma-miss na signal)
+    let brLastPoll = Date.now();
     setInterval(() => {
-        if (document.visibilityState === 'visible') fetchRequests();
-    }, 10000); // 10 segundo
+        if (document.visibilityState !== 'visible') return;
+        if (Date.now() - brLastPoll < (brLive ? 60000 : 10000)) return;
+        brLastPoll = Date.now();
+        fetchRequests();
+    }, 5000);
 
         // ─── Highlight ng huling pinindot na row ─────────────
         // Kapag pinindot ang kahit anong bahagi ng row (View, Approve, atbp.),

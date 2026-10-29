@@ -99,6 +99,16 @@ if ($action === 'save') {
     $ok = $st->execute();
     $st->close();
 
+    // Realtime: ibang PO na nakabukas ang Client Series (by = sino ang nag-save, para hindi i-refresh ang sarili)
+    if ($ok) {
+        try {
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            nhRealtimeNotifyGroup(ROLE_PO, null, 'changed', ['type' => 'po_clientseries', 'pr_id' => $prId, 'field' => $field, 'by' => $currentUserId]);
+        } catch (Throwable $e) {
+            error_log('clientseries realtime: ' . $e->getMessage());
+        }
+    }
+
     csOut(['success' => (bool) $ok, 'message' => $ok ? 'Saved.' : 'Could not save.']);
 }
 

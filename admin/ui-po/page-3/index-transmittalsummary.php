@@ -33,7 +33,8 @@ $tsAjaxUrl = BASE_URL . '/transmittalsummaryajax';
                 <h1 class="text-gray-900 text-xl font-semibold">Summary of Transmittal</h1>
                 <p class="text-gray-400 text-xs mt-0.5">Every saved transmittal lands here as <b class="text-orange-600">For delivery</b>. Mark it delivered once the client has it.</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="tsLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="tsLiveText">Auto-refresh</span></span>
                 <a href="<?= BASE_URL ?>/transmittal" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                     <i class="fa-solid fa-file-export"></i> Transmittals
                 </a>
@@ -322,15 +323,25 @@ $tsAjaxUrl = BASE_URL . '/transmittalsummaryajax';
                 modes.forEach(m => { if (![...dl.options].some(o => o.value.toLowerCase() === m.toLowerCase())) dl.insertAdjacentHTML('beforeend', `<option value="${esc(m)}">`); });
             }
 
-            async function load() {
+            let lastSig = '';
+            async function load(silent) {
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const d = await res.json();
-                    if (!d.success) { toast(d.message || 'Failed to load.', 'error'); return; }
+                    if (!d.success) { if (!silent) toast(d.message || 'Failed to load.', 'error'); return; }
+                    // tahimik na refresh: i-render lang kapag may nagbago
+                    const sig = JSON.stringify(d.rows.map(r => [r.id, r.delivered_at, r.particulars, r.delivery_mode, r.summary_remarks]));
+                    if (silent && sig === lastSig) return;
+                    if (silent && lastSig) {
+                        const known = new Set(rows.map(r => r.id));
+                        const fresh = d.rows.filter(r => !known.has(r.id)).length;
+                        if (fresh) toast(`${fresh} new transmittal${fresh === 1 ? '' : 's'} for delivery.`);
+                    }
+                    lastSig = sig;
                     rows = d.rows;
                     fillClients(d.modes || []);
                     render();
-                } catch (e) { toast('Connection error while loading.', 'error'); }
+                } catch (e) { if (!silent) toast('Connection error while loading.', 'error'); }
             }
 
             document.getElementById('tsBody').addEventListener('click', e => {
@@ -430,6 +441,50 @@ $tsAjaxUrl = BASE_URL . '/transmittalsummaryajax';
             });
 
             load();
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong paid na PR / transmittal / delivered (ibang PO o tab) → kunin agad ang listahan.
+            // Hindi nire-refresh habang bukas ang Mark as Delivered o Edit (hahabol pagkasara).
+            (function hookRealtime() {
+                const TYPES = /^(pr_|po_|transmittal)/i;
+                const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+                const busy = () => ['tsDeliverModal', 'tsEditModal'].some(id => !document.getElementById(id).classList.contains('hidden'));
+                let t = null, missed = false, poll = null;
+                const sync = () => {
+                    if (document.hidden || busy()) { missed = true; return; }
+                    missed = false;
+                    load(true);
+                };
+                const startPolling = () => {
+                    if (poll) clearInterval(poll);
+                    // Live → 60s fallback lang; hindi Live → 30s
+                    poll = setInterval(() => { if (!document.hidden && !busy()) load(true); }, rtLive() ? 60000 : 30000);
+                };
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !TYPES.test(type)) return;
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('tsLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('tsLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) startPolling();
+                        if (live) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+                setInterval(() => { if (missed && !document.hidden && !busy()) sync(); }, 5000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) { if (poll) clearInterval(poll); }
+                    else { sync(); startPolling(); }
+                });
+                startPolling();
+            })();
         })();
     </script>
 </body>

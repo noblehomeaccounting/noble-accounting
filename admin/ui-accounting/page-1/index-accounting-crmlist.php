@@ -300,10 +300,35 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
             }
         }
 
+        const acctListRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+
         function acctListStartPolling() {
             if (acctListPollTimer) clearInterval(acctListPollTimer);
-            acctListPollTimer = setInterval(() => acctListFetchList({ silent: true }), ACCT_LIST_POLL_INTERVAL_MS);
+            // Live → 60s fallback lang; hindi Live → dating bilis
+            acctListPollTimer = setInterval(() => acctListFetchList({ silent: true }), acctListRtLive() ? 60000 : ACCT_LIST_POLL_INTERVAL_MS);
         }
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Bagong approved (Designer Head / Superadmin), bayad o NTP ng ibang Accounting, reset → kunin agad.
+        (function acctListHookRealtime() {
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || acctListHookRealtime.done) return;
+                acctListHookRealtime.done = true;
+                let t = null;
+                window.NH_RT.on('*', 'changed', (payload) => {
+                    const type = String(payload?.type || '');
+                    if (type && !type.startsWith('crm')) return; // budget/voucher — hindi para dito
+                    clearTimeout(t);
+                    t = setTimeout(() => { if (!document.hidden) acctListFetchList({ silent: true }); }, 400);
+                });
+                window.NH_RT.onLive(live => {
+                    if (!document.hidden && acctListPollTimer) acctListStartPolling();
+                    if (live && acctListRows.length) acctListFetchList({ silent: true });
+                });
+            };
+            hook();
+            if (!acctListHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+        })();
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 if (acctListPollTimer) clearInterval(acctListPollTimer);

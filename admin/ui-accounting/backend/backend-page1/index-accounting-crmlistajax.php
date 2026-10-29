@@ -49,6 +49,16 @@ function acctJson(array $d): void
     exit;
 }
 
+// Realtime: signal pagkatapos ng matagumpay na bayad / NTP
+//   Sales + Designer ng inquiry, buong Accounting (CRM List + badge), at ang mga dagdag na department
+function acctRealtime(mysqli $conn, int $inquiryId, string $type, array $extraRoles = []): void
+{
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    $groups = [[ROLE_ACCOUNTING, null]];
+    foreach ($extraRoles as $r) $groups[] = [$r, null];
+    nhRtInquiry($conn, $inquiryId, $groups, $type);
+}
+
 // I-save ang resibo; ibinabalik ang path o nag-e-exit na may error
 function acctSaveSlip(array $file, int $quotationId): string
 {
@@ -455,6 +465,7 @@ if ($action === 'add_payment') {
         $st->close();
     }
 
+    acctRealtime($conn, $inquiryId, 'crm_payment');
     acctJson(['success' => true, 'message' => 'Payment recorded.', 'paid_total' => $tot['total'], 'payment_count' => $tot['count']]);
 }
 
@@ -498,6 +509,7 @@ if ($action === 'delete_payment') {
     }
 
     $tot = acctPaymentTotals($conn, $id);
+    acctRealtime($conn, (int) $rec['inquiry_id'], 'crm_payment');
     acctJson(['success' => true, 'message' => 'Payment removed.', 'paid_total' => $tot['total'], 'payment_count' => $tot['count']]);
 }
 
@@ -545,6 +557,8 @@ if ($action === 'give_ntp') {
         'client_name' => $rec['client_name'],
     ], $currentUserId);
 
+    // Cutting / Operations / Design: bagong NTP (Cutting List, E-Woodfile, CRM Designer at bell)
+    acctRealtime($conn, (int) $rec['inquiry_id'], 'crm_ntp', ACCT_NTP_NOTIFY_ROLES);
     acctJson(['success' => true, 'message' => 'Notice to Proceed given. Cutting List, Operations and Design have been notified.']);
 }
 

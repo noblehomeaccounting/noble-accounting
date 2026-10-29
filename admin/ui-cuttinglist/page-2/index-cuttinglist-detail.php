@@ -11,6 +11,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 $cutListAjaxUrl = BASE_URL . '/cuttinglistajax';
 $cutListUrl = BASE_URL . '/crmcuttinglist';
+$cutEwoodUrl = BASE_URL . '/crmewood';
 
 $recordId = intval($_GET['id'] ?? 0);
 if ($recordId <= 0) {
@@ -30,61 +31,92 @@ if ($recordId <= 0) {
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
+    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden transition-all duration-300">
 
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-6xl mx-auto">
 
             <!-- Back link -->
             <a href="<?= htmlspecialchars($cutListUrl) ?>"
                 class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-gray-500 hover:text-amber-700 mb-4 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to list
+                <i class="fa-solid fa-arrow-left text-[11px]"></i> Back to Cutting List
             </a>
 
-            <!-- Header card (now includes Hold / NTP badge next to name) -->
-            <div id="cutHeaderCard" class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-5">
-                <div class="h-4 w-40 rounded bg-gray-100 animate-pulse mb-2"></div>
-                <div class="h-6 w-64 rounded bg-gray-100 animate-pulse"></div>
-            </div>
-
-            <!-- Files -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-5">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Files</p>
-                    <button type="button" id="cutFeedbackBtn" onclick="cutToggleFeedbackSidebar()"
-                        class="relative inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 border border-gray-300 rounded-full px-3 py-1.5 hover:bg-gray-50 transition-colors">
-                        <i class="fa-solid fa-comment-dots"></i> Feedback on 2D
-                        <span id="cutFeedbackBadge"
-                            class="hidden absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-600 text-white text-[9px] font-bold items-center justify-center leading-none">0</span>
-                    </button>
+            <!-- Header card -->
+            <section id="cutHeaderCard" class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-4">
+                <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+                <div class="p-5">
+                    <div class="h-3 w-40 rounded bg-gray-100 animate-pulse mb-2"></div>
+                    <div class="h-6 w-64 rounded bg-gray-100 animate-pulse"></div>
                 </div>
-                <div id="cutFileRows" class="space-y-2.5">
-                    <div class="h-10 rounded bg-gray-100 animate-pulse"></div>
-                </div>
-            </div>
+            </section>
 
-            <!-- 2D Revision history (pinakabago sa itaas, luma sa ibaba — walang napapalitan) -->
-            <div id="cutRevisionCard" class="hidden bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-5">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">2D Revision History</p>
-                    <span id="cutRevisionCount" class="text-[11px] text-gray-400"></span>
-                </div>
-                <div id="cutRevisionList" class="max-h-[560px] overflow-y-auto pr-1"></div>
-            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
-            <!-- Site Notes -->
-            <div class="mb-3">
-                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Site Notes</p>
-            </div>
-            <div id="cutSiteVisits" class="space-y-4 mb-6">
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                    <div class="h-3 w-full rounded bg-gray-100 animate-pulse mb-2"></div>
-                    <div class="h-3 w-3/4 rounded bg-gray-100 animate-pulse"></div>
-                </div>
-            </div>
+                <!-- ═══ LEFT: files, history, site notes ═══ -->
+                <div class="lg:col-span-2 space-y-4 min-w-0">
 
+                    <!-- Files -->
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-folder-open text-amber-700 text-sm"></i>
+                            <h2 class="text-sm font-semibold text-gray-900">Files</h2>
+                        </div>
+                        <div id="cutFileRows" class="space-y-2.5">
+                            <div class="h-14 rounded-xl bg-gray-100 animate-pulse"></div>
+                        </div>
+                    </section>
+
+                    <!-- 2D Revision history (pinakabago sa itaas, luma sa ibaba — walang napapalitan) -->
+                    <section id="cutRevisionCard" class="hidden bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-code-branch text-amber-700 text-sm"></i>
+                                <h2 class="text-sm font-semibold text-gray-900">2D Revision History</h2>
+                            </div>
+                            <span id="cutRevisionCount" class="text-[11px] text-gray-400"></span>
+                        </div>
+                        <div id="cutRevisionList" class="max-h-[560px] overflow-y-auto pr-1"></div>
+                    </section>
+
+                    <!-- Site Notes -->
+                    <section>
+                        <div class="flex items-center gap-2 mb-3 px-1">
+                            <i class="fa-solid fa-map-location-dot text-amber-700 text-sm"></i>
+                            <h2 class="text-sm font-semibold text-gray-900">Site Notes</h2>
+                        </div>
+                        <div id="cutSiteVisits" class="space-y-4">
+                            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                                <div class="h-3 w-full rounded bg-gray-100 animate-pulse mb-2"></div>
+                                <div class="h-3 w-3/4 rounded bg-gray-100 animate-pulse"></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ═══ RIGHT: next step + feedback (sticky) ═══ -->
+                <aside class="space-y-4 lg:sticky lg:top-6 min-w-0 order-first lg:order-none">
+                    <section id="cutNextStep" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                        <div class="h-3 w-24 rounded bg-gray-100 animate-pulse mb-3"></div>
+                        <div class="h-9 w-full rounded-lg bg-gray-100 animate-pulse"></div>
+                    </section>
+
+                    <section class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-comment-dots text-amber-700 text-sm"></i>
+                                <h2 class="text-sm font-semibold text-gray-900">Feedback to Designer</h2>
+                            </div>
+                            <span id="cutFeedbackBadge"
+                                class="hidden min-w-[20px] h-5 px-1.5 rounded-full bg-amber-600 text-white text-[10px] font-bold items-center justify-center leading-none">0</span>
+                        </div>
+                        <p id="cutFeedbackSummary" class="text-[12px] text-gray-500 mb-3">—</p>
+                        <button type="button" id="cutFeedbackBtn" onclick="cutToggleFeedbackSidebar()"
+                            class="w-full inline-flex items-center justify-center gap-2 text-[12px] font-semibold text-gray-700 border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 hover:border-gray-300 transition-colors">
+                            <i class="fa-regular fa-comments"></i> Open feedback on 2D
+                        </button>
+                    </section>
+                </aside>
+            </div>
         </div>
 
         <!-- Toast container -->
@@ -121,30 +153,29 @@ if ($recordId <= 0) {
                 ? { wrap: 'bg-green-50 border-green-200 text-green-700', icon: 'bg-green-200 text-green-700', symbol: '✓' }
                 : { wrap: 'bg-red-50 border-red-200 text-red-700', icon: 'bg-red-200 text-red-700', symbol: '!' };
             const toast = document.createElement('div');
-            toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm
-                ${palette.wrap}
-                translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
+            toast.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm ${palette.wrap} translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
             toast.innerHTML = `
                 <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${palette.icon}">${palette.symbol}</span>
-                <span class="flex-1 leading-relaxed">${message}</span>
-                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>
-            `;
+                <span class="flex-1 leading-relaxed"></span>
+                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>`;
+            toast.querySelector('.flex-1').textContent = message;
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
-            const remove = () => {
-                toast.classList.add('translate-x-6', 'opacity-0', 'scale-95');
-                setTimeout(() => toast.remove(), 300);
-            };
+            const remove = () => { toast.classList.add('translate-x-6', 'opacity-0', 'scale-95'); setTimeout(() => toast.remove(), 300); };
             toast.querySelector('button').addEventListener('click', remove);
             if (duration > 0) setTimeout(remove, duration);
         }
 
         const CUT_LIST_AJAX_URL = <?= json_encode($cutListAjaxUrl) ?>;
+        const CUT_EWOOD_URL = <?= json_encode($cutEwoodUrl) ?>;
         const CUT_RECORD_ID = <?= json_encode($recordId) ?>;
 
         let cutCurrentRecord = null;
         const CUT_REV_URL = <?= json_encode(BASE_URL . '/crm2drevisionajax') ?>;
         let cutRevisions = [];   // pinakabago muna; [0] = current
+        let cutVerifyBusy = false;
+
+        const cutIsNtp = r => r.deposit_status === 'Notice to Proceed';
 
         // Aling revision ang sumagot sa feedback na ito
         function cutResolvedIn(fid) {
@@ -162,50 +193,6 @@ if ($recordId <= 0) {
             }
         }
 
-        function cutRenderRevisionHistory(r) {
-            const card = document.getElementById('cutRevisionCard');
-            const list = document.getElementById('cutRevisionList');
-            if (!card || !list) return;
-
-            if (r.deposit_status !== 'Notice to Proceed' || !cutRevisions.length) {
-                card.classList.add('hidden');
-                return;
-            }
-            card.classList.remove('hidden');
-            document.getElementById('cutRevisionCount').textContent =
-                `${cutRevisions.length} version${cutRevisions.length === 1 ? '' : 's'} · newest on top`;
-
-            list.innerHTML = `<ol class="relative border-l-2 border-gray-200 ml-2 space-y-3">${cutRevisions.map(v => `
-                <li class="relative ml-5">
-                    <span class="absolute -left-[29px] top-3 w-4 h-4 rounded-full border-2 border-white ${v.is_current ? 'bg-amber-600' : 'bg-gray-300'}"></span>
-                    <div class="rounded-xl border ${v.is_current ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200 bg-white'} px-4 py-3">
-                        <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${v.revision_no === 0 ? 'bg-gray-100 text-gray-700' : 'bg-amber-700 text-white'}">${cutEscapeHtml(v.label)}</span>
-                            ${v.is_current
-                    ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-green-100 text-green-700">Current</span>'
-                    : '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500">Previous</span>'}
-                            <span class="ml-auto text-[11.5px] text-gray-500 whitespace-nowrap"><i class="fa-regular fa-clock mr-1"></i>${cutEscapeHtml(v.created_at || '—')}</span>
-                        </div>
-                        <p class="text-[11px] text-gray-400 mt-1">${cutEscapeHtml(v.created_by_name)} · ${cutEscapeHtml(v.created_role)}</p>
-                        ${v.change_notes ? `
-                            <div class="mt-2 rounded-lg bg-white border border-gray-200 px-3 py-2">
-                                <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">What changed</p>
-                                <p class="text-[12.5px] text-gray-800 whitespace-pre-line">${cutEscapeHtml(v.change_notes)}</p>
-                            </div>` : (v.revision_no === 0 ? '<p class="text-[11.5px] text-gray-400 italic mt-1.5">First 2D file submitted.</p>' : '')}
-                        ${(v.answers || []).length ? `
-                            <div class="mt-2">
-                                <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">Answers your feedback</p>
-                                ${v.answers.map(a => `<p class="text-[12px] text-gray-600 border-l-2 border-amber-300 pl-2 mb-1 whitespace-pre-line">"${cutEscapeHtml(a.message)}" <span class="text-gray-400">· ${cutEscapeHtml(a.created_at)}</span></p>`).join('')}
-                            </div>` : ''}
-                        <div class="mt-2 flex flex-wrap gap-1.5">${(v.files || []).map(f => `
-                            <a href="${cutEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${cutEscapeHtml(f.name)}"
-                                class="inline-flex items-center gap-1.5 max-w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-700 hover:border-amber-600 hover:text-amber-800">
-                                <i class="fa-solid fa-file-pdf text-red-500"></i><span class="truncate max-w-[220px]">${cutEscapeHtml(f.name)}</span>
-                            </a>`).join('')}</div>
-                    </div>
-                </li>`).join('')}</ol>`;
-        }
-
         function cutEscapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str ?? '';
@@ -221,6 +208,12 @@ if ($recordId <= 0) {
                 hour: 'numeric', minute: '2-digit', hour12: true
             });
         }
+        function cutFormatDateShort(value) {
+            if (!value) return '—';
+            const dt = new Date(String(value).replace(' ', 'T'));
+            if (isNaN(dt.getTime())) return value;
+            return dt.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+        }
 
         function cutCurrency(value) {
             if (value === null || value === undefined || value === '') return '—';
@@ -229,186 +222,251 @@ if ($recordId <= 0) {
             return '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        function cutDetailRow(label, value) {
+        // value: naka-escape na HTML
+        function cutDetailRow(label, value, icon, wide = false) {
             return `
-                <div class="flex justify-between gap-3 py-2 border-b border-gray-100 text-[13px] last:border-b-0">
-                    <span class="text-gray-400 whitespace-nowrap">${cutEscapeHtml(label)}</span>
-                    <span class="text-gray-800 font-medium text-right">${value || '—'}</span>
-                </div>
-            `;
+                <div class="${wide ? 'sm:col-span-2' : ''} flex items-start gap-2.5 min-w-0">
+                    <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><i class="fa-solid ${icon} text-[11px]"></i></span>
+                    <div class="min-w-0">
+                        <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">${cutEscapeHtml(label)}</p>
+                        <p class="text-[13px] text-gray-800 font-medium break-words">${value || '—'}</p>
+                    </div>
+                </div>`;
         }
 
-        function cutNtpBadge(r) {
-            const isNtp = r.deposit_status === 'Notice to Proceed';
-
-            if (isNtp) {
-                return `
-                    <span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-green-100 text-green-700 border border-green-200"
-                          title="Downpayment received ${cutEscapeHtml(cutFormatDateTimeLong(r.deposit_uploaded_at))}">
-                        <i class="fa-solid fa-circle-check text-[9px] leading-none"></i>
-                        <span class="leading-none">NTP</span>
-                    </span>
-                `;
+        function cutStatusChip(r) {
+            if (!cutIsNtp(r)) {
+                return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200" title="Waiting for Accounting to log the deposit"><i class="fa-solid fa-hourglass-half text-[9px]"></i>On hold</span>`;
             }
-
-            return `
-                <span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-amber-100 text-amber-700 border border-amber-200"
-                      title="Waiting for Accounting to log the deposit">
-                    <i class="fa-solid fa-clock text-[9px] leading-none"></i>
-                    <span class="leading-none">Hold</span>
-                </span>
-            `;
-        }
-
-        function cutHoldNotice(r) {
-            if (r.deposit_status === 'Notice to Proceed') return '';
-            return `
-                <div class="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    <i class="fa-solid fa-circle-info text-amber-600 text-xs"></i>
-                    <p class="text-[12px] text-amber-800">Waiting for Accounting to mark this as Notice to Proceed before production starts.</p>
-                </div>
-            `;
+            const ntp = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-green-50 text-green-700 border-green-200" title="Downpayment received ${cutEscapeHtml(cutFormatDateTimeLong(r.deposit_uploaded_at))}"><i class="fa-solid fa-circle-check text-[9px]"></i>Notice to Proceed</span>`;
+            const v2d = r.design_2d_verified
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-green-50 text-green-700 border-green-200"><i class="fa-solid fa-file-circle-check text-[9px]"></i>2D verified</span>`
+                : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border bg-red-50 text-red-700 border-red-200"><i class="fa-solid fa-file-circle-exclamation text-[9px]"></i>2D to verify</span>`;
+            return ntp + v2d;
         }
 
         function cutLockedNotice(message) {
             return `
-                <div class="flex flex-col items-center justify-center text-center py-6 gap-2">
-                    <i class="fa-solid fa-lock text-amber-400 text-lg"></i>
-                    <p class="text-[13px] text-gray-500">${cutEscapeHtml(message)}</p>
-                </div>
-            `;
+                <div class="flex flex-col items-center justify-center text-center py-8 gap-2 rounded-xl border-2 border-dashed border-gray-200">
+                    <span class="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center"><i class="fa-solid fa-lock"></i></span>
+                    <p class="text-[12.5px] text-gray-500 max-w-xs">${cutEscapeHtml(message)}</p>
+                </div>`;
         }
 
         function cutRenderHeader(r) {
+            const people = [
+                r.branch ? `<span><i class="fa-solid fa-building text-[10px] mr-1 text-gray-300"></i>${cutEscapeHtml(r.branch)} Branch</span>` : '',
+                `<span><i class="fa-solid fa-user-tie text-[10px] mr-1 text-gray-300"></i>Sales: ${cutEscapeHtml(r.sales_staff_name || '—')}</span>`,
+                `<span><i class="fa-solid fa-pen-nib text-[10px] mr-1 text-gray-300"></i>Designer: ${cutEscapeHtml(r.designer_name || '—')}</span>`,
+            ].filter(Boolean).join('');
+
             document.getElementById('cutHeaderCard').innerHTML = `
-                <div class="mb-4">
-                    <p class="notranslate text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Control No. ${cutEscapeHtml(r.control_no)}</p>
-                    <h1 class="text-gray-900 text-xl font-semibold flex items-center gap-2 flex-wrap">
-                        <span>${cutEscapeHtml(r.client_name)}</span>
-                        ${cutNtpBadge(r)}
-                    </h1>
-                    <p class="text-xs text-gray-400 mt-1">${r.branch ? cutEscapeHtml(r.branch) + ' Branch · ' : ''}Sales: ${cutEscapeHtml(r.sales_staff_name)} · Designer: ${cutEscapeHtml(r.designer_name)}</p>
-                    ${cutHoldNotice(r)}
-                </div>
-                <div class="pt-1 border-t border-gray-100">
-                    ${cutDetailRow('Address', cutEscapeHtml(r.address))}
-                    ${cutDetailRow('Contact Number', cutEscapeHtml(r.contact_number))}
-                    ${cutDetailRow('Type of Project', cutEscapeHtml(r.project_type))}
-                    ${cutDetailRow('Scope of Project', cutEscapeHtml(r.project_scope))}
-                    ${cutDetailRow('Measuring Space', cutEscapeHtml(r.measuring_space))}
-                    ${cutDetailRow('Measurement Date and Time', cutFormatDateTimeLong(r.measurement_datetime))}
-                    ${cutDetailRow('Contract Amount', cutCurrency(r.contract_amount))}
-                </div>
-            `;
+                <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+                <div class="p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-pen-ruler text-lg"></i></span>
+                            <div class="min-w-0">
+                                <p class="notranslate font-mono text-amber-700 text-[11px] font-bold tracking-wide">${cutEscapeHtml(r.control_no)}</p>
+                                <h1 class="text-gray-900 text-lg font-semibold leading-tight capitalize break-words">${cutEscapeHtml(r.client_name)}</h1>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">${cutStatusChip(r)}</div>
+                    </div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-gray-500 mt-3">${people}</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 mt-4 pt-4 border-t border-gray-100">
+                        ${cutDetailRow('Address', cutEscapeHtml(r.address), 'fa-location-dot', true)}
+                        ${cutDetailRow('Contact Number', cutEscapeHtml(r.contact_number), 'fa-phone')}
+                        ${cutDetailRow('Contract Amount', cutCurrency(r.contract_amount), 'fa-peso-sign')}
+                        ${cutDetailRow('Type of Project', cutEscapeHtml(r.project_type), 'fa-house')}
+                        ${cutDetailRow('Scope of Project', cutEscapeHtml(r.project_scope), 'fa-list-check')}
+                        ${cutDetailRow('Measuring Space', cutEscapeHtml(r.measuring_space), 'fa-ruler-combined')}
+                        ${cutDetailRow('Measurement Date and Time', cutEscapeHtml(cutFormatDateTimeLong(r.measurement_datetime)), 'fa-calendar-day')}
+                    </div>
+                </div>`;
         }
 
-        function cutRevisedBadge(uploadedAt) {
-            return `
-                <span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-blue-100 text-blue-700 border border-blue-200"
-                      title="Re-uploaded ${cutEscapeHtml(cutFormatDateTimeLong(uploadedAt))} in response to feedback">
-                    <i class="fa-solid fa-rotate text-[9px] leading-none"></i>
-                    <span class="leading-none">Revised</span>
-                </span>
-            `;
+        // ── Next step card (kanan) ──
+        function cutRenderNextStep(r) {
+            const box = document.getElementById('cutNextStep');
+            if (!box) return;
+            cutVerifyBusy = false;
+
+            if (!cutIsNtp(r)) {
+                box.innerHTML = `
+                    <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Next step</p>
+                    <div class="flex items-start gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-hourglass-half"></i></span>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Waiting for Accounting</p>
+                            <p class="text-[12px] text-gray-500 mt-0.5">Files and site notes open once Accounting gives the Notice to Proceed. This page updates by itself.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (r.design_2d_verified) {
+                box.innerHTML = `
+                    <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Next step</p>
+                    <div class="flex items-start gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-circle-check"></i></span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-gray-900">2D verified</p>
+                            <p class="text-[12px] text-gray-500 mt-0.5">by ${cutEscapeHtml(r.design_2d_verified_by_name || '—')} · ${cutEscapeHtml(cutFormatDateShort(r.design_2d_verified_at))}</p>
+                        </div>
+                    </div>
+                    <a href="${cutEscapeHtml(CUT_EWOOD_URL)}" class="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg shadow-sm transition-colors">
+                        <i class="fa-solid fa-tree"></i> Continue in E-Woodfile
+                    </a>`;
+                return;
+            }
+
+            if (!r.design_2d_path) {
+                box.innerHTML = `
+                    <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Next step</p>
+                    <div class="flex items-start gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-circle-question"></i></span>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">No 2D file yet</p>
+                            <p class="text-[12px] text-gray-500 mt-0.5">Waiting for the designer to upload the 2D file.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            box.innerHTML = `
+                <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Next step</p>
+                <div class="flex items-start gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-circle-exclamation"></i></span>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">Check the 2D file</p>
+                        <p class="text-[12px] text-gray-500 mt-0.5">If there are no more errors, verify it. If something needs fixing, send feedback to the designer.</p>
+                    </div>
+                </div>
+                <div id="cutVerifySlot" class="mt-4">
+                    <button type="button" onclick="cutVerify2dAsk(${r.id})"
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg shadow-sm transition-colors">
+                        <i class="fa-solid fa-file-circle-check"></i> Verify 2D
+                    </button>
+                </div>
+                <button type="button" onclick="cutOpenFeedbackSidebar(); cutShowFeedbackForm(${r.id});"
+                    class="mt-2 w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-[12px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-lg transition-colors">
+                    <i class="fa-solid fa-comment-medical"></i> Send feedback instead
+                </button>`;
         }
 
-        // Shown once cutting has confirmed the 2D file has no more errors.
-        function cutVerifiedBadge(verifierName, verifiedAt) {
-            return `
-                <span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-green-100 text-green-700 border border-green-200"
-                      title="Verified by ${cutEscapeHtml(verifierName || '—')} on ${cutEscapeHtml(cutFormatDateTimeLong(verifiedAt))}">
-                    <i class="fa-solid fa-file-circle-check text-[9px] leading-none"></i>
-                    <span class="leading-none">Verified</span>
-                </span>
-            `;
+        // Inline confirm (2 hakbang) — walang confirm() dialog
+        function cutVerify2dAsk(id) {
+            const slot = document.getElementById('cutVerifySlot');
+            if (!slot) return;
+            slot.innerHTML = `
+                <div class="rounded-lg border border-green-200 bg-green-50 p-3">
+                    <p class="text-[12px] text-green-800 font-medium mb-2.5">Mark this 2D file as verified (no more errors)?</p>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="cutVerify2dCancel(${id})" class="flex-1 px-3 py-2 text-[12px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                        <button type="button" id="cutVerifyConfirmBtn" onclick="cutVerify2d(${id})" class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-white bg-green-700 rounded-lg hover:bg-green-800"><i class="fa-solid fa-check"></i> Yes, verify</button>
+                    </div>
+                </div>`;
+        }
+        function cutVerify2dCancel(id) {
+            if (cutCurrentRecord) cutRenderNextStep(cutCurrentRecord);
+        }
+
+        function cutFileIcon(path) {
+            return `<div class="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${path ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-300'}"><i class="fa-solid fa-file-pdf"></i></div>`;
+        }
+        function cutOpenLink(url, text) {
+            return `<a href="${cutEscapeHtml(url)}" target="_blank" rel="noopener" title="${cutEscapeHtml(text)}"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 whitespace-nowrap">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>${cutEscapeHtml(text)}</a>`;
         }
 
         function cutFileCard(label, path, uploaderName, uploaderRole, uploadedAt, revised) {
-            const link = path
-                ? `<a href="${cutEscapeHtml(path)}" target="_blank" rel="noopener"
-                        class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px]">
-                        View PDF
-                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>`
-                : `<span class="text-gray-400 text-[13px]">No file uploaded</span>`;
-
             const metaLine = path
-                ? `<p class="text-[11.5px] text-gray-500 mt-0.5">${cutEscapeHtml(uploaderName || '—')} · ${cutEscapeHtml(uploaderRole || '—')}${uploadedAt ? ' · ' + cutEscapeHtml(cutFormatDateTimeLong(uploadedAt)) : ''}</p>`
-                : '';
-
+                ? `<p class="text-[11px] text-gray-400 mt-0.5 truncate">${cutEscapeHtml(uploaderName || '—')} · ${cutEscapeHtml(uploaderRole || '—')}${uploadedAt ? ' · ' + cutEscapeHtml(cutFormatDateShort(uploadedAt)) : ''}</p>`
+                : `<p class="text-[11px] text-gray-400 mt-0.5">No file uploaded</p>`;
             return `
-                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-white">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${path ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-300'}">
-                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[13px] font-bold text-gray-800 flex items-center gap-2 flex-wrap">
-                                <span>${cutEscapeHtml(label)}</span>
-                                ${revised ? cutRevisedBadge(uploadedAt) : ''}
-                            </p>
-                            ${link}
-                            ${metaLine}
-                        </div>
+                <div class="flex flex-wrap items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-white">
+                    ${cutFileIcon(path)}
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[13px] font-semibold text-gray-800 flex items-center gap-2 flex-wrap">${cutEscapeHtml(label)}
+                            ${revised ? '<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase bg-blue-100 text-blue-700"><i class="fa-solid fa-rotate text-[8px]"></i>Revised</span>' : ''}</p>
+                        ${metaLine}
                     </div>
-                </div>
-            `;
+                    ${path ? cutOpenLink(path, 'View PDF') : ''}
+                </div>`;
         }
 
-        // 2D card gets its own renderer since it carries the Verify button /
-        // Verified badge that the other file types don't have.
+        // 2D card — kasama ang revision tag at Verified state
         function cutRender2dFileCard(r) {
             const path = r.design_2d_path;
             const current = cutRevisions[0] || null;
             const revBadge = current && current.revision_no > 0
-                ? `<span class="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[10px] font-bold leading-none bg-blue-100 text-blue-700 border border-blue-200" title="${cutEscapeHtml(current.label)} uploaded ${cutEscapeHtml(current.created_at || '')}">
-                        <i class="fa-solid fa-code-branch text-[9px] leading-none"></i><span class="leading-none">${cutEscapeHtml(current.label)}</span></span>`
+                ? `<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase bg-blue-100 text-blue-700" title="${cutEscapeHtml(current.label)} uploaded ${cutEscapeHtml(current.created_at || '')}"><i class="fa-solid fa-code-branch text-[8px]"></i>${cutEscapeHtml(current.label)}</span>`
                 : '';
+            const verifiedTag = r.design_2d_verified
+                ? `<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase bg-green-100 text-green-700" title="Verified by ${cutEscapeHtml(r.design_2d_verified_by_name || '—')} on ${cutEscapeHtml(cutFormatDateTimeLong(r.design_2d_verified_at))}"><i class="fa-solid fa-check text-[8px]"></i>Verified</span>`
+                : (path ? '<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase bg-red-100 text-red-700">To verify</span>' : '');
             const files = current && current.files && current.files.length ? current.files : (path ? [{ url: path, name: 'View PDF' }] : []);
-
-            const link = files.length
-                ? files.map((f, i) => `<a href="${cutEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${cutEscapeHtml(f.name)}"
-                        class="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline font-semibold text-[13px] mr-3">
-                        ${files.length > 1 ? `PDF ${i + 1}` : 'View PDF'}
-                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    </a>`).join('')
-                : `<span class="text-gray-400 text-[13px]">No file uploaded</span>`;
+            const links = files.map((f, i) => cutOpenLink(f.url, files.length > 1 ? `PDF ${i + 1}` : 'View PDF')).join('');
 
             const metaLine = path
-                ? `<p class="text-[11.5px] text-gray-500 mt-0.5">${cutEscapeHtml(r.design_2d_uploader_name || '—')} · ${cutEscapeHtml(r.design_2d_uploaded_role || '—')}${r.design_2d_uploaded_at ? ' · ' + cutEscapeHtml(cutFormatDateTimeLong(r.design_2d_uploaded_at)) : ''}</p>`
-                : '';
-
-            const actionSlot = !path
-                ? ''
-                : r.design_2d_verified
-                    ? cutVerifiedBadge(r.design_2d_verified_by_name, r.design_2d_verified_at)
-                    : `<button type="button" onclick="cutVerify2d(${r.id})"
-                            class="shrink-0 px-2.5 py-1.5 text-[11px] font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg transition-colors">
-                            Verify 2D
-                        </button>`;
+                ? `<p class="text-[11px] text-gray-400 mt-0.5 truncate">${cutEscapeHtml(r.design_2d_uploader_name || '—')} · ${cutEscapeHtml(r.design_2d_uploaded_role || '—')}${r.design_2d_uploaded_at ? ' · ' + cutEscapeHtml(cutFormatDateShort(r.design_2d_uploaded_at)) : ''}</p>`
+                : `<p class="text-[11px] text-gray-400 mt-0.5">No file uploaded</p>`;
 
             return `
-                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-white">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${path ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-300'}">
-                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[13px] font-bold text-gray-800 flex items-center gap-2 flex-wrap">
-                                <span>2D File</span>
-                                ${revBadge}
-                            </p>
-                            ${link}
-                            ${metaLine}
-                        </div>
+                <div class="flex flex-wrap items-center gap-3 border-2 ${r.design_2d_verified ? 'border-green-200 bg-green-50/30' : 'border-amber-200 bg-amber-50/30'} rounded-xl px-4 py-3">
+                    ${cutFileIcon(path)}
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[13px] font-semibold text-gray-800 flex items-center gap-2 flex-wrap">2D File ${revBadge}${verifiedTag}</p>
+                        ${metaLine}
                     </div>
-                    ${actionSlot}
-                </div>
-            `;
+                    ${links ? `<div class="flex flex-wrap gap-1.5">${links}</div>` : ''}
+                </div>`;
+        }
+
+        function cutRenderRevisionHistory(r) {
+            const card = document.getElementById('cutRevisionCard');
+            const list = document.getElementById('cutRevisionList');
+            if (!card || !list) return;
+
+            if (!cutIsNtp(r) || !cutRevisions.length) {
+                card.classList.add('hidden');
+                return;
+            }
+            card.classList.remove('hidden');
+            document.getElementById('cutRevisionCount').textContent =
+                `${cutRevisions.length} version${cutRevisions.length === 1 ? '' : 's'} · newest on top`;
+
+            list.innerHTML = `<ol class="relative border-l-2 border-gray-200 ml-2 space-y-3">${cutRevisions.map(v => `
+                <li class="relative ml-5">
+                    <span class="absolute -left-[29px] top-3.5 w-4 h-4 rounded-full border-2 border-white ${v.is_current ? 'bg-amber-600' : 'bg-gray-300'}"></span>
+                    <div class="rounded-xl border ${v.is_current ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200 bg-white'} px-4 py-3">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${v.revision_no === 0 ? 'bg-gray-100 text-gray-700' : 'bg-amber-700 text-white'}">${cutEscapeHtml(v.label)}</span>
+                            ${v.is_current
+                    ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-green-100 text-green-700">Current</span>'
+                    : '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500">Previous</span>'}
+                            <span class="ml-auto text-[11px] text-gray-500 whitespace-nowrap"><i class="fa-regular fa-clock mr-1"></i>${cutEscapeHtml(v.created_at || '—')}</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1">${cutEscapeHtml(v.created_by_name)} · ${cutEscapeHtml(v.created_role)}</p>
+                        ${v.change_notes ? `
+                            <div class="mt-2 rounded-lg bg-white border border-gray-200 px-3 py-2">
+                                <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">What changed</p>
+                                <p class="text-[12.5px] text-gray-800 whitespace-pre-line break-words">${cutEscapeHtml(v.change_notes)}</p>
+                            </div>` : (v.revision_no === 0 ? '<p class="text-[11.5px] text-gray-400 italic mt-1.5">First 2D file submitted.</p>' : '')}
+                        ${(v.answers || []).length ? `
+                            <div class="mt-2">
+                                <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">Answers your feedback</p>
+                                ${v.answers.map(a => `<p class="text-[12px] text-gray-600 border-l-2 border-amber-300 pl-2 mb-1 whitespace-pre-line break-words">"${cutEscapeHtml(a.message)}" <span class="text-gray-400">· ${cutEscapeHtml(a.created_at)}</span></p>`).join('')}
+                            </div>` : ''}
+                        <div class="mt-2 flex flex-wrap gap-1.5">${(v.files || []).map(f => `
+                            <a href="${cutEscapeHtml(f.url)}" target="_blank" rel="noopener" title="${cutEscapeHtml(f.name)}"
+                                class="inline-flex items-center gap-1.5 max-w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-700 hover:border-amber-600 hover:text-amber-800">
+                                <i class="fa-solid fa-file-pdf text-red-500"></i><span class="truncate max-w-[200px]">${cutEscapeHtml(f.name)}</span>
+                            </a>`).join('')}</div>
+                    </div>
+                </li>`).join('')}</ol>`;
         }
 
         function cutRenderFeedbackSidebar(r) {
@@ -428,44 +486,76 @@ if ($recordId <= 0) {
                 badge.classList.remove('flex');
             }
 
-            const historyHtml = feedback.length
-                ? `<div class="space-y-2 mb-4">
-                    ${feedback.map(f => `
-                        <div class="rounded-xl border ${f.is_resolved ? 'border-gray-200 bg-white' : 'border-amber-200 bg-amber-50'} px-3 py-2.5">
-                            <p class="text-[12.5px] text-gray-800 whitespace-pre-line">${cutEscapeHtml(f.message)}</p>
-                            <p class="text-[10.5px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-0.5"></i>${cutFormatDateTimeLong(f.created_at)} · ${cutEscapeHtml(f.created_by_name)}</p>
-                            ${(() => {
-                    if (!f.is_resolved) return '<p class="text-[10.5px] font-semibold text-amber-700 mt-0.5"><i class="fa-solid fa-hourglass-half mr-0.5"></i>Waiting for designer</p>';
-                    const rv = cutResolvedIn(f.id);
-                    return `<p class="text-[10.5px] font-semibold text-green-700 mt-0.5"><i class="fa-solid fa-check mr-0.5"></i>Resolved${rv ? ` in ${cutEscapeHtml(rv.label)} · ${cutEscapeHtml(rv.created_at || '')}` : ''}</p>`;
-                })()}
-                        </div>
-                    `).join('')}
-                   </div>`
-                : `<p class="text-sm text-gray-400 italic mb-4">No feedback sent yet.</p>`;
+            const summary = document.getElementById('cutFeedbackSummary');
+            if (summary) {
+                summary.textContent = !feedback.length
+                    ? 'No feedback sent yet.'
+                    : unresolvedCount
+                        ? `${unresolvedCount} waiting for the designer · ${feedback.length} total`
+                        : `All ${feedback.length} resolved by the designer.`;
+            }
 
+            // Kung may sinusulat sa form, huwag burahin (realtime busy guard din ito)
+            const draftEl = document.getElementById(`cutFeedbackText_${r.id}`);
+            const draft = draftEl ? draftEl.value : '';
+            const formOpen = !!(document.getElementById(`cutFeedbackForm_${r.id}`) && !document.getElementById(`cutFeedbackForm_${r.id}`).classList.contains('hidden'));
+
+            const historyHtml = feedback.length
+                ? `<div class="space-y-2.5 mb-4">
+                    ${feedback.map(f => {
+                    const rv = f.is_resolved ? cutResolvedIn(f.id) : null;
+                    return `
+                        <div class="rounded-xl border ${f.is_resolved ? 'border-gray-200 bg-white' : 'border-amber-200 bg-amber-50'} px-3.5 py-3">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                ${f.is_resolved
+                            ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-green-700"><i class="fa-solid fa-check"></i>Resolved${rv ? ` in ${cutEscapeHtml(rv.label)}` : ''}</span>`
+                            : '<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-amber-700"><i class="fa-solid fa-hourglass-half"></i>Waiting for designer</span>'}
+                            </div>
+                            <p class="text-[12.5px] text-gray-800 whitespace-pre-line break-words">${cutEscapeHtml(f.message)}</p>
+                            <p class="text-[10.5px] text-gray-400 mt-1.5"><i class="fa-regular fa-clock mr-0.5"></i>${cutEscapeHtml(cutFormatDateShort(f.created_at))} · ${cutEscapeHtml(f.created_by_name)}${rv && rv.created_at ? ` · fixed ${cutEscapeHtml(rv.created_at)}` : ''}</p>
+                        </div>`;
+                }).join('')}
+                   </div>`
+                : `<div class="flex flex-col items-center text-center gap-2 py-8 mb-2"><i class="fa-regular fa-comments text-3xl text-gray-200"></i><p class="text-sm text-gray-400">No feedback sent yet.</p></div>`;
+
+            const canSend = cutIsNtp(r);
             body.innerHTML = `
                 ${historyHtml}
-                <button type="button" onclick="cutToggleFeedbackForm(${r.id})"
-                    class="text-[12px] font-semibold text-amber-700 hover:text-amber-900">
-                    + Send feedback on 2D
+                ${canSend ? `
+                <button type="button" id="cutFeedbackFormToggle_${r.id}" onclick="cutToggleFeedbackForm(${r.id})"
+                    class="${formOpen ? 'hidden' : ''} w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-[12px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
+                    <i class="fa-solid fa-plus"></i> Send feedback on 2D
                 </button>
-                <div id="cutFeedbackForm_${r.id}" class="hidden mt-2">
-                    <textarea id="cutFeedbackText_${r.id}" rows="3" placeholder="Ano ang kailangan i-revise sa 2D..."
-                        class="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-200"></textarea>
+                <div id="cutFeedbackForm_${r.id}" class="${formOpen ? '' : 'hidden'} rounded-xl border border-gray-200 p-3 bg-slate-50">
+                    <label for="cutFeedbackText_${r.id}" class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">New feedback</label>
+                    <textarea id="cutFeedbackText_${r.id}" rows="4" placeholder="Ano ang kailangan i-revise sa 2D..."
+                        class="w-full text-[13px] bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100"></textarea>
                     <div class="flex justify-end gap-2 mt-2">
                         <button type="button" onclick="cutToggleFeedbackForm(${r.id})"
-                            class="text-[12px] text-gray-500 px-3 py-1.5">Cancel</button>
-                        <button type="button" onclick="cutSendFeedback(${r.id})"
-                            class="text-[12px] font-semibold text-white bg-amber-700 hover:bg-amber-800 px-3 py-1.5 rounded-lg">Send</button>
+                            class="text-[12px] font-semibold text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100">Cancel</button>
+                        <button type="button" id="cutFeedbackSendBtn_${r.id}" onclick="cutSendFeedback(${r.id})"
+                            class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white bg-amber-700 hover:bg-amber-800 px-3.5 py-1.5 rounded-lg"><i class="fa-solid fa-paper-plane text-[10px]"></i> Send</button>
                     </div>
-                </div>
+                </div>` : '<p class="text-[12px] text-gray-400 text-center">Feedback opens once this is marked Notice to Proceed.</p>'}
             `;
+            const ta = document.getElementById(`cutFeedbackText_${r.id}`);
+            if (ta && draft) ta.value = draft;
         }
 
         function cutToggleFeedbackForm(id) {
             const form = document.getElementById(`cutFeedbackForm_${id}`);
-            if (form) form.classList.toggle('hidden');
+            const toggle = document.getElementById(`cutFeedbackFormToggle_${id}`);
+            if (!form) return;
+            const willOpen = form.classList.contains('hidden');
+            form.classList.toggle('hidden', !willOpen);
+            if (toggle) toggle.classList.toggle('hidden', willOpen);
+            const ta = document.getElementById(`cutFeedbackText_${id}`);
+            if (willOpen && ta) setTimeout(() => ta.focus(), 50);
+            if (!willOpen && ta) ta.value = '';
+        }
+        function cutShowFeedbackForm(id) {
+            const form = document.getElementById(`cutFeedbackForm_${id}`);
+            if (form && form.classList.contains('hidden')) cutToggleFeedbackForm(id);
         }
 
         async function cutSendFeedback(quotationId) {
@@ -475,6 +565,8 @@ if ($recordId <= 0) {
                 crmShowToast('Please write your feedback first.', 'error');
                 return;
             }
+            const btn = document.getElementById(`cutFeedbackSendBtn_${quotationId}`);
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
 
             const formData = new FormData();
             formData.append('action', 'send_feedback');
@@ -491,15 +583,25 @@ if ($recordId <= 0) {
                 }
 
                 crmShowToast(data.message || 'Feedback sent.');
+                if (textarea) textarea.value = '';
+                const form = document.getElementById(`cutFeedbackForm_${quotationId}`);
+                if (form) form.classList.add('hidden');
                 cutLoadDetail(); // reload so the new feedback shows in the sidebar
             } catch (e) {
                 console.error('cutSendFeedback:', e);
                 crmShowToast('Connection error. Please try again.', 'error');
+            } finally {
+                if (btn && btn.isConnected) { btn.disabled = false; btn.classList.remove('opacity-60'); }
             }
         }
 
         // Marks the 2D file as verified (walang mali) by the current cutting user.
         async function cutVerify2d(quotationId) {
+            if (cutVerifyBusy) return;
+            cutVerifyBusy = true;
+            const btn = document.getElementById('cutVerifyConfirmBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying…'; }
+
             const formData = new FormData();
             formData.append('action', 'verify_2d');
             formData.append('quotation_id', quotationId);
@@ -510,6 +612,7 @@ if ($recordId <= 0) {
 
                 if (!data.success) {
                     crmShowToast(data.message || 'Something went wrong.', 'error');
+                    cutVerify2dCancel(quotationId);
                     return;
                 }
 
@@ -518,6 +621,9 @@ if ($recordId <= 0) {
             } catch (e) {
                 console.error('cutVerify2d:', e);
                 crmShowToast('Connection error. Please try again.', 'error');
+                cutVerify2dCancel(quotationId);
+            } finally {
+                cutVerifyBusy = false;
             }
         }
 
@@ -546,56 +652,57 @@ if ($recordId <= 0) {
 
         function cutVisitedBadge(visited) {
             return visited
-                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-green-50 text-green-700 border-green-200"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Visited</span>`
-                : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-gray-50 text-gray-500 border-gray-200"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Not Visited</span>`;
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border whitespace-nowrap bg-green-50 text-green-700 border-green-200"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Visited</span>`
+                : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold border whitespace-nowrap bg-gray-50 text-gray-500 border-gray-200"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Not Visited</span>`;
         }
 
-        function cutNoteBlock(label, value) {
+        function cutNoteBlock(label, value, icon) {
             return `
-                <div>
-                    <p class="text-[11px] font-semibold text-gray-500 mb-1">${cutEscapeHtml(label)}</p>
-                    <p class="text-[13px] text-gray-800 whitespace-pre-line">${value ? cutEscapeHtml(value) : '<span class="text-gray-400 italic">None provided</span>'}</p>
-                </div>
-            `;
+                <div class="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3 min-w-0">
+                    <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1"><i class="fa-solid ${icon} mr-1"></i>${cutEscapeHtml(label)}</p>
+                    <p class="text-[12.5px] text-gray-800 whitespace-pre-line break-words">${value ? cutEscapeHtml(value) : '<span class="text-gray-400 italic">None provided</span>'}</p>
+                </div>`;
         }
 
         function cutRenderSiteVisitCard(visit, label) {
-            const photosHtml = visit.photos.length
-                ? `<div class="grid grid-cols-6 sm:grid-cols-8 gap-2 mt-3">
-                    ${visit.photos.map(p => `
-                        <a href="${cutEscapeHtml(p)}" target="_blank" rel="noopener" class="block aspect-square border border-gray-200 rounded overflow-hidden hover:border-amber-600 transition-colors">
-                            <img src="${cutEscapeHtml(p)}" class="w-full h-full object-cover">
-                        </a>
-                    `).join('')}
+            const photos = visit.photos || [];
+            const photosHtml = photos.length
+                ? `<p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mt-4 mb-2"><i class="fa-solid fa-camera mr-1"></i>Photos (${photos.length})</p>
+                   <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    ${photos.map(p => `
+                        <a href="${cutEscapeHtml(p)}" target="_blank" rel="noopener" class="block aspect-square border border-gray-200 rounded-lg overflow-hidden hover:border-amber-600 hover:opacity-90 transition">
+                            <img src="${cutEscapeHtml(p)}" loading="lazy" alt="" class="w-full h-full object-cover">
+                        </a>`).join('')}
                    </div>`
-                : `<p class="text-xs text-gray-400 mt-2">No photographs attached.</p>`;
+                : `<p class="text-xs text-gray-400 mt-3"><i class="fa-regular fa-image mr-1"></i>No photographs attached.</p>`;
 
             return `
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                        <div>
-                            <p class="text-[10px] text-gray-400 font-semibold tracking-[0.1em] uppercase">${label}</p>
-                            <p class="text-xs text-gray-400 mt-0.5">Logged ${cutFormatDateTimeLong(visit.created_at)} · ${cutEscapeHtml(visit.designer_name)}</p>
+                <article class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                        <div class="min-w-0">
+                            <p class="text-[13px] font-semibold text-gray-900">${cutEscapeHtml(label)}</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Logged ${cutEscapeHtml(cutFormatDateShort(visit.created_at))} · ${cutEscapeHtml(visit.designer_name)}</p>
                         </div>
                         ${cutVisitedBadge(visit.visited)}
                     </div>
-                    <div class="px-5 py-3">
-                        <p class="text-[13px] text-gray-800">${cutEscapeHtml(visit.address)}</p>
-                        <p class="text-xs text-gray-400 mt-1 mb-3">Visit date: ${cutFormatDateTimeLong(visit.visit_datetime)}</p>
-                        <div class="grid sm:grid-cols-2 gap-4">
-                            ${cutNoteBlock('Measurements', visit.measurements)}
-                            ${cutNoteBlock('Site conditions', visit.site_conditions)}
-                            ${cutNoteBlock('Client requirements', visit.client_requirements)}
-                            ${cutNoteBlock('Existing structure', visit.existing_structure)}
+                    <div class="px-5 py-4">
+                        <div class="flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-gray-600 mb-3">
+                            <span class="min-w-0 break-words"><i class="fa-solid fa-location-dot text-gray-300 mr-1"></i>${cutEscapeHtml(visit.address || '—')}</span>
+                            <span><i class="fa-regular fa-calendar text-gray-300 mr-1"></i>${cutEscapeHtml(cutFormatDateTimeLong(visit.visit_datetime))}</span>
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-2.5">
+                            ${cutNoteBlock('Measurements', visit.measurements, 'fa-ruler')}
+                            ${cutNoteBlock('Site conditions', visit.site_conditions, 'fa-helmet-safety')}
+                            ${cutNoteBlock('Client requirements', visit.client_requirements, 'fa-clipboard-list')}
+                            ${cutNoteBlock('Existing structure', visit.existing_structure, 'fa-building')}
                         </div>
                         ${photosHtml}
                     </div>
-                </div>
-            `;
+                </article>`;
         }
 
         function cutRenderFiles(r) {
-            if (r.deposit_status !== 'Notice to Proceed') {
+            if (!cutIsNtp(r)) {
                 document.getElementById('cutFileRows').innerHTML =
                     cutLockedNotice('Files are hidden until this is marked Notice to Proceed.');
                 return;
@@ -614,21 +721,16 @@ if ($recordId <= 0) {
         function cutRenderSiteVisits(siteVisits, r) {
             const container = document.getElementById('cutSiteVisits');
 
-            if (r.deposit_status !== 'Notice to Proceed') {
-                container.innerHTML = `
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        ${cutLockedNotice('Site notes are hidden until this is marked Notice to Proceed.')}
-                    </div>
-                `;
+            if (!cutIsNtp(r)) {
+                container.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">${cutLockedNotice('Site notes are hidden until this is marked Notice to Proceed.')}</div>`;
                 return;
             }
 
             if (!siteVisits || siteVisits.length === 0) {
                 container.innerHTML = `
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
                         <p class="text-sm text-gray-400">No site visit was recorded for this inquiry.</p>
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
             const ordered = [...siteVisits].reverse();
@@ -638,19 +740,28 @@ if ($recordId <= 0) {
                 .join('');
         }
 
+        function cutShowError(message) {
+            document.getElementById('cutHeaderCard').innerHTML = `
+                <div class="p-6 flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                    <p class="text-sm text-red-600">${cutEscapeHtml(message)}</p>
+                </div>`;
+            document.getElementById('cutFileRows').innerHTML = '';
+            document.getElementById('cutSiteVisits').innerHTML = '';
+            document.getElementById('cutNextStep').innerHTML = '<p class="text-[12px] text-gray-400">—</p>';
+        }
+
         async function cutLoadDetail() {
             if (!CUT_RECORD_ID || CUT_RECORD_ID <= 0) {
-                document.getElementById('cutHeaderCard').innerHTML = `<p class="text-sm text-red-500">Invalid record.</p>`;
+                cutShowError('Invalid record.');
                 return;
             }
             try {
-                const res = await fetch(`${CUT_LIST_AJAX_URL}?action=detail&id=${CUT_RECORD_ID}`);
+                const res = await fetch(`${CUT_LIST_AJAX_URL}?action=detail&id=${CUT_RECORD_ID}`, { cache: 'no-store' });
                 const data = await res.json();
 
                 if (!data.success) {
-                    document.getElementById('cutHeaderCard').innerHTML = `<p class="text-sm text-red-500">${cutEscapeHtml(data.message || 'Record not found.')}</p>`;
-                    document.getElementById('cutFileRows').innerHTML = '';
-                    document.getElementById('cutSiteVisits').innerHTML = '';
+                    cutShowError(data.message || 'Record not found.');
                     return;
                 }
 
@@ -658,6 +769,7 @@ if ($recordId <= 0) {
                 cutCurrentRecord = r;
                 await cutLoadRevisions(r);
                 cutRenderHeader(r);
+                cutRenderNextStep(r);
                 cutRenderFiles(r);
                 cutRenderRevisionHistory(r);
                 cutRenderSiteVisits(r.site_visits, r);
@@ -670,6 +782,39 @@ if ($recordId <= 0) {
         }
 
         cutLoadDetail();
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Signal para sa inquiry na ito (bagong 2D revision ng Designer, NTP, verify/feedback ng ibang Cutting,
+        // reset) → kunin agad. Hindi ginagalaw habang may sinusulat na feedback o naka-bukas ang verify confirm.
+        (function cutDetailHookRealtime() {
+            const busy = () => {
+                const ta = cutCurrentRecord ? document.getElementById(`cutFeedbackText_${cutCurrentRecord.id}`) : null;
+                return !!(ta && ta.value.trim()) || !!document.getElementById('cutVerifyConfirmBtn');
+            };
+            let missed = false;
+            const refresh = () => {
+                if (document.hidden || busy()) { missed = true; return; }
+                missed = false;
+                cutLoadDetail();
+            };
+            document.addEventListener('visibilitychange', () => { if (!document.hidden && missed) refresh(); });
+            // habol sa na-miss habang may sinusulat (pagkatapos i-clear o ipadala ang feedback)
+            setInterval(() => { if (missed) refresh(); }, 5000);
+
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || cutDetailHookRealtime.done) return;
+                cutDetailHookRealtime.done = true;
+                let t = null;
+                window.NH_RT.on('*', 'changed', (payload) => {
+                    const inq = Number(payload?.inquiry_id || 0);
+                    if (!inq || !cutCurrentRecord || inq !== Number(cutCurrentRecord.inquiry_id)) return;
+                    clearTimeout(t);
+                    t = setTimeout(refresh, 400);
+                });
+            };
+            hook();
+            if (!cutDetailHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+        })();
     </script>
 </body>
 

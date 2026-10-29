@@ -31,6 +31,12 @@ const REV_MAX_BYTES = 15 * 1024 * 1024; // 15MB bawat file
 
 function revRespond(bool $success, string $message = '', array $extra = []): void
 {
+    // Realtime: bagong 2D revision → Sales + Designer ng inquiry, at buong Cutting (Cutting List / E-Woodfile)
+    global $conn, $action, $inquiryId;
+    if ($success && $action === 'upload' && $conn instanceof mysqli && (int) ($inquiryId ?? 0) > 0) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        nhRtInquiry($conn, (int) $inquiryId, [[ROLE_CUTTING, null]], 'crm_2drevision');
+    }
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
     exit;
 }

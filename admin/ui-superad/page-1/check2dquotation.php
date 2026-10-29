@@ -401,10 +401,36 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             }
         }
 
+        const chk2dRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+
         function chk2dStartPolling() {
             if (chk2dPollTimer) clearInterval(chk2dPollTimer);
-            chk2dPollTimer = setInterval(() => chk2dFetchList({ silent: true }), CHK2D_POLL_INTERVAL_MS);
+            // Live → 60s fallback lang; hindi Live → dating bilis
+            chk2dPollTimer = setInterval(() => chk2dFetchList({ silent: true }), chk2dRtLive() ? 60000 : CHK2D_POLL_INTERVAL_MS);
         }
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Bagong Final submission, review ng ibang Superadmin, reset ng Sales → kunin agad ang listahan.
+        // Hindi ginagalaw ang bukas na review panel (listahan lang ang nire-refresh).
+        (function chk2dHookRealtime() {
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || chk2dHookRealtime.done) return;
+                chk2dHookRealtime.done = true;
+                let t = null;
+                window.NH_RT.on('*', 'changed', (payload) => {
+                    const type = String(payload?.type || '');
+                    if (type && !type.startsWith('crm')) return; // budget/voucher — hindi para dito
+                    clearTimeout(t);
+                    t = setTimeout(() => { if (!document.hidden) chk2dFetchList({ silent: true }); }, 400);
+                });
+                window.NH_RT.onLive(live => {
+                    if (!document.hidden && chk2dPollTimer) chk2dStartPolling();
+                    if (live && chk2dLastRows.length) chk2dFetchList({ silent: true });
+                });
+            };
+            hook();
+            if (!chk2dHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+        })();
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {

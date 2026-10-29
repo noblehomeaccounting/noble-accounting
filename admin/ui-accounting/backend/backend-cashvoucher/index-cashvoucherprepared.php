@@ -17,8 +17,8 @@ if (!$voucher_id || !$user_id) {
     exit;
 }
 
-// Staff lang ang pwedeng mag-prepare
-if (($_SESSION['position'] ?? '') !== POSITION_STAFF) {
+// Accounting Staff lang ang pwedeng mag-prepare (role + position)
+if (($_SESSION['role'] ?? '') !== ROLE_ACCOUNTING || ($_SESSION['position'] ?? '') !== POSITION_STAFF) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Not allowed.']);
     exit;
@@ -75,5 +75,9 @@ if ($heads) {
         $stmt2->execute();
     }
 }
+
+// Realtime: buong Accounting — "To approve" ng Head, at nawawala sa "To prepare" ng ibang Staff
+include_once ROOT_PATH . '/network/realtime-helper.php';
+nhRealtimeNotifyGroup(ROLE_ACCOUNTING, null, 'changed', ['type' => 'voucher_prepared', 'id' => $voucher_id]);
 
 echo json_encode(['success' => true]);

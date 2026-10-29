@@ -172,8 +172,10 @@ function chk2dNotifyRoleRevision(
     ?string $remarks,
     string $stage = 'Final'
 ): void {
-    $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ?"); // ⚠️ verify column name `role`
-    $stmt->bind_param("s", $role);
+    // Ang MISMONG naka-assign lang sa inquiry (Designer o Sales) — hindi ang buong department
+    $col = $role === ROLE_SALES ? 'sales_staff_id' : 'designer_id';
+    $stmt = $conn->prepare("SELECT {$col} AS id FROM noblecrminquiry WHERE id = ? AND {$col} > 0 LIMIT 1");
+    $stmt->bind_param("i", $inquiryId);
     $stmt->execute();
     $members = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -445,6 +447,18 @@ if ($action === 'review') {
         }
     }
 
+    // Realtime: Sales + Designer ng inquiry, ibang Superadmin (badge + listahan),
+    // at kapag approved — Accounting Head at Cutting (Final na ang hawak nila)
+    if ($ok) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $rtGroups = [[ROLE_SUPERADMIN, null]];
+        if ($overallStatus === 'Approved') {
+            $rtGroups[] = [ROLE_ACCOUNTING, POSITION_HEAD];
+            $rtGroups[] = [ROLE_CUTTING, null];
+        }
+        nhRtInquiry($conn, (int) $current['inquiry_id'], $rtGroups, 'crm_final_review');
+    }
+
     $message = $overallStatus === 'Approved' ? 'Submission approved.' : 'Sent back for revision.';
     echo json_encode(['success' => (bool) $ok, 'message' => $ok ? $message : 'Failed to save review.']);
     exit;
@@ -555,6 +569,12 @@ if ($action === 'review_3d') {
         }
 
         $message = 'Sent back for revision — the 2D file has also been reopened for rework.';
+    }
+
+    // Realtime: Sales + Designer ng inquiry at ibang Superadmin
+    if ($ok) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        nhRtInquiry($conn, (int) $current['inquiry_id'], [[ROLE_SUPERADMIN, null]], 'crm_final_review');
     }
 
     echo json_encode(['success' => (bool) $ok, 'message' => $ok ? $message : 'Failed to save review.']);

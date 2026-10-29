@@ -320,6 +320,10 @@ if ($action === 'upload') {
     // Let the Superadmin(s) know there's a new QR approval waiting for them.
     cutProgNotifySuperadmins($conn, $quotationId, $newId, $currentUserId);
 
+    // Realtime: Superadmin (E-Wood Management + badge), buong Cutting, Sales/Designer ng inquiry
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    nhRtQuotation($conn, $quotationId, [[ROLE_SUPERADMIN, null], [ROLE_CUTTING, null]], 'crm_cut_upload');
+
     echo json_encode([
         'success' => true,
         'message' => 'Progress update saved. It is now pending QR approval from the Superadmin.',

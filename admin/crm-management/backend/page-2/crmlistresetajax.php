@@ -357,6 +357,17 @@ try {
     rsRespond(false, 'Reset failed — nothing was deleted. (' . $e->getMessage() . ')');
 }
 
+// Realtime: naapektuhan ng reset ang maraming page/badge — Sales, ang dating Designer,
+// Designer Head, Superadmin, Cutting, PO at Accounting Head
+include_once ROOT_PATH . '/network/realtime-helper.php';
+nhRtInquiry($conn, $inquiryId, [
+    [ROLE_DESIGNER, POSITION_HEAD],
+    [ROLE_SUPERADMIN, null],
+    [ROLE_CUTTING, null],
+    [ROLE_PO, null],
+    [ROLE_ACCOUNTING, POSITION_HEAD],
+], 'crm_reset', [(int) ($inquiry['designer_id'] ?? 0)]);
+
 // Files: pagkatapos lang ma-commit (kapag pumalya ang DB, buo pa rin ang files)
 $deleted = 0; $failed = 0;
 foreach ($existingFiles as $abs) {

@@ -28,12 +28,14 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         </div>
 
         <!-- Stage counters (= quick filter) -->
-        <div id="crmStageTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div id="crmStageTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
             <?php foreach ([
                 ['', 'All', 'fa-layer-group', 'text-gray-900'],
                 ['schedule', 'To schedule', 'fa-calendar-plus', 'text-amber-700'],
                 ['sitevisit', 'Site visit', 'fa-ruler-combined', 'text-orange-700'],
                 ['quotation', '2D & Quotation', 'fa-file-pen', 'text-blue-700'],
+                ['project', 'In project', 'fa-helmet-safety', 'text-sky-700'],
+                ['done', 'Turned over', 'fa-key', 'text-emerald-700'],
                 ['stopped', 'Not proceeding', 'fa-ban', 'text-red-600'],
                 ['contract', 'Needs contract', 'fa-file-signature', 'text-rose-700'],
             ] as [$val, $label, $icon, $cls]): ?>
@@ -252,7 +254,8 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     let crmProgressSig = '';
     let crmDetailRecord = null;
     const CRM_CURRENT_USER_ID = <?= (int) ($_SESSION['account_id'] ?? 0) ?>;
-    const CRM_POLL_INTERVAL_MS = 8000;
+    const CRM_POLL_INTERVAL_MS = 8000;        // kapag hindi Live ang realtime
+    const CRM_POLL_LIVE_MS = 60000;           // kapag Live — fallback lang
 
     let crmListSearchTerm = '';
     let crmListLastSignature = '';
@@ -268,6 +271,8 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     // ═══════════════════════════════════════════════════════════
     function crmStageOf(r) {
         if (r.client_status === 'no') return 'stopped';
+        // lampas na sa Cutting (approved ang BOM) → Purchasing hanggang Turnover
+        if (r.project) return r.project.done ? 'done' : 'project';
         if (!r.designer_id) return 'schedule';
         if (r.status === 'In Progress') return 'quotation';
         return 'sitevisit';
@@ -276,6 +281,8 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         schedule: { label: 'To schedule', bar: 'bg-amber-400', chip: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'fa-calendar-plus' },
         sitevisit: { label: 'For site visit', bar: 'bg-orange-500', chip: 'bg-orange-50 text-orange-700 border-orange-200', icon: 'fa-ruler-combined' },
         quotation: { label: '2D & Quotation', bar: 'bg-blue-500', chip: 'bg-blue-50 text-blue-700 border-blue-200', icon: 'fa-file-pen' },
+        project: { label: 'In project', bar: 'bg-sky-500', chip: 'bg-sky-50 text-sky-700 border-sky-200', icon: 'fa-helmet-safety' },
+        done: { label: 'Turned over', bar: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'fa-key' },
         stopped: { label: 'Not proceeding', bar: 'bg-red-400', chip: 'bg-red-50 text-red-700 border-red-200', icon: 'fa-ban' },
     };
 
@@ -599,7 +606,7 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     // ═══════════════════════════════════════════════════════════
     function crmRenderStageCounts(allRows) {
         const base = crmFilteredRows(allRows, true);
-        const counts = { '': base.length, schedule: 0, sitevisit: 0, quotation: 0, stopped: 0, contract: 0 };
+        const counts = { '': base.length, schedule: 0, sitevisit: 0, quotation: 0, project: 0, done: 0, stopped: 0, contract: 0 };
         base.forEach(r => { counts[crmStageOf(r)]++; if (crmNeedsContract(r)) counts.contract++; });
         document.querySelectorAll('[data-stage-count]').forEach(el => el.textContent = counts[el.dataset.stageCount] ?? 0);
     }
@@ -607,7 +614,15 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     // ═══════════════════════════════════════════════════════════
     // TRACK (crmlistprogressajax): nasaan na + kailangan na ba ang contract
     // ═══════════════════════════════════════════════════════════
-    const CRM_TRACK_STEPS = ['Schedule', 'Site visit', 'Initial 2D', 'Customer', 'Final & Contract', 'Cutting'];
+    // 1–6 galing sa crmlistprogressajax; 7–11 galing sa row.project (crmlistajax) pagkatapos ma-approve ang BOM
+    const CRM_TRACK_STEPS = ['Schedule', 'Site visit', 'Initial 2D', 'Customer', 'Final & Contract', 'Cutting', 'Purchasing', 'Delivery', 'Installation', 'Billing', 'Turnover'];
+    // Pinagsamang track: kapag lampas na sa Cutting, ang galaw ng project ang ipapakita (contract info galing pa rin sa dati)
+    function crmTrackOf(row) {
+        const base = crmProgress[row.id];
+        const pj = row.project;
+        if (pj && (!base || pj.phase >= (base.phase || 0))) return { ...(base || {}), ...pj };
+        return base;
+    }
     const CRM_TONE = {
         amber: { text: 'text-amber-800', dot: 'bg-amber-500', box: 'bg-amber-50 border-amber-200 text-amber-900' },
         blue: { text: 'text-blue-700', dot: 'bg-blue-500', box: 'bg-blue-50 border-blue-200 text-blue-900' },
@@ -617,12 +632,13 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     };
     const crmNeedsContract = r => crmProgress[r.id]?.contract === 'needed';
 
-    // 6 na segment; tapos = amber-700, kasalukuyan = kulay ng tone
+    // isang segment bawat hakbang; tapos = amber-700, kasalukuyan = kulay ng tone, turned over = lahat berde
     function crmTrackBar(p, size = 'sm') {
         const h = size === 'lg' ? 'h-2' : 'h-1.5';
-        return `<div class="flex items-center gap-1" aria-label="Step ${p.phase} of 6">${CRM_TRACK_STEPS.map((_, i) => {
+        return `<div class="flex items-center gap-1" aria-label="Step ${p.phase} of ${CRM_TRACK_STEPS.length}">${CRM_TRACK_STEPS.map((_, i) => {
             const n = i + 1;
             const cls = p.phase === 0 ? 'bg-gray-200'
+                : p.done ? 'bg-emerald-500'
                 : n < p.phase ? 'bg-amber-700'
                 : n === p.phase ? (CRM_TONE[p.tone] || CRM_TONE.blue).dot
                 : 'bg-gray-200';
@@ -639,13 +655,13 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     }
 
     function crmTrackRow(row) {
-        const p = crmProgress[row.id];
+        const p = crmTrackOf(row);
         if (!p) return `<div class="pl-5 pr-4 pb-3 -mt-1"><div class="h-1.5 rounded-full bg-gray-100 animate-pulse"></div></div>`;
         const t = CRM_TONE[p.tone] || CRM_TONE.blue;
         return `<div class="pl-5 pr-4 pb-3 -mt-1">
             ${crmTrackBar(p)}
             <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                <span class="font-bold uppercase tracking-wide text-[9.5px] text-gray-400">${p.phase ? `Step ${p.phase}/6 · ` : ''}${crmEscapeHtml(p.phase_label)}</span>
+                <span class="font-bold uppercase tracking-wide text-[9.5px] text-gray-400">${p.phase ? `Step ${p.phase}/${CRM_TRACK_STEPS.length} · ` : ''}${crmEscapeHtml(p.phase_label)}</span>
                 <span class="font-semibold ${t.text}">${crmEscapeHtml(p.status)}</span>
                 <span class="text-gray-400 min-w-0 truncate basis-full sm:basis-auto sm:flex-1">${crmEscapeHtml(p.note)}</span>
                 ${crmContractChip(p)}
@@ -755,11 +771,12 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
             crmListRawRows = data.rows;
             crmPopulateFilterOptions(data.rows);
 
-            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id + ':' + r.client_status + ':' + r.measurement_datetime + ':' + r.contract_amount + ':' + r.client_name + ':' + r.contact_number + ':' + r.project_type))
+            const signature = JSON.stringify(data.rows.map(r => r.id + ':' + r.status + ':' + r.designer_id + ':' + r.client_status + ':' + r.measurement_datetime + ':' + r.contract_amount + ':' + r.client_name + ':' + r.contact_number + ':' + r.project_type + ':' + JSON.stringify(r.project || null)))
                 + crmSortKey + crmSortDir + crmFilterSig();
             if (signature !== crmListLastSignature) {
                 crmRenderRows(data.rows);
                 crmListLastSignature = signature;
+                if (crmDetailCurrentId) crmRenderDetailTrack(crmDetailCurrentId);   // hal. umusad ang project
             }
             // Track: kapag may nagbago (hal. umusad ang designer), i-render ulit
             if (await crmFetchProgress(data.rows)) {
@@ -775,9 +792,12 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         }
     }
 
+    const crmRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+
     function crmStartPolling() {
         if (crmListPollTimer) clearInterval(crmListPollTimer);
-        crmListPollTimer = setInterval(() => crmFetchList({ silent: true }), CRM_POLL_INTERVAL_MS);
+        crmListPollTimer = setInterval(() => crmFetchList({ silent: true }),
+            crmRtLive() ? CRM_POLL_LIVE_MS : CRM_POLL_INTERVAL_MS);
     }
 
     document.addEventListener('visibilitychange', () => {
@@ -788,6 +808,30 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
             crmStartPolling();
         }
     });
+
+    // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+    // Kapag may nagbago sa inquiry mo (assign, site visit, 2D, approval, reset…) → kunin agad.
+    // Kapag nakatago ang tab, kukunin pagbalik (visibilitychange sa itaas).
+    (function crmHookRealtime() {
+        const hook = () => {
+            if (!window.NH_RT || !window.NH_RT.enabled || crmHookRealtime.done) return;
+            crmHookRealtime.done = true;
+            let t = null;
+            window.NH_RT.on('*', 'changed', (payload) => {
+                const type = String(payload?.type || '');
+                // CRM + galaw ng project (PR, transmittal, DR, labor, billing, punch list, turnover) — hindi budget/voucher
+                if (type && !/^(crm|pr_|po_|transmittal|pc_|dr_|labor_|billing_|turnover_)/i.test(type)) return;
+                clearTimeout(t);
+                t = setTimeout(() => { if (!document.hidden) crmFetchList({ silent: true }); }, 400);
+            });
+            window.NH_RT.onLive(live => {
+                if (!document.hidden) crmStartPolling(); // palitan ang bilis ng fallback polling
+                if (live && crmListRawRows.length) crmFetchList({ silent: true }); // habol sa na-miss
+            });
+        };
+        hook();
+        if (!crmHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+    })();
 
     // ═══════════════════════════════════════════════════════════
     // SEARCH + SORT
@@ -912,6 +956,8 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
                 sitevisit: ['bg-orange-50 border-orange-200 text-orange-900', 'fa-ruler-combined', 'Waiting for the site visit', `${crmEscapeHtml(r.designer_name)} will visit on ${crmEscapeHtml(crmFormatDateTimeLong(r.measurement_datetime))}.`],
                 quotation: ['bg-blue-50 border-blue-200 text-blue-900', 'fa-file-pen', '2D & Quotation in progress', 'Open 2D & Quotation to follow the designer\'s files and set the contract.'],
                 stopped: ['bg-red-50 border-red-200 text-red-900', 'fa-ban', 'Client is not proceeding', 'You can update the client status if they change their mind.'],
+                project: ['bg-sky-50 border-sky-200 text-sky-900', 'fa-helmet-safety', `In project · ${crmEscapeHtml(r.project?.phase_label || '')}: ${crmEscapeHtml(r.project?.status || '')}`, crmEscapeHtml(r.project?.note || 'The project is moving through purchasing, delivery and installation.')],
+                done: ['bg-emerald-50 border-emerald-200 text-emerald-900', 'fa-key', 'Turned over to the client', crmEscapeHtml(r.project?.note || 'The project is closed.')],
             }[stage];
 
             body.innerHTML = `<div class="space-y-3">
@@ -957,12 +1003,13 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     // Track sa detail panel: 6 na hakbang + contract
     function crmRenderDetailTrack(id) {
         const box = document.getElementById('crmDetailTrack');
-        const p = crmProgress[id];
+        const row = crmListRawRows.find(x => x.id === id) || (crmDetailRecord && crmDetailRecord.id === id ? crmDetailRecord : { id });
+        const p = crmTrackOf(row);
         if (!box || !p || crmDetailCurrentId !== id) return;
         const t = CRM_TONE[p.tone] || CRM_TONE.blue;
         const r = crmDetailRecord || {};
         const steps = CRM_TRACK_STEPS.map((label, i) => {
-            const n = i + 1, done = p.phase > n, cur = p.phase === n;
+            const n = i + 1, done = p.phase > n || (p.done && p.phase === n), cur = p.phase === n && !p.done;
             return `<li class="flex items-center gap-2 text-[12px] ${cur ? 'font-semibold text-gray-900' : done ? 'text-gray-600' : 'text-gray-400'}">
                 <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${done ? 'bg-amber-700 text-white' : cur ? t.dot + ' text-white' : 'bg-gray-100 text-gray-400'}">${done ? '<i class="fa-solid fa-check text-[9px]"></i>' : n}</span>
                 ${label}${cur ? `<span class="ml-auto text-[11px] font-semibold ${t.text}">${crmEscapeHtml(p.status)}</span>` : ''}
@@ -986,13 +1033,30 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         box.innerHTML = `<section class="bg-white border border-gray-200 rounded-xl p-4">
             <div class="flex items-center justify-between gap-2 mb-2">
                 <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-route mr-1 text-amber-700"></i>Track</p>
-                <span class="text-[11px] text-gray-400">${p.phase ? `Step ${p.phase} of 6` : crmEscapeHtml(p.phase_label)}</span>
+                <span class="text-[11px] text-gray-400">${p.done ? 'Done' : p.phase ? `Step ${p.phase} of ${CRM_TRACK_STEPS.length}` : crmEscapeHtml(p.phase_label)}</span>
             </div>
             ${crmTrackBar(p, 'lg')}
             <p class="mt-2 text-[12px] ${t.text}">${crmEscapeHtml(p.note)}</p>
             <ol class="mt-3 space-y-1.5">${steps}</ol>
+            ${crmProjectLines(p)}
             ${contract}
         </section>`;
+    }
+
+    // Maraming BOM → ipakita kung nasaan ang bawat isa (hal. 1 turned over, 1 nasa billing)
+    function crmProjectLines(p) {
+        const lines = (p && p.lines) || [];
+        if (lines.length < 2) return '';
+        return `<div class="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Per BOM</p>
+            <ul class="space-y-1">${lines.map(l => {
+                const t = CRM_TONE[l.tone] || CRM_TONE.blue;
+                return `<li class="flex flex-wrap items-center gap-x-2 text-[11.5px]">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0 ${t.dot}"></span>
+                    <span class="font-mono text-gray-700">${crmEscapeHtml(l.bom_number || 'BOM')}</span>
+                    <span class="text-gray-400">${crmEscapeHtml(l.phase_label)}</span>
+                    <span class="font-semibold ${t.text} ml-auto">${crmEscapeHtml(l.status)}</span></li>`;
+            }).join('')}</ul></div>`;
     }
 
     // ═══════════════════════════════════════════════════════════

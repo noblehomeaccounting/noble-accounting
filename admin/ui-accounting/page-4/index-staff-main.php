@@ -319,6 +319,19 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         </div>
         <div class="w-2 h-2 bg-gray-800 rotate-45 mx-auto -mt-1"></div>
     </div>
+    <?php
+    // ── Realtime (Supabase): iisang channel para sa lahat ng Accounting Staff ──
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    $staffRealtime = [
+        'url' => NH_SUPABASE_URL,
+        'key' => NH_SUPABASE_ANON_KEY,
+        'topic' => nhRealtimeGroupTopic(ROLE_ACCOUNTING, POSITION_STAFF),   // lahat ng Accounting Staff
+        'enabled' => !str_contains(NH_SUPABASE_URL, 'YOUR-PROJECT-REF') && NH_SUPABASE_ANON_KEY !== '',
+    ];
+    ?>
+    <?php if (!defined('NH_RT_LOADED')): ?>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <?php endif; ?>
     <script>
         const API = '<?= BASE_URL ?>';
 
@@ -674,6 +687,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                         return fetchApproved(true);
                     }
                     showToast(data.message || 'Could not mark as received.', 'error');
+                    return fetchApproved(true);   // hal. na-receive na ng ibang staff
                 })
                 .catch(() => showToast('Network error. Please try again.', 'error'))
                 .finally(() => { savingIds.delete(id); refreshDayPanel(); });
@@ -1001,8 +1015,52 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         renderCalendar();
         fetchApproved();
 
-        // 30s, at huwag mag-poll kapag nakatago ang tab
-        setInterval(() => { if (!document.hidden) fetchApproved(); }, 30000);
+        // ─── Realtime (Supabase) ─────────────────────────────
+        // "Doorbell" lang: kapag may na-approve na request o may nag-Mark Received, magpapadala ang PHP
+        // ng signal sa channel ng Accounting Staff → kukunin ulit ang listahan sa /fetchapproved.
+        const STAFF_RT = <?= json_encode($staffRealtime, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+        let staffLive = false;
+        function staffSetLive(on) {
+            staffLive = on;
+            const dot = document.getElementById('last-updated')?.previousElementSibling;
+            if (dot) dot.className = 'w-2 h-2 rounded-full animate-pulse ' + (on ? 'bg-green-500' : 'bg-amber-500');
+            if (dot) dot.title = on ? 'Live' : 'Auto-refresh';
+        }
+        (function staffStartRealtime() {
+            // May iisang koneksyon na sa sidebar (window.NH_RT) → gamitin iyon
+            if (window.NH_RT?.enabled && NH_RT.topics.includes(STAFF_RT.topic)) {
+                let t = null;
+                NH_RT.on(STAFF_RT.topic, 'changed', () => {
+                    clearTimeout(t);
+                    t = setTimeout(() => fetchApproved(true), 300);
+                });
+                NH_RT.onLive(staffSetLive);
+                return;
+            }
+            if (!STAFF_RT.enabled || !window.supabase?.createClient) { staffSetLive(false); return; }
+            try {
+                const sb = window.supabase.createClient(STAFF_RT.url, STAFF_RT.key, { auth: { persistSession: false } });
+                let t = null;
+                sb.channel(STAFF_RT.topic)
+                    .on('broadcast', { event: 'changed' }, () => {
+                        clearTimeout(t);
+                        t = setTimeout(() => fetchApproved(true), 300);   // pagsamahin ang sunod-sunod na signal
+                    })
+                    .subscribe(status => staffSetLive(status === 'SUBSCRIBED'));
+            } catch (e) {
+                console.error('Realtime:', e);
+                staffSetLive(false);
+            }
+        })();
+
+        // Polling bilang reserba: kada 30s (habang wala pang signal ang approve ng Head, ito ang sasalo)
+        let staffLastPoll = Date.now();
+        setInterval(() => {
+            if (document.hidden) return;
+            if (Date.now() - staffLastPoll < 30000) return;
+            staffLastPoll = Date.now();
+            fetchApproved();
+        }, 5000);
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') fetchApproved();
         });

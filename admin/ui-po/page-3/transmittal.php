@@ -78,7 +78,7 @@ if ($uid > 0) {
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8">
+    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
         <div class="max-w-6xl mx-auto">
 
             <!-- ===================== HEADER ===================== -->
@@ -88,6 +88,8 @@ if ($uid > 0) {
                     <h1 class="text-gray-900 text-xl font-semibold">Transmittal</h1>
                     <p class="text-gray-400 text-xs mt-0.5">A transmittal can be made once the purchase request is <b class="text-green-600">Paid</b>.</p>
                 </div>
+                <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="trLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="trLiveText">Auto-refresh</span></span>
                 <div class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
                     <button type="button" data-tab="ready" class="tr-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Ready
@@ -97,6 +99,7 @@ if ($uid > 0) {
                         <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Transmittals
                         <span data-count="done" class="min-w-[20px] px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                     </button>
+                </div>
                 </div>
             </div>
 
@@ -294,14 +297,24 @@ if ($uid > 0) {
                 }
             }
 
-            async function load() {
+            let lastSig = '';
+            async function load(silent) {
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const d = await res.json();
-                    if (!d.success) { toast(d.message || 'Failed to load.', 'error'); return; }
+                    if (!d.success) { if (!silent) toast(d.message || 'Failed to load.', 'error'); return; }
+                    // tahimik na refresh: i-render lang kapag may nagbago
+                    const sig = JSON.stringify([d.ready.map(r => r.id), d.done.map(r => [r.id, r.received_by])]);
+                    if (silent && sig === lastSig) return;
+                    if (silent && lastSig) {
+                        const known = new Set(data.ready.map(r => r.id));
+                        const fresh = d.ready.filter(r => !known.has(r.id)).length;
+                        if (fresh) toast(`${fresh} paid purchase request${fresh === 1 ? '' : 's'} ready for a transmittal.`);
+                    }
+                    lastSig = sig;
                     data = { ready: d.ready, done: d.done };
                     renderList();
-                } catch (e) { toast('Connection error while loading.', 'error'); }
+                } catch (e) { if (!silent) toast('Connection error while loading.', 'error'); }
             }
 
             document.getElementById('trList').addEventListener('click', e => {
@@ -581,6 +594,50 @@ if ($uid > 0) {
             load();
             if (qs.get('pr')) openCreate(+qs.get('pr'));
             else if (qs.get('view')) openView(+qs.get('view'));
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong paid na PR / transmittal / delivered (ibang PO o tab) → kunin agad ang listahan.
+            // Listahan lang ang nire-refresh; hindi ginagalaw ang bukas na form (may draft ka).
+            (function hookRealtime() {
+                const TYPES = /^(pr_|po_|transmittal)/i;
+                const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+                const busy = () => !document.getElementById('trConfirmModal').classList.contains('hidden');
+                let t = null, missed = false, poll = null;
+                const sync = () => {
+                    if (document.hidden || busy()) { missed = true; return; }
+                    missed = false;
+                    load(true);
+                };
+                const startPolling = () => {
+                    if (poll) clearInterval(poll);
+                    // Live → 60s fallback lang; hindi Live → 30s
+                    poll = setInterval(() => { if (!document.hidden && !busy()) load(true); }, rtLive() ? 60000 : 30000);
+                };
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !TYPES.test(type)) return;
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('trLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('trLiveText').textContent = live ? 'Live' : 'Auto-refresh';
+                        if (!document.hidden) startPolling();
+                        if (live) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+                setInterval(() => { if (missed && !document.hidden && !busy()) sync(); }, 5000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) { if (poll) clearInterval(poll); }
+                    else { sync(); startPolling(); }
+                });
+                startPolling();
+            })();
         })();
     </script>
 </body>

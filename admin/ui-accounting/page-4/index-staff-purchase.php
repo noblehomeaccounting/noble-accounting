@@ -47,8 +47,9 @@ $stgAjaxUrl = BASE_URL . '/accountingstaffpurchaseajax';
                     <h1 class="text-gray-900 text-xl font-semibold">Purchase Requests to Receive</h1>
                     <p class="text-gray-400 text-xs mt-0.5">Purchase requests reviewed by the Accounting Head. Receive them to pass them to the Custodian for release.</p>
                 </div>
-                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Auto-refresh every 30s
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
+                    <span id="stgLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span id="stgLiveText">Auto-refresh every 30s</span>
                 </span>
             </div>
 
@@ -567,7 +568,10 @@ $stgAjaxUrl = BASE_URL . '/accountingstaffpurchaseajax';
                 document.getElementById('stgFooter').textContent = `Showing ${list.length} of ${source.length} request${source.length === 1 ? '' : 's'}`;
             }
 
+            let loading = false, loadAgain = false;
             async function load() {
+                if (loading) { loadAgain = true; return; }
+                loading = true;
                 try {
                     const res = await fetch(`${AJAX}?action=list`, { cache: 'no-store' });
                     const data = await res.json();
@@ -575,6 +579,10 @@ $stgAjaxUrl = BASE_URL . '/accountingstaffpurchaseajax';
                     rows = data.rows;
                     render();
                 } catch (e) { console.error(e); toast('Connection error while loading.', 'error'); }
+                finally {
+                    loading = false;
+                    if (loadAgain) { loadAgain = false; load(); }
+                }
             }
 
             document.getElementById('stgList').addEventListener('click', e => {
@@ -597,15 +605,19 @@ $stgAjaxUrl = BASE_URL . '/accountingstaffpurchaseajax';
                     </button>`).join('') + `<button type="button" data-act="close" class="ml-1 text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>`;
             }
 
-            async function openForm(id) {
+            async function openForm(id, quiet = false) {
                 const sheet = document.getElementById('stgSheet');
-                sheet.innerHTML = `<p class="text-xs text-gray-400 text-center py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
-                document.getElementById('stgNotice').classList.add('hidden');
-                document.getElementById('stgActions').innerHTML = '<button type="button" data-act="close" class="ml-1 text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>';
-                openModal('stgModal');
+                if (!quiet) {
+                    sheet.innerHTML = `<p class="text-xs text-gray-400 text-center py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Loading…</p>`;
+                    document.getElementById('stgNotice').classList.add('hidden');
+                    document.getElementById('stgActions').innerHTML = '<button type="button" data-act="close" class="ml-1 text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>';
+                    openModal('stgModal');
+                }
                 try {
                     const res = await fetch(`${AJAX}?action=view&id=${id}`, { cache: 'no-store' });
                     const data = await res.json();
+                    // realtime refresh: huwag galawin kapag nagsara o lumipat na ng request
+                    if (quiet && (document.getElementById('stgModal').classList.contains('hidden') || !current || current.id !== id)) return;
                     if (!data.success) { sheet.innerHTML = `<p class="text-xs text-red-500 text-center py-10">${esc(data.message)}</p>`; return; }
                     current = data.pr;
                     PRSheet.render(sheet, current, { base: BASE });
@@ -675,7 +687,55 @@ $stgAjaxUrl = BASE_URL . '/accountingstaffpurchaseajax';
 
             setTab(STAGE.tabs[0].key);
             load();
-            setInterval(() => { if (!document.hidden && !anyOpen()) load(); }, 30000);
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Bagong na-review ng Accounting Head, receive ng ibang Staff, release/paid ng Custodian → kunin agad.
+            // Hindi ginagalaw ang bukas na form habang bukas ang "Receive this request?"; hahabol pagkasara.
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            const confirmOpen = () => !document.getElementById('stgConfirmModal').classList.contains('hidden');
+            let missed = false, pollTimer = null;
+
+            function sync() {
+                if (document.hidden) { missed = true; return; }
+                load();
+                if (!document.getElementById('stgModal').classList.contains('hidden') && current) {
+                    if (confirmOpen()) { missed = true; return; }
+                    openForm(current.id, true);
+                }
+                missed = false;
+            }
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                // Live → 60s fallback lang; hindi Live → 30s (dating bilis)
+                pollTimer = setInterval(() => { if (!document.hidden && !anyOpen()) load(); }, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !/^(pr|transmittal)/i.test(type)) return;   // ibang signal (budget/voucher/CRM) — hindi para dito
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        document.getElementById('stgLiveDot').className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        document.getElementById('stgLiveText').textContent = live ? 'Live' : 'Auto-refresh every 30s';
+                        if (!document.hidden) startPolling();
+                        if (live && rows.length) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            setInterval(() => { if (missed && !confirmOpen()) sync(); }, 5000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }
+                else { sync(); startPolling(); }
+            });
+            startPolling();
         })();
     </script>
 </body>

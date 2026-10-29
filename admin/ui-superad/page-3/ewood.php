@@ -21,11 +21,13 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
     <title>QR Approvals | Cutting Department</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/admin/ui-superad/css/superad/ewood.css?v=<?= @filemtime(ROOT_PATH . '/admin/ui-superad/css/superad/ewood.css') ?: 1 ?>">
+    <link rel="stylesheet"
+        href="<?= BASE_URL ?>/admin/ui-superad/css/superad/ewood.css?v=<?= @filemtime(ROOT_PATH . '/admin/ui-superad/css/superad/ewood.css') ?: 1 ?>">
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-6 p-4 md:p-6 overflow-x-hidden transition-all duration-300">
+    <main id="main-content"
+        class="md:ml-56 min-h-screen pt-20 md:pt-6 p-4 md:p-6 overflow-x-hidden transition-all duration-300">
 
         <div class="max-w-6xl mx-auto">
 
@@ -34,41 +36,57 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 <div class="ewood-hazard h-1.5"></div>
                 <div class="p-5 flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-3 min-w-0">
-                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-qrcode text-lg"></i></span>
+                        <span
+                            class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
+                                class="fa-solid fa-qrcode text-lg"></i></span>
                         <div class="min-w-0">
-                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Cutting Department</p>
-                            <h1 class="text-gray-900 text-lg font-semibold leading-tight">QR Approvals</h1>
-                            <p class="text-gray-400 text-[11px] mt-0.5">Check the QR photo and the BOM of each upload, then approve it or send it back for revision.</p>
+                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Cutting
+                                Department</p>
+                            <h1 class="text-gray-900 text-lg font-semibold leading-tight">QR Approvals <span
+                                    id="ewoodLiveDot" title="Connecting…"
+                                    class="inline-block w-2 h-2 rounded-full bg-amber-400 ml-1 align-middle"></span>
+                            </h1>
+                            <p class="text-gray-400 text-[11px] mt-0.5">Check the QR photo and the BOM of each upload,
+                                then approve it or send it back for revision.</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 sm:min-w-[110px]">
                             <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-700">To review</p>
-                            <p id="ewoodStatPending" class="text-2xl font-bold text-amber-800 leading-tight tabular-nums">—</p>
+                            <p id="ewoodStatPending"
+                                class="text-2xl font-bold text-amber-800 leading-tight tabular-nums">—</p>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white px-4 py-2 sm:min-w-[110px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Approved today</p>
-                            <p id="ewoodStatToday" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                            <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Approved today
+                            </p>
+                            <p id="ewoodStatToday" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—
+                            </p>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white px-4 py-2 sm:min-w-[110px]">
                             <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Approved</p>
-                            <p id="ewoodStatApproved" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                            <p id="ewoodStatApproved"
+                                class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                         </div>
                     </div>
                 </div>
                 <div class="px-5 pb-0 flex flex-wrap items-end justify-between gap-3 border-t border-gray-100">
                     <div class="flex gap-1 -mb-px">
-                        <button type="button" data-tab="pending" class="ewood-tab inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
+                        <button type="button" data-tab="pending"
+                            class="ewood-tab inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
                             <i class="fa-solid fa-inbox"></i> To review
-                            <span id="ewoodPendingCount" class="min-w-[20px] px-1.5 py-px rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold text-center">—</span>
+                            <span id="ewoodPendingCount"
+                                class="min-w-[20px] px-1.5 py-px rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold text-center">—</span>
                         </button>
-                        <button type="button" data-tab="approved" class="ewood-tab inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
+                        <button type="button" data-tab="approved"
+                            class="ewood-tab inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
                             <i class="fa-solid fa-circle-check"></i> Approved
-                            <span id="ewoodApprovedCount" class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold text-center">—</span>
+                            <span id="ewoodApprovedCount"
+                                class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold text-center">—</span>
                         </button>
                     </div>
                     <div class="relative w-full sm:w-64 pb-2.5">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-[calc(50%-5px)] -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                        <i
+                            class="fa-solid fa-magnifying-glass absolute left-3 top-[calc(50%-5px)] -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="ewoodSearch" placeholder="Search control no., client, BOM no.…"
                             class="w-full h-9 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:bg-white focus:border-amber-600">
                     </div>
@@ -78,15 +96,25 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             <!-- ═══ TO REVIEW ═══ -->
             <div id="ewoodPanelPending">
                 <ol class="flex flex-wrap items-center gap-x-5 gap-y-1 mb-3 px-1 text-[11px] text-gray-500">
-                    <li class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">1</span> Open the QR photo (click to enlarge or download)</li>
-                    <li class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">2</span> Scan it in WeChat (Scan → Album)</li>
-                    <li class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">3</span> Check the BOM, then Approve or send back</li>
+                    <li class="flex items-center gap-1.5"><span
+                            class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">1</span>
+                        Open the QR photo (click to enlarge or download)</li>
+                    <li class="flex items-center gap-1.5"><span
+                            class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">2</span>
+                        Scan it in WeChat (Scan → Album)</li>
+                    <li class="flex items-center gap-1.5"><span
+                            class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">3</span>
+                        Check the BOM, then Approve or send back</li>
                 </ol>
                 <div id="ewoodApprovalList" class="space-y-4">
-                    <div class="bg-white border border-gray-200 rounded-xl text-center text-gray-400 text-xs py-14"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div>
+                    <div class="bg-white border border-gray-200 rounded-xl text-center text-gray-400 text-xs py-14"><i
+                            class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div>
                 </div>
-                <div id="ewoodApprovalEmpty" class="hidden bg-white border-2 border-dashed border-gray-200 rounded-xl text-center py-12">
-                    <div class="w-12 h-12 mx-auto rounded-xl bg-green-50 text-green-600 flex items-center justify-center mb-2"><i class="fa-solid fa-mug-hot"></i></div>
+                <div id="ewoodApprovalEmpty"
+                    class="hidden bg-white border-2 border-dashed border-gray-200 rounded-xl text-center py-12">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-xl bg-green-50 text-green-600 flex items-center justify-center mb-2">
+                        <i class="fa-solid fa-mug-hot"></i></div>
                     <p class="ewood-empty-msg text-sm text-gray-700 font-semibold">All caught up. Nothing to review.</p>
                 </div>
             </div>
@@ -95,7 +123,8 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             <div id="ewoodPanelApproved" class="hidden">
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                     <div id="ewoodApprovedList" class="divide-y divide-gray-100">
-                        <div class="text-center text-gray-400 text-xs py-14"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div>
+                        <div class="text-center text-gray-400 text-xs py-14"><i
+                                class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div>
                     </div>
                     <div id="ewoodApprovedEmpty" class="hidden text-center py-12">
                         <i class="fa-regular fa-folder-open text-2xl text-gray-300"></i>
@@ -105,11 +134,14 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             </div>
         </div>
 
-        <div id="crmToastContainer" class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="crmToastContainer"
+            class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]">
+        </div>
     </main>
 
     <!-- BOM view modal — buong BOM na kamukha ng printed form -->
-    <div id="ewoodBomViewModal" class="hidden fixed inset-0 z-[9998] items-center justify-center bg-black/50 p-4 overflow-y-auto">
+    <div id="ewoodBomViewModal"
+        class="hidden fixed inset-0 z-[9998] items-center justify-center bg-black/50 p-4 overflow-y-auto">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl my-auto overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
                 <p id="ewoodBomViewModalTitle" class="text-xs font-semibold text-gray-700 font-mono truncate">BOM</p>
@@ -119,7 +151,8 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                         <i class="fa-solid fa-file-pdf"></i> Download PDF
                     </a>
                     <button type="button" onclick="ewoodBomCloseViewModal()" aria-label="Close"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
+                            class="fa-solid fa-xmark text-base leading-none"></i></button>
                 </div>
             </div>
             <div id="ewoodBomViewBody" class="p-5 overflow-x-auto"></div>
@@ -246,10 +279,11 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             return boms.map(b => {
                 const items = b.items || [];
                 const shown = items.slice(0, 8);
-                return `<div class="rounded-lg border border-gray-200 overflow-hidden">
-                    <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200">
+                return `<div class="ewood-bom-box rounded-lg border border-gray-200 overflow-hidden transition-colors" data-bom-box="${b.id}">
+                    <div class="ewood-bom-head flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200">
                         <div class="min-w-0">
-                            <p class="font-mono text-[11.5px] font-semibold text-amber-800">${ewoodEscapeHtml(b.bom_number)}</p>
+                            <p class="font-mono text-[11.5px] font-semibold text-amber-800">${ewoodEscapeHtml(b.bom_number)}
+                                <span class="ewood-bom-tag hidden ml-1 font-sans inline-flex items-center px-1.5 py-px rounded text-[9.5px] font-bold uppercase bg-red-100 text-red-700"><i class="fa-solid fa-rotate-left mr-1"></i>Back to cutting</span></p>
                             <p class="text-[10.5px] text-gray-500">${ewoodEscapeHtml(b.general_scope || '')}${b.date_needed ? ' · Needed: ' + ewoodEscapeHtml(b.date_needed) : ''}${b.linked_by_job ? ' · <span class="text-amber-700">found by job</span>' : ''}</p>
                         </div>
                         <button type="button" data-bom-view="${b.id}" class="inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-semibold text-amber-700 bg-white border border-amber-200 rounded-md hover:bg-amber-50"><i class="fa-solid fa-expand"></i> Full BOM</button>
@@ -355,7 +389,65 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             ewoodStats();
         }
 
+        // ── Send back: piliin kung ano ang babalik (isa o ilang BOM, o ang buong upload) ──
+        // Ang napili LANG ang babalik sa Cutting. Ang hindi napiling BOM ay aaprubahan at pipirmahan na.
+        function ewoodSbState(box, entry) {
+            const boms = entry.boms || [];
+            const picked = [...box.querySelectorAll('.ewood-sb-bom:checked')].map(i => +i.value);
+            const qr = !!box.querySelector('.ewood-sb-qr:checked');
+            const whole = boms.length < 2 || qr || (picked.length > 0 && picked.length === boms.length);
+            return { boms, picked, qr, whole, none: boms.length > 1 && !qr && !picked.length };
+        }
+
+        function ewoodSbMark(card, ids) {
+            card?.querySelectorAll('.ewood-bom-box').forEach(el => {
+                const on = ids.includes(+el.dataset.bomBox);
+                el.classList.toggle('border-red-300', on);
+                el.classList.toggle('ring-2', on);
+                el.classList.toggle('ring-red-100', on);
+                el.classList.toggle('border-gray-200', !on);
+                el.querySelector('.ewood-bom-head')?.classList.toggle('bg-red-50', on);
+                el.querySelector('.ewood-bom-head')?.classList.toggle('bg-gray-50', !on);
+                el.querySelector('.ewood-bom-tag')?.classList.toggle('hidden', !on);
+            });
+        }
+
+        function ewoodSbUpdate(box, entry) {
+            const st = ewoodSbState(box, entry);
+            box.querySelectorAll('.ewood-sb-opt').forEach(l => {
+                const on = l.querySelector('input').checked;
+                l.classList.toggle('bg-red-100', on);
+                l.classList.toggle('border-red-400', on);
+                l.classList.toggle('text-red-800', on);
+                l.classList.toggle('bg-white', !on);
+            });
+            const nums = st.boms.filter(b => st.picked.includes(b.id)).map(b => b.bom_number);
+            const rest = st.boms.filter(b => !st.picked.includes(b.id)).map(b => b.bom_number);
+            const hint = box.querySelector('.ewood-sb-hint');
+            const yes = box.querySelector('[data-act="revise-yes"]');
+            if (st.boms.length > 1) {
+                if (st.none) {
+                    hint.innerHTML = 'Choose what is wrong — a BOM, or the QR / photos.';
+                    yes.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send back';
+                } else if (st.whole) {
+                    hint.innerHTML = '<b>Everything goes back:</b> the QR upload and all BOMs. Cutting uploads again and can correct the BOMs (same BOM numbers).';
+                    yes.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send back everything';
+                } else {
+                    hint.innerHTML = `<b>Only <span class="font-mono">${ewoodEscapeHtml(nums.join(', '))}</span> goes back.</b> The QR upload and <span class="font-mono">${ewoodEscapeHtml(rest.join(', '))}</span> are approved and signed now.`;
+                    yes.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send back ${nums.length} BOM${nums.length === 1 ? '' : 's'} &amp; approve the rest`;
+                }
+            }
+            ewoodSbMark(box.closest('article'), st.whole && !st.none ? st.boms.map(b => b.id) : st.picked);
+        }
+
         // Approve / Send back — inline (walang pop-up)
+        document.getElementById('ewoodApprovalList').addEventListener('change', ev => {
+            if (!ev.target.closest('.ewood-sb-bom, .ewood-sb-qr')) return;
+            const box = ev.target.closest('.ewood-actions');
+            const entry = ewoodPending.find(e => e.id === +box.dataset.id);
+            if (entry) { ewoodSbUpdate(box, entry); box.querySelector('.ewood-rev-err').classList.add('hidden'); }
+        });
+
         document.getElementById('ewoodApprovalList').addEventListener('click', async ev => {
             const viewBtn = ev.target.closest('[data-bom-view]');
             if (viewBtn) return ewoodBomOpenViewModal(viewBtn.dataset.bomView);
@@ -368,7 +460,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             if (!entry) return;
             const act = btn.dataset.act;
 
-            if (act === 'cancel') { box.innerHTML = ewoodActionsIdle(); return; }
+            if (act === 'cancel') { box.innerHTML = ewoodActionsIdle(); ewoodSbMark(box.closest('article'), []); return; }
 
             if (act === 'approve') {
                 const bomNos = (entry.boms || []).map(b => b.bom_number).join(', ');
@@ -399,10 +491,20 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 
             if (act === 'revise') {
                 let draft = ''; try { draft = localStorage.getItem('nh-ewood-rev-' + id) || ''; } catch (e) { }
+                const multi = (entry.boms || []).length > 1;
+                const optCls = 'ewood-sb-opt inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-red-200 bg-white text-[11px] text-gray-700 cursor-pointer select-none transition-colors';
                 box.innerHTML = `<div class="rounded-lg border border-red-200 bg-red-50 p-3">
-                    <label class="block text-[11px] font-semibold text-red-800 mb-1.5"><i class="fa-solid fa-rotate-left mr-1"></i>What should cutting fix — the QR/photos or the BOM? <span class="text-red-500">*</span></label>
+                    ${multi ? `<div class="mb-3">
+                        <p class="text-[11px] font-semibold text-red-800 mb-1.5"><i class="fa-solid fa-list-check mr-1"></i>What goes back to cutting? <span class="text-red-500">*</span> <span class="font-normal text-red-700/70">Only what you choose goes back.</span></p>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${entry.boms.map(b => `<label class="${optCls}"><input type="checkbox" class="ewood-sb-bom w-3.5 h-3.5 accent-red-600" value="${b.id}"><span class="font-mono font-semibold">${ewoodEscapeHtml(b.bom_number)}</span></label>`).join('')}
+                            <label class="${optCls}"><input type="checkbox" class="ewood-sb-qr w-3.5 h-3.5 accent-red-600"><i class="fa-solid fa-qrcode text-gray-400"></i><span class="font-semibold">QR / photos</span></label>
+                        </div>
+                        <p class="ewood-sb-hint text-[10.5px] text-red-800/90 mt-1.5 leading-relaxed"></p>
+                    </div>` : ''}
+                    <label class="block text-[11px] font-semibold text-red-800 mb-1.5"><i class="fa-solid fa-rotate-left mr-1"></i>${multi ? 'What should cutting fix?' : 'What should cutting fix — the QR/photos or the BOM?'} <span class="text-red-500">*</span></label>
                     <textarea rows="2" maxlength="1000" class="ewood-rev w-full text-xs border border-red-200 bg-white rounded-lg px-3 py-2 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-y" placeholder="e.g. The QR is blurry, please retake the photo. / BOM row 3: quantity should be 12 pcs.">${ewoodEscapeHtml(draft)}</textarea>
-                    <p class="text-[10.5px] text-red-700/80 mt-1"><i class="fa-solid fa-file-invoice mr-1"></i>Cutting uploads again and can correct the BOM. It keeps the same BOM number.</p>
+                    ${multi ? '' : '<p class="text-[10.5px] text-red-700/80 mt-1"><i class="fa-solid fa-file-invoice mr-1"></i>Cutting uploads again and can correct the BOM. It keeps the same BOM number.</p>'}
                     <p class="ewood-rev-err hidden text-[11px] text-red-600 mt-1"></p>
                     <div class="flex justify-end gap-2 mt-2">
                         <button type="button" data-act="cancel" class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg">Cancel</button>
@@ -410,6 +512,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                     </div></div>`;
                 const ta = box.querySelector('.ewood-rev');
                 ta.addEventListener('input', () => { try { localStorage.setItem('nh-ewood-rev-' + id, ta.value); } catch (e) { } box.querySelector('.ewood-rev-err').classList.add('hidden'); });
+                if (multi) ewoodSbUpdate(box, entry);
                 ta.focus();
                 return;
             }
@@ -417,8 +520,31 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             if (act === 'revise-yes') {
                 const ta = box.querySelector('.ewood-rev'), err = box.querySelector('.ewood-rev-err');
                 const remarks = ta.value.trim();
+                const st = ewoodSbState(box, entry);
+                if (st.none) { err.textContent = 'Choose what goes back to cutting.'; err.classList.remove('hidden'); return; }
                 if (remarks.length < 3) { err.textContent = 'Tell cutting what to fix.'; err.classList.remove('hidden'); ta.focus(); return; }
+                const label = btn.innerHTML;
                 btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
+
+                if (!st.whole) {
+                    // Napiling BOM lang ang babalik; ang iba (at ang QR upload) ay aaprubahan
+                    try {
+                        const keep = st.boms.filter(b => !st.picked.includes(b.id)).map(b => b.id);
+                        const data = await ewoodPost('approve', { progress_id: id, bom_ids: keep.join(','), remarks });
+                        if (!data.success) throw new Error(data.message || 'Could not send it back.');
+                        try { localStorage.removeItem('nh-ewood-rev-' + id); } catch (e) { }
+                        crmShowToast(`${(data.returned_boms || []).join(', ')} went back to cutting. ${(data.approved_boms || []).join(', ')} approved and signed.`, 'success', 7000);
+                        ewoodPending = ewoodPending.filter(e => e.id !== id);
+                        ewoodRenderPending();
+                        ewoodLoadApprovedList();
+                    } catch (e) {
+                        err.textContent = e.message; err.classList.remove('hidden');
+                        btn.disabled = false; btn.innerHTML = label;
+                    }
+                    ewoodStats();
+                    return;
+                }
+
                 try {
                     const data = await ewoodPost('reject', { progress_id: id, remarks });
                     if (!data.success) throw new Error(data.message || 'Could not send it back.');
@@ -428,7 +554,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                     ewoodRenderPending();
                 } catch (e) {
                     err.textContent = e.message; err.classList.remove('hidden');
-                    btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send back';
+                    btn.disabled = false; btn.innerHTML = label;
                 }
                 ewoodStats();
             }
@@ -579,7 +705,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
     </td>`;
 
             const requestedSigUrl = bom.requested_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.requested_by_signature_path)}` : null;
-            const approvedSigUrl  = bom.approved_by_signature_path  ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.approved_by_signature_path)}`  : null;
+            const approvedSigUrl = bom.approved_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.approved_by_signature_path)}` : null;
             const receivedSigUrl = bom.received_by_signature_path ? `<?= BASE_URL ?>/${ewoodEscapeHtml(bom.received_by_signature_path)}` : null;
 
             document.getElementById('ewoodBomViewBody').innerHTML = `
@@ -657,11 +783,68 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         ewoodSwitchTab(ewoodStartTab === 'approved' ? 'approved' : 'pending');
         ewoodLoadApprovalList();
         ewoodLoadApprovedList();
-        // tingnan bawat 60s kung may bagong upload (huwag kapag may binubuksang form)
-        setInterval(() => {
-            if (document.hidden || document.querySelector('.ewood-actions .ewood-rev, .ewood-actions [data-act="approve-yes"]')) return;
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Bagong upload / BOM ng Cutting, approve o send back ng ibang Superadmin, reset → kunin agad.
+        // Hindi ginagalaw ang "To review" habang bukas ang Approve confirm o Send back form; hahabol pagkatapos.
+        const ewoodRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+        const ewoodBusy = () => !!document.querySelector('.ewood-actions .ewood-rev, .ewood-actions [data-act="approve-yes"]');
+        const EWOOD_RT_TYPES = ['crm_cut_upload', 'crm_bom', 'crm_ewood_approved', 'crm_ewood_rejected', 'crm_reset'];
+        let ewoodRtMissed = false;
+        let ewoodPollTimer = null;
+
+        function ewoodRtSync() {
+            if (document.hidden || ewoodBusy()) { ewoodRtMissed = true; return; }
+            ewoodRtMissed = false;
             ewoodLoadApprovalList(true);
-        }, 60000);
+            ewoodLoadApprovedList();
+        }
+
+        function ewoodStartPolling() {
+            if (ewoodPollTimer) clearInterval(ewoodPollTimer);
+            // Live → 90s fallback lang; hindi Live → 60s (dating bilis)
+            ewoodPollTimer = setInterval(() => {
+                if (document.hidden || ewoodBusy()) return;
+                ewoodLoadApprovalList(true);
+            }, ewoodRtLive() ? 90000 : 60000);
+        }
+
+        (function ewoodHookRealtime() {
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || ewoodHookRealtime.done) return;
+                ewoodHookRealtime.done = true;
+                let t = null;
+                window.NH_RT.on('*', 'changed', (payload) => {
+                    const type = String(payload?.type || '');
+                    if (type && !EWOOD_RT_TYPES.includes(type)) return; // ibang CRM/budget signal — hindi para dito
+                    clearTimeout(t);
+                    t = setTimeout(ewoodRtSync, 400);
+                });
+                window.NH_RT.onLive(live => {
+                    const dot = document.getElementById('ewoodLiveDot');
+                    if (dot) {
+                        dot.className = 'inline-block w-2 h-2 rounded-full ml-1 align-middle ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                        dot.title = live ? 'Live' : 'Reconnecting…';
+                    }
+                    if (!document.hidden) ewoodStartPolling();
+                    if (live && ewoodLoaded.pending) ewoodRtSync();
+                });
+            };
+            hook();
+            if (!ewoodHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+        })();
+
+        // habol sa na-miss habang bukas ang form (pagkatapos i-Cancel o maipadala)
+        setInterval(() => { if (ewoodRtMissed) ewoodRtSync(); }, 5000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (ewoodPollTimer) clearInterval(ewoodPollTimer);
+            } else {
+                if (ewoodRtMissed) ewoodRtSync(); else if (!ewoodBusy()) ewoodLoadApprovalList(true);
+                ewoodStartPolling();
+            }
+        });
+        ewoodStartPolling();
     </script>
 </body>
 

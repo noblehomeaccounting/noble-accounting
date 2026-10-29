@@ -668,10 +668,36 @@ if ($recordId <= 0) {
             }
         }
 
+        const acctDetailRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+
         function acctDetailStartPolling() {
             if (acctDetailPollTimer) clearInterval(acctDetailPollTimer);
-            acctDetailPollTimer = setInterval(() => acctDetailLoad({ silent: true }), ACCT_DETAIL_POLL_INTERVAL_MS);
+            // Live → 60s fallback lang; hindi Live → dating bilis
+            acctDetailPollTimer = setInterval(() => acctDetailLoad({ silent: true }), acctDetailRtLive() ? 60000 : ACCT_DETAIL_POLL_INTERVAL_MS);
         }
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Bayad / NTP / reset sa inquiry na ito (galing sa ibang Accounting o ibang tab) → kunin agad.
+        // Hindi ginagalaw ang form habang may tina-type o kinukumpirma (acctDepositBusy sa acctDetailLoad).
+        (function acctDetailHookRealtime() {
+            const hook = () => {
+                if (!window.NH_RT || !window.NH_RT.enabled || acctDetailHookRealtime.done) return;
+                acctDetailHookRealtime.done = true;
+                let t = null;
+                window.NH_RT.on('*', 'changed', (payload) => {
+                    const inq = Number(payload?.inquiry_id || 0);
+                    if (!inq || !acctRecord || inq !== Number(acctRecord.inquiry_id)) return;
+                    clearTimeout(t);
+                    t = setTimeout(() => { if (!document.hidden) acctDetailLoad({ silent: true }); }, 400);
+                });
+                window.NH_RT.onLive(live => {
+                    if (!document.hidden && acctDetailPollTimer) acctDetailStartPolling();
+                    if (live && acctRecord) acctDetailLoad({ silent: true });
+                });
+            };
+            hook();
+            if (!acctDetailHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+        })();
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {

@@ -76,6 +76,7 @@ const MON_STATUSES = [
     'TURNOVER SUBMITTED'      => 'blue',
     'TURNOVER RETURNED'       => 'red',
     'TURNOVER SIGNED'         => 'green',
+    'PARTLY TURNED OVER'      => 'amber',
     'TURNED OVER'             => 'green',
 ];
 
@@ -84,7 +85,7 @@ const MON_OPS = [
     'DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED', 'FOREMAN ASSIGNED',
     'LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET',
     'BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED', 'BILLING APPROVED', 'FULLY BILLED',
-    'PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'TURNED OVER',
+    'PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'PARTLY TURNED OVER', 'TURNED OVER',
 ];
 
 // Mga status na galing sa production / purchasing (para sa divider sa Status History)
@@ -95,7 +96,7 @@ const MON_PIPELINE = [
     'DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED', 'FOREMAN ASSIGNED',
     'LABOR QUOTE SUBMITTED', 'LABOR QUOTE RETURNED', 'LABOR QUOTE APPROVED', 'TIMELINE SET',
     'BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED', 'BILLING APPROVED', 'FULLY BILLED',
-    'PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'TURNED OVER',
+    'PUNCH LIST OPEN', 'PUNCH LIST CLOSED', 'TURNOVER SUBMITTED', 'TURNOVER RETURNED', 'TURNOVER SIGNED', 'PARTLY TURNED OVER', 'TURNED OVER',
 ];
 
 // Ano ang susunod pagkatapos ng huling production / purchasing status: [note, expected next]
@@ -135,6 +136,7 @@ const MON_PIPELINE_NEXT = [
     'TURNOVER SUBMITTED'        => ['Turnover letter waiting for the Superadmin\'s signature', 'Turnover Approval'],
     'TURNOVER RETURNED'         => ['Turnover letter returned to the Project Coordinator', 'Fix & resubmit Turnover'],
     'TURNOVER SIGNED'           => ['Turnover letter signed, waiting for the client\'s signature', 'Client Acceptance'],
+    'PARTLY TURNED OVER'        => ['Some BOMs are turned over, the rest are still in progress', 'Finish the remaining BOMs'],
     'TURNED OVER'               => ['Project turned over to the client and closed', '—'],
 ];
 
@@ -595,6 +597,14 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
     }
 
     usort($ev, fn($a, $b) => [$a['_sort'], $a['_seq']] <=> [$b['_sort'], $b['_seq']]);
+
+    // Maraming BOM: "TURNED OVER" lang kapag tapos LAHAT. Kung may natitira pa, "PARTLY TURNED OVER" ang kasalukuyan.
+    $lineCount = count(array_filter($data['boms'] ?? [], fn($b) => !empty($b['approved_at'])));
+    $closedCount = count(array_filter($data['turnovers'] ?? [], fn($t) => ($t['status'] ?? '') === 'closed'));
+    if ($ev && end($ev)['label'] === 'TURNED OVER' && $lineCount > $closedCount) {
+        $add('PARTLY TURNED OVER', 'amber', null, $closedCount . ' of ' . $lineCount . ' BOMs turned over · the rest are still in progress', null);
+        $ev[count($ev) - 1]['_sort'] = time() + 1;   // ngayon (pagkatapos ng lahat ng event)
+    }
 
     // Kasalukuyang stage: kung iba sa huling event, idagdag bilang "ngayon".
     // Kapag nasa production / purchasing na, ang huling event doon ang kasalukuyan.

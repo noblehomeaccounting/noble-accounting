@@ -20,6 +20,49 @@ if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 const TO_UPLOAD_DIR = 'uploads/pcturnover';
 const TO_UPLOAD_MAX = 10 * 1024 * 1024;
 
+// Realtime doorbell (Supabase Broadcast): sinasabihan ang ibang bukas na page na may nagbago.
+// Hindi kailanman pinipigilan ang save — kapag pumalya, naka-log lang.
+if (!function_exists('pcRealtime')) {
+    function pcRealtime(mysqli $conn, string $type, array $groups, array $payload = []): void
+    {
+        try {
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            $payload = ['type' => $type, 'by' => intval($_SESSION['account_id'] ?? 0)] + $payload;
+            foreach ($groups as [$role, $pos]) {
+                nhRealtimeNotifyGroup((string) $role, $pos !== null ? (string) $pos : null, 'changed', $payload);
+            }
+            // Sales + Designer ng inquiry → makikita agad sa CRM List ang galaw ng project hanggang Turnover
+            {
+                $drId = (int) ($payload['dr_id'] ?? 0);
+                foreach (['quote_id' => 'noblepc_laborquote', 'billing_id' => 'noblepc_billing', 'turnover_id' => 'noblepc_turnover'] as $key => $table) {
+                    if ($drId > 0 || empty($payload[$key])) continue;
+                    $st = $conn->prepare("SELECT dr_id FROM $table WHERE id = ? LIMIT 1");
+                    $id = (int) $payload[$key];
+                    $st->bind_param('i', $id);
+                    $st->execute();
+                    $drId = (int) ($st->get_result()->fetch_assoc()['dr_id'] ?? 0);
+                    $st->close();
+                }
+                if ($drId > 0) {
+                    $st = $conn->prepare("SELECT q.inquiry_id FROM noblepc_dr d
+                                          JOIN nobletransmittal t ON t.id = d.transmittal_id
+                                          JOIN noblepurchaserequest p ON p.id = t.pr_id
+                                          JOIN noblecrm_bom b ON b.id = p.bom_id
+                                          JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+                                          WHERE d.id = ? LIMIT 1");
+                    $st->bind_param('i', $drId);
+                    $st->execute();
+                    $inq = (int) ($st->get_result()->fetch_assoc()['inquiry_id'] ?? 0);
+                    $st->close();
+                    if ($inq > 0) nhRtInquiry($conn, $inq, [], 'crm_project');
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('pcRealtime: ' . $e->getMessage());
+        }
+    }
+}
+
 function tOut(array $d): void
 {
     echo json_encode($d);
@@ -189,6 +232,7 @@ if ($action === 'punch_save') {
     } else {
         tExec($conn, "INSERT INTO noblepc_punch (dr_id, area, deficiency, responsible, target_date, remarks, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())", 'issssss', [$drId, $area, $def, $resp, $target, $remarks, $me]);
     }
+    pcRealtime($conn, 'pc_punch', [[ROLE_PC, null]], ['dr_id' => $drId]);
     tOut(['success' => true]);
 }
 
@@ -206,6 +250,7 @@ if ($action === 'punch_status') {
     if ($to === 'fixed') tExec($conn, "UPDATE noblepc_punch SET status = 'fixed', fixed_by = ?, fixed_at = NOW(), verified_by = NULL, verified_at = NULL WHERE id = ?", 'si', [$me, $id]);
     elseif ($to === 'verified') tExec($conn, "UPDATE noblepc_punch SET status = 'verified', verified_by = ?, verified_at = NOW() WHERE id = ?", 'si', [$me, $id]);
     else tExec($conn, "UPDATE noblepc_punch SET status = 'open', fixed_by = NULL, fixed_at = NULL, verified_by = NULL, verified_at = NULL WHERE id = ?", 'i', [$id]);
+    pcRealtime($conn, 'pc_punch', [[ROLE_PC, null]], ['dr_id' => (int) $it['dr_id']]);
     tOut(['success' => true]);
 }
 
@@ -216,6 +261,7 @@ if ($action === 'punch_delete') {
     if (!$it) tOut(['success' => false, 'message' => 'Item not found.']);
     if (in_array($it['to_status'], ['approved', 'closed'], true)) tOut(['success' => false, 'message' => 'The turnover letter is already signed. The punch list is locked.']);
     tExec($conn, "DELETE FROM noblepc_punch WHERE id = ?", 'i', [$id]);
+    pcRealtime($conn, 'pc_punch', [[ROLE_PC, null]], ['dr_id' => (int) $it['dr_id']]);
     tOut(['success' => true]);
 }
 
@@ -277,6 +323,7 @@ if ($action === 'turnover_save') {
         $conn->rollback();
         tOut(['success' => false, 'message' => $e instanceof RuntimeException ? $e->getMessage() : 'Could not save the letter: ' . $e->getMessage()]);
     }
+    pcRealtime($conn, 'pc_turnover', [[ROLE_PC, null], [ROLE_SUPERADMIN, null]], ['dr_id' => $drId]);
     tOut(['success' => true]);
 }
 
@@ -310,6 +357,7 @@ if ($action === 'complete') {
     $n = tExec($conn, "UPDATE noblepc_turnover SET status = 'closed', accepted_date = ?, client_signed = 1, signed_copy = COALESCE(?, signed_copy), closed_by = ?, closed_at = NOW() WHERE id = ? AND status = 'approved'",
         'sssi', [$acc, $path, $me, (int) $t['id']]);
     if ($n !== 1) { if ($path) @unlink(ROOT_PATH . '/' . $path); tOut(['success' => false, 'message' => 'The turnover was changed by someone else. Please reload.']); }
+    pcRealtime($conn, 'pc_turnover', [[ROLE_PC, null], [ROLE_SUPERADMIN, null]], ['dr_id' => $drId]);
     tOut(['success' => true]);
 }
 

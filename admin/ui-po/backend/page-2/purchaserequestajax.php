@@ -12,6 +12,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
+include_once ROOT_PATH . '/network/po-bom-group.php';   // isang PR para sa lahat ng BOM na sabay ginawa sa Cutting
+
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
@@ -114,13 +116,24 @@ if ($action === 'create') {
     // Client = client ng BOM (hindi na tina-type, para pare-pareho sa BOM, PR at Transmittal)
     $client = trim((string) ($rqRow['client_name'] ?? ''));
     if ($client === '') prOut(['success' => false, 'message' => 'This BOM has no client name. Please check the BOM first.']);
-    // Bawal nang gumawa ng bagong Purchase Request kapag PAID na ang PR ng BOM na ito
-    $pd = $conn->prepare("SELECT req_no FROM noblepurchaserequest WHERE bom_id = ? AND paid_at IS NOT NULL LIMIT 1");
-    $pd->bind_param('i', $bomId);
-    $pd->execute();
-    $paidRow = $pd->get_result()->fetch_assoc();
-    $pd->close();
-    if ($paidRow) prOut(['success' => false, 'message' => "Purchase request {$paidRow['req_no']} for this BOM is already paid. A new one can no longer be made."]);
+
+    // Lahat ng BOM na sabay ginawa sa Cutting → iisang PR. Dapat na-receive na ang lahat.
+    $groupIds = poBomGroupIds($conn, $bomId) ?: [$bomId];
+    $bomId = $groupIds[0];   // lead = unang BOM ng grupo
+    $gIn = implode(',', array_map('intval', $groupIds));
+    $notYet = $conn->query("SELECT bom_number FROM noblecrm_bom WHERE id IN ($gIn) AND received_at IS NULL")->fetch_all(MYSQLI_ASSOC);
+    if ($notYet) prOut(['success' => false, 'message' => 'Receive all BOMs of this order first: ' . implode(', ', array_column($notYet, 'bom_number')) . '.']);
+
+    // Bawal nang gumawa ng bagong Purchase Request kapag PAID na ang PR ng alinmang BOM ng grupo
+    $paidSql = "SELECT req_no FROM noblepurchaserequest WHERE paid_at IS NOT NULL AND (bom_id IN ($gIn)"
+        . (poHasPrLink($conn) ? " OR id IN (SELECT pr_id FROM noblepurchaserequest_bom WHERE bom_id IN ($gIn))" : '') . ") LIMIT 1";
+    $paidRow = $conn->query($paidSql)->fetch_assoc();
+    if ($paidRow) prOut(['success' => false, 'message' => "Purchase request {$paidRow['req_no']} for this order is already paid. A new one can no longer be made."]);
+    // May PR pang hinihintay (hindi ibinalik)? Iwas doble
+    $openSql = "SELECT req_no FROM noblepurchaserequest WHERE status <> 'Rejected' AND (bom_id IN ($gIn)"
+        . (poHasPrLink($conn) ? " OR id IN (SELECT pr_id FROM noblepurchaserequest_bom WHERE bom_id IN ($gIn))" : '') . ") LIMIT 1";
+    $openRow = $conn->query($openSql)->fetch_assoc();
+    if ($openRow) prOut(['success' => false, 'message' => "Purchase request {$openRow['req_no']} for this order is still being processed."]);
 
     $requestedBy    = $rqRow['requested_by'] ?? '';
     $requestedBySig = $rqRow['requested_by_signature_path'] ?? null;
@@ -199,6 +212,8 @@ if ($action === 'create') {
         }
         $it->close();
 
+        poLinkPrBoms($conn, $prId, $groupIds);   // lahat ng BOM ng order
+
         $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
@@ -229,6 +244,24 @@ if ($action === 'create') {
         }
         $n->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang pag-save */ }
+
+    // Realtime: Superadmin/CEO (approval + bell), ibang PO (Purchase Orders, Client Series, listahan) + Sales/Designer ng inquiry
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $qq = $conn->prepare("SELECT quotation_id FROM noblecrm_bom WHERE id = ? LIMIT 1");
+        $qq->bind_param('i', $bomId);
+        $qq->execute();
+        $qid = (int) ($qq->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $qq->close();
+        $groups = [[ROLE_SUPERADMIN, null], [ROLE_PO, null]];
+        if ($qid > 0) {
+            nhRtQuotation($conn, $qid, $groups, 'pr_create');
+        } else {
+            foreach ($groups as $g) nhRealtimeNotifyGroup((string) $g[0], null, 'changed', ['type' => 'pr_create', 'pr_id' => $prId]);
+        }
+    } catch (Throwable $e) {
+        error_log('pr create realtime: ' . $e->getMessage());
+    }
 
     prOut(['success' => true, 'id' => $prId, 'req_no' => $reqNo]);
 }

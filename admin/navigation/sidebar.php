@@ -14,21 +14,21 @@ $isCustooAssistant = $position === POSITION_CUSTOASSISTANT;
 $isSuperAdmin = $position === POSITION_SUPERADMIN;
 
 if (!function_exists('sbIsActive')) {
-function sbIsActive(string $path): bool
-{
-    global $currentUrl;
-    $currentPath = rtrim((string) parse_url($currentUrl, PHP_URL_PATH), '/');
-    $path = rtrim($path, '/');
-    return $path !== '' && ($currentPath === $path || str_ends_with($currentPath, $path));
-}
+    function sbIsActive(string $path): bool
+    {
+        global $currentUrl;
+        $currentPath = rtrim((string) parse_url($currentUrl, PHP_URL_PATH), '/');
+        $path = rtrim($path, '/');
+        return $path !== '' && ($currentPath === $path || str_ends_with($currentPath, $path));
+    }
 
-// Naiwan para sa ibang file na tumatawag pa nito
-function isActive(string $path): string
-{
-    return sbIsActive($path)
-        ? 'bg-amber-50 text-amber-900 font-semibold shadow-[inset_3px_0_0_#b45309]'
-        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium';
-}
+    // Naiwan para sa ibang file na tumatawag pa nito
+    function isActive(string $path): string
+    {
+        return sbIsActive($path)
+            ? 'bg-amber-50 text-amber-900 font-semibold shadow-[inset_3px_0_0_#b45309]'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium';
+    }
 }
 
 $user_id = intval($_SESSION['account_id'] ?? 0);
@@ -107,7 +107,7 @@ if ($role === ROLE_ACCOUNTING) {
         $add('Main', $I('/accountingcustodian', 'fa-solid fa-circle-dollar-to-slot', 'Cash Voucher Request', 'toPrepare'));
         $add('Main', $I('/projectmonitor', 'fa-solid fa-file-circle-check', 'Project Monitor'));
         $add('Main', $I('/cashvoucherdashboard', 'fa-solid fa-money-bills', 'Approval Cash Voucher', 'unpreparedVoucher'));
-        $add('Main', $I('/accountingstaffpurchase', 'fa-solid fa-folder-tree', 'Receive Purchase', null, 'Receive Purchase Request'));
+        $add('Main', $I('/accountingstaffpurchase', 'fa-solid fa-folder-tree', 'Receive Purchase', 'prToReceive', 'Receive Purchase Request'));
     }
     if ($isCustodian) {
         $add('Main', $I('/accountingcustodiandashboard', 'fa-solid fa-chart-line', 'Dashboard Records'));
@@ -116,11 +116,11 @@ if ($role === ROLE_ACCOUNTING) {
 
         $add('Manage', $I('/projectmonitor', 'fa-solid fa-file-circle-check', 'Project Monitor'));
         $add('Manage', $I('/cashvoucherdashboard', 'fa-solid fa-ticket-simple', 'Approval Cash Voucher', 'unpreparedVoucher'));
-        $add('Manage', $I('/accountingcustodianpurchaseorder', 'fa-solid fa-file-signature', 'Purchase Request'));
+        $add('Manage', $I('/accountingcustodianpurchaseorder', 'fa-solid fa-file-signature', 'Purchase Request', 'prToRelease'));
     }
     if ($isCustooAssistant) {
         $add('Manage', $I('/accountingcustodian', 'fa-solid fa-circle-dollar-to-slot', 'Cash Voucher Request', 'toRelease'));
-        $add('Manage', $I('/accountingcustodianassistantpurchaseorder', 'fa-solid fa-file-circle-check', 'Purchase Request'));
+        $add('Manage', $I('/accountingcustodianassistantpurchaseorder', 'fa-solid fa-file-circle-check', 'Purchase Request', 'prToRelease'));
     }
 }
 
@@ -145,7 +145,7 @@ if ($role === ROLE_DESIGNER) {
     if ($isMainBranch && $isHead) {
         $add('Main', $I('/designer', 'fa-solid fa-wallet', 'Budget Request', null, 'Dashboard'));
     }
-    $add('Manage', $I('/crmdesigner', 'fa-solid fa-compass-drafting', 'CRM Designer'));
+    $add('Manage', $I('/crmdesigner', 'fa-solid fa-compass-drafting', 'CRM Designer', 'designerTodo'));
     if ($isHead) {
         $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Check Designer Quotation', 'designerReview'));
     }
@@ -158,16 +158,16 @@ if ($role === ROLE_SUPERADMIN) {
     $add('Main', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'E-Wood Management', 'ewoodPending'));
 
     $add('Tracking', $I('/monitoring', 'fa-solid fa-chart-simple', 'Monitoring & WorkBench', null, 'Monitoring'));
-    $add('Tracking', $I('/purchaseorderapproval', 'fa-solid fa-file-signature', 'Purchase Order Approval', null, 'Purchase Order'));
-    $add('Tracking', $I('/superadmin-dr', 'fa-solid fa-truck', 'Delivery Receipt'));
-    $add('Tracking', $I('/superadminlabor', 'fa-solid fa-helmet-safety', 'Labor Quotation'));
-    $add('Tracking', $I('/superadminbilling', 'fa-solid fa-file-invoice-dollar', 'Billing'));
-    $add('Tracking', $I('/superadminturnover', 'fa-solid fa-key', 'Turnover Letter'));
+    $add('Tracking', $I('/purchaseorderapproval', 'fa-solid fa-file-signature', 'Purchase Order Approval', 'prApproval', 'Purchase Order'));
+    $add('Tracking', $I('/superadmin-dr', 'fa-solid fa-truck', 'Delivery Receipt', 'saDrPending'));
+    $add('Tracking', $I('/superadminlabor', 'fa-solid fa-helmet-safety', 'Labor Quotation', 'saLaborPending'));
+    $add('Tracking', $I('/superadminbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'saBillingPending'));
+    $add('Tracking', $I('/superadminturnover', 'fa-solid fa-key', 'Turnover Letter', 'saTurnoverPending'));
 }
 
 if ($role === ROLE_CUTTING) {
     if ($isMainBranch) {
-        $add('Main', $I('/crmcuttinglist', 'fa-solid fa-pen-ruler', 'Cutting List', null, '2D & Quotation Approval'));
+        $add('Main', $I('/crmcuttinglist', 'fa-solid fa-pen-ruler', 'Cutting List', 'cuttingTodo', '2D & Quotation Approval'));
     }
     $add('Main', $I('/crmewood', 'fa-solid fa-tree', 'E-Woodfile', 'ewoodTodo', 'Wood Working'));
 }
@@ -186,17 +186,17 @@ if ($role === ROLE_PO) {
         $add('Main', $I('/crmpurchaseorder', 'fa-solid fa-file-signature', 'Purchase Order', 'poTodo', 'Dashboard'));
     }
     $add('Main', $I('/clientseries', 'fa-solid fa-user-gear', 'Client Series'));
-    $add('Main', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal Summary'));
+    $add('Main', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal Summary', 'poForDelivery'));
 }
 
 if ($role === ROLE_PC) {
     if ($isMainBranch) {
-        $add('Main', $I('/coordinator', 'fa-solid fa-helmet-safety', 'Coordinator'));
+        $add('Main', $I('/coordinator', 'fa-solid fa-helmet-safety', 'Coordinator', 'pcDrTodo'));
     }
-    $add('Main', $I('/coordinatorlabor', 'fa-solid fa-user-gear', 'Labor Quotation'));
-    $add('Main', $I('/coordinatortimeline', 'fa-solid fa-chart-gantt', 'Timeline'));
-    $add('Progress Billing', $I('/coordinatorbilling', 'fa-solid fa-file-invoice-dollar', 'Billing'));
-    $add('Punch list & Turnover', $I('/coordinatorturnover', 'fa-solid fa-key', 'Turnover Letter'));
+    $add('Main', $I('/coordinatorlabor', 'fa-solid fa-user-gear', 'Labor Quotation', 'pcLaborTodo'));
+    $add('Main', $I('/coordinatortimeline', 'fa-solid fa-chart-gantt', 'Timeline', 'pcTimelineTodo'));
+    $add('Progress Billing', $I('/coordinatorbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'pcBillingTodo'));
+    $add('Punch list & Turnover', $I('/coordinatorturnover', 'fa-solid fa-key', 'Turnover Letter', 'pcTurnoverTodo'));
 }
 
 // Para sa lahat ng posisyon ng Accounting
@@ -204,7 +204,7 @@ $sbAccountingAll = $role === ROLE_ACCOUNTING && in_array($position, [POSITION_HE
 $sbFollowups = $sbAccountingAll
     ? [$I('/accountingfollowups', 'fa-solid fa-file-arrow-up', 'Follow-ups', 'followupWaiting')]
     : [];
-$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING)
+$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC)
     ? [$I('/accountingsignatured', 'fa-solid fa-signature', 'Signatured Request')]
     : [];
 
@@ -213,55 +213,56 @@ $sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_P
 // ═══════════════════════════════════════════════════════════════
 
 // Kapag naka-collapse: icon lang, nakagitna (ang tooltip ay #sb-tip sa ibaba — fixed para hindi maputol ng scroll)
-if (!defined('SB_TIP')) define('SB_TIP', 'group-[.collapsed]/sb:justify-center group-[.collapsed]/sb:px-0');
+if (!defined('SB_TIP'))
+    define('SB_TIP', 'group-[.collapsed]/sb:justify-center group-[.collapsed]/sb:px-0');
 
 if (!function_exists('sbItem')) {
-function sbItem(array $it, bool $mobile = false): string
-{
-    global $counts;
-    $on = $it['active'] !== '' && sbIsActive($it['active']);
-    $href = $it['href'] === '#' ? '#' : BASE_URL . $it['href'];
-    $state = $on
-        ? 'bg-amber-50 text-amber-900 font-semibold shadow-[inset_3px_0_0_#b45309]'
-        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium';
-    $iconCls = $on ? 'text-amber-700' : 'text-gray-400 group-hover/it:text-gray-600';
-    $badge = $it['badge'] ? sidebarBadge($it['badge'], $counts[$it['badge']] ?? 0) : '';
-    $label = htmlspecialchars($it['label']);
+    function sbItem(array $it, bool $mobile = false): string
+    {
+        global $counts;
+        $on = $it['active'] !== '' && sbIsActive($it['active']);
+        $href = $it['href'] === '#' ? '#' : BASE_URL . $it['href'];
+        $state = $on
+            ? 'bg-amber-50 text-amber-900 font-semibold shadow-[inset_3px_0_0_#b45309]'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium';
+        $iconCls = $on ? 'text-amber-700' : 'text-gray-400 group-hover/it:text-gray-600';
+        $badge = $it['badge'] ? sidebarBadge($it['badge'], $counts[$it['badge']] ?? 0) : '';
+        $label = htmlspecialchars($it['label']);
 
-    if ($mobile) {
-        return '<a href="' . htmlspecialchars($href) . '" onclick="closeMobileDrawer()"'
-            . ' class="group/it flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition ' . $state . '"'
+        if ($mobile) {
+            return '<a href="' . htmlspecialchars($href) . '" onclick="closeMobileDrawer()"'
+                . ' class="group/it flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition ' . $state . '"'
+                . ($on ? ' aria-current="page"' : '') . '>'
+                . '<i class="' . $it['icon'] . ' w-4 text-center text-sm shrink-0 ' . $iconCls . '"></i>'
+                . '<span class="flex-1 truncate">' . $label . '</span>' . $badge . '</a>';
+        }
+
+        return '<a href="' . htmlspecialchars($href) . '" data-tooltip="' . htmlspecialchars($it['tip']) . '"'
+            . ' class="group/it relative flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition ' . $state . ' ' . SB_TIP . '"'
             . ($on ? ' aria-current="page"' : '') . '>'
-            . '<i class="' . $it['icon'] . ' w-4 text-center text-sm shrink-0 ' . $iconCls . '"></i>'
-            . '<span class="flex-1 truncate">' . $label . '</span>' . $badge . '</a>';
+            . '<i class="' . $it['icon'] . ' w-4 text-center text-[13px] shrink-0 ' . $iconCls . '"></i>'
+            . '<span class="sidebar-label flex-1 truncate group-[.collapsed]/sb:hidden">' . $label . '</span>'
+            . ($badge ? '<span class="shrink-0 group-[.collapsed]/sb:absolute group-[.collapsed]/sb:-top-0.5 group-[.collapsed]/sb:right-0.5 group-[.collapsed]/sb:scale-75">' . $badge . '</span>' : '')
+            . '</a>';
     }
 
-    return '<a href="' . htmlspecialchars($href) . '" data-tooltip="' . htmlspecialchars($it['tip']) . '"'
-        . ' class="group/it relative flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition ' . $state . ' ' . SB_TIP . '"'
-        . ($on ? ' aria-current="page"' : '') . '>'
-        . '<i class="' . $it['icon'] . ' w-4 text-center text-[13px] shrink-0 ' . $iconCls . '"></i>'
-        . '<span class="sidebar-label flex-1 truncate group-[.collapsed]/sb:hidden">' . $label . '</span>'
-        . ($badge ? '<span class="shrink-0 group-[.collapsed]/sb:absolute group-[.collapsed]/sb:-top-0.5 group-[.collapsed]/sb:right-0.5 group-[.collapsed]/sb:scale-75">' . $badge . '</span>' : '')
-        . '</a>';
-}
-
-function sbSectionLabel(string $label, bool $first, bool $mobile = false): string
-{
-    if ($mobile) {
-        return '<p class="px-3 ' . ($first ? 'pt-1' : 'pt-4') . ' pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">' . htmlspecialchars($label) . '</p>';
+    function sbSectionLabel(string $label, bool $first, bool $mobile = false): string
+    {
+        if ($mobile) {
+            return '<p class="px-3 ' . ($first ? 'pt-1' : 'pt-4') . ' pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">' . htmlspecialchars($label) . '</p>';
+        }
+        return '<p class="sidebar-section-label px-3 ' . ($first ? 'pt-0.5' : 'pt-4') . ' pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400 truncate group-[.collapsed]/sb:hidden">' . htmlspecialchars($label) . '</p>'
+            . ($first ? '' : '<div class="hidden group-[.collapsed]/sb:block mx-3 my-2.5 h-px bg-gray-200"></div>');
     }
-    return '<p class="sidebar-section-label px-3 ' . ($first ? 'pt-0.5' : 'pt-4') . ' pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400 truncate group-[.collapsed]/sb:hidden">' . htmlspecialchars($label) . '</p>'
-        . ($first ? '' : '<div class="hidden group-[.collapsed]/sb:block mx-3 my-2.5 h-px bg-gray-200"></div>');
-}
 
-function sbWatermark(string $id): string
-{
-    return '<div class="sb-glow pointer-events-none absolute -left-[60px] bottom-10 w-[220px] h-[220px] rounded-full z-0 bg-[radial-gradient(circle,rgba(249,115,22,.10)_0%,transparent_70%)] transition-opacity group-[.collapsed]/sb:opacity-0" aria-hidden="true"></div>'
-        . '<div class="sb-watermark pointer-events-none select-none absolute -left-[46px] bottom-16 w-[250px] z-0 opacity-[.09] transition-opacity group-[.collapsed]/sb:opacity-0 [-webkit-mask-image:linear-gradient(180deg,transparent_0%,#000_45%,#000_80%,transparent_100%)] [mask-image:linear-gradient(180deg,transparent_0%,#000_45%,#000_80%,transparent_100%)]" aria-hidden="true">'
-        . '<svg class="block w-full h-auto" viewBox="0 0 1930 1640" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sbWmGrad' . $id . '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></linearGradient></defs>'
-        . '<g fill="url(#sbWmGrad' . $id . ')"><polygon points="70,695 962,70 1475,430 1475,280 1605,280 1605,530 1860,713 1787,820 962,232 145,802"/><polygon points="265,830 338,775 786,1330 790,455 920,367 920,1568 793,1568 397,1060 397,1568 265,1568"/></g>'
-        . '<g fill="#1f2937"><polygon points="410,722 702,518 706,1088"/><polygon points="1005,347 1135,438 1135,950 1457,950 1457,668 1588,762 1588,1568 1457,1568 1457,1080 1135,1080 1135,1568 1005,1568"/></g></svg></div>';
-}
+    function sbWatermark(string $id): string
+    {
+        return '<div class="sb-glow pointer-events-none absolute -left-[60px] bottom-10 w-[220px] h-[220px] rounded-full z-0 bg-[radial-gradient(circle,rgba(249,115,22,.10)_0%,transparent_70%)] transition-opacity group-[.collapsed]/sb:opacity-0" aria-hidden="true"></div>'
+            . '<div class="sb-watermark pointer-events-none select-none absolute -left-[46px] bottom-16 w-[250px] z-0 opacity-[.09] transition-opacity group-[.collapsed]/sb:opacity-0 [-webkit-mask-image:linear-gradient(180deg,transparent_0%,#000_45%,#000_80%,transparent_100%)] [mask-image:linear-gradient(180deg,transparent_0%,#000_45%,#000_80%,transparent_100%)]" aria-hidden="true">'
+            . '<svg class="block w-full h-auto" viewBox="0 0 1930 1640" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sbWmGrad' . $id . '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></linearGradient></defs>'
+            . '<g fill="url(#sbWmGrad' . $id . ')"><polygon points="70,695 962,70 1475,430 1475,280 1605,280 1605,530 1860,713 1787,820 962,232 145,802"/><polygon points="265,830 338,775 786,1330 790,455 920,367 920,1568 793,1568 397,1060 397,1568 265,1568"/></g>'
+            . '<g fill="#1f2937"><polygon points="410,722 702,518 706,1088"/><polygon points="1005,347 1135,438 1135,950 1457,950 1457,668 1588,762 1588,1568 1457,1568 1457,1080 1135,1080 1135,1568 1005,1568"/></g></svg></div>';
+    }
 }
 
 // Manipis na scrollbar + "pop" ng badge kapag nagbago ang bilang
@@ -286,24 +287,33 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
     <div id="sidebar-logo-area" class="relative z-[1] border-b border-gray-100">
         <div class="<?= $sbHazard ?> h-1"></div>
         <div class="px-3.5 pt-3.5 pb-3 group-[.collapsed]/sb:px-0">
-            <div id="sidebar-logo-row" class="flex items-center gap-2.5 group-[.collapsed]/sb:flex-col group-[.collapsed]/sb:gap-2">
-                <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-8 w-auto object-contain shrink-0">
+            <div id="sidebar-logo-row"
+                class="flex items-center gap-2.5 group-[.collapsed]/sb:flex-col group-[.collapsed]/sb:gap-2">
+                <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo"
+                    class="h-8 w-auto object-contain shrink-0">
                 <span class="sidebar-logo-text min-w-0 leading-tight group-[.collapsed]/sb:hidden">
-                    <span class="block text-[13px] font-extrabold tracking-tight text-gray-900 whitespace-nowrap">Noble<span class="text-amber-600">Home</span></span>
-                    <span class="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400">Department</span>
+                    <span
+                        class="block text-[13px] font-extrabold tracking-tight text-gray-900 whitespace-nowrap">Noble<span
+                            class="text-amber-600">Home</span></span>
+                    <span
+                        class="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400">Department</span>
                 </span>
-                <button id="sidebar-toggle" type="button" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar"
+                <button id="sidebar-toggle" type="button" onclick="toggleSidebar()" title="Toggle sidebar"
+                    aria-label="Toggle sidebar"
                     class="ml-auto group-[.collapsed]/sb:ml-0 inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200 bg-white text-gray-400 hover:text-amber-700 hover:border-amber-300 transition-transform duration-[250ms] group-[.collapsed]/sb:rotate-180 shrink-0">
                     <i class="fa-solid fa-angles-left text-[9px]"></i>
                 </button>
             </div>
 
             <?php if (!empty($sessionBranch)): ?>
-                <div class="sidebar-label mt-3 flex items-center gap-1.5 rounded-lg bg-gray-50 border border-gray-200 px-2.5 py-1.5 group-[.collapsed]/sb:hidden" title="Branch">
+                <div class="sidebar-label mt-3 flex items-center gap-1.5 rounded-lg bg-gray-50 border border-gray-200 px-2.5 py-1.5 group-[.collapsed]/sb:hidden"
+                    title="Branch">
                     <i class="fa-solid fa-location-dot text-[10px] text-amber-600"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wide text-gray-600 truncate"><?= htmlspecialchars($sessionBranch) ?></span>
+                    <span
+                        class="text-[10px] font-bold uppercase tracking-wide text-gray-600 truncate"><?= htmlspecialchars($sessionBranch) ?></span>
                     <?php if ($isMainBranch): ?>
-                        <span class="ml-auto shrink-0 px-1.5 py-px rounded bg-amber-100 text-amber-800 text-[9px] font-bold uppercase">Main</span>
+                        <span
+                            class="ml-auto shrink-0 px-1.5 py-px rounded bg-amber-100 text-amber-800 text-[9px] font-bold uppercase">Main</span>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -311,15 +321,18 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
     </div>
 
     <!-- Nav Links -->
-    <nav class="relative z-[1] flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden <?= $sbScroll ?> <?= $sbBadgePop ?>">
+    <nav
+        class="relative z-[1] flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden <?= $sbScroll ?> <?= $sbBadgePop ?>">
         <?php $first = true;
         foreach ($sbMenu as $section => $items):
             echo sbSectionLabel($section, $first);
             $first = false;
-            foreach ($items as $it) echo sbItem($it);
+            foreach ($items as $it)
+                echo sbItem($it);
         endforeach; ?>
 
-        <?= sbSectionLabel('Notifications', $first); $first = false; ?>
+        <?= sbSectionLabel('Notifications', $first);
+        $first = false; ?>
         <button type="button" onclick="toggleSidebarNotif()" data-tooltip="Notifications"
             class="group/it relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition <?= SB_TIP ?>">
             <span class="relative w-4 flex items-center justify-center shrink-0">
@@ -327,19 +340,23 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
                 <span id="sidebar-notif-badge"
                     class="hidden absolute -top-1.5 -right-2 min-w-[15px] h-[15px] bg-red-500 rounded-full ring-2 ring-white text-[8px] font-bold text-white flex items-center justify-center px-0.5"></span>
             </span>
-            <span id="sidebar-notif-badge-wrap" class="sidebar-label flex-1 text-left flex items-center gap-2 text-xs group-[.collapsed]/sb:hidden">Notifications</span>
-            <i id="sidebar-notif-chevron" class="sidebar-label fa-solid fa-chevron-right text-[9px] text-gray-300 transition-transform duration-200 group-[.collapsed]/sb:hidden"></i>
+            <span id="sidebar-notif-badge-wrap"
+                class="sidebar-label flex-1 text-left flex items-center gap-2 text-xs group-[.collapsed]/sb:hidden">Notifications</span>
+            <i id="sidebar-notif-chevron"
+                class="sidebar-label fa-solid fa-chevron-right text-[9px] text-gray-300 transition-transform duration-200 group-[.collapsed]/sb:hidden"></i>
         </button>
 
         <?php if ($sbFollowups): ?>
             <?= sbSectionLabel('Follow-ups', false) ?>
-            <?php foreach ($sbFollowups as $it) echo sbItem($it); ?>
+            <?php foreach ($sbFollowups as $it)
+                echo sbItem($it); ?>
         <?php endif; ?>
 
         <?= sbSectionLabel('Settings', false) ?>
         <?php $translateVariant = 'desktop';
         include ROOT_PATH . '/admin/navigation/settings/translate.php'; ?>
-        <?php foreach ($sbSettings as $it) echo sbItem($it); ?>
+        <?php foreach ($sbSettings as $it)
+            echo sbItem($it); ?>
     </nav>
 
     <!-- User Profile Block -->
@@ -362,8 +379,10 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             <div class="user-text flex-1 min-w-0 group-[.collapsed]/sb:hidden">
                 <p class="text-xs font-semibold text-gray-900 truncate"><?= htmlspecialchars($sbUserName) ?></p>
                 <p class="text-[10px] truncate">
-                    <span class="font-bold uppercase tracking-wide" style="color: <?= $currentRoleColor ?>;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></span>
-                    <?php if ($sbPositionLabel !== ''): ?><span class="text-gray-400"> · <?= htmlspecialchars($sbPositionLabel) ?></span><?php endif; ?>
+                    <span class="font-bold uppercase tracking-wide"
+                        style="color: <?= $currentRoleColor ?>;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></span>
+                    <?php if ($sbPositionLabel !== ''): ?><span class="text-gray-400"> ·
+                            <?= htmlspecialchars($sbPositionLabel) ?></span><?php endif; ?>
                 </p>
             </div>
             <i class="user-text fa-solid fa-ellipsis-vertical text-gray-300 text-xs group-[.collapsed]/sb:hidden"></i>
@@ -385,10 +404,12 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
                         <p class="text-sm font-bold text-gray-900 truncate"><?= htmlspecialchars($sbUserName) ?></p>
                         <p class="text-[11px] text-gray-500 truncate">
                             <?= htmlspecialchars($sbPositionLabel) ?>
-                            <?php if (!empty($sessionBranch)): ?>&middot; <?= htmlspecialchars($sessionBranch) ?><?php endif; ?>
+                            <?php if (!empty($sessionBranch)): ?>&middot;
+                                <?= htmlspecialchars($sessionBranch) ?><?php endif; ?>
                         </p>
                         <div class="mt-1 flex items-center gap-2">
-                            <span class="text-[10px] font-bold uppercase tracking-wide truncate" style="color: <?= $currentRoleColor ?>;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></span>
+                            <span class="text-[10px] font-bold uppercase tracking-wide truncate"
+                                style="color: <?= $currentRoleColor ?>;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></span>
                             <span class="inline-flex items-center gap-1">
                                 <span id="user-card-dot" class="w-2 h-2 rounded-full bg-gray-300"></span>
                                 <span id="user-card-status" class="text-[10px] font-semibold text-gray-400">Away</span>
@@ -424,7 +445,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
 
         <div class="flex items-center gap-2 min-w-0">
             <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-7 w-auto object-contain">
-            <span class="text-[13px] font-extrabold tracking-tight text-gray-900">Noble<span class="text-amber-600">Home</span></span>
+            <span class="text-[13px] font-extrabold tracking-tight text-gray-900">Noble<span
+                    class="text-amber-600">Home</span></span>
         </div>
 
         <div class="flex items-center gap-1">
@@ -438,7 +460,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
                 class="relative w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
                 style="background-color: <?= $currentRoleColor ?>1A; color: <?= $currentRoleColor ?>; box-shadow: inset 0 0 0 1.5px <?= $currentRoleColor ?>55;">
                 <?= htmlspecialchars($sbInitial) ?>
-                <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
+                <span
+                    class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
             </button>
         </div>
     </div>
@@ -448,7 +471,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
 <!--  MOBILE DRAWER                                              -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div id="mobile-overlay" onclick="closeMobileDrawer()"
-    class="md:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] opacity-0 pointer-events-none transition-opacity duration-300 [&.open]:opacity-100 [&.open]:pointer-events-auto"></div>
+    class="md:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] opacity-0 pointer-events-none transition-opacity duration-300 [&.open]:opacity-100 [&.open]:pointer-events-auto">
+</div>
 
 <div id="mobile-drawer"
     class="md:hidden fixed top-0 left-0 h-screen w-72 max-w-[85vw] bg-white z-[70] flex flex-col shadow-2xl overflow-hidden -translate-x-full transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] [&.open]:translate-x-0">
@@ -461,12 +485,15 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             <div class="flex items-center gap-2.5 min-w-0">
                 <img src="<?= BASE_URL ?>/icon/logo.webp" alt="NobleHome Logo" class="h-8 w-auto object-contain">
                 <span class="leading-tight min-w-0">
-                    <span class="block text-[13px] font-extrabold tracking-tight text-gray-900">Noble<span class="text-amber-600">Home</span></span>
-                    <span class="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400">Department</span>
+                    <span class="block text-[13px] font-extrabold tracking-tight text-gray-900">Noble<span
+                            class="text-amber-600">Home</span></span>
+                    <span
+                        class="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400">Department</span>
                 </span>
             </div>
             <button type="button" onclick="closeMobileDrawer()" aria-label="Close"
-                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
+                    class="fa-solid fa-xmark text-base leading-none"></i></button>
         </div>
     </div>
 
@@ -478,19 +505,24 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
                     style="background-color: <?= $currentRoleColor ?>1A; color: <?= $currentRoleColor ?>; box-shadow: inset 0 0 0 1.5px <?= $currentRoleColor ?>55;">
                     <?= htmlspecialchars($sbInitial) ?>
                 </div>
-                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
+                <span
+                    class="absolute -bottom-0.5 -right-0.5 w-3 h-3 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-[13px] font-semibold text-gray-900 truncate"><?= htmlspecialchars($sbUserName) ?></p>
                 <p class="text-[10px] truncate">
-                    <span class="font-bold uppercase tracking-wide" style="color: <?= $currentRoleColor ?>;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></span>
+                    <span class="font-bold uppercase tracking-wide"
+                        style="color: <?= $currentRoleColor ?>;"><?= htmlspecialchars($_SESSION['role'] ?? '') ?></span>
                     <span class="text-gray-400">
-                        <?php if ($sbPositionLabel !== ''): ?> · <?= htmlspecialchars($sbPositionLabel) ?><?php endif; ?>
+                        <?php if ($sbPositionLabel !== ''): ?> ·
+                            <?= htmlspecialchars($sbPositionLabel) ?><?php endif; ?>
                         <?php if (!empty($sessionBranch)): ?> · <?= htmlspecialchars($sessionBranch) ?><?php endif; ?>
                     </span>
                 </p>
-                <p class="text-[10px] font-semibold mt-0.5 inline-flex items-center gap-1 <?= $isOnline ? 'text-green-600' : 'text-gray-400' ?>">
-                    <span class="w-1.5 h-1.5 rounded-full <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?>"></span><?= $isOnline ? 'Online' : 'Away' ?>
+                <p
+                    class="text-[10px] font-semibold mt-0.5 inline-flex items-center gap-1 <?= $isOnline ? 'text-green-600' : 'text-gray-400' ?>">
+                    <span
+                        class="w-1.5 h-1.5 rounded-full <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?>"></span><?= $isOnline ? 'Online' : 'Away' ?>
                 </p>
             </div>
         </div>
@@ -507,22 +539,28 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
     </div>
 
     <!-- Drawer Nav (parehong menu ng desktop) -->
-    <nav class="relative z-[1] flex-1 px-3 py-3 space-y-0.5 overflow-y-auto overscroll-contain <?= $sbScroll ?> <?= $sbBadgePop ?>">
+    <nav
+        class="relative z-[1] flex-1 px-3 py-3 space-y-0.5 overflow-y-auto overscroll-contain <?= $sbScroll ?> <?= $sbBadgePop ?>">
         <?php $first = true;
         foreach ($sbMenu as $section => $items):
             echo sbSectionLabel($section, $first, true);
             $first = false;
-            foreach ($items as $it) echo sbItem($it, true);
+            foreach ($items as $it)
+                echo sbItem($it, true);
         endforeach; ?>
 
         <?php if ($sbFollowups): ?>
-            <?= sbSectionLabel('Follow-ups', $first, true); $first = false; ?>
-            <?php foreach ($sbFollowups as $it) echo sbItem($it, true); ?>
+            <?= sbSectionLabel('Follow-ups', $first, true);
+            $first = false; ?>
+            <?php foreach ($sbFollowups as $it)
+                echo sbItem($it, true); ?>
         <?php endif; ?>
 
         <?php if ($sbSettings): ?>
-            <?= sbSectionLabel('Settings', $first, true); $first = false; ?>
-            <?php foreach ($sbSettings as $it) echo sbItem($it, true); ?>
+            <?= sbSectionLabel('Settings', $first, true);
+            $first = false; ?>
+            <?php foreach ($sbSettings as $it)
+                echo sbItem($it, true); ?>
         <?php endif; ?>
     </nav>
 </div>
@@ -530,7 +568,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!--  NOTIFICATION PANEL (laman: js/global-notif.js)             -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<div id="notif-overlay" onclick="toggleSidebarNotif()" class="hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"></div>
+<div id="notif-overlay" onclick="toggleSidebarNotif()"
+    class="hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"></div>
 
 <div id="notif-panel"
     class="fixed top-0 z-50 h-screen bg-white border-r border-gray-200 shadow-2xl flex flex-col transition-all duration-300 ease-in-out"
@@ -539,7 +578,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
 
     <div class="flex items-center justify-between gap-3 px-4 py-4 border-b border-gray-100 shrink-0">
         <div class="flex items-center gap-3 min-w-0">
-            <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+            <span
+                class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
                 <i class="fa-regular fa-bell"></i>
             </span>
             <div class="min-w-0">
@@ -552,7 +592,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             </div>
         </div>
         <button type="button" onclick="toggleSidebarNotif()" aria-label="Close"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+            class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
+                class="fa-solid fa-xmark text-base leading-none"></i></button>
     </div>
 
     <div class="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 shrink-0">
@@ -563,7 +604,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
         </button>
     </div>
 
-    <div id="sidebar-notif-list" class="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-gray-100 <?= $sbScroll ?>">
+    <div id="sidebar-notif-list"
+        class="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-gray-100 <?= $sbScroll ?>">
         <div class="px-6 py-16 text-center">
             <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-3">
                 <i class="fa-regular fa-bell-slash text-xl"></i>
@@ -576,7 +618,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
 
 <!-- Tooltip ng collapsed sidebar -->
 <div id="sb-tip" role="tooltip"
-    class="hidden fixed z-[999] pointer-events-none -translate-y-1/2 px-2.5 py-1 rounded-md bg-gray-900 text-white text-[11px] font-medium whitespace-nowrap shadow-lg before:content-[''] before:absolute before:-left-2.5 before:top-1/2 before:-translate-y-1/2 before:border-[5px] before:border-transparent before:border-r-gray-900"></div>
+    class="hidden fixed z-[999] pointer-events-none -translate-y-1/2 px-2.5 py-1 rounded-md bg-gray-900 text-white text-[11px] font-medium whitespace-nowrap shadow-lg before:content-[''] before:absolute before:-left-2.5 before:top-1/2 before:-translate-y-1/2 before:border-[5px] before:border-transparent before:border-r-gray-900">
+</div>
 <script>
     (() => {
         const sb = document.getElementById('sidebar');
@@ -598,6 +641,78 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
     })();
 
     var CURRENT_USER_ID = <?= intval($_SESSION['account_id'] ?? 0) ?>;
+</script>
+
+<?php
+// ═══════════════════════════════════════════════════════════════
+//  REALTIME HUB (Supabase Broadcast) — iisang koneksyon bawat tab para sa lahat ng page
+//  Nakikinig sa: sariling channel ng user + channel ng department + department/position.
+//  Ang mga page ay gumagamit ng window.NH_RT.on(topic, event, cb) — hindi na sila gagawa ng sariling koneksyon.
+// ═══════════════════════════════════════════════════════════════
+include_once ROOT_PATH . '/network/realtime-helper.php';
+$nhRtUid = intval($_SESSION['account_id'] ?? 0);
+$nhRtCfg = [
+    'url' => NH_SUPABASE_URL,
+    'key' => NH_SUPABASE_ANON_KEY,
+    'enabled' => $nhRtUid > 0 && !str_contains(NH_SUPABASE_URL, 'YOUR-PROJECT-REF') && NH_SUPABASE_ANON_KEY !== '',
+    'topics' => array_values(array_unique(array_filter([
+        'user' => $nhRtUid > 0 ? nhRealtimeTopic($nhRtUid, 'budget') : '',              // personal (hal. bagong budget request, notif)
+        'role' => $role !== '' ? nhRealtimeGroupTopic($role) : '',                       // buong department
+        'rolepos' => ($role !== '' && $position !== '') ? nhRealtimeGroupTopic($role, $position) : '', // department + position
+    ]))),
+];
+if (!defined('NH_RT_LOADED'))
+    define('NH_RT_LOADED', true);
+?>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+    window.NH_RT = (function () {
+        const cfg = <?= json_encode($nhRtCfg, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+        const listeners = [];      // { topic, event, cb }
+        const liveCbs = [];
+        const state = {};          // topic → status
+        let live = false;
+
+        function setLive() {
+            const now = cfg.topics.length > 0 && cfg.topics.every(t => state[t] === 'SUBSCRIBED');
+            if (now === live) return;
+            live = now;
+            liveCbs.forEach(cb => { try { cb(live); } catch (e) { console.error(e); } });
+        }
+        function emit(topic, msg) {
+            const event = msg?.event || '';
+            const payload = msg?.payload || {};
+            listeners.forEach(l => {
+                if ((l.topic === '*' || l.topic === topic) && (l.event === '*' || l.event === event)) {
+                    try { l.cb(payload, { topic, event }); } catch (e) { console.error('NH_RT listener:', e); }
+                }
+            });
+            document.dispatchEvent(new CustomEvent('nh:realtime', { detail: { topic, event, payload } }));
+        }
+
+        if (cfg.enabled && window.supabase?.createClient) {
+            try {
+                const sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: false } });
+                cfg.topics.forEach(topic => {
+                    sb.channel(topic)
+                        .on('broadcast', { event: '*' }, msg => emit(topic, msg))
+                        .subscribe(status => { state[topic] = status; setLive(); });
+                });
+            } catch (e) {
+                console.error('NH_RT:', e);
+            }
+        }
+
+        return {
+            enabled: !!cfg.enabled,
+            topics: cfg.topics,
+            isLive: () => live,
+            // topic: eksaktong channel o '*' (lahat) · event: hal. 'changed' o '*'
+            on(topic, event, cb) { listeners.push({ topic, event, cb }); },
+            // tatawagin agad (kasalukuyang lagay) at tuwing magbabago ang Live
+            onLive(cb) { liveCbs.push(cb); try { cb(live); } catch (e) { } },
+        };
+    })();
 </script>
 
 <script src="<?= BASE_URL ?>/js/global-notif.js?v=<?= time() ?>"></script>

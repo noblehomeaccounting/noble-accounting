@@ -628,6 +628,15 @@ if ($action === 'review') {
         }
     }
 
+    // Realtime: Sales + Designer ng inquiry, ibang Designer Head (badge + listahan),
+    // at Accounting Head kapag approved (CRM List · Waiting for deposit)
+    if ($ok) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $rtGroups = [[ROLE_DESIGNER, POSITION_HEAD]];
+        if ($overallStatus === 'Approved') $rtGroups[] = [ROLE_ACCOUNTING, POSITION_HEAD];
+        nhRtInquiry($conn, (int) $current['inquiry_id'], $rtGroups, 'crm_head_review');
+    }
+
     $message = $overallStatus === 'Approved' ? 'Submission approved.' : 'Sent back for revision.';
     echo json_encode(['success' => (bool) $ok, 'message' => $ok ? $message : 'Failed to save review.']);
     exit;
@@ -750,6 +759,12 @@ if ($action === 'review_3d') {
         $conn->commit();
     } else {
         $conn->rollback();
+    }
+
+    // Realtime: Sales + Designer ng inquiry at ibang Designer Head
+    if ($ok) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        nhRtInquiry($conn, (int) $current['inquiry_id'], [[ROLE_DESIGNER, POSITION_HEAD]], 'crm_head_review');
     }
 
     echo json_encode(['success' => (bool) $ok, 'message' => $ok ? $message : 'Failed to save review.']);

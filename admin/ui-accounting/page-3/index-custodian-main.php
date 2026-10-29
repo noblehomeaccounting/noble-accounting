@@ -35,8 +35,9 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-                <div class="flex items-center gap-2 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <div
+                    class="flex items-center gap-2 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
+                    <span id="cv-live-dot" class="w-2 h-2 rounded-full bg-amber-400" title="Green = Live"></span>
                     <span id="last-updated">Loading…</span>
                 </div>
                 <!-- View Toggle -->
@@ -57,21 +58,26 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 mb-5" id="cv-tabs">
             <?php
             $cvTabs = [
-                ['all',              'All this month',    'fa-layer-group',     'bg-amber-50 text-amber-700'],
-                ['none',             'Not submitted',     'fa-file-circle-plus','bg-gray-100 text-gray-500'],
-                ['voucher_approval', 'For approval',      'fa-hourglass-half',  'bg-yellow-50 text-yellow-600'],
-                ['ready_to_release', 'Ready to release',  'fa-box-open',        'bg-blue-50 text-blue-600'],
-                ['released',         'Released',          'fa-circle-check',    'bg-green-50 text-green-600'],
+                ['all', 'All this month', 'fa-layer-group', 'bg-amber-50 text-amber-700'],
+                ['none', 'Not submitted', 'fa-file-circle-plus', 'bg-gray-100 text-gray-500'],
+                ['voucher_approval', 'For approval', 'fa-hourglass-half', 'bg-yellow-50 text-yellow-600'],
+                ['ready_to_release', 'Ready to release', 'fa-box-open', 'bg-blue-50 text-blue-600'],
+                ['released', 'Released', 'fa-circle-check', 'bg-green-50 text-green-600'],
             ];
             foreach ($cvTabs as $i => [$key, $label, $icon, $tone]): ?>
-                <button type="button" data-tab="<?= $key ?>" data-active="<?= $key === 'all' ? 1 : 0 ?>" onclick="setStatusTab('<?= $key ?>')"
+                <button type="button" data-tab="<?= $key ?>" data-active="<?= $key === 'all' ? 1 : 0 ?>"
+                    onclick="setStatusTab('<?= $key ?>')"
                     class="cv-tab border rounded-xl p-3.5 flex items-center gap-3 text-left shadow-sm transition min-w-0 <?= $i === 0 ? 'col-span-2 sm:col-span-1' : '' ?>">
-                    <span class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 <?= $tone ?>"><i class="fa-solid <?= $icon ?>"></i></span>
+                    <span class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 <?= $tone ?>"><i
+                            class="fa-solid <?= $icon ?>"></i></span>
                     <span class="min-w-0">
-                        <span class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide leading-tight"><?= $label ?></span>
-                        <span class="block text-2xl font-bold text-gray-800 leading-none mt-1" data-count="<?= $key ?>">0</span>
+                        <span
+                            class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide leading-tight"><?= $label ?></span>
+                        <span class="block text-2xl font-bold text-gray-800 leading-none mt-1"
+                            data-count="<?= $key ?>">0</span>
                         <?php if ($key === 'all'): ?>
-                            <span class="block text-[11px] text-gray-500 mt-1 truncate font-mono" id="cv-month-total">₱ 0.00</span>
+                            <span class="block text-[11px] text-gray-500 mt-1 truncate font-mono" id="cv-month-total">₱
+                                0.00</span>
                         <?php elseif ($key === 'ready_to_release'): ?>
                             <span class="block text-[11px] text-blue-700 mt-1 truncate" id="cv-release-sub">All months</span>
                         <?php endif; ?>
@@ -103,7 +109,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 <!-- List controls -->
                 <div id="list-controls" class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                     <div class="relative flex-1 sm:flex-none min-w-0">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                        <i
+                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="search-input" placeholder="Search voucher, payee, purpose..."
                             class="w-full sm:w-64 h-9 pl-8 pr-3 text-xs border border-gray-200 rounded-lg outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition">
                     </div>
@@ -129,13 +136,16 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                         <div id="dates-dropdown"
                             class="hidden absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                                <p class="text-xs font-bold text-gray-600 uppercase tracking-wide">Dates with vouchers</p>
+                                <p class="text-xs font-bold text-gray-600 uppercase tracking-wide">Dates with vouchers
+                                </p>
                                 <span id="dates-dropdown-count" class="text-[10px] text-gray-400"></span>
                             </div>
                             <div class="px-3 py-2 border-b border-gray-100">
                                 <div class="relative">
-                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px]"></i>
-                                    <input type="text" id="dates-search" placeholder="Search date..." oninput="filterDatesDropdown()"
+                                    <i
+                                        class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px]"></i>
+                                    <input type="text" id="dates-search" placeholder="Search date..."
+                                        oninput="filterDatesDropdown()"
                                         class="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition">
                                 </div>
                             </div>
@@ -150,11 +160,14 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 <!-- Paalala: may ready to release mula sa mga naunang buwan -->
                 <button type="button" id="cv-release-banner" onclick="setStatusTab('ready_to_release')"
                     class="hidden w-full text-left flex items-center gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100 hover:bg-blue-100 transition">
-                    <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-box-open text-xs"></i></span>
+                    <span class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0"><i
+                            class="fa-solid fa-box-open text-xs"></i></span>
                     <span class="text-xs text-blue-900 flex-1 min-w-0" id="cv-release-banner-text"></span>
-                    <span class="text-xs font-semibold text-blue-700 shrink-0">View <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                    <span class="text-xs font-semibold text-blue-700 shrink-0">View <i
+                            class="fa-solid fa-arrow-right text-[10px]"></i></span>
                 </button>
-                <div id="cv-list-info" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100"></div>
+                <div id="cv-list-info" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">
+                </div>
                 <div id="voucher-cards" class="max-h-[600px] overflow-y-auto scrollbar-thin divide-y divide-gray-100">
                     <div class="px-4 py-10 text-center text-gray-400 text-sm">
                         <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
@@ -166,17 +179,24 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             <div id="view-calendar" class="hidden">
                 <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
                     <?php foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $d): ?>
-                        <div class="py-2 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wide <?= $d === 'Sun' ? 'text-red-400' : ($d === 'Sat' ? 'text-blue-400' : 'text-gray-500') ?>">
-                            <span class="sm:hidden"><?= substr($d, 0, 1) ?></span><span class="hidden sm:inline"><?= $d ?></span>
+                        <div
+                            class="py-2 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wide <?= $d === 'Sun' ? 'text-red-400' : ($d === 'Sat' ? 'text-blue-400' : 'text-gray-500') ?>">
+                            <span class="sm:hidden"><?= substr($d, 0, 1) ?></span><span
+                                class="hidden sm:inline"><?= $d ?></span>
                         </div>
                     <?php endforeach; ?>
                 </div>
                 <div id="calendar-grid" class="grid grid-cols-7"></div>
-                <div class="flex items-center gap-4 flex-wrap px-4 py-2.5 border-t border-gray-100 text-[11px] text-gray-500">
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>Not submitted</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>For approval</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>Ready to release</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Released</span>
+                <div
+                    class="flex items-center gap-4 flex-wrap px-4 py-2.5 border-t border-gray-100 text-[11px] text-gray-500">
+                    <span class="flex items-center gap-1.5"><span
+                            class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>Not submitted</span>
+                    <span class="flex items-center gap-1.5"><span
+                            class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>For approval</span>
+                    <span class="flex items-center gap-1.5"><span
+                            class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>Ready to release</span>
+                    <span class="flex items-center gap-1.5"><span
+                            class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Released</span>
                 </div>
             </div>
         </div>
@@ -185,7 +205,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         <div id="day-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
                         <i class="fa-regular fa-calendar"></i>
                     </div>
                     <div class="min-w-0">
@@ -198,7 +219,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div id="day-vouchers-cards" class="max-h-[520px] overflow-y-auto scrollbar-thin divide-y divide-gray-100"></div>
+            <div id="day-vouchers-cards" class="max-h-[520px] overflow-y-auto scrollbar-thin divide-y divide-gray-100">
+            </div>
         </div>
 
 
@@ -677,21 +699,66 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
     </main>
 
     <style>
-        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
 
-        .cv-view-btn { color: #6b7280; }
-        .cv-view-btn:hover { background: #f9fafb; }
-        .cv-view-btn[data-active="1"] { background: #b45309; color: #fff; }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
-        .cv-tab { background: #fff; border-color: #e5e7eb; }
-        .cv-tab:hover { border-color: #f59e0b; }
-        .cv-tab[data-active="1"] { border-color: #b45309; box-shadow: 0 0 0 1px #b45309 inset; background: #fffbeb; }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 999px;
+        }
 
-        @keyframes cvRowFlash { 0%,100% { background: transparent; } 50% { background: #fef3c7; } }
-        .cv-row-flash { animation: cvRowFlash .6s ease-in-out 5; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        .cv-view-btn {
+            color: #6b7280;
+        }
+
+        .cv-view-btn:hover {
+            background: #f9fafb;
+        }
+
+        .cv-view-btn[data-active="1"] {
+            background: #b45309;
+            color: #fff;
+        }
+
+        .cv-tab {
+            background: #fff;
+            border-color: #e5e7eb;
+        }
+
+        .cv-tab:hover {
+            border-color: #f59e0b;
+        }
+
+        .cv-tab[data-active="1"] {
+            border-color: #b45309;
+            box-shadow: 0 0 0 1px #b45309 inset;
+            background: #fffbeb;
+        }
+
+        @keyframes cvRowFlash {
+
+            0%,
+            100% {
+                background: transparent;
+            }
+
+            50% {
+                background: #fef3c7;
+            }
+        }
+
+        .cv-row-flash {
+            animation: cvRowFlash .6s ease-in-out 5;
+        }
     </style>
 
 
@@ -729,10 +796,10 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         }
 
         const STATUS = {
-            none:             { label: 'Not submitted',    badge: 'bg-gray-100 text-gray-600',     bar: 'bg-gray-400',   chip: 'bg-gray-50 text-gray-700 border-gray-400' },
-            voucher_approval: { label: 'For approval',     badge: 'bg-yellow-100 text-yellow-800', bar: 'bg-yellow-400', chip: 'bg-yellow-50 text-yellow-800 border-yellow-400' },
-            ready_to_release: { label: 'Ready to release', badge: 'bg-blue-100 text-blue-800',     bar: 'bg-blue-500',   chip: 'bg-blue-50 text-blue-800 border-blue-500' },
-            released:         { label: 'Released',         badge: 'bg-green-100 text-green-800',   bar: 'bg-green-500',  chip: 'bg-green-50 text-green-800 border-green-500' },
+            none: { label: 'Not submitted', badge: 'bg-gray-100 text-gray-600', bar: 'bg-gray-400', chip: 'bg-gray-50 text-gray-700 border-gray-400' },
+            voucher_approval: { label: 'For approval', badge: 'bg-yellow-100 text-yellow-800', bar: 'bg-yellow-400', chip: 'bg-yellow-50 text-yellow-800 border-yellow-400' },
+            ready_to_release: { label: 'Ready to release', badge: 'bg-blue-100 text-blue-800', bar: 'bg-blue-500', chip: 'bg-blue-50 text-blue-800 border-blue-500' },
+            released: { label: 'Released', badge: 'bg-green-100 text-green-800', bar: 'bg-green-500', chip: 'bg-green-50 text-green-800 border-green-500' },
         };
         const stCfg = s => STATUS[s] ?? { label: s, badge: 'bg-gray-100 text-gray-600', bar: 'bg-gray-300', chip: 'bg-gray-50 text-gray-700 border-gray-300' };
 
@@ -874,8 +941,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
                             ${row.voucher_control_no
-                                ? `<span class="notranslate font-mono text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">${highlight(row.voucher_control_no, q)}</span>`
-                                : `<span class="text-[11px] font-semibold text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded px-1.5 py-0.5">No voucher yet</span>`}
+                    ? `<span class="notranslate font-mono text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">${highlight(row.voucher_control_no, q)}</span>`
+                    : `<span class="text-[11px] font-semibold text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded px-1.5 py-0.5">No voucher yet</span>`}
                             ${statusBadge(st)}
                             <span class="notranslate font-mono text-[10px] text-gray-400">BR ${highlight(row.budget_control_no ?? '—', q)}</span>
                         </div>
@@ -925,7 +992,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 info.innerHTML = `Showing <b class="text-gray-700">${data.length}</b> ready to release · <span class="text-blue-700 font-semibold">all months</span>${releaseLoaded ? '' : ' <i class="fa-solid fa-spinner fa-spin ml-1"></i>'}`;
                 cards.innerHTML = data.length ? data.map(r => voucherRowHtml(r, q)).join('')
                     : releaseLoaded ? emptyHtml('Nothing is waiting to be released.', 'All approved vouchers have been released.')
-                    : `<div class="px-4 py-10 text-center text-gray-400 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Checking all months...</div>`;
+                        : `<div class="px-4 py-10 text-center text-gray-400 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Checking all months...</div>`;
                 return;
             }
             info.innerHTML = `Showing <b class="text-gray-700">${data.length}</b> of ${allData.length} voucher${allData.length !== 1 ? 's' : ''} · ${escHtml(monthLabel)}`;
@@ -948,7 +1015,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 : allData;
             const filtered = source.filter(row => {
                 const matchSearch = !q || [row.voucher_control_no, row.budget_control_no, row.voucher_payee, row.requestor_name,
-                    row.purpose, row.approver_name, row.receiver_name, row.manual_receiver_name, row.request_reference]
+                row.purpose, row.approver_name, row.receiver_name, row.manual_receiver_name, row.request_reference]
                     .some(v => v && String(v).toLowerCase().includes(q));
                 const matchCategory = !cat || row.request_category === cat;
                 const matchStatus = statusTab === 'all' || rowStatus(row) === statusTab;
@@ -2192,15 +2259,44 @@ class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white text
         document.getElementById('cal-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
         applyFilters();
         fetchVouchers();
+
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Anumang signal sa channel ng Accounting / position mo (receive, submit voucher, approve, release)
+        // → kunin agad ang bago. Polling = fallback lang (mas mabagal kapag Live).
+        const CV_POLL_MS = 30000, CV_POLL_LIVE_MS = 90000;
+        const cvLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+        let cvLastPoll = Date.now(), cvRtTimer = null; // kakakuha lang sa itaas
+
+        function cvRefresh(force) {
+            cvLastPoll = Date.now();
+            return fetchVouchers(force);
+        }
+
+        if (window.NH_RT && window.NH_RT.enabled) {
+            window.NH_RT.on('*', 'changed', () => {
+                clearTimeout(cvRtTimer);
+                cvRtTimer = setTimeout(() => {
+                    if (document.hidden) { cvLastPoll = 0; return; } // kukunin pagbalik sa tab
+                    cvRefresh(true); // force → kasama na ang listahan ng ready to release
+                }, 500);
+            });
+            window.NH_RT.onLive(live => {
+                const el = document.getElementById('cv-live-dot');
+                if (el) el.className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                if (live && cvLastPoll) cvRefresh(true); // habol sa na-miss habang offline
+            });
+        }
+
         setInterval(() => {
             if (document.hidden) return;
-            fetchVouchers();
+            if (Date.now() - cvLastPoll < (cvLive() ? CV_POLL_LIVE_MS : CV_POLL_MS) - 1000) return;
+            cvRefresh(false);
             if (Date.now() - releaseLastAt > 120000) loadReleaseQueue(); // bawat ~2 minuto
-        }, 30000);
+        }, 10000);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') fetchVouchers();
+            if (document.visibilityState === 'visible') cvRefresh(cvLastPoll === 0);
         });
-    
+
         // ─── Highlight ng huling pinindot na row ─────────────
         // Kapag pinindot ang kahit anong bahagi ng row (View, Approve, atbp.),
         // mananatili itong naka-highlight hanggang may ibang pindutin.

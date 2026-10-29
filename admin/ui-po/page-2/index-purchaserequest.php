@@ -34,6 +34,8 @@ if ($uid > 0) {
 }
 
 // "Requested by" = ang gumawa ng BOM (galing sa "Next: Purchase Request" ?bom=ID)
+// Iisang PR para sa lahat ng BOM na sabay ginawa sa Cutting (iisang upload)
+include_once ROOT_PATH . '/network/po-bom-group.php';
 $requester = null;
 $bomParam = intval($_GET['bom'] ?? 0);
 if ($bomParam > 0) {
@@ -44,6 +46,9 @@ if ($bomParam > 0) {
     $bRow = $bq->get_result()->fetch_assoc();
     $bq->close();
     if ($bRow) {
+        $groupIds = poBomGroupIds($conn, (int) $bRow['id']) ?: [(int) $bRow['id']];
+        $gIn = implode(',', array_map('intval', $groupIds));
+        $bRow['bom_number'] = implode(', ', array_column($conn->query("SELECT bom_number FROM noblecrm_bom WHERE id IN ($gIn) ORDER BY id")->fetch_all(MYSQLI_ASSOC), 'bom_number'));
         $requester = [
             'bom_id'     => (int) $bRow['id'],
             'bom_number' => $bRow['bom_number'],
@@ -52,12 +57,10 @@ if ($bomParam > 0) {
             'sig'        => $bRow['requested_by_signature_path'],
             'paid_pr'    => null,
         ];
-        // Kapag PAID na ang Purchase Request ng BOM na ito, bawal nang gumawa ulit
-        $pq = $conn->prepare("SELECT id, req_no FROM noblepurchaserequest WHERE bom_id = ? AND paid_at IS NOT NULL ORDER BY id DESC LIMIT 1");
-        $pq->bind_param('i', $bomParam);
-        $pq->execute();
-        $paid = $pq->get_result()->fetch_assoc();
-        $pq->close();
+        // Kapag PAID na ang Purchase Request ng order na ito, bawal nang gumawa ulit
+        $paid = $conn->query("SELECT id, req_no FROM noblepurchaserequest WHERE paid_at IS NOT NULL AND (bom_id IN ($gIn)"
+            . (poHasPrLink($conn) ? " OR id IN (SELECT pr_id FROM noblepurchaserequest_bom WHERE bom_id IN ($gIn))" : '')
+            . ") ORDER BY id DESC LIMIT 1")->fetch_assoc();
         if ($paid) $requester['paid_pr'] = ['id' => (int) $paid['id'], 'req_no' => $paid['req_no']];
     }
 }
@@ -424,6 +427,7 @@ $signatories = [
             const REQUESTER = <?= json_encode($requester) ?>;   // null kapag hindi galing sa BOM
 
             let mode = 'edit';      // 'edit' = bagong form | 'view' = naka-save na
+            let viewId = 0;         // id ng PR na nakabukas (view mode)
             let rowSeq = 0;
             let listRows = [];
 
@@ -789,13 +793,15 @@ $signatories = [
                 setTab('sheet');
             }
 
-            async function openPr(id, note = '') {
+            async function openPr(id, note = '', quiet = false) {
                 try {
                     const res = await fetch(`${AJAX}?action=view&id=${id}`, { cache: 'no-store' });
                     const data = await res.json();
                     if (!data.success) { toast(data.message || 'Could not open request.', 'error'); return; }
+                    if (quiet && (mode !== 'view' || viewId !== id)) return;   // lumipat na ang user habang naglo-load
                     PRSheet.render(document.getElementById('prSheet'), data.pr, { base: BASE });
                     setMode('view');
+                    viewId = id;
                     const pr = data.pr, hint = document.getElementById('prSheetHint');
                     if (pr.status === 'Approved') {
                         hint.innerHTML = `<i class="fa-solid fa-circle-check text-green-600 mr-1"></i>Approved by <b>${esc(pr.approved_by)}</b>. Print or save it as PDF.`;
@@ -806,17 +812,35 @@ $signatories = [
                     }
                     if (note) hint.innerHTML = note;
                     if (LOCKED) document.getElementById('prNewBtn').classList.add('hidden');
+                    if (quiet) return;   // realtime refresh: huwag ilipat ang tab o i-scroll
                     setTab('sheet');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } catch (e) { toast('Connection error.', 'error'); }
             }
 
             document.getElementById('prAddRow').addEventListener('click', () => { addRow(); queueSave(); });
-            document.getElementById('prClearDraft').addEventListener('click', () => {
-                if (!confirm('Clear everything you typed in this form?')) return;
+            // Inline na kumpirmasyon (walang confirm dialog): pindutin ulit sa loob ng 4 segundo
+            let clearArmed = null;
+            document.getElementById('prClearDraft').addEventListener('click', function () {
+                const btn = this;
+                if (!clearArmed) {
+                    btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Click again to clear';
+                    btn.classList.add('text-red-600', 'border-red-300', 'bg-red-50');
+                    clearArmed = setTimeout(() => {
+                        clearArmed = null;
+                        btn.innerHTML = '<i class="fa-solid fa-eraser"></i> Clear';
+                        btn.classList.remove('text-red-600', 'border-red-300', 'bg-red-50');
+                    }, 4000);
+                    return;
+                }
+                clearTimeout(clearArmed);
+                clearArmed = null;
+                btn.innerHTML = '<i class="fa-solid fa-eraser"></i> Clear';
+                btn.classList.remove('text-red-600', 'border-red-300', 'bg-red-50');
                 clearDraft();
                 renderSheet({}, true);
                 setMode('edit');
+                updateReqPreview();
             });
             document.getElementById('prPrint').addEventListener('click', () => window.print());
             document.getElementById('prNewBtn').addEventListener('click', newForm);
@@ -919,11 +943,51 @@ $signatories = [
             }));
 
             // ?view=ID → buksan agad ang naka-submit na Purchase Request (galing sa Purchase Orders)
-            const viewId = +(new URLSearchParams(location.search).get('view') || 0);
-            if (viewId) openPr(viewId);
+            const startView = +(new URLSearchParams(location.search).get('view') || 0);
+            if (startView) openPr(startView);
             else if (REQUESTER) newForm();
             else { setMode('none'); setTab('list'); }
             loadList();
+
+            // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+            // Approve / return ng CEO, review, release, paid, transmittal, o bagong PR ng ibang PO →
+            // i-refresh ang listahan at ang nakabukas na PR. Hindi ginagalaw ang form na pinupunan (edit mode).
+            const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+            let pollTimer = null;
+            function sync() {
+                if (document.hidden) return;
+                loadList();
+                if (mode === 'view' && viewId) openPr(viewId, '', true);
+            }
+            function startPolling() {
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(sync, rtLive() ? 60000 : 30000);
+            }
+            (function hookRealtime() {
+                const hook = () => {
+                    if (!window.NH_RT || !window.NH_RT.enabled || hookRealtime.done) return;
+                    hookRealtime.done = true;
+                    let t = null;
+                    window.NH_RT.on('*', 'changed', payload => {
+                        const type = String(payload?.type || '');
+                        if (type && !/^(crm|po|pr|transmittal)/i.test(type)) return;
+                        if (type === 'po_clientseries') return;   // delivery info lang — walang epekto dito
+                        clearTimeout(t);
+                        t = setTimeout(sync, 400);
+                    });
+                    window.NH_RT.onLive(live => {
+                        if (!document.hidden) startPolling();
+                        if (live && listRows.length) sync();
+                    });
+                };
+                hook();
+                if (!hookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+            })();
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }
+                else { sync(); startPolling(); }
+            });
+            startPolling();
         })();
     </script>
 </body>

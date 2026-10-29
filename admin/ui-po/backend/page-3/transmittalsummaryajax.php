@@ -15,6 +15,31 @@ header('Cache-Control: no-store');
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// Realtime doorbell (Supabase Broadcast): PO, Project Coordinator, Superadmin + Sales/Designer ng inquiry.
+// Hindi kailanman pinipigilan ang save — kapag pumalya, naka-log lang.
+if (!function_exists('trRealtime')) {
+    function trRealtime(mysqli $conn, int $prId, string $type, array $groups): void
+    {
+        try {
+            include_once ROOT_PATH . '/network/realtime-helper.php';
+            $st = $conn->prepare("SELECT b.quotation_id FROM noblepurchaserequest p LEFT JOIN noblecrm_bom b ON b.id = p.bom_id WHERE p.id = ? LIMIT 1");
+            $st->bind_param('i', $prId);
+            $st->execute();
+            $qid = (int) ($st->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+            $st->close();
+            if ($qid > 0) {
+                nhRtQuotation($conn, $qid, $groups, $type);
+            } else {
+                foreach ($groups as [$role, $pos]) {
+                    nhRealtimeNotifyGroup((string) $role, $pos !== null ? (string) $pos : null, 'changed', ['type' => $type, 'pr_id' => $prId]);
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('trRealtime: ' . $e->getMessage());
+        }
+    }
+}
+
 function tsOut(array $d): void
 {
     echo json_encode($d);
@@ -93,6 +118,8 @@ if ($action === 'deliver') {
         $cs->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ang pag-deliver */ }
 
+    // PC: lalabas agad sa "Ready for DR" · Sales: "Delivered" sa Track
+    trRealtime($conn, (int) $tr['pr_id'], 'transmittal_delivered', [[ROLE_PO, null], [ROLE_PC, null], [ROLE_SUPERADMIN, null]]);
     tsOut(['success' => true]);
 }
 
@@ -120,6 +147,14 @@ if ($action === 'update') {
         $c->close();
         if (!$row) tsOut(['success' => false, 'message' => 'Transmittal not found.']);
         if (!empty($row['delivered_at'])) tsOut(['success' => false, 'message' => 'Delivered transmittals can no longer be edited.']);
+    }
+    if ($affected > 0) {
+        foreach ([[ROLE_PO, null], [ROLE_PC, null]] as [$role, $pos]) {
+            try {
+                include_once ROOT_PATH . '/network/realtime-helper.php';
+                nhRealtimeNotifyGroup((string) $role, null, 'changed', ['type' => 'transmittal_updated', 'id' => $id]);
+            } catch (Throwable $e) { error_log('transmittal_updated: ' . $e->getMessage()); }
+        }
     }
     tsOut(['success' => true]);
 }

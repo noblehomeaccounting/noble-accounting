@@ -38,7 +38,7 @@ $position = $_SESSION['position'] ?? '';
                 </div>
             </div>
             <div class="flex items-center gap-2 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
-                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span id="cvd-live-dot" class="w-2 h-2 rounded-full bg-amber-400" title="Green = Live"></span>
                 <span id="last-updated">Loading…</span>
             </div>
         </div>
@@ -1201,13 +1201,42 @@ $position = $_SESSION['position'] ?? '';
         buildMonthSelect();
         fetchVouchers(true);
 
-        // 15s, at tumatakbo lang kapag nakikita ang tab
+        // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+        // Signal ng Accounting (submit / prepare / approve / release) → kunin agad.
+        // Polling = fallback lang: 15s kapag hindi Live, 90s kapag Live.
+        const CVD_POLL_MS = 15000, CVD_POLL_LIVE_MS = 90000;
+        const cvdLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
+        let cvdLastPoll = Date.now(), cvdMissed = false, cvdRtTimer = null;
+
+        function cvdRefresh(force) {
+            cvdLastPoll = Date.now();
+            cvdMissed = false;
+            return fetchVouchers(force);
+        }
+
+        if (window.NH_RT && window.NH_RT.enabled) {
+            window.NH_RT.on('*', 'changed', () => {
+                clearTimeout(cvdRtTimer);
+                cvdRtTimer = setTimeout(() => {
+                    if (document.hidden) { cvdMissed = true; return; } // kukunin pagbalik sa tab
+                    cvdRefresh(true);
+                }, 500);
+            });
+            window.NH_RT.onLive(live => {
+                const el = document.getElementById('cvd-live-dot');
+                if (el) el.className = 'w-2 h-2 rounded-full ' + (live ? 'bg-green-500 animate-pulse' : 'bg-amber-400');
+                if (live && loaded) cvdRefresh(true); // habol sa na-miss habang offline
+            });
+        }
+
         setInterval(() => {
-            if (document.visibilityState === 'visible') fetchVouchers();
-        }, 15000);
+            if (document.visibilityState !== 'visible') return;
+            if (Date.now() - cvdLastPoll < (cvdLive() ? CVD_POLL_LIVE_MS : CVD_POLL_MS) - 1000) return;
+            cvdRefresh(false);
+        }, 5000);
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') fetchVouchers();
+            if (document.visibilityState === 'visible') cvdRefresh(cvdMissed);
         });
     </script>
 

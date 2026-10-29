@@ -14,6 +14,8 @@ require_once ROOT_PATH . '/vendor/autoload.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+include_once ROOT_PATH . '/network/po-bom-group.php';   // pagsasama ng mga BOM na sabay ginawa sa Cutting
+
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
@@ -217,11 +219,14 @@ function poRenderHtml(array $bom): string
 }
 
 // ================= LIST =================
-// Lahat ng BOM na na-approve na ng Superadmin (approved_at IS NOT NULL)
+// Lahat ng BOM na na-approve na ng Superadmin (approved_at IS NOT NULL).
+// Ang mga BOM na sabay ginawa sa Cutting (iisang upload) ay iisang row: isang Receive, isang PR, isang Transmittal.
 if ($action === 'list') {
 
+    $prOf = poPrOfBomSql($conn, 'b.id');
+    $groupKey = poGroupKeySql('b');
     $sql = "
-        SELECT b.id, b.bom_number, b.client_name, b.date_submitted, b.date_needed, b.general_scope,
+        SELECT b.id, $groupKey AS group_key, b.bom_number, b.client_name, b.date_submitted, b.date_needed, b.general_scope,
                b.requested_by, b.approved_by, b.approved_at,
                b.received_by, b.received_at,
                i.control_no,
@@ -233,21 +238,74 @@ if ($action === 'list') {
         FROM noblecrm_bom b
         LEFT JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
         LEFT JOIN noblecrminquiry i      ON i.id = q.inquiry_id
-        LEFT JOIN noblepurchaserequest pr ON pr.id = (SELECT MAX(p2.id) FROM noblepurchaserequest p2 WHERE p2.bom_id = b.id)
-        WHERE b.approved_at IS NOT NULL
-        ORDER BY (b.received_at IS NOT NULL), b.received_at DESC, b.approved_at DESC, b.id DESC
+        LEFT JOIN noblepurchaserequest pr ON pr.id = $prOf
+        WHERE b.approved_at IS NOT NULL AND b.bom_number NOT LIKE 'TEMP-%'
+        ORDER BY b.id ASC
     ";
-    $rows = $conn->query($sql)->fetch_all(MYSQLI_ASSOC);
+    $bomRows = $conn->query($sql)->fetch_all(MYSQLI_ASSOC);
 
-    foreach ($rows as &$r) {
-        $r['id']             = (int) $r['id'];
-        $r['item_count']     = (int) $r['item_count'];
-        $r['received_today'] = (int) $r['received_today'] === 1;
-        $r['is_received']    = !empty($r['received_at']);
-        $r['pr_id']          = $r['pr_id'] !== null ? (int) $r['pr_id'] : null;
-        $r['tr_id']          = $r['tr_id'] !== null ? (int) $r['tr_id'] : null;
+    // Pagsamahin ayon sa grupo. Ang "lead" (unang BOM) ang id ng row.
+    $groups = [];
+    foreach ($bomRows as $b) {
+        $k = $b['group_key'];
+        $prId = $b['pr_id'] !== null ? (int) $b['pr_id'] : null;
+        if (!isset($groups[$k])) {
+            $groups[$k] = $b + ['boms' => [], 'pr_ids' => [], 'tr_ids' => [], '_all_received' => true, '_any_today' => false, '_pr_row' => null];
+            $groups[$k]['item_count'] = 0;
+            $groups[$k]['date_needed_list'] = [];
+        }
+        $g = &$groups[$k];
+        $g['boms'][] = ['id' => (int) $b['id'], 'bom_number' => $b['bom_number'], 'item_count' => (int) $b['item_count'],
+                        'date_needed' => $b['date_needed'], 'received_at' => $b['received_at']];
+        $g['item_count'] += (int) $b['item_count'];
+        if ($b['date_needed'] !== null && $b['date_needed'] !== '') $g['date_needed_list'][] = $b['date_needed'];
+        if (empty($b['received_at'])) $g['_all_received'] = false;
+        else if ($b['received_at'] > ($g['received_at'] ?? '')) { $g['received_at'] = $b['received_at']; $g['received_by'] = $b['received_by']; }
+        if ((int) $b['received_today'] === 1) $g['_any_today'] = true;
+        if ($prId !== null) {
+            $g['pr_ids'][$prId] = true;
+            if ($b['tr_id'] !== null) $g['tr_ids'][(int) $b['tr_id']] = true;
+            // pinakabagong PR ng grupo ang susundan
+            if ($g['_pr_row'] === null || $prId > (int) $g['_pr_row']['pr_id']) $g['_pr_row'] = $b;
+        }
+        unset($g);
     }
-    unset($r);
+
+    $rows = [];
+    foreach ($groups as $g) {
+        $p = $g['_pr_row'];
+        $rows[] = [
+            'id'              => (int) $g['boms'][0]['id'],
+            'bom_ids'         => array_column($g['boms'], 'id'),
+            'boms'            => $g['boms'],
+            'bom_number'      => implode(', ', array_column($g['boms'], 'bom_number')),
+            'client_name'     => $g['client_name'],
+            'control_no'      => $g['control_no'],
+            'date_submitted'  => $g['date_submitted'],
+            'date_needed'     => implode(' / ', array_unique($g['date_needed_list'])),
+            'general_scope'   => $g['general_scope'],
+            'requested_by'    => $g['requested_by'],
+            'approved_by'     => $g['approved_by'],
+            'approved_at'     => $g['approved_at'],
+            'received_by'     => $g['_all_received'] ? $g['received_by'] : null,
+            'received_at'     => $g['_all_received'] ? $g['received_at'] : null,
+            'is_received'     => $g['_all_received'],
+            'received_today'  => $g['_all_received'] && $g['_any_today'],
+            'item_count'      => $g['item_count'],
+            'pr_id'           => $p ? (int) $p['pr_id'] : null,
+            'pr_req_no'       => $p['pr_req_no'] ?? null,
+            'pr_status'       => $p['pr_status'] ?? null,
+            'pr_reviewed_at'  => $p['pr_reviewed_at'] ?? null,
+            'pr_staff_received_at' => $p['pr_staff_received_at'] ?? null,
+            'pr_released_at'  => $p['pr_released_at'] ?? null,
+            'pr_paid_at'      => $p['pr_paid_at'] ?? null,
+            'tr_id'           => $p && $p['tr_id'] !== null ? (int) $p['tr_id'] : null,
+            'pr_count'        => count($g['pr_ids']),   // >1 = luma: magkahiwalay na PR bago pa ang pagsasama
+        ];
+    }
+    // dating ayos: hindi pa na-receive muna, tapos pinakabagong na-receive / na-approve
+    usort($rows, fn($a, $b) => [(int) $a['is_received'], $b['received_at'] ?? '', $b['approved_at'] ?? '', $b['id']]
+                            <=> [(int) $b['is_received'], $a['received_at'] ?? '', $a['approved_at'] ?? '', $a['id']]);
 
     poJson(['success' => true, 'rows' => $rows]);
 }
@@ -270,25 +328,47 @@ if ($action === 'receive') {
         poJson(['success' => false, 'message' => 'Your account could not be found. Please log in again.']);
     }
 
+    // Buong grupo (lahat ng BOM na sabay ginawa sa Cutting) ang ire-receive.
     // Approved lang, at hindi pa na-receive (iwas doble kapag sabay na pinindot)
+    $groupIds = poBomGroupIds($conn, $bomId) ?: [$bomId];
     $stmt = $conn->prepare("
         UPDATE noblecrm_bom
         SET received_by = ?, received_by_title = ?, received_by_signature_path = ?,
             received_by_id = ?, received_at = NOW()
         WHERE id = ? AND approved_at IS NOT NULL AND received_at IS NULL
     ");
-    $stmt->bind_param('sssii', $signer['name'], $signer['title'], $signer['signature_path'], $currentUserId, $bomId);
-    $stmt->execute();
-    $affected = $stmt->affected_rows;
+    $affected = 0;
+    foreach ($groupIds as $gid) {
+        $stmt->bind_param('sssii', $signer['name'], $signer['title'], $signer['signature_path'], $currentUserId, $gid);
+        $stmt->execute();
+        $affected += max(0, $stmt->affected_rows);
+    }
     $stmt->close();
 
     if ($affected < 1) {
         poJson(['success' => false, 'message' => 'This BOM was already received or is not yet approved. Refreshing the list.']);
     }
 
+    // Realtime: ibang PO (listahan + badge) at Superadmin + Sales/Designer ng inquiry
+    try {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $q = $conn->prepare("SELECT quotation_id FROM noblecrm_bom WHERE id = ? LIMIT 1");
+        $q->bind_param('i', $bomId);
+        $q->execute();
+        $qid = (int) ($q->get_result()->fetch_assoc()['quotation_id'] ?? 0);
+        $q->close();
+        nhRtQuotation($conn, $qid, [[ROLE_PO, null], [ROLE_SUPERADMIN, null]], 'crm_po_receive');
+        if ($qid <= 0) {
+            nhRealtimeNotifyGroup(ROLE_PO, null, 'changed', ['type' => 'crm_po_receive']);
+        }
+    } catch (Throwable $e) {
+        error_log('po receive realtime: ' . $e->getMessage());
+    }
+
     poJson([
         'success'       => true,
-        'message'       => 'BOM received.',
+        'message'       => $affected > 1 ? "$affected BOMs received." : 'BOM received.',
+        'count'         => $affected,
         'has_signature' => $signer['signature_path'] !== null,
     ]);
 }
@@ -328,6 +408,14 @@ if ($action === 'history') {
     $st->close();
     if (!$bom) poJson(['success' => false, 'message' => 'BOM not found.']);
 
+    // Lahat ng PR ng grupo (lead man o kasama lang ang BOM)
+    $groupIds = poBomGroupIds($conn, $bomId) ?: [$bomId];
+    $gIn = implode(',', array_map('intval', $groupIds));
+    $prIds = array_column($conn->query("SELECT id FROM noblepurchaserequest WHERE bom_id IN ($gIn)"
+        . (poHasPrLink($conn) ? " UNION SELECT pr_id FROM noblepurchaserequest_bom WHERE bom_id IN ($gIn)" : ''))->fetch_all(MYSQLI_ASSOC), 'id');
+    $prIn = $prIds ? implode(',', array_map('intval', $prIds)) : '0';
+    $bom['group_boms'] = $conn->query("SELECT id, bom_number FROM noblecrm_bom WHERE id IN ($gIn) ORDER BY id")->fetch_all(MYSQLI_ASSOC);
+
     $pq = $conn->prepare("
         SELECT id, req_no, status, created_at, total_amount,
                prepared_by, prepared_by_title, prepared_by_signature_path,
@@ -341,9 +429,8 @@ if ($action === 'history') {
                (SELECT t.created_at FROM nobletransmittal t WHERE t.pr_id = noblepurchaserequest.id LIMIT 1) AS tr_created_at,
                (SELECT t.issued_by FROM nobletransmittal t WHERE t.pr_id = noblepurchaserequest.id LIMIT 1)  AS tr_issued_by,
                (SELECT t.issued_by_signature_path FROM nobletransmittal t WHERE t.pr_id = noblepurchaserequest.id LIMIT 1) AS tr_issued_sig
-        FROM noblepurchaserequest WHERE bom_id = ? ORDER BY id ASC
+        FROM noblepurchaserequest WHERE id IN ($prIn) ORDER BY id ASC
     ");
-    $pq->bind_param('i', $bomId);
     $pq->execute();
     $prs = $pq->get_result()->fetch_all(MYSQLI_ASSOC);
     $pq->close();

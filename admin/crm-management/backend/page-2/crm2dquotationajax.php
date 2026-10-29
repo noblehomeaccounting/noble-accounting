@@ -30,6 +30,16 @@ $slot = $_POST['slot'] ?? $_GET['slot'] ?? '';
 
 function q2dRespond(bool $success, string $message = '', array $extra = []): void
 {
+    // Realtime: bawat matagumpay na save → signal sa Sales + Designer ng inquiry
+    // (at sa Designer Head kapag may naipasa para sa review). Hindi kasama ang pagbasa (state).
+    global $conn, $action, $inquiryId;
+    static $writes = ['save_progress', 'save_toggle', 'save_slot', 'delete_file', 'unlock_slot',
+        'submit_final', 'submit_3d', 'submit_customer_review'];
+    if ($success && in_array($action, $writes, true) && $conn instanceof mysqli && (int) $inquiryId > 0) {
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        $toHead = in_array($action, ['submit_final', 'submit_3d', 'submit_customer_review'], true);
+        nhRtInquiry($conn, (int) $inquiryId, $toHead ? [[ROLE_DESIGNER, POSITION_HEAD]] : [], 'crm_2d');
+    }
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
     exit;
 }

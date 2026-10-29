@@ -113,6 +113,10 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" id="q2dSiteVisitBtn" onclick="svvOpen()"
+                            class="hidden items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3.5 py-2 hover:bg-gray-50">
+                            <i class="fa-solid fa-ruler-combined text-amber-700"></i> Site visit
+                        </button>
                         <button type="button" id="q2dFeedbackBtn" onclick="q2dToggleFeedbackSidebar()"
                             class="relative inline-flex items-center gap-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3.5 py-2 hover:bg-gray-50">
                             <i class="fa-solid fa-comment-dots text-amber-700"></i> Feedback
@@ -213,6 +217,8 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
         <?php if (empty($qError)): ?>
 
             <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/feedback2d.php'; ?>
+            <?php // Site visit spaces (view only) — modal + card sa gilid
+            include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/2d-sitevisit-spaces.php'; ?>
 
             <script>
                 const Q2D_AJAX_URL = <?= json_encode(BASE_URL . '/crm2dquotationajax') ?>;
@@ -866,11 +872,24 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 // Sidebar card: deadline + client (galing sa state.inquiry)
                 function q2dInquirySummary(inquiry) {
                     if (!inquiry.deadline) return '';
+                    // Ilang araw pa bago ang deadline (galing sa "November 04, 2026")
+                    let left = '';
+                    if (!inquiry.deadline_overdue) {
+                        const d = new Date(inquiry.deadline);
+                        if (!isNaN(d)) {
+                            const today = new Date(); today.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
+                            const n = Math.round((d - today) / 864e5);
+                            left = n === 0 ? 'Due today' : n === 1 ? '1 day left' : n > 1 ? `${n} days left` : '';
+                        }
+                    }
                     return `
                     <div class="q2d-card px-4 py-3.5 ${inquiry.deadline_overdue ? 'border-red-200 bg-red-50' : ''}">
                         <p class="q2d-eyebrow"><i class="fa-regular fa-flag mr-1"></i>Deadline</p>
+                        <p class="text-[11px] font-semibold ${inquiry.deadline_overdue ? 'text-red-700' : 'text-amber-700'} mt-0.5">Initial 2D &amp; Quotation</p>
                         <p class="text-[15px] font-semibold mt-0.5 ${inquiry.deadline_overdue ? 'text-red-700' : 'text-gray-900'}">${q2dEscapeHtml(inquiry.deadline)}</p>
-                        ${inquiry.deadline_overdue ? '<p class="text-[11px] font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Overdue</p>' : ''}
+                        ${inquiry.deadline_overdue
+                            ? '<p class="text-[11px] font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Overdue</p>'
+                            : (left ? `<p class="text-[11px] font-semibold ${left === 'Due today' || left === '1 day left' ? 'text-amber-700' : 'text-gray-500'}"><i class="fa-regular fa-clock mr-1"></i>${left}</p>` : '')}
                     </div>`;
                 }
 
@@ -995,7 +1014,9 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     main += q2dRenderPastEntries(state.past_entries);
 
                     const progressLocked = !!((state.active_draft && state.active_draft.is_locked) || state.completed_entry);
-                    const side = q2dInquirySummary(state.inquiry) + q2dRenderProgress(state.step1, state.is_sales, progressLocked);
+                    const side = q2dInquirySummary(state.inquiry)
+                        + (typeof window.q2dSvCardHtml === 'function' ? window.q2dSvCardHtml() : '')
+                        + q2dRenderProgress(state.step1, state.is_sales, progressLocked);
 
                     root.innerHTML = `
                     <div class="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-4 items-start">
@@ -1177,10 +1198,33 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     }
                 }
 
+                const q2dRtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
                 function q2dStartPolling() {
                     if (q2dPollTimer) clearInterval(q2dPollTimer);
-                    q2dPollTimer = setInterval(() => q2dFetchState({ silent: true }), Q2D_POLL_INTERVAL_MS);
+                    // Live → 60s fallback lang; hindi Live → dating bilis
+                    q2dPollTimer = setInterval(() => q2dFetchState({ silent: true }), q2dRtLive() ? 60000 : Q2D_POLL_INTERVAL_MS);
                 }
+
+                // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
+                // Signal para sa inquiry na ito lang (approve, revise, upload, customer review, contract…) → kunin agad.
+                (function q2dHookRealtime() {
+                    const hook = () => {
+                        if (!window.NH_RT || !window.NH_RT.enabled || q2dHookRealtime.done) return;
+                        q2dHookRealtime.done = true;
+                        let t = null;
+                        window.NH_RT.on('*', 'changed', (payload) => {
+                            if (Number(payload?.inquiry_id || 0) !== Number(Q2D_INQUIRY_ID)) return;
+                            clearTimeout(t);
+                            t = setTimeout(() => { if (!document.hidden) q2dFetchState({ silent: true }); }, 400);
+                        });
+                        window.NH_RT.onLive(live => {
+                            if (!document.hidden && q2dPollTimer) q2dStartPolling(); // palitan ang bilis ng fallback polling
+                            if (live) q2dFetchState({ silent: true });      // habol sa na-miss
+                        });
+                    };
+                    hook();
+                    if (!q2dHookRealtime.done) document.addEventListener('DOMContentLoaded', hook);
+                })();
 
                 document.addEventListener('visibilitychange', () => {
                     if (document.hidden) {
