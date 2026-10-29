@@ -183,7 +183,7 @@ if ($role === ROLE_IT) {
 
 if ($role === ROLE_PO) {
     if ($isMainBranch) {
-        $add('Main', $I('/crmpurchaseorder', 'fa-solid fa-file-signature', 'Purchase Order', null, 'Dashboard'));
+        $add('Main', $I('/crmpurchaseorder', 'fa-solid fa-file-signature', 'Purchase Order', 'poTodo', 'Dashboard'));
     }
     $add('Main', $I('/clientseries', 'fa-solid fa-user-gear', 'Client Series'));
     $add('Main', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal Summary'));

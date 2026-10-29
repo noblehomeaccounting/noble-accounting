@@ -46,6 +46,7 @@ if (!function_exists('getSidebarCounts')) {
             'depositWaiting' => 0,
             'poToReview' => 0,
             'billingPending' => 0,
+            'poTodo' => 0,
         ];
 
         // Pending na inquiry ng sales user (CRM List)
@@ -230,6 +231,30 @@ if (!function_exists('getSidebarCounts')) {
                 );
             } catch (Throwable $e) {
                 error_log('sidebar billingPending: ' . $e->getMessage());
+            }
+        }
+
+        // Purchase Order (PO): approved BOM na may gagawin pa ang PO — parehong mga button ng index-purchaseorder-main.php:
+        //   Receive (hindi pa na-receive) · Next: Purchase Request (wala pa / ibinalik ang huling PR)
+        //   · Next: Transmittal (bayad na ang PR pero wala pang transmittal)
+        if ($role === ROLE_PO) {
+            try {
+                $c['poTodo'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrm_bom b
+                     LEFT JOIN noblepurchaserequest pr ON pr.id = (SELECT MAX(p2.id) FROM noblepurchaserequest p2 WHERE p2.bom_id = b.id)
+                     WHERE b.approved_at IS NOT NULL
+                       AND (
+                           b.received_at IS NULL
+                           OR pr.id IS NULL
+                           OR pr.status = 'Rejected'
+                           OR (pr.status = 'Approved' AND pr.paid_at IS NOT NULL
+                               AND NOT EXISTS (SELECT 1 FROM nobletransmittal t WHERE t.pr_id = pr.id))
+                       )"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar poTodo: ' . $e->getMessage());
             }
         }
 
