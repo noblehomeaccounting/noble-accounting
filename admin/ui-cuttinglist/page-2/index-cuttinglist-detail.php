@@ -144,6 +144,40 @@ if ($recordId <= 0) {
             </div>
         </aside>
 
+        <!-- ═══ WHOLE VIEW ng mga space (kapareho ng sa Designer) ═══ -->
+        <div id="cutWhole" class="fixed inset-0 z-[9990] hidden items-center justify-center bg-black/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="cutWholeTitle">
+            <section class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-full flex flex-col overflow-hidden">
+                <div class="h-1.5 shrink-0 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
+                <div class="px-5 py-3 border-b border-gray-100 flex items-center gap-3 shrink-0">
+                    <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-table-list text-xs"></i></span>
+                    <div class="min-w-0 flex-1">
+                        <p id="cutWholeTitle" class="text-sm font-semibold text-gray-900">Space list</p>
+                        <p id="cutWholeSub" class="text-[11px] text-gray-400 truncate">Tap a photo to enlarge · tap a PDF to open</p>
+                    </div>
+                    <button type="button" id="cutWholeClose" aria-label="Close"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                </div>
+                <div id="cutWholeBody" class="min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]"></div>
+                <div id="cutWholeFoot" class="px-5 py-2.5 border-t border-gray-100 text-[11.5px] text-gray-500 shrink-0"></div>
+            </section>
+        </div>
+
+        <!-- Photo lightbox -->
+        <div id="cutLb" class="fixed inset-0 z-[9995] hidden bg-black/80 flex-col items-center justify-center p-4" role="dialog" aria-modal="true">
+            <div class="w-full max-w-4xl flex items-center justify-between text-white mb-3 gap-3">
+                <span id="cutLbCount" class="text-xs font-semibold opacity-80 truncate"></span>
+                <div class="flex items-center gap-1 shrink-0">
+                    <a id="cutLbOpen" href="#" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10" aria-label="Open original"><i class="fa-solid fa-up-right-from-square text-sm"></i></a>
+                    <button type="button" id="cutLbClose" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                </div>
+            </div>
+            <div class="relative w-full max-w-4xl flex items-center justify-center">
+                <button type="button" id="cutLbPrev" class="absolute left-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+                <img id="cutLbImg" src="" alt="" class="max-w-full max-h-[78vh] rounded-lg object-contain">
+                <button type="button" id="cutLbNext" class="absolute right-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -647,7 +681,15 @@ if ($recordId <= 0) {
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') cutCloseFeedbackSidebar();
+            if (cutLbIsOpen()) {
+                if (e.key === 'Escape') cutLbClose();
+                if (e.key === 'ArrowLeft') cutLbShow(cutLbIdx - 1);
+                if (e.key === 'ArrowRight') cutLbShow(cutLbIdx + 1);
+                return;
+            }
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('cutWhole').classList.contains('hidden')) { cutCloseWhole(); return; }
+            cutCloseFeedbackSidebar();
         });
 
         function cutVisitedBadge(visited) {
@@ -666,15 +708,36 @@ if ($recordId <= 0) {
 
         function cutRenderSiteVisitCard(visit, label) {
             const photos = visit.photos || [];
+            const spaces = visit.spaces || [];
+            const pics = cutVisitPhotos(visit);
             const photosHtml = photos.length
-                ? `<p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mt-4 mb-2"><i class="fa-solid fa-camera mr-1"></i>Photos (${photos.length})</p>
+                ? `<p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mt-4 mb-2"><i class="fa-solid fa-camera mr-1"></i>${spaces.length ? 'Other site photos' : 'Photos'} (${photos.length})</p>
                    <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
                     ${photos.map(p => `
-                        <a href="${cutEscapeHtml(p)}" target="_blank" rel="noopener" class="block aspect-square border border-gray-200 rounded-lg overflow-hidden hover:border-amber-600 hover:opacity-90 transition">
+                        <button type="button" data-cut-photo="${visit.id}:${pics.indexOf(p)}" class="block aspect-square border border-gray-200 rounded-lg overflow-hidden hover:border-amber-600 hover:opacity-90 transition">
                             <img src="${cutEscapeHtml(p)}" loading="lazy" alt="" class="w-full h-full object-cover">
-                        </a>`).join('')}
+                        </button>`).join('')}
                    </div>`
-                : `<p class="text-xs text-gray-400 mt-3"><i class="fa-regular fa-image mr-1"></i>No photographs attached.</p>`;
+                : (spaces.length ? '' : `<p class="text-xs text-gray-400 mt-3"><i class="fa-regular fa-image mr-1"></i>No photographs attached.</p>`);
+
+            // Spaces (Kitchen, Bedroom…) + Whole view
+            const measured = spaces.filter(cutSpaceMeasured).length;
+            const spacesHtml = spaces.length ? `
+                <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50/40 p-3.5">
+                    <div class="flex flex-wrap items-center gap-2 mb-2.5">
+                        <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-500"><i class="fa-solid fa-vector-square mr-1 text-amber-700"></i>Spaces (${spaces.length})</p>
+                        <span class="text-[11px] ${measured === spaces.length ? 'text-green-700' : 'text-amber-700'} font-semibold">${measured} of ${spaces.length} measured</span>
+                        <button type="button" data-cut-whole="${visit.id}"
+                            class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-black text-white text-[11.5px] font-semibold"><i class="fa-solid fa-table-list"></i> Whole view</button>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">${spaces.map((sp, i) => {
+                        const has = cutSpaceMeasured(sp);
+                        return `<button type="button" data-cut-whole="${visit.id}" data-cut-space="${i + 1}"
+                            class="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border text-[11.5px] font-semibold ${has ? 'bg-green-50 border-green-200 text-green-800 hover:bg-green-100' : 'bg-white border-amber-200 text-amber-800 hover:bg-amber-100'}">
+                            <span class="w-5 h-5 rounded-full bg-white/80 border border-current/20 text-[10px] font-bold flex items-center justify-center">${i + 1}</span>${cutEscapeHtml(sp.name)}
+                            <i class="fa-solid ${has ? 'fa-check' : 'fa-ruler'} text-[9px]"></i></button>`;
+                    }).join('')}</div>
+                </div>` : '';
 
             return `
                 <article class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -691,15 +754,151 @@ if ($recordId <= 0) {
                             <span><i class="fa-regular fa-calendar text-gray-300 mr-1"></i>${cutEscapeHtml(cutFormatDateTimeLong(visit.visit_datetime))}</span>
                         </div>
                         <div class="grid sm:grid-cols-2 gap-2.5">
-                            ${cutNoteBlock('Measurements', visit.measurements, 'fa-ruler')}
+                            ${spaces.length && !visit.measurements ? '' : cutNoteBlock('Measurements', visit.measurements, 'fa-ruler')}
                             ${cutNoteBlock('Site conditions', visit.site_conditions, 'fa-helmet-safety')}
                             ${cutNoteBlock('Client requirements', visit.client_requirements, 'fa-clipboard-list')}
                             ${cutNoteBlock('Existing structure', visit.existing_structure, 'fa-building')}
                         </div>
+                        ${spacesHtml}
                         ${photosHtml}
                     </div>
                 </article>`;
         }
+
+        // ═══ SPACES: Whole view + lightbox ═══
+        let cutVisits = [];
+        let cutWholeVisitId = 0;
+        let cutLbList = [], cutLbIdx = 0;
+        const cutSpaceMeasured = sp => (sp.meas_pdfs || []).length + (sp.meas_imgs || []).length > 0;
+        // lahat ng larawan ng isang visit: photos ng bawat space, measurement photos, saka "other" photos
+        function cutVisitPhotos(visit) {
+            const out = [];
+            (visit.spaces || []).forEach(sp => { (sp.photos || []).forEach(p => out.push(p)); (sp.meas_imgs || []).forEach(p => out.push(p)); });
+            (visit.photos || []).forEach(p => out.push(p));
+            return [...new Set(out)];
+        }
+        const cutDash = '<span class="text-gray-300">—</span>';
+        const cutText = v => String(v || '').trim() ? `<span class="whitespace-pre-line break-words">${cutEscapeHtml(String(v).trim())}</span>` : cutDash;
+        function cutThumbs(visit, list, size, badge) {
+            const pics = cutVisitPhotos(visit);
+            return (list || []).length ? `<div class="flex flex-wrap gap-1">${list.map(p => `
+                <button type="button" data-cut-photo="${visit.id}:${pics.indexOf(p)}" class="relative block ${size} rounded-md overflow-hidden border border-gray-200 hover:ring-2 hover:ring-amber-600">
+                    <img src="${cutEscapeHtml(p)}" alt="" loading="lazy" class="w-full h-full object-cover">
+                    ${badge ? '<span class="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[8px] font-bold text-center leading-3"><i class="fa-solid fa-ruler"></i></span>' : ''}
+                </button>`).join('')}</div>` : '';
+        }
+        function cutMeasHtml(visit, sp) {
+            if (!cutSpaceMeasured(sp)) return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10.5px] font-semibold"><i class="fa-solid fa-ruler text-[9px]"></i>No measurement</span>';
+            return `<div class="flex flex-col gap-1">${(sp.meas_pdfs || []).map((u, i) => `
+                <a href="${cutEscapeHtml(u)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2 py-1 text-[11.5px] font-semibold text-gray-700 hover:border-amber-600 hover:text-amber-800 w-max max-w-full">
+                    <i class="fa-solid fa-file-pdf text-red-500"></i>PDF ${i + 1}<i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-gray-400"></i></a>`).join('')}
+                ${cutThumbs(visit, sp.meas_imgs, 'w-11 h-11', true)}</div>`;
+        }
+        function cutRenderWhole(keepScroll) {
+            const visit = cutVisits.find(v => v.id === cutWholeVisitId);
+            const body = document.getElementById('cutWholeBody');
+            if (!visit) { cutCloseWhole(); return; }
+            const spaces = visit.spaces || [];
+            const top = body.scrollTop;
+            const n = spaces.length, measured = spaces.filter(cutSpaceMeasured).length;
+            const photoN = spaces.reduce((t, sp) => t + (sp.photos || []).length, 0);
+            const fileN = spaces.reduce((t, sp) => t + (sp.meas_pdfs || []).length + (sp.meas_imgs || []).length, 0);
+            document.getElementById('cutWholeTitle').innerHTML = `Space list <span class="text-gray-400 font-semibold">(${n})</span>`;
+            document.getElementById('cutWholeSub').textContent = `${cutFormatDateTimeLong(visit.visit_datetime)} · ${visit.designer_name || '—'} · tap a photo to enlarge, a PDF to open`;
+            document.getElementById('cutWholeFoot').innerHTML = `<b>${measured}</b> of ${n} measured · ${fileN} measurement file${fileN === 1 ? '' : 's'} · ${photoN} site photo${photoN === 1 ? '' : 's'}`
+                + (measured < n ? ` · <span class="text-amber-700 font-semibold">${n - measured} without measurement</span>` : '');
+            body.innerHTML = `
+                <table class="hidden md:table w-full text-[12.5px]">
+                    <thead class="sticky top-0 z-10 bg-gray-50 text-[10.5px] font-bold uppercase tracking-wider text-gray-500 shadow-[0_1px_0_#e5e7eb]">
+                        <tr><th class="px-3 py-2.5 text-left w-14">No.</th><th class="px-3 py-2.5 text-left w-44">Space name</th><th class="px-3 py-2.5 text-left">Requirements</th>
+                            <th class="px-3 py-2.5 text-left w-52">Site photos</th><th class="px-3 py-2.5 text-left w-44">Measurement</th><th class="px-3 py-2.5 text-left">Remark</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 align-top">${spaces.map((sp, i) => `
+                        <tr id="cut-space-${i + 1}" class="${cutSpaceMeasured(sp) ? '' : 'bg-amber-50/30'} transition-colors">
+                            <td class="px-3 py-3"><span class="inline-flex w-7 h-7 rounded-lg bg-amber-700 text-white text-[11px] font-bold items-center justify-center">${i + 1}</span></td>
+                            <td class="px-3 py-3 font-semibold text-gray-900 break-words">${cutEscapeHtml(sp.name)}</td>
+                            <td class="px-3 py-3 text-gray-800">${cutText(sp.requirements)}</td>
+                            <td class="px-3 py-3">${cutThumbs(visit, sp.photos, 'w-11 h-11') || cutDash}</td>
+                            <td class="px-3 py-3">${cutMeasHtml(visit, sp)}</td>
+                            <td class="px-3 py-3 text-gray-800">${cutText(sp.notes)}</td>
+                        </tr>`).join('')}</tbody>
+                </table>
+                <div class="md:hidden p-3 space-y-2.5">${spaces.map((sp, i) => `
+                    <article id="cut-space-m-${i + 1}" class="rounded-xl border ${cutSpaceMeasured(sp) ? 'border-gray-200' : 'border-amber-200 bg-amber-50/30'} p-3 transition-colors">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-7 h-7 rounded-lg bg-amber-700 text-white text-[11px] font-bold flex items-center justify-center shrink-0">${i + 1}</span>
+                            <p class="flex-1 min-w-0 text-[13px] font-semibold text-gray-900 break-words">${cutEscapeHtml(sp.name)}</p>
+                        </div>
+                        <dl class="space-y-2 text-[12.5px]">
+                            <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Requirements</dt><dd class="text-gray-800">${cutText(sp.requirements)}</dd></div>
+                            <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Site photos</dt><dd class="mt-0.5">${cutThumbs(visit, sp.photos, 'w-14 h-14') || cutDash}</dd></div>
+                            <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Measurement</dt><dd class="mt-0.5">${cutMeasHtml(visit, sp)}</dd></div>
+                            <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Remark</dt><dd class="text-gray-800">${cutText(sp.notes)}</dd></div>
+                        </dl>
+                    </article>`).join('')}</div>`;
+            if (keepScroll) body.scrollTop = top;
+        }
+        function cutOpenWhole(visitId, spaceNo) {
+            cutWholeVisitId = visitId;
+            cutRenderWhole(false);
+            const modal = document.getElementById('cutWhole');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            document.documentElement.classList.add('overflow-hidden');
+            const body = document.getElementById('cutWholeBody');
+            body.scrollTop = 0;
+            const row = spaceNo ? (document.getElementById('cut-space-' + spaceNo)?.offsetParent ? document.getElementById('cut-space-' + spaceNo) : document.getElementById('cut-space-m-' + spaceNo)) : null;
+            if (row) {
+                body.scrollTop = Math.max(0, row.getBoundingClientRect().top - body.getBoundingClientRect().top - 44);
+                const HL = ['bg-amber-50', 'ring-2', 'ring-inset', 'ring-amber-300'];
+                row.classList.add(...HL); setTimeout(() => row.classList.remove(...HL), 1800);
+            }
+            document.getElementById('cutWholeClose').focus({ preventScroll: true });
+        }
+        function cutCloseWhole() {
+            const modal = document.getElementById('cutWhole');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+            document.documentElement.classList.remove('overflow-hidden');
+            cutWholeVisitId = 0;
+        }
+        // realtime / reload: i-refresh ang bukas na Whole view nang hindi nawawala ang scroll
+        function cutRefreshWhole() {
+            if (cutWholeVisitId && !document.getElementById('cutWhole').classList.contains('hidden')) cutRenderWhole(true);
+        }
+        const cutLbIsOpen = () => !document.getElementById('cutLb').classList.contains('hidden');
+        function cutLbShow(i) {
+            if (!cutLbList.length) return;
+            cutLbIdx = (i + cutLbList.length) % cutLbList.length;
+            document.getElementById('cutLbImg').src = cutLbList[cutLbIdx];
+            document.getElementById('cutLbOpen').href = cutLbList[cutLbIdx];
+            document.getElementById('cutLbCount').textContent = `Photo ${cutLbIdx + 1} of ${cutLbList.length}`;
+            const multi = cutLbList.length > 1;
+            document.getElementById('cutLbPrev').style.display = multi ? '' : 'none';
+            document.getElementById('cutLbNext').style.display = multi ? '' : 'none';
+        }
+        function cutLbOpenAt(visitId, idx) {
+            const visit = cutVisits.find(v => v.id === visitId);
+            if (!visit) return;
+            cutLbList = cutVisitPhotos(visit);
+            cutLbShow(Math.max(0, idx));
+            const lb = document.getElementById('cutLb');
+            lb.classList.remove('hidden'); lb.classList.add('flex');
+        }
+        function cutLbClose() {
+            const lb = document.getElementById('cutLb');
+            lb.classList.add('hidden'); lb.classList.remove('flex');
+        }
+        document.addEventListener('click', e => {
+            const ph = e.target.closest('[data-cut-photo]');
+            if (ph) { const [v, i] = ph.dataset.cutPhoto.split(':').map(Number); cutLbOpenAt(v, i); return; }
+            const wb = e.target.closest('[data-cut-whole]');
+            if (wb) { cutOpenWhole(Number(wb.dataset.cutWhole), Number(wb.dataset.cutSpace || 0)); }
+        });
+        document.getElementById('cutWholeClose').addEventListener('click', cutCloseWhole);
+        document.getElementById('cutWhole').addEventListener('click', e => { if (e.target.id === 'cutWhole') cutCloseWhole(); });
+        document.getElementById('cutLbClose').addEventListener('click', cutLbClose);
+        document.getElementById('cutLbPrev').addEventListener('click', () => cutLbShow(cutLbIdx - 1));
+        document.getElementById('cutLbNext').addEventListener('click', () => cutLbShow(cutLbIdx + 1));
+        document.getElementById('cutLb').addEventListener('click', e => { if (e.target.id === 'cutLb') cutLbClose(); });
 
         function cutRenderFiles(r) {
             if (!cutIsNtp(r)) {
@@ -733,6 +932,7 @@ if ($recordId <= 0) {
                     </div>`;
                 return;
             }
+            cutVisits = siteVisits;
             const ordered = [...siteVisits].reverse();
             const total = siteVisits.length;
             container.innerHTML = ordered
@@ -773,6 +973,7 @@ if ($recordId <= 0) {
                 cutRenderFiles(r);
                 cutRenderRevisionHistory(r);
                 cutRenderSiteVisits(r.site_visits, r);
+                cutRefreshWhole();
                 cutRenderFeedbackSidebar(r);
 
             } catch (e) {

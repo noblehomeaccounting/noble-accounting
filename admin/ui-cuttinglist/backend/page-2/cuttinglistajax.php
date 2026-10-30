@@ -277,51 +277,6 @@ if ($action === 'list') {
     }
     $stmt->close();
 
-    // ── Tracking ng E-Woodfile bawat job (pinakahuling upload + kalagayan ng BOM) ──
-    // Hiwalay na query para hindi bumigat ang base query; kapag pumalya, wala lang tracking.
-    try {
-        $ids = array_map(fn($r) => (int) $r['id'], $rows);
-        if ($ids) {
-            $in = implode(',', $ids);
-            $track = [];
-            $res = $conn->query("
-                SELECT p.quotation_id, p.id, p.status, p.qr_approved, p.qr_rejected, p.created_at, p.approved_at, p.rejected_at
-                FROM noblecrm_cuttinglistprogression p
-                JOIN (SELECT quotation_id, MAX(id) AS mid FROM noblecrm_cuttinglistprogression
-                      WHERE quotation_id IN ($in) GROUP BY quotation_id) l ON l.mid = p.id
-            ");
-            foreach ($res->fetch_all(MYSQLI_ASSOC) as $p) {
-                $approval = (int) $p['qr_approved'] === 1 ? 'Approved' : ((int) $p['qr_rejected'] === 1 ? 'Rejected' : 'Pending');
-                $track[(int) $p['quotation_id']] = [
-                    'upload_approval' => $approval,
-                    'upload_status'   => $p['status'],
-                    'upload_at'       => $approval === 'Approved' ? $p['approved_at'] : ($approval === 'Rejected' ? $p['rejected_at'] : $p['created_at']),
-                ];
-            }
-            // BOM: ilan ang approved at ilan ang naibalik (hindi pa approved, at wala nang naka-link o na-reject ang upload)
-            $res = $conn->query("
-                SELECT b.quotation_id,
-                       SUM(b.approved_at IS NOT NULL) AS approved_boms,
-                       SUM(b.approved_at IS NULL AND (COALESCE(b.progression_id, 0) = 0 OR p.id IS NULL OR p.qr_rejected = 1)) AS returned_boms
-                FROM noblecrm_bom b
-                LEFT JOIN noblecrm_cuttinglistprogression p ON p.id = b.progression_id
-                WHERE b.quotation_id IN ($in) AND b.bom_number NOT LIKE 'TEMP-%'
-                GROUP BY b.quotation_id
-            ");
-            $boms = [];
-            foreach ($res->fetch_all(MYSQLI_ASSOC) as $b) {
-                $boms[(int) $b['quotation_id']] = ['approved_boms' => (int) $b['approved_boms'], 'returned_boms' => (int) $b['returned_boms']];
-            }
-            foreach ($rows as &$r) {
-                $r['track'] = ($track[$r['id']] ?? ['upload_approval' => null, 'upload_status' => null, 'upload_at' => null])
-                    + ($boms[$r['id']] ?? ['approved_boms' => 0, 'returned_boms' => 0]);
-            }
-            unset($r);
-        }
-    } catch (Throwable $e) {
-        error_log('cutlist track: ' . $e->getMessage());
-    }
-
     echo json_encode([
         'success' => true,
         'rows'    => $rows,
@@ -402,6 +357,49 @@ if ($action === 'detail') {
         ];
     }
     $stmt->close();
+
+    // Spaces ng bawat site visit (Kitchen, Bedroom…) — kapareho ng "Whole view" ng Designer.
+    // Kapag wala pa ang table na noblecrm_sitevisit_space, tahimik na walang spaces.
+    if ($siteVisits) {
+        try {
+            $hasSpaces = ($t = $conn->query("SHOW TABLES LIKE 'noblecrm_sitevisit_space'")) && $t->num_rows > 0;
+        } catch (Throwable $e) {
+            $hasSpaces = false;
+        }
+        foreach ($siteVisits as &$svRow) $svRow['spaces'] = [];
+        unset($svRow);
+        if ($hasSpaces) {
+            $svIds = implode(',', array_map(fn($v) => (int) $v['id'], $siteVisits));
+            $csv = fn($v) => array_values(array_filter(array_map('trim', explode(',', (string) $v))));
+            $url = fn($p) => BASE_URL . '/' . ltrim($p, '/');
+            $isImg = fn($p) => (bool) preg_match('/\.(webp|jpe?g|png)$/i', $p);
+            $bySv = [];
+            $spRes = $conn->query("SELECT id, sitevisit_id, space_name, requirements, notes, measurement_files, photos
+                                   FROM noblecrm_sitevisit_space WHERE sitevisit_id IN ($svIds) ORDER BY sort_order ASC, id ASC");
+            while ($sp = $spRes->fetch_assoc()) {
+                $meas = $csv($sp['measurement_files']);
+                $bySv[(int) $sp['sitevisit_id']][] = [
+                    'id'           => (int) $sp['id'],
+                    'name'         => (string) $sp['space_name'],
+                    'requirements' => (string) ($sp['requirements'] ?? ''),
+                    'notes'        => (string) ($sp['notes'] ?? ''),
+                    'photos'       => array_map($url, $csv($sp['photos'])),
+                    'meas_pdfs'    => array_map($url, array_values(array_filter($meas, fn($p) => !$isImg($p)))),
+                    'meas_imgs'    => array_map($url, array_values(array_filter($meas, $isImg))),
+                ];
+            }
+            foreach ($siteVisits as &$svRow) {
+                $svRow['spaces'] = $bySv[$svRow['id']] ?? [];
+                // ang "photos" ng visit ay may kasamang photos ng mga space → ihiwalay ang "other" photos
+                if ($svRow['spaces']) {
+                    $inSpaces = [];
+                    foreach ($svRow['spaces'] as $sp) foreach ($sp['photos'] as $p) $inSpaces[$p] = true;
+                    $svRow['photos'] = array_values(array_filter($svRow['photos'], fn($p) => !isset($inSpaces[$p])));
+                }
+            }
+            unset($svRow);
+        }
+    }
 
     $record['site_visits'] = $siteVisits;
 
