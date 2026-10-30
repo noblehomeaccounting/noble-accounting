@@ -285,6 +285,8 @@ $adminRoutes = [
     'superadminturnoverajax',
     'projectcost',
     'projectcostajax',
+    'virtualoffice',
+    'virtualofficeajax',
 
     'unauthorized',                    
     'fetchrequests',                   
@@ -597,6 +599,10 @@ $routes = [
     'superadminturnoverajax'          => 'admin/ui-superad/backend/page-8/superadminturnoverajax.php',
     'projectcost'                     => 'admin/ui-superad/page-9/project-cost.php',
     'projectcostajax'                 => 'admin/ui-superad/backend/page-9/projectcostajax.php',
+
+    // virtual office (lahat ng admin)
+    'virtualoffice'                   => 'admin/ui-office/page-1/virtual-office.php',
+    'virtualofficeajax'               => 'admin/ui-office/backend/page-1/virtualofficeajax.php',
 
 
     'unauthorized'                     => 'admin/authentication/index-unauthorized.php',

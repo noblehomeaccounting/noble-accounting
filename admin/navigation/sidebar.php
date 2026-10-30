@@ -201,6 +201,11 @@ if ($role === ROLE_PC) {
     $add('Punch list & Turnover', $I('/coordinatorturnover', 'fa-solid fa-key', 'Turnover Letter', 'pcTurnoverTodo'));
 }
 
+// Para sa lahat ng role: Virtual Office (sino ang online)
+if ($role !== '') {
+    $add('Team', $I('/virtualoffice', 'fa-solid fa-building-user', 'Virtual Office'));
+}
+
 // Para sa lahat ng posisyon ng Accounting
 $sbAccountingAll = $role === ROLE_ACCOUNTING && in_array($position, [POSITION_HEAD, POSITION_CUSTODIAN, POSITION_CUSTOASSISTANT, POSITION_STAFF]);
 $sbFollowups = $sbAccountingAll
@@ -662,6 +667,11 @@ $nhRtCfg = [
         'role' => $role !== '' ? nhRealtimeGroupTopic($role) : '',                       // buong department
         'rolepos' => ($role !== '' && $position !== '') ? nhRealtimeGroupTopic($role, $position) : '', // department + position
     ]))),
+    // Presence: sino ang online ngayon (Virtual Office) — isang channel para sa lahat ng admin
+    'presence' => $nhRtUid > 0 ? [
+        'topic' => nhRealtimeGroupTopic('__office_presence__'),
+        'me' => ['id' => $nhRtUid, 'name' => (string) $sbUserName, 'role' => (string) $role],
+    ] : null,
 ];
 if (!defined('NH_RT_LOADED'))
     define('NH_RT_LOADED', true);
@@ -674,6 +684,10 @@ if (!defined('NH_RT_LOADED'))
         const liveCbs = [];
         const state = {};          // topic → status
         let live = false;
+        // Presence (Virtual Office): id → { id, name, role, since }
+        const presenceCbs = [];
+        let presence = {}, presenceReady = false;
+        function emitPresence() { presenceCbs.forEach(cb => { try { cb(presence, presenceReady); } catch (e) { console.error(e); } }); }
 
         function setLive() {
             const now = cfg.topics.length > 0 && cfg.topics.every(t => state[t] === 'SUBSCRIBED');
@@ -700,6 +714,26 @@ if (!defined('NH_RT_LOADED'))
                         .on('broadcast', { event: '*' }, msg => emit(topic, msg))
                         .subscribe(status => { state[topic] = status; setLive(); });
                 });
+                // Presence: bawat bukas na tab ay "nagpaparamdam"; isang tao = isang key kahit ilang tab
+                if (cfg.presence) {
+                    const me = cfg.presence.me;
+                    const pch = sb.channel(cfg.presence.topic, { config: { presence: { key: String(me.id) } } });
+                    pch.on('presence', { event: 'sync' }, () => {
+                        const st = pch.presenceState(), next = {};
+                        Object.keys(st).forEach(k => {
+                            const m = (st[k] || [])[0] || {};
+                            const id = parseInt(m.id || k, 10);
+                            if (id > 0) next[id] = { id, name: String(m.name || ''), role: String(m.role || ''), since: m.since || null };
+                        });
+                        presence = next; presenceReady = true; emitPresence();
+                    }).subscribe(async status => {
+                        if (status === 'SUBSCRIBED') {
+                            try { await pch.track({ id: me.id, name: me.name, role: me.role, since: new Date().toISOString() }); } catch (e) { }
+                        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                            if (presenceReady) { presenceReady = false; emitPresence(); }   // balik sa MySQL heartbeat
+                        }
+                    });
+                }
             } catch (e) {
                 console.error('NH_RT:', e);
             }
@@ -713,6 +747,9 @@ if (!defined('NH_RT_LOADED'))
             on(topic, event, cb) { listeners.push({ topic, event, cb }); },
             // tatawagin agad (kasalukuyang lagay) at tuwing magbabago ang Live
             onLive(cb) { liveCbs.push(cb); try { cb(live); } catch (e) { } },
+            // Presence: tatawagin agad at tuwing may papasok / aalis — cb(map ng id → info, ready)
+            onPresence(cb) { presenceCbs.push(cb); try { cb(presence, presenceReady); } catch (e) { } },
+            isOnline: id => !!presence[id],
         };
     })();
 </script>
