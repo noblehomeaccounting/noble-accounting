@@ -42,11 +42,12 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
             </div>
 
             <!-- ===================== STATUS CARDS (pindutin para i-filter) ===================== -->
-            <div id="acctListTabs" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div id="acctListTabs" class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
                 <?php
                 $cards = [
                     ['hold',  'Waiting for deposit', 'fa-hourglass-half',    'bg-amber-50 text-amber-700', 'acctStatHold'],
                     ['ntp',   'Notice to Proceed',   'fa-circle-check',      'bg-green-50 text-green-600', 'acctStatNtp'],
+                    ['balance', 'With balance',      'fa-scale-unbalanced',  'bg-rose-50 text-rose-600',   'acctStatBalance'],
                     ['new',   'New',                 'fa-bell',              'bg-sky-50 text-sky-600',     'acctListNewCount'],
                     ['all',   'All',                 'fa-layer-group',       'bg-slate-100 text-slate-600','acctListAllCount'],
                 ];
@@ -184,6 +185,8 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
         const ACCT_FILTERS = {
             hold: { label: 'Waiting for deposit', test: r => !acctIsNtp(r) },
             ntp:  { label: 'Notice to Proceed',   test: r => acctIsNtp(r) },
+            // may balanse pa — kailangang bayad nang buo bago ma-turnover ng Project Coordinator
+            balance: { label: 'With balance (must be fully paid before turnover)', test: r => acctIsNtp(r) && Number(r.balance) > 0.004 },
             new:  { label: 'New (not yet opened)', test: r => !r.is_read },
             all:  { label: 'All approved submissions', test: () => true },
         };
@@ -207,6 +210,7 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
             const cap = v => v > 99 ? '99+' : v;
             document.getElementById('acctStatHold').textContent = cap(n('hold'));
             document.getElementById('acctStatNtp').textContent = cap(n('ntp'));
+            document.getElementById('acctStatBalance').textContent = cap(n('balance'));
             document.getElementById('acctListNewCount').textContent = cap(n('new'));
             document.getElementById('acctListAllCount').textContent = cap(n('all'));
         }
@@ -222,7 +226,7 @@ $acctDetailUrl = BASE_URL . '/accountingcrmdetail';
         function acctListEmptyState() {
             const message = acctListSearchTerm
                 ? `No submissions match "${acctListEscapeHtml(acctListSearchTerm)}".`
-                : ({ hold: 'No submission is waiting for a deposit.', ntp: 'No Notice to Proceed yet.', new: 'No new approvals.', all: 'No approved submissions found.' })[acctListFilter];
+                : ({ hold: 'No submission is waiting for a deposit.', ntp: 'No Notice to Proceed yet.', balance: 'Every client with a Notice to Proceed is fully paid.', new: 'No new approvals.', all: 'No approved submissions found.' })[acctListFilter];
             return `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 py-14 text-center">
                     <i class="fa-regular fa-folder-open text-3xl text-gray-300"></i>
                     <p class="text-gray-500 text-xs font-medium">${message}</p>

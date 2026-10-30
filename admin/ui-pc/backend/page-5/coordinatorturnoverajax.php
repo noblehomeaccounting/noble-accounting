@@ -126,9 +126,11 @@ function tProject(mysqli $conn, int $drId): array
     $p['contract_amount'] = (float) $p['contract_amount'];
     return $p;
 }
-// Readiness checklist (Step 1–7)
+// Readiness checklist (Step 1–7) + bayad ng client (Accounting)
 function tReadiness(mysqli $conn, int $drId, float $contract): array
 {
+    include_once ROOT_PATH . '/network/client-payment.php';
+    $cp = cpClientPayment($conn, cpInquiryOfDr($conn, $drId));
     $today = date('Y-m-d');
     $tl = tOne($conn, "SELECT date_started, date_finish FROM noblepc_timeline WHERE dr_id = ?", 'i', [$drId]);
     $pu = tOne($conn, "SELECT COUNT(*) AS n, SUM(status = 'verified') AS v, SUM(status = 'open') AS o FROM noblepc_punch WHERE dr_id = ?", 'i', [$drId]);
@@ -146,6 +148,11 @@ function tReadiness(mysqli $conn, int $drId, float $contract): array
          'note' => $punchN ? "$punchV of $punchN verified" : 'No punch item (no defects found)'],
         ['key' => 'billing', 'label' => 'Billing is complete and approved', 'ok' => (int) $bi['n'] > 0 && (int) $bi['n'] === (int) $bi['a'] && (float) $bi['approved'] >= $sum - 0.004, 'required' => true,
          'note' => '₱' . number_format((float) $bi['approved'], 2) . ' of ₱' . number_format($sum, 2) . ' approved' . (((int) $bi['n'] - (int) $bi['a']) > 0 ? ' · ' . ((int) $bi['n'] - (int) $bi['a']) . ' still being signed' : '')],
+        // Billing ng Accounting: dapat bayad na nang buo ng client ang contract
+        ['key' => 'client_payment', 'label' => 'Client has fully paid (Accounting)', 'ok' => $cp['ok'], 'required' => true,
+         'note' => $cp['contract'] > 0
+            ? ($cp['ok'] ? 'Fully paid' : 'Not yet fully paid · waiting for Accounting')
+            : 'Waiting for Accounting'],
     ];
 }
 function tReadyOk(array $r): bool
@@ -186,6 +193,7 @@ if ($action === 'list') {
         $ready = tReadiness($conn, $r['dr_id'], $r['contract_amount']);
         $r['ready'] = tReadyOk($ready);
         $r['billing_ok'] = $ready[2]['ok'];
+        $r['client_paid_ok'] = $ready[3]['ok'];
     }
     unset($r);
     tOut(['success' => true, 'rows' => $rows, 'today' => date('Y-m-d')]);

@@ -470,10 +470,17 @@ if (!function_exists('getSidebarCounts')) {
             // Turnover Letter: ibinalik ang letter, pirmado na ng Superadmin (Complete Turnover na lang),
             // o handa na (verified lahat ng punch item + kumpleto at approved ang billing) pero wala pang letter
             try {
+                include_once ROOT_PATH . '/network/client-payment.php';
+                $inqOfQ = "(SELECT q2.inquiry_id FROM noblepc_dr d2 JOIN nobletransmittal t2 ON t2.id = d2.transmittal_id
+                            JOIN noblepurchaserequest p2 ON p2.id = t2.pr_id JOIN noblecrm_bom b2 ON b2.id = p2.bom_id
+                            JOIN noblecrm_2dquotation q2 ON q2.id = b2.quotation_id WHERE d2.id = q.dr_id LIMIT 1)";
+                $cpPaid = cpClientPaidSql($conn, 'x0.inq');
                 $c['pcTurnoverTodo'] = sidebarScalar(
                     $conn,
                     "SELECT COUNT(*) FROM (
-                         SELECT q.total AS contract, tv.status AS to_status,
+                         SELECT x0.*, (SELECT ii.contract_amount FROM noblecrminquiry ii WHERE ii.id = x0.inq) AS client_contract, $cpPaid AS client_paid
+                         FROM (
+                         SELECT q.total AS contract, tv.status AS to_status, $inqOfQ AS inq,
                                 (SELECT COUNT(*) FROM noblepc_punch p WHERE p.dr_id = q.dr_id AND p.status <> 'verified') AS punch_open,
                                 (SELECT COUNT(*) FROM noblepc_billing b WHERE b.dr_id = q.dr_id) AS bill_n,
                                 (SELECT COUNT(*) FROM noblepc_billing b WHERE b.dr_id = q.dr_id AND b.status = 'approved') AS bill_a,
@@ -483,10 +490,12 @@ if (!function_exists('getSidebarCounts')) {
                          JOIN noblepc_dr d ON d.id = q.dr_id
                          LEFT JOIN noblepc_turnover tv ON tv.dr_id = q.dr_id
                          WHERE q.status = 'approved'
+                         ) x0
                      ) x
                      WHERE x.to_status IN ('returned', 'approved')
                         OR (x.to_status IS NULL AND x.punch_open = 0 AND x.bill_n > 0 AND x.bill_n = x.bill_a
-                            AND x.approved_total >= x.contract + COALESCE(x.co, 0) - 0.004)"
+                            AND x.approved_total >= x.contract + COALESCE(x.co, 0) - 0.004
+                            AND x.client_contract > 0 AND x.client_paid >= x.client_contract - 0.004)"
                 );
             } catch (Throwable $e) {
                 error_log('sidebar pcTurnoverTodo: ' . $e->getMessage());

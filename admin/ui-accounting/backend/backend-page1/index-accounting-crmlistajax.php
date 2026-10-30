@@ -57,6 +57,14 @@ function acctRealtime(mysqli $conn, int $inquiryId, string $type, array $extraRo
     $groups = [[ROLE_ACCOUNTING, null]];
     foreach ($extraRoles as $r) $groups[] = [$r, null];
     nhRtInquiry($conn, $inquiryId, $groups, $type);
+    // Project Coordinator: ang bayad ng client ang kailangan bago mag-Turnover → i-refresh ang Turnover / Billing page
+    if ($type === 'crm_payment') {
+        try {
+            nhRealtimeNotifyGroup((string) ROLE_PC, null, 'changed', ['type' => 'billing_client_payment', 'inquiry_id' => $inquiryId]);
+        } catch (Throwable $e) {
+            error_log('acctRealtime PC: ' . $e->getMessage());
+        }
+    }
 }
 
 // I-save ang resibo; ibinabalik ang path o nag-e-exit na may error

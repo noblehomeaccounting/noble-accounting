@@ -283,6 +283,8 @@ $adminRoutes = [
     'superadminbillingajax',
     'superadminturnover',
     'superadminturnoverajax',
+    'projectcost',
+    'projectcostajax',
 
     'unauthorized',                    
     'fetchrequests',                   
@@ -593,6 +595,8 @@ $routes = [
     'superadminbillingajax'           => 'admin/ui-superad/backend/page-7/superadminbillingajax.php',
     'superadminturnover'              => 'admin/ui-superad/page-8/superadmin-turnover.php',
     'superadminturnoverajax'          => 'admin/ui-superad/backend/page-8/superadminturnoverajax.php',
+    'projectcost'                     => 'admin/ui-superad/page-9/project-cost.php',
+    'projectcostajax'                 => 'admin/ui-superad/backend/page-9/projectcostajax.php',
 
 
     'unauthorized'                     => 'admin/authentication/index-unauthorized.php',

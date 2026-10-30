@@ -614,8 +614,8 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     // ═══════════════════════════════════════════════════════════
     // TRACK (crmlistprogressajax): nasaan na + kailangan na ba ang contract
     // ═══════════════════════════════════════════════════════════
-    // 1–6 galing sa crmlistprogressajax; 7–11 galing sa row.project (crmlistajax) pagkatapos ma-approve ang BOM
-    const CRM_TRACK_STEPS = ['Schedule', 'Site visit', 'Initial 2D', 'Customer', 'Final & Contract', 'Cutting', 'Purchasing', 'Delivery', 'Installation', 'Billing', 'Turnover'];
+    // 1–6 galing sa crmlistprogressajax; 7–12 galing sa row.project (11 = bayad ng client sa Accounting) (crmlistajax) pagkatapos ma-approve ang BOM
+    const CRM_TRACK_STEPS = ['Schedule', 'Site visit', 'Initial 2D', 'Customer', 'Final & Contract', 'Cutting', 'Purchasing', 'Delivery', 'Installation', 'Billing', 'Client payment', 'Turnover'];
     // Pinagsamang track: kapag lampas na sa Cutting, ang galaw ng project ang ipapakita (contract info galing pa rin sa dati)
     function crmTrackOf(row) {
         const base = crmProgress[row.id];

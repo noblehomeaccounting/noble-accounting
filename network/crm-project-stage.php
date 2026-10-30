@@ -11,7 +11,8 @@
 
 if (!function_exists('crmProjectStages')) {
     // Mga hakbang pagkatapos ng "Cutting" (step 6) sa Track ng CRM List
-    define('CRM_PROJECT_STEPS', [7 => 'Purchasing', 8 => 'Delivery', 9 => 'Installation', 10 => 'Billing', 11 => 'Turnover']);
+    // 10 = labor billing ng PC · 11 = bayad ng client sa Accounting · 12 = Punch list & Turnover
+    define('CRM_PROJECT_STEPS', [7 => 'Purchasing', 8 => 'Delivery', 9 => 'Installation', 10 => 'Billing', 11 => 'Client payment', 12 => 'Turnover']);
 
     /**
      * @param int[] $ids  inquiry ids
@@ -29,7 +30,11 @@ if (!function_exists('crmProjectStages')) {
         @include_once ROOT_PATH . '/network/po-bom-group.php';
         $prOf = function_exists('poPrOfBomSql') ? poPrOfBomSql($conn, 'b.id') : '(SELECT MAX(p2.id) FROM noblepurchaserequest p2 WHERE p2.bom_id = b.id)';
 
-        $base = "SELECT q.inquiry_id, b.id AS bom_id, b.progression_id, b.bom_number, b.approved_at AS bom_approved_at,
+        // Bayad ng client (Accounting) laban sa contract ng inquiry
+        @include_once ROOT_PATH . '/network/client-payment.php';
+        $paidSql = function_exists('cpClientPaidSql') ? cpClientPaidSql($conn, 'q.inquiry_id') : 'NULL';
+        $base = "SELECT q.inquiry_id, (SELECT ii.contract_amount FROM noblecrminquiry ii WHERE ii.id = q.inquiry_id) AS client_contract, $paidSql AS client_paid,
+                        b.id AS bom_id, b.progression_id, b.bom_number, b.approved_at AS bom_approved_at,
                         pr.id AS pr_id, pr.req_no, pr.status AS pr_status, pr.approved_at AS pr_approved_at, pr.reviewed_at,
                         pr.staff_received_at, pr.released_at, pr.paid_at,
                         t.id AS tr_id, t.ref_no, t.delivered_at";
@@ -100,7 +105,7 @@ if (!function_exists('crmProjectStages')) {
             if ($closed === $n) {
                 $dates = array_filter(array_column($lines, 'accepted_date'));
                 $out[$inqId] = [
-                    'phase' => 11, 'phase_label' => 'Turnover', 'status' => 'Turned over', 'tone' => 'green', 'done' => true,
+                    'phase' => 12, 'phase_label' => 'Turnover', 'status' => 'Turned over', 'tone' => 'green', 'done' => true,
                     'note' => 'Project closed' . ($dates ? ' · accepted by the client ' . date('M j, Y', strtotime(max($dates))) : ''),
                     'lines' => $lines,
                 ];
@@ -199,17 +204,28 @@ if (!function_exists('crmProjectStages')) {
             if ($last === 'pending_head' || $last === 'pending_sa') return $L(10, 'Billing for signing', 'blue', $pct . '% billed · ' . $tlNote);
             return $L(10, $pct . '% billed', 'blue', $tlNote);
         }
-        // 11. Punch list & Turnover
+        // 12. Turnover (kapag nasimulan na ang letter, iyon na ang ipapakita)
         $to = $r['to_status'] ?? null;
         if ($to === 'closed') {
-            return $L(11, 'Turned over', 'green', 'Accepted ' . ($r['accepted_date'] ? date('M j, Y', strtotime($r['accepted_date'])) : ''), true);
+            return $L(12, 'Turned over', 'green', 'Accepted ' . ($r['accepted_date'] ? date('M j, Y', strtotime($r['accepted_date'])) : ''), true);
         }
-        if ($to === 'approved') return $L(11, 'Waiting for client acceptance', 'blue', 'Turnover letter signed · for the client to sign');
-        if ($to === 'pending_sa') return $L(11, 'Turnover letter for signing', 'blue', 'Waiting for the Superadmin');
-        if ($to === 'returned') return $L(11, 'Turnover letter being fixed', 'red', 'Returned by the Superadmin');
+        if ($to === 'approved') return $L(12, 'Waiting for client acceptance', 'blue', 'Turnover letter signed · for the client to sign');
+        if ($to === 'pending_sa') return $L(12, 'Turnover letter for signing', 'blue', 'Waiting for the Superadmin');
+        if ($to === 'returned') return $L(12, 'Turnover letter being fixed', 'red', 'Returned by the Superadmin');
+        // 11. Bayad ng client (Accounting) — bawal mag-turnover hangga't may balanse
+        if ($r['client_paid'] !== null) {
+            $cc = round((float) ($r['client_contract'] ?? 0), 2);
+            $cpd = round((float) $r['client_paid'], 2);
+            if ($cc <= 0 || $cpd < $cc - 0.004) {
+                $bal = max(0, $cc - $cpd);
+                return $L(11, $cc > 0 ? 'Balance ₱' . number_format($bal, 2) : 'Contract not set', 'amber',
+                    $cc > 0 ? 'Accounting: ₱' . number_format($cpd, 2) . ' of ₱' . number_format($cc, 2) . ' paid · needed before turnover' : 'Set the contract amount first');
+            }
+        }
+        // 12. Punch list → Turnover letter
         $open = (int) ($r['punch_open'] ?? 0);
         return $open > 0
-            ? $L(11, 'Punch list', 'amber', $open . ' item' . ($open === 1 ? '' : 's') . ' to fix before turnover')
-            : $L(11, 'Preparing turnover', 'amber', 'Fully billed · preparing the turnover letter');
+            ? $L(12, 'Punch list', 'amber', $open . ' item' . ($open === 1 ? '' : 's') . ' to fix before turnover')
+            : $L(12, 'Preparing turnover', 'amber', 'Fully billed and paid · preparing the turnover letter');
     }
 }

@@ -100,6 +100,7 @@ if ($role === ROLE_ACCOUNTING) {
         $add('CRM Manage', $I('/crmaccounting', 'fa-solid fa-folder-tree', 'CRM List', 'depositWaiting'));
         $add('PO Manage', $I('/accountingpurchaseorder', 'fa-solid fa-cart-flatbed', 'Purchase Order List', 'poToReview'));
         $add('Billing', $I('/accountingbilling', 'fa-solid fa-file-invoice-dollar', 'Progress Billing', 'billingPending', 'Billing'));
+        $add('Billing', $I('/projectcost', 'fa-solid fa-scale-balanced', 'Project Cost'));
     }
     if ($isStaff) {
         $add('Main', $I('/accountingstaffdashboard', 'fa-solid fa-chart-column', 'Dashboard Records'));
@@ -163,6 +164,7 @@ if ($role === ROLE_SUPERADMIN) {
     $add('Tracking', $I('/superadminlabor', 'fa-solid fa-helmet-safety', 'Labor Quotation', 'saLaborPending'));
     $add('Tracking', $I('/superadminbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'saBillingPending'));
     $add('Tracking', $I('/superadminturnover', 'fa-solid fa-key', 'Turnover Letter', 'saTurnoverPending'));
+    $add('Tracking', $I('/projectcost', 'fa-solid fa-scale-balanced', 'Project Cost'));
 }
 
 if ($role === ROLE_CUTTING) {
@@ -204,7 +206,7 @@ $sbAccountingAll = $role === ROLE_ACCOUNTING && in_array($position, [POSITION_HE
 $sbFollowups = $sbAccountingAll
     ? [$I('/accountingfollowups', 'fa-solid fa-file-arrow-up', 'Follow-ups', 'followupWaiting')]
     : [];
-$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC)
+$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING)
     ? [$I('/accountingsignatured', 'fa-solid fa-signature', 'Signatured Request')]
     : [];
 
