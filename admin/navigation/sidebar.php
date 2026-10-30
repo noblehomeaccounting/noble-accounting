@@ -206,7 +206,7 @@ $sbAccountingAll = $role === ROLE_ACCOUNTING && in_array($position, [POSITION_HE
 $sbFollowups = $sbAccountingAll
     ? [$I('/accountingfollowups', 'fa-solid fa-file-arrow-up', 'Follow-ups', 'followupWaiting')]
     : [];
-$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING)
+$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC)
     ? [$I('/accountingsignatured', 'fa-solid fa-signature', 'Signatured Request')]
     : [];
 
