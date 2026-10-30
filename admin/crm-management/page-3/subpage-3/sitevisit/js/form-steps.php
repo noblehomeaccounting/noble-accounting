@@ -68,13 +68,15 @@
                     document.getElementById('sv_main_col').classList.toggle('lg:col-span-2', !wide);
                     document.getElementById('sv_side_col').classList.toggle('hidden', wide);
 
-                    document.querySelectorAll('[data-goto-step]').forEach(btn => {
+                    // stepper lang — may data-goto-step din ang mga "Edit" button sa Review (walang dot)
+                    document.querySelectorAll('#sv_stepper [data-goto-step]').forEach(btn => {
                         const k = +btn.dataset.gotoStep;
                         const done = k < n, cur = k === n;
                         btn.className = 'group inline-flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] font-semibold hover:bg-gray-50 '
                             + (cur ? 'text-gray-900' : done ? 'text-amber-800' : 'text-gray-400');
                         btn.setAttribute('aria-current', cur ? 'step' : 'false');
                         const dot = btn.querySelector('[data-step-dot]');
+                        if (!dot) return;
                         dot.className = 'w-7 h-7 rounded-full flex items-center justify-center text-[11px] '
                             + (cur ? 'bg-amber-50 text-amber-700 ring-2 ring-amber-600' : done ? 'bg-amber-700 text-white' : 'bg-gray-100 text-gray-400');
                         if (!dot.dataset.icon) dot.dataset.icon = dot.querySelector('i').className;
