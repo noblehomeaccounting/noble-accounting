@@ -591,7 +591,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                 function q2dRenderStatusBanner(activeDraft) {
                     const tone = q2dStatusTone(activeDraft.status_label);
                     const text = activeDraft.is_locked
-                        ? 'Files are submitted and waiting for approval. They can no longer be edited unless sent back for revision.'
+                        ? 'Files are submitted and waiting for the Designer Head (2D/3D) and Sales Head (Quotation) to approve them. They can no longer be edited unless sent back for revision.'
                         : 'Upload the files for each slot, mark them as done, then submit for approval.';
                     return q2dCallout(tone, Q2D_TONE_ICON[tone], `Status: ${q2dEscapeHtml(activeDraft.status_label)}`, text, activeDraft.is_late ? q2dLateBadge() : '');
                 }
@@ -677,7 +677,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                         warn: activeDraft.is_late ? 'This will be recorded as a Late Submission.' : '',
                         label: 'Submit for approval',
                         onConfirm: 'q2dSubmitFinal',
-                        confirmText: `The ${include3d ? '2D, Quotation and 3D' : '2D and Quotation'} files will go to the Designer Head. You can't edit them unless sent back for revision.`,
+                        confirmText: `The ${include3d ? '2D, Quotation and 3D' : '2D and Quotation'} files will go to the Designer Head (2D/3D) and Sales Head (Quotation). You can't edit them unless sent back for revision.`,
                     });
                 }
 
@@ -946,7 +946,7 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                     if (!state.customer_approved) {
                         return q2dCallout('amber', 'fa-user-clock', 'Next: Customer review',
-                            'All files are approved by the Designer Head. Record the customer\'s decision.',
+                            'All files are approved by the Designer Head and Sales Head. Record the customer\'s decision.',
                             `<a href="${Q2D_CUSTOMER_URL}" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg shadow-sm shrink-0">
                                 Customer review <i class="fa-solid fa-arrow-right"></i></a>`);
                     }

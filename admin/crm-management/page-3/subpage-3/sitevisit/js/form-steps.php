@@ -41,6 +41,7 @@
                                 svSetOpen(sp, true);
                             }
                             seen.add(nm);
+                            sp.items.forEach(it => { const bad = svItemProblem(it); if (bad) { ok = false; first = first || bad; bad.classList.add('!border-red-500'); } });
                         });
                     }
                     if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -129,20 +130,21 @@
                             return `<div class="py-0.5"><span class="text-gray-400">${l}:</span> ${v ? esc(v.length > 140 ? v.slice(0, 140) + '…' : v) : '<span class="text-gray-300 italic">none</span>'}</div>`;
                         }).join('');
 
-                    const missingPdf = svSpaces.filter(sp => !sp.pdf.hasFiles()).length;
+                    const missingPdf = svSpaces.filter(sp => !svSpaceMeasured(sp)).length;
                     const tick = ok => ok ? '<i class="fa-solid fa-check text-emerald-600"></i>' : '<span class="text-gray-300">—</span>';
                     const spacesBody = svSpaces.length
-                        ? `<div class="overflow-x-auto -mx-1 px-1"><table class="w-full min-w-[460px] text-[12px]">
+                        ? `<div class="overflow-x-auto -mx-1 px-1"><table class="w-full min-w-[520px] text-[12px]">
                             <thead class="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                                <tr><th class="py-1 pr-2 text-left">No.</th><th class="py-1 pr-2 text-left">Space name</th><th class="py-1 px-2 text-center">Requirements</th><th class="py-1 px-2 text-center">Site photos</th><th class="py-1 px-2 text-center">Measurement</th><th class="py-1 pl-2 text-center">Remark</th></tr>
+                                <tr><th class="py-1 pr-2 text-left">No.</th><th class="py-1 pr-2 text-left">Space name</th><th class="py-1 px-2 text-center">Items</th><th class="py-1 px-2 text-center">Requirements</th><th class="py-1 px-2 text-center">Site photos</th><th class="py-1 px-2 text-center">Measurement</th><th class="py-1 pl-2 text-center">Remark</th></tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">${svSpaces.map((sp, i) => `
                                 <tr>
                                     <td class="py-1.5 pr-2"><span class="w-5 h-5 rounded-md bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">${i + 1}</span></td>
                                     <td class="py-1.5 pr-2 font-medium max-w-[180px] truncate">${esc(svNorm(sp.nameInput.value))}</td>
+                                    <td class="py-1.5 px-2 text-center" title="${esc(svFilledItems(sp).map(it => svNorm(it.name.value)).join(', '))}">${svFilledItems(sp).length || '<span class="text-gray-300">—</span>'}</td>
                                     <td class="py-1.5 px-2 text-center">${tick(sp.reqInput.value.trim())}</td>
-                                    <td class="py-1.5 px-2 text-center">${sp.photo.count() || '<span class="text-gray-300">—</span>'}</td>
-                                    <td class="py-1.5 px-2 text-center">${sp.pdf.hasFiles() ? `<span class="text-emerald-700 font-semibold">${sp.pdf.count()} file${sp.pdf.count() === 1 ? '' : 's'}</span>` : '<i class="fa-solid fa-circle-exclamation text-amber-500" title="No measurement"></i>'}</td>
+                                    <td class="py-1.5 px-2 text-center">${svSpacePhotoN(sp) || '<span class="text-gray-300">—</span>'}</td>
+                                    <td class="py-1.5 px-2 text-center">${svSpaceMeasured(sp) ? `<span class="text-emerald-700 font-semibold">${svSpacePdfN(sp)} file${svSpacePdfN(sp) === 1 ? '' : 's'}</span>` : '<i class="fa-solid fa-circle-exclamation text-amber-500" title="No measurement"></i>'}</td>
                                     <td class="py-1.5 pl-2 text-center">${tick(sp.notesInput.value.trim())}</td>
                                 </tr>`).join('')}</tbody></table></div>
                             ${missingPdf ? `<p class="mt-2 text-[11px] text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${missingPdf} space${missingPdf === 1 ? ' has' : 's have'} no measurement yet. You can still save.</p>` : ''}`

@@ -43,6 +43,7 @@ if (!function_exists('getSidebarCounts')) {
             'ewoodPending' => 0,
             'designerReview' => 0,
             'finalReview' => 0,
+            'contractTodo' => 0,
             'depositWaiting' => 0,
             'poToReview' => 0,
             'billingPending' => 0,
@@ -196,18 +197,61 @@ if (!function_exists('getSidebarCounts')) {
             }
         }
 
-        // Check Designer Quotation (Designer Head): Initial 2D & Quotation na kailangang i-review —
-        // "Queuing" (Waiting for Approval) + approved na 2D na may 3D na naghihintay ng approval
-        if ($role === ROLE_DESIGNER && $isHead) {
+        // Initial Approval (Designer Head / Sales Head): pinakabagong Initial na may Pending pa sa slot nila
+        // (parehong review_target ng checkdesigner2dquotationajax — "Your turn")
+        //   Designer Head: 2D o kasamang 3D na Pending, o standalone 3D na naghihintay
+        //   Sales Head:    Quotation na Pending
+        if ($isHead && ($role === ROLE_DESIGNER || $role === ROLE_SALES)) {
             try {
+                $mineSql = $role === ROLE_DESIGNER
+                    ? "(q.status = 'Waiting for Approval' AND (
+                            COALESCE(q.design_2d_review_status, 'Pending') NOT IN ('Approved', 'For Revision')
+                            OR (COALESCE(q.include_3d, 0) = 1 AND COALESCE(q.design_3d_review_status, 'Pending') NOT IN ('Approved', 'For Revision'))))
+                       OR (q.status = 'Approved' AND COALESCE(q.design_3d_stage, 'Locked') = 'Waiting for Approval')"
+                    : "q.status = 'Waiting for Approval'
+                       AND COALESCE(q.quotation_review_status, 'Pending') NOT IN ('Approved', 'For Revision')";
                 $c['designerReview'] = sidebarScalar(
                     $conn,
-                    "SELECT COUNT(*) FROM noblecrm_2dquotation
-                     WHERE status = 'Waiting for Approval'
-                        OR (status = 'Approved' AND design_3d_stage = 'Waiting for Approval')"
+                    "SELECT COUNT(*)
+                     FROM noblecrm_2dquotation q
+                     JOIN (SELECT inquiry_id, MAX(id) AS max_id FROM noblecrm_2dquotation GROUP BY inquiry_id) latest
+                         ON latest.max_id = q.id
+                     WHERE {$mineSql}"
                 );
             } catch (Throwable $e) {
                 error_log('sidebar designerReview: ' . $e->getMessage());
+            }
+        }
+
+        // Contracts: gagawin ng naka-login sa Contract Agreement (parehong "Your turn" ng contracts.php)
+        //   Accounting Head: Approved na Final na wala pang contract, o Draft (bago / ibinalik)
+        //   Sales: pipirma pa, o ibibigay ang link sa client · Designer: pipirma pa · Superadmin: huling pirma (GM)
+        $contractSql = null;
+        $contractTypes = '';
+        $contractParams = [];
+        if ($role === ROLE_ACCOUNTING && $isHead) {
+            $contractSql = "SELECT COUNT(*) FROM noblecrm_2dquotation_final f
+                JOIN (SELECT inquiry_id, MAX(id) AS mx FROM noblecrm_2dquotation_final GROUP BY inquiry_id) l ON l.mx = f.id
+                LEFT JOIN noblecrm_contract c ON c.inquiry_id = f.inquiry_id
+                WHERE f.status = 'Approved' AND (c.id IS NULL OR c.status = 'Draft')";
+        } elseif ($role === ROLE_SALES) {
+            $contractSql = "SELECT COUNT(*) FROM noblecrm_contract
+                WHERE sales_user_id = ? AND ((status = 'For Staff Signing' AND sales_signed_at IS NULL) OR status = 'For Client Signing')";
+            $contractTypes = 'i';
+            $contractParams = [$user_id];
+        } elseif ($role === ROLE_DESIGNER) {
+            $contractSql = "SELECT COUNT(*) FROM noblecrm_contract
+                WHERE designer_user_id = ? AND status = 'For Staff Signing' AND designer_signed_at IS NULL";
+            $contractTypes = 'i';
+            $contractParams = [$user_id];
+        } elseif ($role === ROLE_SUPERADMIN) {
+            $contractSql = "SELECT COUNT(*) FROM noblecrm_contract WHERE status = 'For GM Signing'";
+        }
+        if ($contractSql !== null) {
+            try {
+                $c['contractTodo'] = sidebarScalar($conn, $contractSql, $contractTypes, $contractParams);
+            } catch (Throwable $e) {
+                error_log('sidebar contractTodo: ' . $e->getMessage());
             }
         }
 
@@ -297,8 +341,35 @@ if (!function_exists('getSidebarCounts')) {
             }
         }
 
-        // 2D & Quotation (Superadmin, Final): pinakabagong Final ng bawat inquiry na may "Review" —
-        // Waiting for Approval, o approved na may 3D na naghihintay (parehong review_target ng check2dquotationajax)
+        // Final Approval (Designer Head / Sales Head): pinakabagong Final na may Pending pa sa slot nila
+        // (parehong review_target ng check2dquotationajax — "Your turn")
+        //   Designer Head: 2D o kasamang 3D na Pending, o standalone 3D na naghihintay
+        //   Sales Head:    Quotation na Pending
+        if ($isHead && ($role === ROLE_DESIGNER || $role === ROLE_SALES)) {
+            try {
+                $mineSql = $role === ROLE_DESIGNER
+                    ? "(q.status = 'Waiting for Approval' AND (
+                            COALESCE(q.design_2d_review_status, 'Pending') NOT IN ('Approved', 'For Revision')
+                            OR (COALESCE(q.include_3d, 0) = 1 AND COALESCE(q.design_3d_review_status, 'Pending') NOT IN ('Approved', 'For Revision'))))
+                       OR (q.status = 'Approved' AND COALESCE(q.design_3d_stage, 'Locked') = 'Waiting for Approval')"
+                    : "q.status = 'Waiting for Approval'
+                       AND COALESCE(q.quotation_review_status, 'Pending') NOT IN ('Approved', 'For Revision')";
+                $c['finalReview'] = sidebarScalar(
+                    $conn,
+                    "SELECT COUNT(*)
+                     FROM noblecrm_2dquotation_final q
+                     JOIN (SELECT inquiry_id, MAX(id) AS max_id FROM noblecrm_2dquotation_final GROUP BY inquiry_id) latest
+                         ON latest.max_id = q.id
+                     JOIN noblecrminquiry i ON i.id = q.inquiry_id
+                     WHERE {$mineSql}"
+                );
+            } catch (Throwable $e) {
+                error_log('sidebar finalReview (head): ' . $e->getMessage());
+            }
+        }
+
+        // 2D & Quotation (Superadmin, Final — monitor na lang): pinakabagong Final na hinihintay pa ng mga head —
+        // Waiting for Approval, o approved na may 3D na naghihintay
         if ($role === ROLE_SUPERADMIN) {
             try {
                 $c['finalReview'] = sidebarScalar(

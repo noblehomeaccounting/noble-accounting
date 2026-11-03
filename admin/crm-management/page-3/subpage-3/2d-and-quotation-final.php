@@ -199,7 +199,12 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
             <script>
                 const Q2D_AJAX_URL = <?= json_encode(BASE_URL . '/crm2dquotationajaxfinal') ?>;
                 const Q2D_INQUIRY_ID = <?= (int) $inquiryId ?>;
+                const Q2D_CONTRACTS_URL = <?= json_encode(BASE_URL . '/crmcontracts') ?>;
                 const Q2D_IS_SALES = <?= json_encode($isSales) ?>;
+                // Kanya-kanyang file: Designer = 2D at 3D · Sales = Quotation lang
+                const Q2D_MY_SLOTS = Q2D_IS_SALES ? ['quotation'] : ['2d', '3d'];
+                const Q2D_OTHER_TEAM = Q2D_IS_SALES ? 'Designer' : 'Sales';
+                const q2dIsMine = slot => Q2D_MY_SLOTS.includes(slot);
                 const Q2D_STAGE = 'Final';
 
                 const Q2D_POLL_INTERVAL_MS = 8000;
@@ -392,7 +397,7 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
 
                 // "Submit 3D together" toggle — designer only, and only while it's still editable.
                 function q2dRenderToggle(design3d) {
-                    if (!design3d || !design3d.toggle_editable) return '';
+                    if (Q2D_IS_SALES || !design3d || !design3d.toggle_editable) return '';
                     const checked = design3d.include_3d ? 'checked' : '';
                     return `
                     <div class="q2d-card px-4 py-3 mb-4 flex items-center gap-3">
@@ -410,7 +415,16 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                 }
 
                 // columns: [{ label, slot, contentHtml, chip? }] → mga card na magkakatabi
-                function q2dFileTable(columns) {
+                function q2dFileTable(allColumns) {
+                    const columns = allColumns.filter(c => q2dIsMine(c.slot));
+                    const hidden = allColumns.filter(c => !q2dIsMine(c.slot));
+                    // Status lang (walang file) ng hawak ng kabilang team, para alam kung saan na sila
+                    const otherLine = hidden.length ? `
+                        <div class="q2d-card px-4 py-2.5 mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11.5px] text-gray-500">
+                            <span class="font-semibold text-gray-600"><i class="fa-solid fa-user-group mr-1 text-gray-400"></i>${Q2D_OTHER_TEAM}'s part</span>
+                            ${hidden.map(c => `<span class="inline-flex items-center gap-1.5">${q2dEscapeHtml(c.label)} ${c.chip || ''}</span>`).join('')}
+                        </div>` : '';
+                    if (!columns.length) return otherLine;
                     const cols = columns.length >= 3 ? 'md:grid-cols-3' : (columns.length === 2 ? 'sm:grid-cols-2' : '');
                     const cards = columns.map(c => {
                         const meta = Q2D_SLOT_META[c.slot] || Q2D_SLOT_META['2d'];
@@ -424,7 +438,7 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                             <div class="p-4 flex-1 min-w-0" data-slot-container="${c.slot}">${c.contentHtml}</div>
                         </div>`;
                     }).join('');
-                    return `<div class="grid ${cols} gap-3 mb-4">${cards}</div>`;
+                    return `<div class="grid ${cols} gap-3 mb-4">${cards}</div>${otherLine}`;
                 }
                 const Q2D_CHIP_DONE = () => q2dChip('Done', 'green', 'fa-check');
                 const Q2D_CHIP_TODO = () => q2dChip('To upload', 'amber', 'fa-arrow-up');
@@ -460,9 +474,15 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
 
                 function q2dRenderStatusBanner(activeDraft) {
                     const tone = q2dStatusTone(activeDraft.status_label);
-                    const text = activeDraft.is_locked
-                        ? 'Final files are submitted and waiting for approval. They can no longer be edited unless sent back for revision.'
+                    let text = activeDraft.is_locked
+                        ? 'Final files are submitted and waiting for the Designer Head (2D/3D) and Sales Head (Quotation) to approve them. They can no longer be edited unless sent back for revision.'
                         : 'Upload the Final files, mark them as done, then submit for approval.';
+                    // Progress ng dalawang head habang naka-submit
+                    const hr = activeDraft.is_locked && activeDraft.head_review;
+                    if (hr) {
+                        const word = { 'Approved': 'approved', 'For Revision': 'asked for revision', 'Pending': 'not yet reviewed' };
+                        text += ` Designer Head: ${q2dEscapeHtml(word[hr.designer_head] || 'not yet reviewed')} · Sales Head: ${q2dEscapeHtml(word[hr.sales_head] || 'not yet reviewed')}.`;
+                    }
                     return q2dCallout(tone, Q2D_TONE_ICON[tone], `Final status: ${q2dEscapeHtml(activeDraft.status_label)}`, text);
                 }
 
@@ -538,13 +558,19 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                     if (activeDraft.is_locked) return '';
                     const include3d = !!(design3d && design3d.include_3d);
                     const allDone = activeDraft.both_done && (!include3d || design3d.done);
+                    const mineDone = Q2D_IS_SALES
+                        ? !!activeDraft.quotation.done
+                        : (!!activeDraft.design_2d.done && (!include3d || !!design3d.done));
+                    const blocker = allDone ? ''
+                        : !mineDone ? `Mark your ${Q2D_IS_SALES ? 'Quotation file' : (include3d ? '2D and 3D files' : '2D file')} as done first.`
+                            : `Waiting for ${Q2D_OTHER_TEAM} to mark the ${Q2D_IS_SALES ? (include3d ? '2D and 3D files' : '2D file') : 'Quotation file'} as done.`;
                     return q2dSubmitBlock({
                         id: 'q2dSubmitMain',
                         ready: allDone,
-                        blocker: allDone ? '' : `Mark ${include3d ? 'all three files' : 'both files'} as done first.`,
+                        blocker,
                         label: 'Submit Final for approval',
                         onConfirm: 'q2dSubmitFinal',
-                        confirmText: `The Final ${include3d ? '2D, Quotation and 3D' : '2D and Quotation'} will be sent for approval. The contract will also be locked.`,
+                        confirmText: `The Final ${include3d ? '2D, Quotation and 3D' : '2D and Quotation'} will be sent to the Designer Head and Sales Head for approval.`,
                     });
                 }
 
@@ -554,10 +580,15 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                         const both = revisionEntry.design_2d_needs_revision && revisionEntry.quotation_needs_revision;
                         const what = both ? 'Final 2D and Quotation' : (revisionEntry.design_2d_needs_revision ? 'Final 2D only' : 'Final Quotation only');
                         headerBlock = q2dCallout('red', 'fa-rotate-left', `Sent back for revision — ${what}`,
-                            both ? 'Attach the corrected PDFs below.' : 'The other file was already approved and does not need to be re-uploaded.');
+                            (() => {
+                                const mineNeeds = Q2D_IS_SALES ? revisionEntry.quotation_needs_revision : revisionEntry.design_2d_needs_revision;
+                                return mineNeeds ? 'Attach your corrected PDF below.' : `Your file was already approved. Waiting for ${Q2D_OTHER_TEAM} to re-upload theirs.`;
+                            })());
                     } else {
                         headerBlock = q2dCallout('amber', 'fa-cloud-arrow-up', 'No Final submission yet',
-                            'The Initial files were approved. Attach the Final 2D and Quotation PDFs below to start.');
+                            Q2D_IS_SALES
+                                ? 'The Initial files were approved. Attach the Final Quotation PDF below to start.'
+                                : 'The Initial files were approved. Attach the Final 2D PDF below to start.');
                     }
 
                     const twoDNeeds = !(revisionEntry && !revisionEntry.design_2d_needs_revision);
@@ -584,7 +615,7 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
 
                 // 3D uploaded on its own (toggle OFF) — unlocks after the Final 2D & Quotation are Approved.
                 function q2dRender3dStandaloneSection(design3d) {
-                    if (!design3d || design3d.include_3d || design3d.stage === 'Locked') return '';
+                    if (Q2D_IS_SALES || !design3d || design3d.include_3d || design3d.stage === 'Locked') return '';
 
                     const stage = design3d.stage;
                     let inner;
@@ -624,81 +655,35 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                 // to webp server-side). Sales-only to edit; locked once the
                 // Final submission is Waiting for Approval / Approved.
                 // ═══════════════════════════════════════════════════════════
+                // Contract: ang Accounting Head na ang gumagawa (Contracts page) pagkatapos ma-Approved ang Final.
+                // Pipirma ang Sales at Designer doon, saka ibibigay ng Sales ang link sa client.
                 function q2dRenderContractSection(state) {
-                    const inquiry = state.inquiry;
-                    const locked = state.contract_locked;
-                    const hasAmount = inquiry.contract_amount !== null && inquiry.contract_amount !== undefined
-                        && inquiry.contract_amount !== '' && Number(inquiry.contract_amount) > 0;
-                    const hasFile = !!inquiry.contract_file_url;
-                    const fileLabel = hasFile ? inquiry.contract_file_url.split('/').pop() : '';
-
-                    const head = (sub) => `
+                    const inquiry = state.inquiry || {};
+                    const hasAmount = Number(inquiry.contract_amount) > 0;
+                    const approved = !!state.completed_entry;
+                    return `
+                    <div class="q2d-card overflow-hidden">
                         <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5">
                             <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-sm"></i></span>
                             <div class="min-w-0 flex-1">
                                 <p class="text-[13px] font-semibold text-gray-900">Contract</p>
-                                <p class="text-[10.5px] text-gray-400">${sub}</p>
+                                <p class="text-[10.5px] text-gray-400">Prepared by the Accounting Head</p>
                             </div>
-                            ${locked ? '<i class="fa-solid fa-lock text-[11px] text-gray-300" title="Locked"></i>' : ''}
-                        </div>`;
-
-                    const readOnly = `
-                    <div class="q2d-card overflow-hidden">
-                        ${head(locked ? 'Locked — Final has been submitted' : 'Set by Sales')}
+                        </div>
                         <div class="p-4 space-y-3">
                             <div>
                                 <p class="q2d-eyebrow">Amount</p>
                                 <p class="text-xl font-bold mt-0.5 ${hasAmount ? 'text-gray-900' : 'text-gray-300'} tabular-nums">${hasAmount ? q2dFormatCurrency(inquiry.contract_amount) : 'Not yet set'}</p>
                             </div>
-                            <div>
-                                <p class="q2d-eyebrow mb-1">File</p>
-                                ${hasFile ? `<a href="${q2dEscapeHtml(inquiry.contract_file_url)}" target="_blank" rel="noopener"
-                                    class="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:border-amber-600 min-w-0">
-                                    <i class="fa-solid ${q2dFileIcon(fileLabel)} shrink-0"></i>
-                                    <span class="text-[12.5px] font-medium text-gray-800 truncate flex-1">${q2dEscapeHtml(fileLabel)}</span>
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-gray-400"></i></a>`
-                            : '<p class="text-[12.5px] text-gray-400 italic">Not yet uploaded.</p>'}
-                            </div>
+                            <p class="text-[12px] text-gray-500 leading-relaxed">${approved
+                                ? 'The Final is approved. The Accounting Head prepares the contract, then Sales and Designer sign it in Contracts.'
+                                : 'The contract is prepared after the Final is approved by the Sales Head and Designer Head.'}</p>
+                            ${approved ? `<a href="${Q2D_CONTRACTS_URL}?inquiry=${Q2D_INQUIRY_ID}" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg shadow-sm">
+                                <i class="fa-solid fa-file-signature"></i> Open contract</a>` : ''}
                         </div>
                     </div>`;
-
-                    if (!Q2D_IS_SALES || locked) return readOnly;
-
-                    return `
-                    <div class="q2d-card overflow-hidden">
-                        ${head('Required before the Final can be approved')}
-                        <div class="p-4">
-                            <label for="contract_amount_input" class="block text-[11.5px] font-semibold text-gray-700 mb-1">Contract amount <span class="text-red-500">*</span></label>
-                            <div class="relative mb-3">
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₱</span>
-                                <input id="contract_amount_input" type="text" inputmode="decimal"
-                                    value="${hasAmount ? inquiry.contract_amount : ''}" placeholder="0.00"
-                                    class="q2d-field h-10 font-semibold tabular-nums" style="padding-left:1.75rem">
-                            </div>
-
-                            <p class="block text-[11.5px] font-semibold text-gray-700 mb-1">Contract file</p>
-                            <label for="contract_file_input" data-drop-for="contract" class="q2d-drop">
-                                <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-cloud-arrow-up"></i></span>
-                                <span id="contract_file_input_label" class="text-[12.5px] font-semibold text-gray-700 w-full truncate px-1">${hasFile ? 'Current: ' + q2dEscapeHtml(fileLabel) : 'Upload contract'}</span>
-                                <span class="text-[10.5px] text-gray-400">PDF or JPG/PNG/WEBP · max 15MB</span>
-                            </label>
-                            <input id="contract_file_input" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="hidden">
-                            <a id="contract_file_input_preview" href="#" target="_blank" rel="noopener"
-                                class="hidden mt-2 items-center gap-1.5 text-xs font-semibold text-amber-700 hover:underline">
-                                <i class="fa-solid fa-eye"></i> View selected file
-                            </a>
-                            ${hasFile ? `<a href="${q2dEscapeHtml(inquiry.contract_file_url)}" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-amber-700"><i class="fa-solid fa-file"></i> View current file</a>` : ''}
-
-                            <button type="button" id="q2dSaveContractBtn" onclick="q2dSaveContract()"
-                                class="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg shadow-sm">
-                                <i class="fa-solid fa-floppy-disk"></i> Save contract
-                            </button>
-                        </div>
-                    </div>
-                `;
                 }
 
-                // Live thousands-separator formatting while typing, e.g. 1000000000 -> 1,000,000,000
                 function q2dBindContractAmountInput() {
                     const input = document.getElementById('contract_amount_input');
                     if (!input) return;
@@ -851,14 +836,17 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                 function q2dRenderPastEntries(pastEntries) {
                     if (!pastEntries || pastEntries.length === 0) return '';
 
-                    const anyBundled3d = pastEntries.some(e => e.design_3d && e.design_3d.included);
+                    const anyBundled3d = !Q2D_IS_SALES && pastEntries.some(e => e.design_3d && e.design_3d.included);
 
                     const cards = pastEntries.map((entry, idx) => {
                         const tone = q2dStatusTone(entry.status_label);
                         const with3d = anyBundled3d && entry.design_3d && entry.design_3d.included;
+                        // Sariling remarks lang (Designer = 2D, Sales = Quotation)
+                        const myRemarks = Q2D_IS_SALES ? entry.quotation_remarks : entry.design_2d_remarks;
+                        const myLabel = Q2D_IS_SALES ? 'Quotation' : '2D';
                         const hasPerFileRemarks = !!entry.design_2d_remarks || !!entry.quotation_remarks;
                         const remarksHtml = hasPerFileRemarks
-                            ? `${entry.design_2d_remarks ? `<p class="mb-1"><span class="font-semibold text-gray-700">2D:</span> ${q2dEscapeHtml(entry.design_2d_remarks).replace(/\n/g, '<br>')}</p>` : ''}${entry.quotation_remarks ? `<p><span class="font-semibold text-gray-700">Quotation:</span> ${q2dEscapeHtml(entry.quotation_remarks).replace(/\n/g, '<br>')}</p>` : ''}`
+                            ? (myRemarks ? `<p><span class="font-semibold text-gray-700">${myLabel}:</span> ${q2dEscapeHtml(myRemarks).replace(/\n/g, '<br>')}</p>` : '')
                             : (entry.remarks ? q2dEscapeHtml(entry.remarks).replace(/\n/g, '<br>') : '');
 
                         return `
@@ -870,9 +858,8 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                                 <i class="fa-solid fa-chevron-down text-[10px] text-gray-400 q2d-chev"></i>
                             </summary>
                             <div class="px-4 pb-4 pt-1 border-t border-gray-100">
-                                <div class="grid ${with3d ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4 pt-3">
-                                    ${q2dPastSlotBlock('2D', '2d', entry.design_2d)}
-                                    ${q2dPastSlotBlock('Quotation', 'quotation', entry.quotation)}
+                                <div class="grid ${with3d ? 'sm:grid-cols-2' : ''} gap-4 pt-3">
+                                    ${Q2D_IS_SALES ? q2dPastSlotBlock('Quotation', 'quotation', entry.quotation) : q2dPastSlotBlock('2D', '2d', entry.design_2d)}
                                     ${with3d ? q2dPastSlotBlock('3D', '3d', entry.design_3d) : ''}
                                 </div>
                                 ${remarksHtml ? `
@@ -904,9 +891,9 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
                     const steps = [
                         ['fa-file-lines', 'Initial approved', true],
                         ['fa-cloud-arrow-up', 'Final files', submitted],
-                        ['fa-user-tie', 'Final approval', approved],
+                        ['fa-user-tie', 'Heads approval', approved],
                     ];
-                    if (d3 && !d3.include_3d && d3.stage) steps.push(['fa-cube', '3D', d3.stage === 'Approved']);
+                    if (!Q2D_IS_SALES && d3 && !d3.include_3d && d3.stage) steps.push(['fa-cube', '3D', d3.stage === 'Approved']);
                     const cur = steps.findIndex(s => !s[2]);
                     const revising = !!state.revision_entry && !ad && !state.completed_entry;
                     el.innerHTML = `<div class="flex items-center gap-2 text-[11px] font-semibold">${steps.map(([ic, lbl, done], i) => {

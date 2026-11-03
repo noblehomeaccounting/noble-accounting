@@ -40,6 +40,7 @@ function svConvertToWebp(string $tmpPath, string $ext): ?string
 }
 
 const SV_MAX_SPACES = 30;
+const SV_MAX_ITEMS = 50;   // item bawat space (hal. Upper cabinet, Lower cabinet)
 const SV_MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB bawat PDF
 
 // Listahan ng files ng isang input. $key = para sa naka-group (hal. space_pdfs[3][])

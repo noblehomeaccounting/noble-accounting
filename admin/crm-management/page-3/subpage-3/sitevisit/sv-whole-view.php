@@ -16,14 +16,15 @@
                         class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
                 </div>
                 <div class="max-h-[75vh] overflow-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]">
-                    <table class="hidden md:table w-full min-w-[900px] text-[12.5px]">
+                    <table class="hidden md:table w-full min-w-[1000px] text-[12.5px]">
                         <thead class="sticky top-0 z-10 bg-gray-50 text-[10.5px] font-bold uppercase tracking-wider text-gray-500 shadow-[0_1px_0_#e5e7eb]">
                             <tr>
                                 <th class="px-3 py-2.5 text-left w-14">No.</th>
-                                <th class="px-3 py-2.5 text-left w-44">Space name</th>
+                                <th class="px-3 py-2.5 text-left w-40">Space name</th>
+                                <th class="px-3 py-2.5 text-left">Items</th>
                                 <th class="px-3 py-2.5 text-left">Requirements</th>
-                                <th class="px-3 py-2.5 text-left w-52">Site photos</th>
-                                <th class="px-3 py-2.5 text-left w-48">Measurement</th>
+                                <th class="px-3 py-2.5 text-left w-48">Site photos</th>
+                                <th class="px-3 py-2.5 text-left w-44">Measurement</th>
                                 <th class="px-3 py-2.5 text-left">Remark</th>
                                 <th class="px-3 py-2.5 w-16"></th>
                             </tr>
@@ -38,4 +39,3 @@
                 </div>
             </div>
         </div>
-

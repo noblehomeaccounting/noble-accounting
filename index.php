@@ -326,6 +326,9 @@ $adminRoutes = [
     'crmdesignerprogressajax',
     'crmlistresetajax',
     'crmlistprogressajax',
+    'crmcontracts',
+    'crmcontractsajax',
+    'crmcontractpdf',
 
 ];
 
@@ -648,6 +651,14 @@ $routes = [
     'crmdesignerprogressajax'          => 'admin/crm-management/backend/page-3/crmdesignerprogressajax.php',
     'crmlistresetajax'                 => 'admin/crm-management/backend/page-2/crmlistresetajax.php',
     'crmlistprogressajax'              => 'admin/crm-management/backend/page-2/crmlistprogressajax.php',
+    'crmcontracts'                     => 'admin/crm-management/contract/contracts.php',
+    'crmcontractsajax'                 => 'admin/crm-management/contract/backend/contractsajax.php',
+    'crmcontractpdf'                   => 'admin/crm-management/contract/contract-pdf.php',
+
+    // PUBLIC (para sa client — HUWAG ilagay sa $adminRoutes)
+    'contractsign'                     => 'admin/crm-management/contract/contract-sign.php',
+    'contractsignajax'                 => 'admin/crm-management/contract/backend/contractsignajax.php',
+
 ];
 
 

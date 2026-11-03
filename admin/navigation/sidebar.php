@@ -98,6 +98,7 @@ if ($role === ROLE_ACCOUNTING) {
         $add('Manage', $I('/cashvoucherdashboard', 'fa-solid fa-ticket-simple', 'Approval & Voucher', 'unpreparedVoucher', 'Approval Cash Voucher'));
 
         $add('CRM Manage', $I('/crmaccounting', 'fa-solid fa-folder-tree', 'CRM List', 'depositWaiting'));
+        $add('CRM Manage', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
         $add('PO Manage', $I('/accountingpurchaseorder', 'fa-solid fa-cart-flatbed', 'Purchase Order List', 'poToReview'));
         $add('Billing', $I('/accountingbilling', 'fa-solid fa-file-invoice-dollar', 'Progress Billing', 'billingPending', 'Billing'));
         $add('Billing', $I('/projectcost', 'fa-solid fa-scale-balanced', 'Project Cost'));
@@ -134,12 +135,18 @@ if ($role === ROLE_HR) {
 }
 
 if ($role === ROLE_SALES) {
-    if ($isMainBranch) {
+    if ($isMainBranch && $isHead) {
         $add('Main', $I('/salesmarket', 'fa-solid fa-wallet', 'Budget Request list', null, 'Sales Market'));
     }
     $add('Main', $I('/crmsales', 'fa-solid fa-users', 'CRM Main'));
     $add('Main', $I('/crmsaleslist', 'fa-solid fa-list-ol', 'CRM List', 'crmPending'));
     $add('Main', $I('/quotation', 'fa-solid fa-file-pen', 'Quotation'));
+    $add('Main', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
+    if ($isHead) {
+        // Initial at Final approval ng Quotation (Sales Head)
+        $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Initial Approval', 'designerReview', 'Initial 2D & Quotation Approval'));
+        $add('Manage', $I('/crm-main', 'fa-solid fa-file-circle-check', 'Final Approval', 'finalReview', 'Final 2D & Quotation Approval'));
+    }
 }
 
 if ($role === ROLE_DESIGNER) {
@@ -147,8 +154,11 @@ if ($role === ROLE_DESIGNER) {
         $add('Main', $I('/designer', 'fa-solid fa-wallet', 'Budget Request', null, 'Dashboard'));
     }
     $add('Manage', $I('/crmdesigner', 'fa-solid fa-compass-drafting', 'CRM Designer', 'designerTodo'));
+    $add('Manage', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
     if ($isHead) {
         $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Check Designer Quotation', 'designerReview'));
+        // Final approval ng 2D at 3D (Designer Head)
+        $add('Manage', $I('/crm-main', 'fa-solid fa-file-circle-check', 'Final Approval', 'finalReview', 'Final 2D & Quotation Approval'));
     }
 }
 
@@ -157,6 +167,7 @@ if ($role === ROLE_SUPERADMIN) {
         $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Quotation', 'finalReview', '2D & Quotation Approval'));
     }
     $add('Main', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'E-Wood Management', 'ewoodPending'));
+    $add('Main', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
 
     $add('Tracking', $I('/monitoring', 'fa-solid fa-chart-simple', 'Monitoring & WorkBench', null, 'Monitoring'));
     $add('Tracking', $I('/purchaseorderapproval', 'fa-solid fa-file-signature', 'Purchase Order Approval', 'prApproval', 'Purchase Order'));
@@ -211,7 +222,7 @@ $sbAccountingAll = $role === ROLE_ACCOUNTING && in_array($position, [POSITION_HE
 $sbFollowups = $sbAccountingAll
     ? [$I('/accountingfollowups', 'fa-solid fa-file-arrow-up', 'Follow-ups', 'followupWaiting')]
     : [];
-$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC)
+$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC || $role === ROLE_SALES || $role === ROLE_DESIGNER)
     ? [$I('/accountingsignatured', 'fa-solid fa-signature', 'Signatured Request')]
     : [];
 

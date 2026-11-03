@@ -1,21 +1,21 @@
 <?php
 // checkdesigner2dquotation.php
-// Initial 2D & Quotation approval — DESIGNER HEAD only.
+// Initial 2D & Quotation approval — Designer Head (2D/3D) + Sales Head (Quotation).
 // MULTI-ATTACHMENT + PER-FILE REVIEW VERSION:
 // lahat ng file ng bawat slot ay makikita at mabubuksan, at may sariling Approve / Revision ang bawat file.
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_DESIGNER];
+$allowedRoles = [ROLE_DESIGNER, ROLE_SALES];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
-// Head lang — ang ibang designer staff ay hindi pwede rito.
+// Head lang (Designer Head o Sales Head) — ang ibang staff ay hindi pwede rito.
 $dchkAccountId = intval($_SESSION['account_id'] ?? 0);
 $dchkStmt = $conn->prepare("SELECT id FROM noblerole WHERE id = ? AND role = ? AND position = ? LIMIT 1");
-$dchkRole = ROLE_DESIGNER;
+$dchkRole = $_SESSION['role'] ?? '';
 $dchkPos = POSITION_HEAD;
 $dchkStmt->bind_param("iss", $dchkAccountId, $dchkRole, $dchkPos);
 $dchkStmt->execute();
@@ -24,8 +24,14 @@ $dchkStmt->close();
 
 if (!$dchkIsHead) {
     http_response_code(403);
-    exit('Access denied. This page is for the Designer Head only.');
+    exit('Access denied. This page is for the Designer Head and Sales Head only.');
 }
+
+$dchkViewer = $dchkRole === ROLE_SALES ? 'sales_head' : 'designer_head';
+$dchkViewerLabel = $dchkViewer === 'sales_head' ? 'Sales Head' : 'Designer Head';
+$dchkIntro = $dchkViewer === 'sales_head'
+    ? 'You approve the Quotation files. The Designer Head approves the 2D and 3D. The Initial is approved once both of you are done.'
+    : 'You approve the 2D and 3D files. The Sales Head approves the Quotation. The Initial is approved once both of you are done.';
 
 $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 ?>
@@ -42,7 +48,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-5 lg:p-7 bg-[#F5F6FA] overflow-x-hidden">
+    <main id="main-content" class="md:ml-56 min-h-screen p-4 pt-20 md:p-5 md:pt-5 lg:p-7 bg-[#F5F6FA] overflow-x-hidden">
 
         <div class="max-w-6xl mx-auto">
 
@@ -53,12 +59,12 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                     <div class="flex items-center gap-3 min-w-0">
                         <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-clipboard-check text-lg"></i></span>
                         <div class="min-w-0">
-                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Design Management · Designer Head</p>
+                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">CRM Management · <?= htmlspecialchars($dchkViewerLabel) ?></p>
                             <h1 class="text-gray-900 text-lg font-semibold leading-tight flex flex-wrap items-center gap-2">
                                 2D &amp; Quotation Approval
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">Initial</span>
                             </h1>
-                            <p class="text-gray-400 text-[11px] mt-0.5">Open a submission, approve or send back each file, then submit your review.</p>
+                            <p class="text-gray-400 text-[11px] mt-0.5 max-w-xl"><?= htmlspecialchars($dchkIntro) ?></p>
                         </div>
                     </div>
 
@@ -149,6 +155,10 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         }
 
         const DCHK_AJAX_URL = <?= json_encode($dchkAjaxUrl) ?>;
+        const DCHK_VIEWER = <?= json_encode($dchkViewer) ?>; // designer_head | sales_head
+        // sino ang may hawak ng bawat slot
+        const DCHK_SLOT_OWNER = { design_2d: 'designer_head', design_3d: 'designer_head', quotation: 'sales_head' };
+        const DCHK_OWNER_LABEL = { designer_head: 'Designer Head', sales_head: 'Sales Head' };
         const DCHK_POLL_INTERVAL_MS = 8000;
         const DCHK_VIEWED_KEY = 'dchkViewedIds';
 
@@ -249,6 +259,9 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             }
             if (row.status === 'Approved' && row.design_3d_stage === 'For Revision') {
                 out += ' ' + dchkMiniChip('<i class="fa-solid fa-cube text-[8px] mr-1"></i>3D revision', 'border-red-200 bg-red-50 text-red-700');
+            }
+            if (row.status === 'Waiting for Approval' && Array.isArray(row.waiting_on) && row.waiting_on.length === 1) {
+                out += ' ' + dchkMiniChip(`<i class="fa-solid fa-hourglass-half text-[8px] mr-1"></i>Waiting: ${dchkEscapeHtml(row.waiting_on[0])}`, 'border-gray-200 bg-white text-gray-600');
             }
             if (row.is_late) {
                 out += ' ' + dchkMiniChip('<i class="fa-solid fa-clock text-[8px] mr-1"></i>Late', 'border-red-200 bg-white text-red-700');
@@ -364,6 +377,25 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         }, true);
         window.addEventListener('resize', dchkCloseFileDropdown);
 
+        // Progress ng dalawang head: ✓ approved · ↺ revision · … pending
+        function dchkHeadChip(ownerKey, statuses) {
+            const label = DCHK_OWNER_LABEL[ownerKey];
+            let tone = 'border-gray-200 bg-white text-gray-500', icon = 'fa-hourglass-half', text = 'Pending';
+            if (statuses.length && statuses.every(s => s === 'Approved')) {
+                tone = 'border-emerald-200 bg-emerald-50 text-emerald-700'; icon = 'fa-check'; text = 'Approved';
+            } else if (statuses.some(s => s === 'For Revision')) {
+                tone = 'border-red-200 bg-red-50 text-red-700'; icon = 'fa-rotate-left'; text = 'Revision';
+            }
+            const mine = ownerKey === DCHK_VIEWER ? ' ring-1 ring-amber-400' : '';
+            return `<span title="${label}: ${text}" class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold border whitespace-nowrap ${tone}${mine}">
+                <i class="fa-solid ${icon} text-[9px]"></i>${label.replace(' Head', '')}</span>`;
+        }
+        function dchkHeadsCell(row) {
+            const d = [row.design_2d_review_status];
+            if (row.include_3d) d.push(row.design_3d_review_status);
+            return `<div class="flex items-center gap-1" title="Head reviews">${dchkHeadChip('designer_head', d)}${dchkHeadChip('sales_head', [row.quotation_review_status])}</div>`;
+        }
+
         // ── tabs ──
         function dchkInitTabs() {
             try { dchkStatusFilter = sessionStorage.getItem('dchkStatusFilter') ?? ''; } catch (e) { }
@@ -456,6 +488,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                     <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
                         <div class="min-w-0 flex-1 basis-[230px]">
                             <div class="flex flex-wrap items-center gap-1.5">
+                                ${(row.review_target && row.review_target !== 'none') ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-700 text-white">Your turn</span>' : ''}
                                 ${!isViewed ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-500 text-white">New</span>' : ''}
                                 <span class="font-mono text-[11px] font-semibold text-amber-700 whitespace-nowrap">${dchkEscapeHtml(row.control_no)}</span>
                                 ${dchkStatusBadgeWithRow(row)}
@@ -472,6 +505,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                             ${dchkFileLinks(row.quotation_files, row.quotation_uploader_name, row.quotation_uploaded_role, 'quotation')}
                             ${show3d ? dchkFileLinks(row.design_3d_files, row.design_3d_uploader_name, row.design_3d_uploaded_role, '3d') : ''}
                         </div>
+                        ${dchkHeadsCell(row)}
                         <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${dchkActionButton(row)}</div>
                     </div>
                 </article>`;
@@ -492,7 +526,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
 
                 // kasama na ang bilang ng files sa signature para mag-refresh kapag nagbago ang attachments
                 const signature = JSON.stringify(data.rows.map(r =>
-                    `${r.id}:${r.status}:${r.design_3d_stage}:${(r.design_2d_files || []).length}:${(r.quotation_files || []).length}:${(r.design_3d_files || []).length}`
+                    `${r.id}:${r.status}:${r.design_3d_stage}:${r.design_2d_review_status}:${r.quotation_review_status}:${r.design_3d_review_status}:${r.review_target}:${(r.design_2d_files || []).length}:${(r.quotation_files || []).length}:${(r.design_3d_files || []).length}`
                 )) + dchkStatusFilter;
                 if (signature !== dchkLastSignature) {
                     dchkRenderRows(data.rows);
@@ -588,8 +622,12 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
         }
 
         // Kasalukuyang review status ng isang slot (galing sa server)
-        function dchkSlotSummary(label, slot, reviewStatus, remarks, files, name, role) {
+        function dchkSlotSummary(label, slot, reviewStatus, remarks, files, name, role, reviewerName, reviewedAt) {
             const m = DCHK_SLOT_META[slot];
+            const owner = DCHK_OWNER_LABEL[slot === 'quotation' ? 'sales_head' : 'designer_head'];
+            const who = (reviewStatus !== 'Pending' && reviewerName)
+                ? `${owner}: ${dchkEscapeHtml(reviewerName)}${reviewedAt ? ' · ' + dchkFormatDateTimeLong(reviewedAt) : ''}`
+                : `${owner}${reviewStatus === 'Pending' ? ' · pending' : ''}`;
             const count = (files || []).length;
             return `<div class="bg-white border border-gray-200 rounded-xl p-3 min-w-0">
                 <div class="flex items-center gap-2">
@@ -599,6 +637,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                     <span class="ml-auto">${dchkReviewBadge(reviewStatus)}</span>
                 </div>
                 ${name ? `<p class="text-[10.5px] text-gray-400 mt-1"><i class="fa-solid fa-user-pen mr-1"></i>${dchkEscapeHtml(name)} (${dchkEscapeHtml(role)})</p>` : ''}
+                <p class="text-[10.5px] text-gray-400 mt-0.5"><i class="fa-solid fa-user-tie mr-1"></i>${who}</p>
                 ${remarks ? `<p class="text-[11.5px] text-red-700 mt-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5 whitespace-pre-line">${dchkEscapeHtml(remarks)}</p>` : ''}
             </div>`;
         }
@@ -756,7 +795,7 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                 const nA = all.filter(d => d.decision === 'Approved').length;
                 const nR = all.filter(d => d.decision === 'For Revision').length;
                 document.getElementById('dchkConfirmText').innerHTML = nR
-                    ? `<b class="text-emerald-700">${nA} approved</b> · <b class="text-red-700">${nR} for revision</b> — the submission will go back to the designer.`
+                    ? `<b class="text-emerald-700">${nA} approved</b> · <b class="text-red-700">${nR} for revision</b> — it will go back for revision once both heads are done.`
                     : `<b class="text-emerald-700">All ${nA} file${nA === 1 ? '' : 's'} approved.</b>`;
             }
             idle.classList.toggle('hidden', !!show);
@@ -812,8 +851,11 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
             if (record.review_target === 'none') {
                 dchkDecisions = {};
                 dchkPendingSubmitFn = null;
-                const reviewedLine = record.reviewed_at
-                    ? `<p class="text-[11px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>Reviewed ${dchkFormatDateTimeLong(record.reviewed_at)}</p>` : '';
+                const waiting = Array.isArray(record.waiting_on) ? record.waiting_on : [];
+                const reviewedLine = waiting.length
+                    ? `<p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-hourglass-half mr-1"></i>${waiting.includes(DCHK_OWNER_LABEL[DCHK_VIEWER]) ? '' : 'Your part is done. '}Waiting for the ${dchkEscapeHtml(waiting.join(' and '))}.</p>`
+                    : record.reviewed_at
+                        ? `<p class="text-[11px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>Reviewed ${dchkFormatDateTimeLong(record.reviewed_at)}</p>` : '';
                 footer.innerHTML = `
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0"><div class="flex flex-wrap gap-1">${dchkStatusBadgeWithRow(record)}</div>${reviewedLine}</div>
@@ -823,18 +865,29 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                 return;
             }
 
-            const slots = [['design_2d', record.design_2d_files], ['quotation', record.quotation_files]];
-            if (record.include_3d) slots.push(['design_3d', record.design_3d_files]);
-            dchkBuildDecisions(slots);
+            // Sariling slot lang (na hindi pa tapos) ang may Approve / Revision; ang sa kabilang head ay nasa "Current review status" sa itaas.
+            const allSlots = [
+                ['design_2d', '2D File', record.design_2d_files, record.design_2d_review_status],
+                ['quotation', 'Quotation File', record.quotation_files, record.quotation_review_status],
+            ];
+            if (record.include_3d) allSlots.push(['design_3d', '3D File', record.design_3d_files, record.design_3d_review_status]);
+            const hasPendingFile = files => (files || []).some(f => f.id > 0 && !['Approved', 'For Revision'].includes(f.review_status));
+            const mine = allSlots.filter(([slot, , files, st]) =>
+                DCHK_SLOT_OWNER[slot] === DCHK_VIEWER && (st === 'Pending' || (st === 'Approved' && hasPendingFile(files))));
+            dchkBuildDecisions(mine.map(([slot, , files]) => [slot, files]));
+
+            const others = (record.waiting_on || []).filter(l => l !== DCHK_OWNER_LABEL[DCHK_VIEWER]);
+            const otherNote = others.length
+                ? `The ${dchkEscapeHtml(others.join(' and '))} still needs to review. The Initial is approved once both of you are done.`
+                : 'The other head is done. Your decision completes the Initial review.';
 
             area.innerHTML = `
-                <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-gavel mr-1 text-amber-700"></i>Your decision</p>
+                <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-gavel mr-1 text-amber-700"></i>Your decision · ${DCHK_OWNER_LABEL[DCHK_VIEWER]}</p>
                 <div class="${listClass}">
-                    ${dchkSlotDecisionCard('design_2d', '2D File', record.design_2d_files)}
-                    ${dchkSlotDecisionCard('quotation', 'Quotation File', record.quotation_files)}
-                    ${record.include_3d ? dchkSlotDecisionCard('design_3d', '3D File', record.design_3d_files) : ''}
+                    ${mine.map(([slot, label, files]) => dchkSlotDecisionCard(slot, label, files)).join('')}
                 </div>
-                ${record.include_3d ? `<p class="text-[11px] text-gray-500 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1.5"><i class="fa-solid fa-circle-info mr-1 text-violet-500"></i>Sending any 3D file back for revision will also send the 2D files back, since 3D is derived from them.</p>` : ''}`;
+                ${(record.include_3d && DCHK_VIEWER === 'designer_head') ? `<p class="text-[11px] text-gray-500 rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1.5 mb-2"><i class="fa-solid fa-circle-info mr-1 text-violet-500"></i>Sending any 3D file back for revision will also send the 2D files back, since 3D is derived from them.</p>` : ''}
+                <p class="text-[11px] text-gray-500 rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-1.5"><i class="fa-solid fa-user-tie mr-1 text-amber-700"></i>${otherNote}</p>`;
             footer.innerHTML = submitBtn('dchkSubmitReview');
 
             dchkUpdateSubmitState();
@@ -897,9 +950,9 @@ $dchkAjaxUrl = BASE_URL . '/checkdesigner2dquotationajax';
                         <section>
                             <p class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-clipboard-list mr-1 text-amber-700"></i>Current review status</p>
                             <div class="space-y-2">
-                                ${dchkSlotSummary('2D', '2d', r.design_2d_review_status, r.design_2d_remarks, r.design_2d_files, r.design_2d_uploader_name, r.design_2d_uploaded_role)}
-                                ${dchkSlotSummary('Quotation', 'quotation', r.quotation_review_status, r.quotation_remarks, r.quotation_files, r.quotation_uploader_name, r.quotation_uploaded_role)}
-                                ${showsThreeD ? dchkSlotSummary('3D', '3d', r.design_3d_review_status, r.design_3d_remarks, r.design_3d_files, r.design_3d_uploader_name, r.design_3d_uploaded_role) : ''}
+                                ${dchkSlotSummary('2D', '2d', r.design_2d_review_status, r.design_2d_remarks, r.design_2d_files, r.design_2d_uploader_name, r.design_2d_uploaded_role, r.design_2d_reviewer_name, r.design_2d_reviewed_at)}
+                                ${dchkSlotSummary('Quotation', 'quotation', r.quotation_review_status, r.quotation_remarks, r.quotation_files, r.quotation_uploader_name, r.quotation_uploaded_role, r.quotation_reviewer_name, r.quotation_reviewed_at)}
+                                ${showsThreeD ? dchkSlotSummary('3D', '3d', r.design_3d_review_status, r.design_3d_remarks, r.design_3d_files, r.design_3d_uploader_name, r.design_3d_uploaded_role, r.design_3d_reviewer_name, r.design_3d_reviewed_at) : ''}
                             </div>
                         </section>
 

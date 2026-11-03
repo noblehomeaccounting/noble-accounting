@@ -38,7 +38,8 @@ function q2dRespond(bool $success, string $message = '', array $extra = []): voi
     if ($success && in_array($action, $writes, true) && $conn instanceof mysqli && (int) $inquiryId > 0) {
         include_once ROOT_PATH . '/network/realtime-helper.php';
         $toHead = in_array($action, ['submit_final', 'submit_3d', 'submit_customer_review'], true);
-        nhRtInquiry($conn, (int) $inquiryId, $toHead ? [[ROLE_DESIGNER, POSITION_HEAD]] : [], 'crm_2d');
+        // Initial review: Designer Head (2D/3D) + Sales Head (Quotation)
+        nhRtInquiry($conn, (int) $inquiryId, $toHead ? [[ROLE_DESIGNER, POSITION_HEAD], [ROLE_SALES, POSITION_HEAD]] : [], 'crm_2d');
     }
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
     exit;
@@ -486,10 +487,26 @@ function q2dNotifyUsers(mysqli $conn, array $userIds, int $inquiryId, array $inq
     $stmt->close();
 }
 
-// Initial submissions → DESIGNER HEAD na ang magre-review (hindi na Superadmin).
+function q2dSalesHeadIds(mysqli $conn): array
+{
+    $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ? AND position = ?");
+    $role = ROLE_SALES;
+    $pos = POSITION_HEAD;
+    $stmt->bind_param("ss", $role, $pos);
+    $stmt->execute();
+    $heads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return array_map(fn($h) => (int) $h['id'], $heads);
+}
+
+// Initial submissions → Designer Head (2D/3D) at Sales Head (Quotation) ang magre-review.
+// 3D-only submission → Designer Head lang.
 function q2dNotifyDesignerHeads(mysqli $conn, int $inquiryId, array $inquiry, int $senderId, bool $is3dOnly = false): void
 {
     $heads = q2dDesignerHeadIds($conn);
+    if (!$is3dOnly) {
+        $heads = array_merge($heads, q2dSalesHeadIds($conn));
+    }
     if (empty($heads)) {
         return;
     }
@@ -1100,7 +1117,7 @@ if ($action === 'save_progress') {
 // Wala nang "Confirm Customer Approval" sa progress step.
 // Ang customer check ay nasa Customer Review, pagkatapos lang ma-approve ng Designer Head.
 if ($action === 'confirm_customer') {
-    q2dRespond(false, 'This step is no longer needed. Customer review happens after the Designer Head approves the files.');
+    q2dRespond(false, 'This step is no longer needed. Customer review happens after the Designer Head and Sales Head approve the files.');
 }
 
 
@@ -1326,7 +1343,7 @@ if ($action === 'submit_3d') {
 if ($action === 'customer_state') {
     $latest = q2dGetLatestEntry($conn, $inquiryId);
     if (!$latest || !q2dIsReadyForCustomer($latest)) {
-        q2dRespond(false, 'The Designer Head has not approved all files yet.');
+        q2dRespond(false, 'The Designer Head and Sales Head have not approved all files yet.');
     }
 
     q2dBackfillEntry($conn, $latest);
@@ -1475,10 +1492,10 @@ if ($action === 'submit_customer_review') {
     $stmt->execute();
     $stmt->close();
 
-    // Lahat Okay → i-notify ang Designer Heads at ang designer.
+    // Lahat Okay → i-notify ang Designer Heads, Sales Heads at ang designer.
     q2dNotifyUsers(
         $conn,
-        array_merge(q2dDesignerHeadIds($conn), [(int) ($inquiry['designer_id'] ?? 0)]),
+        array_merge(q2dDesignerHeadIds($conn), q2dSalesHeadIds($conn), [(int) ($inquiry['designer_id'] ?? 0)]),
         $inquiryId,
         $inquiry,
         $currentUserId,

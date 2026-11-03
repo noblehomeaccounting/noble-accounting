@@ -62,10 +62,10 @@ if (empty($svError) && $inquiryId > 0) {
     $notifStmt->close();
 }
 
-require_once __DIR__ . '/sitevisit/sv-helpers.php';
+require_once ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-helpers.php';
 
 // Pag-save ng bagong record (validation, upload, insert)
-require __DIR__ . '/sitevisit/sv-save.php';
+require ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-save.php';
 
 if (!empty($_SESSION['sv_flash_success'])) {
     $svSuccess = $_SESSION['sv_flash_success'];
@@ -105,6 +105,38 @@ if (!empty($svHistory)) {
         $spStmt->close();
     }
 }
+
+// Mga item ng bawat space (hal. Kitchen → Upper cabinet) — wala pa ang table → walang items
+$svSpaceItems = [];
+if ($svSpaces) {
+    try {
+        $itRes = $conn->query("SHOW TABLES LIKE 'noblecrm_sitevisit_space_item'");
+        if ($itRes && $itRes->num_rows > 0) {
+            $itStmt = $conn->prepare("
+                SELECT *
+                FROM noblecrm_sitevisit_space_item
+                WHERE sitevisit_id = ?
+                ORDER BY sort_order ASC, id ASC
+            ");
+            $latestId = (int) $svHistory[0]['id'];
+            $itStmt->bind_param("i", $latestId);
+            $itStmt->execute();
+            foreach ($itStmt->get_result()->fetch_all(MYSQLI_ASSOC) as $it) {
+                $svSpaceItems[(int) $it['space_id']][] = $it;
+            }
+            $itStmt->close();
+        }
+    } catch (Throwable $e) {
+        error_log('sitevisit items: ' . $e->getMessage());
+    }
+}
+// Sukat ng item: "240 × 70 × 35 cm"
+$svItemSize = function (array $it): string {
+    $f = fn($v) => $v === null || $v === '' ? null : rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+    $parts = array_values(array_filter([$f($it['width_cm'] ?? null), $f($it['height_cm'] ?? null), $f($it['depth_cm'] ?? null)], fn($v) => $v !== null));
+    return $parts ? implode(' × ', $parts) . ' cm' : '';
+};
+$svItemSuggest = ['Upper cabinet', 'Lower cabinet', 'Base cabinet', 'Tall cabinet', 'Pantry cabinet', 'Island counter', 'Kitchen counter', 'Wardrobe', 'Walk-in closet shelves', 'Headboard', 'Bedside table', 'Vanity', 'Mirror cabinet', 'TV console', 'TV wall panel', 'Shoe cabinet', 'Bookshelf', 'Study table', 'Floating shelves', 'Wall panel', 'Ceiling', 'Partition', 'Door', 'Window frame'];
 
 // Scope Area na pinili ni Sales sa inquiry → mabilisang "add space"
 $svInquirySpaces = array_values(array_unique(array_filter(array_map(
@@ -163,13 +195,13 @@ $svToneText = ['amber' => 'text-amber-700', 'red' => 'text-red-600', 'gray' => '
                 $stepState = $svAlreadyDone ? ($latestVisited ? 2 : 1) : 1; // 0 assigned, 1 site visit, 2 2D & quotation
                 ?>
 
-                <?php include __DIR__ . '/sitevisit/sv-header.php'; ?>
+                <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-header.php'; ?>
 
                 <?php if ($svAlreadyDone): ?>
-                    <?php include __DIR__ . '/sitevisit/sv-done.php'; ?>
+                    <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-done.php'; ?>
                 <?php else: ?>
 
-                    <?php include __DIR__ . '/sitevisit/sv-form.php'; ?>
+                    <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-form.php'; ?>
 
                 <?php endif; ?>
 
@@ -177,15 +209,16 @@ $svToneText = ['amber' => 'text-amber-700', 'red' => 'text-red-600', 'gray' => '
 
         </div>
 
-        <?php if (!$svAlreadyDone && !empty($inquiry) && empty($svError)) include __DIR__ . '/sitevisit/sv-whole-view.php'; ?>
+        <?php if (!$svAlreadyDone && !empty($inquiry) && empty($svError)) include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-whole-view.php'; ?>
 
         <!-- Toast container: bottom-right -->
         <div id="crmToastContainer"
             class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
         </div>
 
-        <?php include __DIR__ . '/sitevisit/sv-script.php'; ?>
-        <?php if (!$svAlreadyDone && !empty($inquiry) && empty($svError)) include __DIR__ . '/sitevisit/sv-script-form.php'; ?>
+        <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-script.php'; ?>
+        
+        <?php if (!$svAlreadyDone && !empty($inquiry) && empty($svError)) include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-script-form.php'; ?>
 
     </main>
 </body>

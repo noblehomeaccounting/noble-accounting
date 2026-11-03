@@ -4,10 +4,39 @@
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+// Final approval: Sales Head (Quotation) + Designer Head (2D at 3D).
+// Superadmin = review / monitor lang.
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_SALES, ROLE_DESIGNER];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+$chk2dRole = $_SESSION['role'] ?? '';
+$chk2dViewer = '';
+if ($chk2dRole === ROLE_SUPERADMIN) {
+    $chk2dViewer = 'superadmin';
+} else {
+    $chk2dAccountId = intval($_SESSION['account_id'] ?? 0);
+    $chk2dStmt = $conn->prepare("SELECT id FROM noblerole WHERE id = ? AND role = ? AND position = ? LIMIT 1");
+    $chk2dPos = POSITION_HEAD;
+    $chk2dStmt->bind_param("iss", $chk2dAccountId, $chk2dRole, $chk2dPos);
+    $chk2dStmt->execute();
+    if ($chk2dStmt->get_result()->fetch_assoc()) {
+        $chk2dViewer = $chk2dRole === ROLE_SALES ? 'sales_head' : 'designer_head';
+    }
+    $chk2dStmt->close();
+}
+
+if ($chk2dViewer === '') {
+    http_response_code(403);
+    exit('Access denied. This page is for the Sales Head, Designer Head and Superadmin only.');
+}
+
+$chk2dIntro = [
+    'superadmin'    => ['Final 2D &amp; Quotation', 'Monitor', 'The Sales Head approves the Quotation and the Designer Head approves the 2D and 3D. You can open and review every submission here.'],
+    'designer_head' => ['Final 2D &amp; Quotation Approval', 'Designer Head', 'You approve the final 2D and 3D files. The Sales Head approves the Quotation. The Final is approved once both of you are done.'],
+    'sales_head'    => ['Final 2D &amp; Quotation Approval', 'Sales Head', 'You approve the final Quotation. The Designer Head approves the 2D and 3D. The Final is approved once both of you are done.'],
+][$chk2dViewer];
 
 $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 ?>
@@ -17,7 +46,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Quotation Approval</title>
+    <title>Final 2D Quotation</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 
@@ -43,12 +72,15 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 <div>
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management</p>
                     <h1 class="text-gray-900 text-xl font-semibold flex items-center gap-2 flex-wrap">
-                        2D &amp; Quotation Approval
+                        <?= $chk2dIntro[0] ?>
                         <span class="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] leading-none font-semibold uppercase tracking-wider border bg-green-50 text-green-700 border-green-200">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Final
                         </span>
+                        <span class="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] leading-none font-semibold uppercase tracking-wider border <?= $chk2dViewer === 'superadmin' ? 'bg-slate-50 text-slate-600 border-slate-200' : 'bg-amber-50 text-amber-800 border-amber-200' ?>">
+                            <i class="fa-solid <?= $chk2dViewer === 'superadmin' ? 'fa-eye' : 'fa-user-tie' ?> text-[9px]"></i> <?= $chk2dIntro[1] ?>
+                        </span>
                     </h1>
-                    <p class="text-gray-400 text-xs mt-0.5">Check the final 2D, quotation and 3D files, then approve them or send them back for revision.</p>
+                    <p class="text-gray-400 text-xs mt-0.5 max-w-2xl"><?= $chk2dIntro[2] ?></p>
                 </div>
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Updates automatically
@@ -103,8 +135,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                    translate-x-full transition-transform duration-300 ease-out">
             <div class="px-4 py-3 border-b border-gray-100 flex items-start justify-between shrink-0">
                 <div class="min-w-0">
-                    <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5">Final
-                        Submission Review</p>
+                    <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5"><?= $chk2dViewer === 'superadmin' ? 'Final Submission (view only)' : 'Final Submission Review' ?></p>
                     <h3 id="chk2dModalControlNo" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
                     <div id="chk2dModalStatus" class="mt-1.5 flex flex-wrap items-center gap-1"></div>
                 </div>
@@ -146,6 +177,11 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         const CHK2D_AJAX_URL = <?= json_encode($chk2dAjaxUrl) ?>;
+        const CHK2D_VIEWER = <?= json_encode($chk2dViewer) ?>; // superadmin | designer_head | sales_head
+        const CHK2D_IS_MONITOR = CHK2D_VIEWER === 'superadmin';
+        // sino ang may hawak ng bawat slot
+        const CHK2D_SLOT_OWNER = { design_2d: 'designer_head', design_3d: 'designer_head', quotation: 'sales_head' };
+        const CHK2D_OWNER_LABEL = { designer_head: 'Designer Head', sales_head: 'Sales Head' };
         const CHK2D_POLL_INTERVAL_MS = 8000;
         const CHK2D_VIEWED_KEY = 'chk2dViewedIds';
 
@@ -222,6 +258,9 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             if (row.status === 'Approved' && row.design_3d_stage === 'For Revision') {
                 out += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-red-200 bg-red-50 text-red-700 whitespace-nowrap">3D Revision</span>`;
             }
+            if (row.status === 'Waiting for Approval' && Array.isArray(row.waiting_on) && row.waiting_on.length === 1) {
+                out += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-gray-200 bg-white text-gray-600 whitespace-nowrap">Waiting: ${chk2dEscapeHtml(row.waiting_on[0])}</span>`;
+            }
             if (row.is_late) {
                 out += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border border-red-200 bg-white text-red-700 whitespace-nowrap">Late</span>`;
             }
@@ -258,6 +297,31 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 ${chk2dFileChip('2D', row.design_2d_path, row.design_2d_uploader_name, row.design_2d_uploaded_role)}
                 ${chk2dFileChip('Quote', row.quotation_path, row.quotation_uploader_name, row.quotation_uploaded_role)}
                 ${chk2dFileChip('3D', show3d ? row.design_3d_path : null, row.design_3d_uploader_name, row.design_3d_uploaded_role, show3d ? 'No file' : 'Not yet')}
+            </div>`;
+        }
+
+        // Progress ng dalawang head: ✓ approved · ↺ revision · … pending
+        function chk2dHeadChip(ownerKey, statuses) {
+            const label = CHK2D_OWNER_LABEL[ownerKey];
+            let tone = 'border-gray-200 bg-white text-gray-500', icon = 'fa-hourglass-half', text = 'Pending';
+            if (statuses.length && statuses.every(s => s === 'Approved')) {
+                tone = 'border-green-200 bg-green-50 text-green-700'; icon = 'fa-check'; text = 'Approved';
+            } else if (statuses.some(s => s === 'For Revision')) {
+                tone = 'border-red-200 bg-red-50 text-red-700'; icon = 'fa-rotate-left'; text = 'Revision';
+            } else if (statuses.some(s => s === 'Approved') && statuses.some(s => s === 'Pending')) {
+                text = 'In progress';
+            }
+            const mine = ownerKey === CHK2D_VIEWER ? ' ring-1 ring-amber-400' : '';
+            return `<span title="${label}: ${text}" class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold border whitespace-nowrap ${tone}${mine}">
+                <i class="fa-solid ${icon} text-[9px]"></i>${label.replace(' Head', '')}</span>`;
+        }
+
+        function chk2dHeadsCell(row) {
+            const d = [row.design_2d_review_status];
+            if (row.include_3d) d.push(row.design_3d_review_status);
+            return `<div class="flex flex-wrap items-center gap-1">
+                ${chk2dHeadChip('designer_head', d)}
+                ${chk2dHeadChip('sales_head', [row.quotation_review_status])}
             </div>`;
         }
 
@@ -318,7 +382,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         function chk2dActionButton(row) {
-            if (row.review_target && row.review_target !== 'none') {
+            if (!CHK2D_IS_MONITOR && row.review_target && row.review_target !== 'none') {
                 return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
                     class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm transition-colors whitespace-nowrap">
                     <i class="fa-solid fa-clipboard-check"></i> Review</button>`;
@@ -345,6 +409,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 const bar = CHK2D_BAR[row.status] || 'bg-gray-300';
                 const ring = isActive ? 'border-amber-500 ring-2 ring-amber-200' : (isViewed ? 'border-gray-200 hover:border-gray-300' : 'border-amber-200 hover:border-amber-300');
                 const newTag = isViewed ? '' : `<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-500 text-white">New</span>`;
+                const turnTag = (row.review_target && row.review_target !== 'none')
+                    ? `<span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-700 text-white">Your turn</span>` : '';
 
                 return `
                 <article class="relative bg-white border ${ring} rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-sm" onclick="chk2dOpenPanel(${row.id})">
@@ -352,7 +418,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     <div class="flex flex-wrap items-center gap-x-6 gap-y-3 pl-5 pr-4 py-4">
                         <div class="min-w-0 flex-1 basis-[200px]">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="font-mono text-[11.5px] font-bold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>${newTag}
+                                <span class="font-mono text-[11.5px] font-bold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>${turnTag}${newTag}
                             </div>
                             <p class="text-gray-900 text-sm font-semibold mt-0.5 truncate">${chk2dEscapeHtml(row.client_name)}</p>
                             <p class="text-gray-400 text-[11px] mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>Submitted ${chk2dFormatDate(row.submitted_at)}</p>
@@ -362,6 +428,10 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                             ${chk2dFilesCell(row)}
                         </div>
                         <div class="basis-[150px]">
+                            <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Heads</p>
+                            ${chk2dHeadsCell(row)}
+                        </div>
+                        <div class="basis-[130px]">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">Contract</p>
                             <p class="text-gray-900 text-sm font-bold tabular-nums mt-0.5">${chk2dFormatCurrency(row.contract_amount)}</p>
                         </div>
@@ -387,7 +457,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     return;
                 }
 
-                const signature = JSON.stringify(data.rows.map(r => `${r.id}:${r.status}:${r.design_3d_stage}`)) + chk2dStatusFilter;
+                const signature = JSON.stringify(data.rows.map(r => `${r.id}:${r.status}:${r.design_3d_stage}:${r.design_2d_review_status}:${r.quotation_review_status}:${r.design_3d_review_status}:${r.review_target}`)) + chk2dStatusFilter;
                 if (signature !== chk2dLastSignature) {
                     chk2dRenderRows(data.rows);
                     chk2dLastSignature = signature;
@@ -485,7 +555,13 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         // File link + its review status together, so each file reads as one row.
-        function chk2dFileRow(label, path, name, role, reviewStatus, remarks) {
+        function chk2dFileRow(label, path, name, role, reviewStatus, remarks, ownerKey, reviewerName, reviewedAt) {
+            const owner = ownerKey ? CHK2D_OWNER_LABEL[ownerKey] : '';
+            const reviewer = (reviewStatus && reviewStatus !== 'Pending' && reviewerName)
+                ? `${chk2dEscapeHtml(reviewerName)}${reviewedAt ? ' · ' + chk2dFormatDateTimeLong(reviewedAt) : ''}`
+                : (owner ? `Waiting for ${owner}` : '');
+            const reviewerHtml = owner
+                ? `<p class="mt-1 text-[10.5px] text-gray-400"><i class="fa-solid fa-user-tie mr-1"></i>${owner}${reviewer && reviewStatus !== 'Pending' ? ': ' + reviewer : ''}${reviewStatus === 'Pending' ? ' · pending' : ''}</p>` : '';
             const file = path
                 ? `<a href="${chk2dEscapeHtml(path)}" target="_blank" rel="noopener" class="text-amber-700 hover:underline font-medium">View File</a> <span class="text-gray-400">${chk2dEscapeHtml(name)}${role ? ', ' + chk2dEscapeHtml(role) : ''}</span>`
                 : '<span class="text-gray-300">—</span>';
@@ -499,7 +575,23 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     </div>
                     ${chk2dReviewBadge(reviewStatus)}
                 </div>
+                ${reviewerHtml}
                 ${remarksHtml}
+            </div>`;
+        }
+
+        // Slot na hawak ng ibang head (o lahat, para sa Superadmin) — tingin lang
+        function chk2dReadOnlyRow(slot, label, path, status) {
+            const owner = CHK2D_OWNER_LABEL[CHK2D_SLOT_OWNER[slot]];
+            const pdfLink = path
+                ? `<a href="${chk2dEscapeHtml(path)}" target="_blank" rel="noopener" class="text-amber-700 hover:underline text-[11px] font-medium whitespace-nowrap">View</a>`
+                : `<span class="text-gray-300 text-[11px]">No file</span>`;
+            return `<div class="flex items-center justify-between gap-2 px-3 py-2 border border-dashed border-gray-200 bg-gray-50/60 rounded-lg">
+                <div class="flex items-center gap-2 min-w-0 flex-wrap">
+                    <p class="text-xs font-semibold text-gray-600">${label}</p>${pdfLink}
+                    <span class="text-[10.5px] text-gray-400">${owner}</span>
+                </div>
+                ${chk2dReviewBadge(status)}
             </div>`;
         }
 
@@ -567,7 +659,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         function chk2dUpdateSubmitState() {
             const btn = document.getElementById('chk2dSubmitReviewBtn');
             if (!btn) return;
-            btn.disabled = !Object.values(chk2dDecisions).every(d => {
+            const list = Object.values(chk2dDecisions);
+            btn.disabled = list.length === 0 || !list.every(d => {
                 if (!d.decision) return false;
                 if (d.decision === 'For Revision' && d.remarks.trim() === '') return false;
                 return true;
@@ -594,8 +687,15 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             }
 
             if (record.review_target === 'none') {
-                const reviewedLine = record.reviewed_at
-                    ? `<p class="text-[11px] text-gray-400 mt-1">Reviewed ${chk2dFormatDateTimeLong(record.reviewed_at)}</p>` : '';
+                const waiting = Array.isArray(record.waiting_on) ? record.waiting_on : [];
+                let note = '';
+                if (waiting.length) {
+                    note = `Waiting for the ${chk2dEscapeHtml(waiting.join(' and '))}.`;
+                } else if (record.reviewed_at) {
+                    note = `Reviewed ${chk2dFormatDateTimeLong(record.reviewed_at)}`;
+                }
+                if (CHK2D_IS_MONITOR) note = `<i class="fa-solid fa-eye mr-1"></i>View only. ${note}`;
+                const reviewedLine = note ? `<p class="text-[11px] text-gray-400 mt-1">${note}</p>` : '';
                 footer.innerHTML = `
                     <div class="flex items-center justify-between gap-3">
                         <div><div class="flex flex-wrap items-center gap-1">${chk2dStatusBadgeWithRow(record)}</div>${reviewedLine}</div>
@@ -605,24 +705,38 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 return;
             }
 
-            const design2dLocked = record.design_2d_review_status === 'Approved';
-            const quotationLocked = record.quotation_review_status === 'Approved';
+            // Head: ang sariling slot lang na Pending ang may Approve / Revision; ang iba ay tingin lang.
+            const slots = [
+                ['design_2d', '2D File', record.design_2d_path, record.design_2d_review_status],
+                ['quotation', 'Quotation File', record.quotation_path, record.quotation_review_status],
+            ];
+            if (record.include_3d) slots.push(['design_3d', '3D File', record.design_3d_path, record.design_3d_review_status]);
 
-            chk2dDecisions = {
-                design_2d: design2dLocked ? { decision: 'Approved', remarks: '' } : { decision: null, remarks: '' },
-                quotation: quotationLocked ? { decision: 'Approved', remarks: '' } : { decision: null, remarks: '' },
-            };
-            if (record.include_3d) chk2dDecisions.design_3d = { decision: null, remarks: '' };
+            chk2dDecisions = {};
+            const rowsHtml = slots.map(([slot, label, path, status]) => {
+                const mine = CHK2D_SLOT_OWNER[slot] === CHK2D_VIEWER;
+                if (mine && status === 'Pending') {
+                    chk2dDecisions[slot] = { decision: null, remarks: '' };
+                    return chk2dDecisionRow(slot, label, path, false);
+                }
+                if (mine && status === 'Approved') return chk2dDecisionRow(slot, label, path, true);
+                return chk2dReadOnlyRow(slot, label, path, status);
+            }).join('');
+
+            const hint = (record.include_3d && CHK2D_VIEWER === 'designer_head')
+                ? 'Sending the 3D file back for revision will also send the 2D file back, since 3D is derived from it.'
+                : (() => {
+                    const others = (record.waiting_on || []).filter(l => l !== CHK2D_OWNER_LABEL[CHK2D_VIEWER]);
+                    return others.length
+                        ? `The ${chk2dEscapeHtml(others.join(' and '))} still needs to review. The Final is approved once both of you are done.`
+                        : 'The other head is done. Your decision completes the Final review.';
+                })();
 
             footer.innerHTML = `
                 ${CHK2D_DECISION_LABEL}
-                <div class="space-y-2 mb-3">
-                    ${chk2dDecisionRow('design_2d', '2D File', record.design_2d_path, design2dLocked)}
-                    ${chk2dDecisionRow('quotation', 'Quotation File', record.quotation_path, quotationLocked)}
-                    ${record.include_3d ? chk2dDecisionRow('design_3d', '3D File', record.design_3d_path, false) : ''}
-                </div>
+                <div class="space-y-2 mb-3">${rowsHtml}</div>
                 <div class="flex items-center justify-between gap-3">
-                    <p class="text-[11px] text-gray-400 leading-snug">${record.include_3d ? 'Sending the 3D file back for revision will also send the 2D file back, since 3D is derived from it.' : ''}</p>
+                    <p class="text-[11px] text-gray-400 leading-snug">${hint}</p>
                     <button type="button" id="chk2dSubmitReviewBtn" onclick="chk2dSubmitReview()" disabled
                         class="shrink-0 px-3.5 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">Submit Review</button>
                 </div>`;
@@ -676,9 +790,9 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     ].join('')),
 
                     chk2dSection('Files &amp; Review', [
-                        chk2dFileRow('2D File', r.design_2d_path, r.design_2d_uploader_name, r.design_2d_uploaded_role, r.design_2d_review_status, r.design_2d_remarks),
-                        chk2dFileRow('Quotation File', r.quotation_path, r.quotation_uploader_name, r.quotation_uploaded_role, r.quotation_review_status, r.quotation_remarks),
-                        showsThreeD ? chk2dFileRow('3D File', r.design_3d_path, r.design_3d_uploader_name, r.design_3d_uploaded_role, r.design_3d_review_status, r.design_3d_remarks) : '',
+                        chk2dFileRow('2D File', r.design_2d_path, r.design_2d_uploader_name, r.design_2d_uploaded_role, r.design_2d_review_status, r.design_2d_remarks, 'designer_head', r.design_2d_reviewer_name, r.design_2d_reviewed_at),
+                        chk2dFileRow('Quotation File', r.quotation_path, r.quotation_uploader_name, r.quotation_uploaded_role, r.quotation_review_status, r.quotation_remarks, 'sales_head', r.quotation_reviewer_name, r.quotation_reviewed_at),
+                        showsThreeD ? chk2dFileRow('3D File', r.design_3d_path, r.design_3d_uploader_name, r.design_3d_uploaded_role, r.design_3d_review_status, r.design_3d_remarks, 'designer_head', r.design_3d_reviewer_name, r.design_3d_reviewed_at) : '',
                     ].join('')),
                 ].join('');
 
@@ -724,14 +838,10 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             const fd = new FormData();
             fd.append('action', 'review');
             fd.append('id', chk2dCurrentId);
-            fd.append('design_2d_decision', chk2dDecisions.design_2d.decision);
-            fd.append('design_2d_remarks', chk2dDecisions.design_2d.remarks.trim());
-            fd.append('quotation_decision', chk2dDecisions.quotation.decision);
-            fd.append('quotation_remarks', chk2dDecisions.quotation.remarks.trim());
-            if (chk2dDecisions.design_3d) {
-                fd.append('design_3d_decision', chk2dDecisions.design_3d.decision);
-                fd.append('design_3d_remarks', chk2dDecisions.design_3d.remarks.trim());
-            }
+            Object.entries(chk2dDecisions).forEach(([slot, d]) => {
+                fd.append(`${slot}_decision`, d.decision || '');
+                fd.append(`${slot}_remarks`, (d.remarks || '').trim());
+            });
             await chk2dPost(fd, 'chk2dSubmitReview:');
         }
 

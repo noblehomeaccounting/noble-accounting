@@ -30,9 +30,9 @@
                         reqTag.textContent = spaceNeeded ? 'Required' : 'Optional';
                         reqTag.className = 'text-[10px] font-semibold uppercase ' + (spaceNeeded ? 'text-red-500' : 'text-gray-300');
                     }
-                    svSetCheck('meas', spaces.length > 0 && spaces.every(sp => sp.pdf && sp.pdf.hasFiles()));
+                    svSetCheck('meas', spaces.length > 0 && spaces.every(sp => sp.pdf && svSpaceMeasured(sp)));
                     const generalPhotos = typeof svGeneralPhotos === 'undefined' ? 0 : svGeneralPhotos.count();
-                    svSetCheck('photos', generalPhotos > 0 || spaces.some(sp => sp.photo && sp.photo.hasFiles()));
+                    svSetCheck('photos', generalPhotos > 0 || spaces.some(sp => sp.photo && svSpacePhotoN(sp) > 0));
                 }
 
                 // Deadline hint (ilang araw pa)
@@ -55,7 +55,7 @@
                     draftTimer = setTimeout(() => {
                         const data = { visited: visitedVal() };
                         draftFields.forEach(n => data[n] = form.elements[n].value);
-                        data.spaces = svSpaces.map(sp => ({ name: sp.nameInput.value, requirements: sp.reqInput.value, notes: sp.notesInput.value }));
+                        data.spaces = svSpaces.map(sp => ({ name: sp.nameInput.value, requirements: sp.reqInput.value, notes: sp.notesInput.value, items: sp.items.map(svItemData) }));
                         const empty = Object.entries(data).every(([k, v]) => k === 'spaces' ? !v.length : !v);
                         try {
                             if (empty) localStorage.removeItem(SV_DRAFT_KEY);
@@ -66,7 +66,7 @@
                 }
                 function svLoadDraft() {
                     if (hasServerOld) { // galing sa server (may error) ang laman — mas bago iyon
-                        SV_OLD_SPACES.forEach(sp => svAddSpace(sp.name, sp.notes, { silent: true }, sp.requirements));
+                        SV_OLD_SPACES.forEach(sp => svAddSpace(sp.name, sp.notes, { silent: true }, sp.requirements, sp.items || []));
                         return;
                     }
                     let data = null;
@@ -78,7 +78,7 @@
                         if (r) r.checked = true;
                     }
                     if (elDeadline.value && elDeadline.value < elDeadline.min) elDeadline.value = '';
-                    (Array.isArray(data.spaces) ? data.spaces : []).forEach(sp => svAddSpace(sp.name, sp.notes, { silent: true }, sp.requirements));
+                    (Array.isArray(data.spaces) ? data.spaces : []).forEach(sp => svAddSpace(sp.name, sp.notes, { silent: true }, sp.requirements, Array.isArray(sp.items) ? sp.items : []));
                     document.getElementById('sv_draft_note').classList.remove('hidden');
                     crmShowToast('Your unsaved draft was restored. Re-attach files if you had any.', 'success', 5000);
                 }
@@ -119,6 +119,7 @@
                             svSetOpen(sp, true);
                         }
                         seen.add(nm);
+                        sp.items.forEach(it => { const bad = svItemProblem(it); if (bad) { ok = false; first = first || bad; bad.classList.add('!border-red-500'); } });
                     });
                     if (first) {
                         const stepEl = first.closest('[data-step]');
@@ -152,9 +153,10 @@
                     if (!svValidate()) { crmShowToast('Please complete the required fields.', 'warning'); return; }
                     const when = new Date(elDt.value).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
                     const v = visitedVal() === 'yes' ? 'Visited' : 'Not visited';
-                    const pdfs = svSpaces.reduce((n, sp) => n + sp.pdf.count(), 0);
-                    const photos = svGeneralPhotos.count() + svSpaces.reduce((n, sp) => n + sp.photo.count(), 0);
-                    const files = `${svSpaces.length} space${svSpaces.length === 1 ? '' : 's'} · ${pdfs} measurement file${pdfs === 1 ? '' : 's'} · ${photos} photo${photos === 1 ? '' : 's'}`;
+                    const pdfs = svSpaces.reduce((n, sp) => n + svSpacePdfN(sp), 0);
+                    const photos = svGeneralPhotos.count() + svSpaces.reduce((n, sp) => n + svSpacePhotoN(sp), 0);
+                    const itemN = svSpaces.reduce((n, sp) => n + svFilledItems(sp).length, 0);
+                    const files = `${svSpaces.length} space${svSpaces.length === 1 ? '' : 's'} · ${itemN} item${itemN === 1 ? '' : 's'} · ${pdfs} measurement file${pdfs === 1 ? '' : 's'} · ${photos} photo${photos === 1 ? '' : 's'}`;
                     document.getElementById('sv_confirm_text').textContent = `${v} on ${when} — ${files}.`;
                     saveArea.classList.add('hidden');
                     confirmBox.classList.remove('hidden');
@@ -169,5 +171,3 @@
                     this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
                     form.submit();
                 });
-
-

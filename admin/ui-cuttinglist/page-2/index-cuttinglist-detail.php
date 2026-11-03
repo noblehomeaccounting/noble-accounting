@@ -731,10 +731,10 @@ if ($recordId <= 0) {
                             class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-black text-white text-[11.5px] font-semibold"><i class="fa-solid fa-table-list"></i> Whole view</button>
                     </div>
                     <div class="flex flex-wrap gap-1.5">${spaces.map((sp, i) => {
-                        const has = cutSpaceMeasured(sp);
+                        const has = cutSpaceMeasured(sp), ni = (sp.items || []).length;
                         return `<button type="button" data-cut-whole="${visit.id}" data-cut-space="${i + 1}"
                             class="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border text-[11.5px] font-semibold ${has ? 'bg-green-50 border-green-200 text-green-800 hover:bg-green-100' : 'bg-white border-amber-200 text-amber-800 hover:bg-amber-100'}">
-                            <span class="w-5 h-5 rounded-full bg-white/80 border border-current/20 text-[10px] font-bold flex items-center justify-center">${i + 1}</span>${cutEscapeHtml(sp.name)}
+                            <span class="w-5 h-5 rounded-full bg-white/80 border border-current/20 text-[10px] font-bold flex items-center justify-center">${i + 1}</span>${cutEscapeHtml(sp.name)}${ni ? `<span class="text-[10px] font-bold opacity-70">· ${ni}</span>` : ''}
                             <i class="fa-solid ${has ? 'fa-check' : 'fa-ruler'} text-[9px]"></i></button>`;
                     }).join('')}</div>
                 </div>` : '';
@@ -769,11 +769,14 @@ if ($recordId <= 0) {
         let cutVisits = [];
         let cutWholeVisitId = 0;
         let cutLbList = [], cutLbIdx = 0;
-        const cutSpaceMeasured = sp => (sp.meas_pdfs || []).length + (sp.meas_imgs || []).length > 0;
+        const cutSpaceMeasured = sp => (sp.meas_pdfs || []).length + (sp.meas_imgs || []).length > 0 || (sp.items || []).some(it => (it.meas_pdfs || []).length + (it.meas_imgs || []).length > 0);
         // lahat ng larawan ng isang visit: photos ng bawat space, measurement photos, saka "other" photos
         function cutVisitPhotos(visit) {
             const out = [];
-            (visit.spaces || []).forEach(sp => { (sp.photos || []).forEach(p => out.push(p)); (sp.meas_imgs || []).forEach(p => out.push(p)); });
+            (visit.spaces || []).forEach(sp => {
+                (sp.photos || []).forEach(p => out.push(p)); (sp.meas_imgs || []).forEach(p => out.push(p));
+                (sp.items || []).forEach(it => { (it.photos || []).forEach(p => out.push(p)); (it.meas_imgs || []).forEach(p => out.push(p)); });
+            });
             (visit.photos || []).forEach(p => out.push(p));
             return [...new Set(out)];
         }
@@ -794,6 +797,23 @@ if ($recordId <= 0) {
                     <i class="fa-solid fa-file-pdf text-red-500"></i>PDF ${i + 1}<i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-gray-400"></i></a>`).join('')}
                 ${cutThumbs(visit, sp.meas_imgs, 'w-11 h-11', true)}</div>`;
         }
+        // Photos + PDF ng isang item
+        function cutItemFiles(visit, it) {
+            const imgs = [...(it.photos || []), ...(it.meas_imgs || [])], pdfs = it.meas_pdfs || [];
+            if (!imgs.length && !pdfs.length) return '';
+            return `<span class="mt-1 flex flex-wrap items-center gap-1">${cutThumbs(visit, imgs, 'w-9 h-9', false).replace(/^<div class="flex flex-wrap gap-1">|<\/div>$/g, '')}${pdfs.map((u, i) => `<a href="${cutEscapeHtml(u)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 text-[10.5px] font-semibold text-gray-700 hover:border-amber-600"><i class="fa-solid fa-file-pdf text-red-500"></i>PDF ${i + 1}</a>`).join('')}</span>`;
+        }
+        // Mga item ng space (hal. Upper cabinet 240 × 70 × 35 cm · ×2 · Oak laminate)
+        function cutItemsHtml(visit, sp) {
+            const list = sp.items || [];
+            if (!list.length) return cutDash;
+            const n = v => v === null || v === undefined ? null : Number(v);
+            return `<ul class="space-y-1">${list.map(it => {
+                const size = [n(it.w), n(it.h), n(it.d)].filter(v => v !== null && !isNaN(v));
+                const extra = [size.length ? size.join(' × ') + ' cm' : '', it.qty > 1 ? '×' + it.qty : '', it.material || ''].filter(Boolean).map(cutEscapeHtml).join(' · ');
+                return `<li class="leading-snug"><span class="font-semibold text-gray-900">${cutEscapeHtml(it.name)}</span>${extra ? `<span class="block text-[11px] text-gray-500">${extra}</span>` : ''}${it.remark ? `<span class="block text-[11px] text-gray-400 italic">${cutEscapeHtml(it.remark)}</span>` : ''}${cutItemFiles(visit, it)}</li>`;
+            }).join('')}</ul>`;
+        }
         function cutRenderWhole(keepScroll) {
             const visit = cutVisits.find(v => v.id === cutWholeVisitId);
             const body = document.getElementById('cutWholeBody');
@@ -803,20 +823,22 @@ if ($recordId <= 0) {
             const n = spaces.length, measured = spaces.filter(cutSpaceMeasured).length;
             const photoN = spaces.reduce((t, sp) => t + (sp.photos || []).length, 0);
             const fileN = spaces.reduce((t, sp) => t + (sp.meas_pdfs || []).length + (sp.meas_imgs || []).length, 0);
+            const itemN = spaces.reduce((t, sp) => t + (sp.items || []).length, 0);
             document.getElementById('cutWholeTitle').innerHTML = `Space list <span class="text-gray-400 font-semibold">(${n})</span>`;
             document.getElementById('cutWholeSub').textContent = `${cutFormatDateTimeLong(visit.visit_datetime)} · ${visit.designer_name || '—'} · tap a photo to enlarge, a PDF to open`;
-            document.getElementById('cutWholeFoot').innerHTML = `<b>${measured}</b> of ${n} measured · ${fileN} measurement file${fileN === 1 ? '' : 's'} · ${photoN} site photo${photoN === 1 ? '' : 's'}`
+            document.getElementById('cutWholeFoot').innerHTML = `<b>${measured}</b> of ${n} measured · ${itemN} item${itemN === 1 ? '' : 's'} · ${fileN} measurement file${fileN === 1 ? '' : 's'} · ${photoN} site photo${photoN === 1 ? '' : 's'}`
                 + (measured < n ? ` · <span class="text-amber-700 font-semibold">${n - measured} without measurement</span>` : '');
             body.innerHTML = `
                 <table class="hidden md:table w-full text-[12.5px]">
                     <thead class="sticky top-0 z-10 bg-gray-50 text-[10.5px] font-bold uppercase tracking-wider text-gray-500 shadow-[0_1px_0_#e5e7eb]">
-                        <tr><th class="px-3 py-2.5 text-left w-14">No.</th><th class="px-3 py-2.5 text-left w-44">Space name</th><th class="px-3 py-2.5 text-left">Requirements</th>
+                        <tr><th class="px-3 py-2.5 text-left w-14">No.</th><th class="px-3 py-2.5 text-left w-40">Space name</th><th class="px-3 py-2.5 text-left">Items</th><th class="px-3 py-2.5 text-left">Requirements</th>
                             <th class="px-3 py-2.5 text-left w-52">Site photos</th><th class="px-3 py-2.5 text-left w-44">Measurement</th><th class="px-3 py-2.5 text-left">Remark</th></tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 align-top">${spaces.map((sp, i) => `
                         <tr id="cut-space-${i + 1}" class="${cutSpaceMeasured(sp) ? '' : 'bg-amber-50/30'} transition-colors">
                             <td class="px-3 py-3"><span class="inline-flex w-7 h-7 rounded-lg bg-amber-700 text-white text-[11px] font-bold items-center justify-center">${i + 1}</span></td>
                             <td class="px-3 py-3 font-semibold text-gray-900 break-words">${cutEscapeHtml(sp.name)}</td>
+                            <td class="px-3 py-3 text-gray-800">${cutItemsHtml(visit, sp)}</td>
                             <td class="px-3 py-3 text-gray-800">${cutText(sp.requirements)}</td>
                             <td class="px-3 py-3">${cutThumbs(visit, sp.photos, 'w-11 h-11') || cutDash}</td>
                             <td class="px-3 py-3">${cutMeasHtml(visit, sp)}</td>
@@ -830,6 +852,7 @@ if ($recordId <= 0) {
                             <p class="flex-1 min-w-0 text-[13px] font-semibold text-gray-900 break-words">${cutEscapeHtml(sp.name)}</p>
                         </div>
                         <dl class="space-y-2 text-[12.5px]">
+                            <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Items</dt><dd class="text-gray-800 mt-0.5">${cutItemsHtml(visit, sp)}</dd></div>
                             <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Requirements</dt><dd class="text-gray-800">${cutText(sp.requirements)}</dd></div>
                             <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Site photos</dt><dd class="mt-0.5">${cutThumbs(visit, sp.photos, 'w-14 h-14') || cutDash}</dd></div>
                             <div><dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Measurement</dt><dd class="mt-0.5">${cutMeasHtml(visit, sp)}</dd></div>

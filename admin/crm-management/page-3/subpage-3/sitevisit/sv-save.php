@@ -31,7 +31,36 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         $name = trim(preg_replace('/\s+/u', ' ', (string) ($sp['name'] ?? '')));
         $requirements = trim((string) ($sp['requirements'] ?? ''));
         $notes = trim((string) ($sp['notes'] ?? ''));   // = Remark
-        $spaces[] = ['key' => (string) $key, 'name' => $name, 'requirements' => $requirements, 'notes' => $notes];
+
+        // Mga item sa loob ng space (hal. Upper cabinet 240 × 70 × 35 cm) — optional
+        $items = [];
+        $itemErr = '';
+        foreach ((is_array($sp['items'] ?? null) ? $sp['items'] : []) as $ik => $it) {
+            if (!is_array($it) || !preg_match('/^\d{1,6}$/', (string) $ik)) continue;
+            $iName = trim(preg_replace('/\s+/u', ' ', (string) ($it['name'] ?? '')));
+            $iMat = trim((string) ($it['material'] ?? ''));
+            $iRem = trim((string) ($it['remark'] ?? ''));
+            $dims = [];
+            foreach (['w', 'h', 'd'] as $dk) {
+                $raw = str_replace(',', '', trim((string) ($it[$dk] ?? '')));
+                if ($raw === '') { $dims[$dk] = null; continue; }
+                if (!is_numeric($raw) || (float) $raw <= 0 || (float) $raw > 100000) { $itemErr = $itemErr ?: 'Check the size of "' . ($iName ?: 'an item') . '" in "' . $name . '" (numbers in cm only).'; $dims[$dk] = null; continue; }
+                $dims[$dk] = round((float) $raw, 2);
+            }
+            $qtyRaw = trim((string) ($it['qty'] ?? ''));
+            $qty = $qtyRaw === '' ? 1 : (int) $qtyRaw;
+            $fkey = $key . '_' . $ik;   // susi ng files ng item: item_photos[fkey][], item_files[fkey][]
+            $iHasFiles = (bool) array_filter(array_merge(svFileList('item_photos', $fkey), svFileList('item_files', $fkey)), fn($f) => $f['error'] !== UPLOAD_ERR_NO_FILE && $f['name'] !== '');
+            if ($iName === '' && $iMat === '' && $iRem === '' && !array_filter($dims) && !$iHasFiles) continue;   // blankong hilera
+            if ($iName === '') $itemErr = $itemErr ?: 'Every item in "' . $name . '" needs a name.';
+            elseif (mb_strlen($iName) > 100) $itemErr = $itemErr ?: 'An item name in "' . $name . '" is too long (max 100 characters).';
+            elseif (mb_strlen($iMat) > 150 || mb_strlen($iRem) > 500) $itemErr = $itemErr ?: 'The material or remark of "' . $iName . '" is too long.';
+            elseif ($qty < 1 || $qty > 999 || !preg_match('/^\d*$/', $qtyRaw)) $itemErr = $itemErr ?: 'The quantity of "' . $iName . '" must be 1 to 999.';
+            $items[] = ['name' => $iName, 'w' => $dims['w'], 'h' => $dims['h'], 'd' => $dims['d'], 'qty' => max(1, min(999, $qty)), 'material' => $iMat, 'remark' => $iRem, 'fkey' => $fkey, 'has_files' => $iHasFiles];
+        }
+        if (count($items) > SV_MAX_ITEMS) $itemErr = $itemErr ?: 'You can add up to ' . SV_MAX_ITEMS . ' items per space.';
+
+        $spaces[] = ['key' => (string) $key, 'name' => $name, 'requirements' => $requirements, 'notes' => $notes, 'items' => $items];
 
         if ($spaceErr !== '') continue;
         if ($name === '') {
@@ -44,6 +73,8 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
             $spaceErr = 'The remark for "' . $name . '" is too long (max 2000 characters).';
         } elseif (isset($seenSpace[mb_strtolower($name)])) {
             $spaceErr = '"' . $name . '" was added more than once.';
+        } elseif ($itemErr !== '') {
+            $spaceErr = $itemErr;
         }
         $seenSpace[mb_strtolower($name)] = true;
     }
@@ -58,7 +89,7 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
         'site_conditions' => $siteConditions,
         'client_requirements' => $clientRequirements,
         'existing_structure' => $existingStructure,
-        'spaces' => array_map(fn($x) => ['name' => mb_substr($x['name'], 0, 100), 'requirements' => $x['requirements'], 'notes' => $x['notes']], array_slice($spaces, 0, SV_MAX_SPACES)),
+        'spaces' => array_map(fn($x) => ['name' => mb_substr($x['name'], 0, 100), 'requirements' => $x['requirements'], 'notes' => $x['notes'], 'items' => array_map(fn($i) => array_diff_key($i, ['fkey' => 1, 'has_files' => 1]), array_slice($x['items'], 0, SV_MAX_ITEMS))], array_slice($spaces, 0, SV_MAX_SPACES)),
     ];
 
     // datetime-local (Y-m-d\TH:i) → Y-m-d H:i:s para sa MySQL strict mode
@@ -105,6 +136,13 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
             [$sp['pdfs'], $sk1] = svSavePdfs(svFileList('space_pdfs', $sp['key']), $inquiryId, $uploadDir);
             [$sp['photos'], $sk2] = svSavePhotos(svFileList('space_photos', $sp['key']), $inquiryId, $uploadDir);
             $skippedFiles += $sk1 + $sk2;
+            // files ng bawat item (photo + PDF/photo ng sukat)
+            foreach ($sp['items'] as &$it) {
+                [$it['files'], $sk4] = svSavePdfs(svFileList('item_files', $it['fkey']), $inquiryId, $uploadDir);
+                [$it['photos'], $sk5] = svSavePhotos(svFileList('item_photos', $it['fkey']), $inquiryId, $uploadDir);
+                $skippedFiles += $sk4 + $sk5;
+            }
+            unset($it);
         }
         unset($sp);
 
@@ -154,14 +192,49 @@ if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['su
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
                 if (!$spStmt) throw new RuntimeException('The spaces table is missing or outdated. Run noblecrm_sitevisit_space.sql (or the add_requirements SQL) first. (' . $conn->error . ')');
+                // mga item (kapag may laman lang — kailangan ang noblecrm_sitevisit_space_item.sql)
+                $itStmt = null;
+                $itFileCols = false;
+                if (array_filter(array_column($spaces, 'items'))) {
+                    // may photos / measurement_files na column na ba? (noblecrm_sitevisit_space_item_files.sql)
+                    try { $c = $conn->query("SHOW COLUMNS FROM noblecrm_sitevisit_space_item LIKE 'measurement_files'"); $itFileCols = $c && $c->num_rows > 0; } catch (Throwable $e) { $itFileCols = false; }
+                    $anyItemFiles = false;
+                    foreach ($spaces as $s0) foreach ($s0['items'] as $i0) if ($i0['files'] || $i0['photos']) $anyItemFiles = true;
+                    if ($anyItemFiles && !$itFileCols) throw new RuntimeException('The spaces table is missing the item photo columns. Run noblecrm_sitevisit_space_item_files.sql first.');
+                    $itStmt = $conn->prepare($itFileCols ? "
+                        INSERT INTO noblecrm_sitevisit_space_item
+                            (space_id, sitevisit_id, inquiry_id, sort_order, item_name, width_cm, height_cm, depth_cm, qty, material, remark, photos, measurement_files, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    " : "
+                        INSERT INTO noblecrm_sitevisit_space_item
+                            (space_id, sitevisit_id, inquiry_id, sort_order, item_name, width_cm, height_cm, depth_cm, qty, material, remark, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    ");
+                    if (!$itStmt) throw new RuntimeException('The spaces table is missing the items table. Run noblecrm_sitevisit_space_item.sql first. (' . $conn->error . ')');
+                }
                 foreach ($spaces as $order => $sp) {
                     $pdfCsv = implode(',', $sp['pdfs']);
                     $phCsv = implode(',', $sp['photos']);
                     $sortOrder = $order + 1;
                     $spStmt->bind_param("iiisssss", $sitevisitId, $inquiryId, $sortOrder, $sp['name'], $sp['requirements'], $sp['notes'], $pdfCsv, $phCsv);
                     if (!$spStmt->execute()) throw new RuntimeException($spStmt->error);
+                    $spaceId = (int) $conn->insert_id;
+                    foreach ($sp['items'] as $io => $it) {
+                        $iSort = $io + 1;
+                        $iMat = $it['material'] !== '' ? $it['material'] : null;
+                        $iRem = $it['remark'] !== '' ? $it['remark'] : null;
+                        if ($itFileCols) {
+                            $iPh = implode(',', $it['photos']);
+                            $iFl = implode(',', $it['files']);
+                            $itStmt->bind_param("iiiisdddissss", $spaceId, $sitevisitId, $inquiryId, $iSort, $it['name'], $it['w'], $it['h'], $it['d'], $it['qty'], $iMat, $iRem, $iPh, $iFl);
+                        } else {
+                            $itStmt->bind_param("iiiisdddiss", $spaceId, $sitevisitId, $inquiryId, $iSort, $it['name'], $it['w'], $it['h'], $it['d'], $it['qty'], $iMat, $iRem);
+                        }
+                        if (!$itStmt->execute()) throw new RuntimeException($itStmt->error);
+                    }
                 }
                 $spStmt->close();
+                if ($itStmt) $itStmt->close();
             }
 
             // Mark the original inquiry as In Progress now that it has proceeded,

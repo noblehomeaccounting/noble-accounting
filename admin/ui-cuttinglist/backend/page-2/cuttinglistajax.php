@@ -388,6 +388,28 @@ if ($action === 'detail') {
                     'meas_imgs'    => array_map($url, array_values(array_filter($meas, $isImg))),
                 ];
             }
+            // mga item ng bawat space (hal. Upper cabinet 240 × 70 × 35 cm)
+            try {
+                $hasItems = ($t = $conn->query("SHOW TABLES LIKE 'noblecrm_sitevisit_space_item'")) && $t->num_rows > 0;
+            } catch (Throwable $e) {
+                $hasItems = false;
+            }
+            if ($hasItems && $bySv) {
+                $num = fn($v) => $v === null ? null : (float) $v;
+                $byItemSpace = [];
+                $itRes = $conn->query("SELECT * FROM noblecrm_sitevisit_space_item WHERE sitevisit_id IN ($svIds) ORDER BY sort_order ASC, id ASC");
+                while ($it = $itRes->fetch_assoc()) {
+                    $byItemSpace[(int) $it['space_id']][] = [
+                        'name' => (string) $it['item_name'], 'w' => $num($it['width_cm']), 'h' => $num($it['height_cm']), 'd' => $num($it['depth_cm']),
+                        'qty' => (int) $it['qty'], 'material' => (string) ($it['material'] ?? ''), 'remark' => (string) ($it['remark'] ?? ''),
+                        'photos'    => array_map($url, $csv($it['photos'] ?? '')),
+                        'meas_pdfs' => array_map($url, array_values(array_filter($csv($it['measurement_files'] ?? ''), fn($p) => !$isImg($p)))),
+                        'meas_imgs' => array_map($url, array_values(array_filter($csv($it['measurement_files'] ?? ''), $isImg))),
+                    ];
+                }
+                foreach ($bySv as &$list) foreach ($list as &$sp) $sp['items'] = $byItemSpace[$sp['id']] ?? [];
+                unset($list, $sp);
+            }
             foreach ($siteVisits as &$svRow) {
                 $svRow['spaces'] = $bySv[$svRow['id']] ?? [];
                 // ang "photos" ng visit ay may kasamang photos ng mga space → ihiwalay ang "other" photos

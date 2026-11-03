@@ -42,7 +42,10 @@ function q2dRespond(bool $success, string $message = '', array $extra = []): voi
     if ($success && in_array($action, $writes, true) && $conn instanceof mysqli && (int) $inquiryId > 0) {
         include_once ROOT_PATH . '/network/realtime-helper.php';
         $toAdmin = in_array($action, ['submit_final', 'submit_3d'], true);
-        nhRtInquiry($conn, (int) $inquiryId, $toAdmin ? [[ROLE_SUPERADMIN, null]] : [], 'crm_final');
+        // Final approval: Sales Head + Designer Head na; Superadmin = monitor (nakakakita pa rin)
+        nhRtInquiry($conn, (int) $inquiryId,
+            $toAdmin ? [[ROLE_SUPERADMIN, null], [ROLE_SALES, POSITION_HEAD], [ROLE_DESIGNER, POSITION_HEAD]] : [],
+            'crm_final');
     }
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
     exit;
@@ -206,11 +209,21 @@ function q2dUrl(?string $path): ?string
 }
 
 
+// Final: ang nag-a-approve na ay ang Designer Head (2D/3D) at Sales Head (Quotation).
+// 3D-only submission → Designer Head lang. Initial (kung gamit pa) → Superadmin pa rin gaya ng dati.
 function q2dNotifySuperAdmins(mysqli $conn, int $inquiryId, array $inquiry, int $senderId, bool $is3dOnly = false, string $stage = 'Initial'): void
 {
-    $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ?");
-    $stmt->bind_param("s", $role);
-    $role = ROLE_SUPERADMIN; // ⚠️ verify constant name
+    if ($stage === 'Final') {
+        $headRoles = $is3dOnly ? [ROLE_DESIGNER] : [ROLE_DESIGNER, ROLE_SALES];
+        $in = implode(',', array_fill(0, count($headRoles), '?'));
+        $stmt = $conn->prepare("SELECT id FROM noblerole WHERE position = ? AND role IN ({$in})");
+        $headPos = POSITION_HEAD;
+        $stmt->bind_param('s' . str_repeat('s', count($headRoles)), $headPos, ...$headRoles);
+    } else {
+        $stmt = $conn->prepare("SELECT id FROM noblerole WHERE role = ?");
+        $role = ROLE_SUPERADMIN;
+        $stmt->bind_param("s", $role);
+    }
     $stmt->execute();
     $superAdmins = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -223,7 +236,7 @@ function q2dNotifySuperAdmins(mysqli $conn, int $inquiryId, array $inquiry, int 
     $message = $is3dOnly
         ? "New {$stageLabel} 3D file submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})"
         : "New {$stageLabel} 2D and Quotation submission from {$inquiry['client_name']} (Control No. {$inquiry['control_no']})";
-    $link = "/check2dquotation?id={$inquiryId}"; // ⚠️ verify expected route
+    $link = "/crm-main?id={$inquiryId}";
     $controlNo = $inquiry['control_no'];
 
     $stmt = $conn->prepare("
@@ -604,6 +617,20 @@ if ($action === 'state') {
                     ? (bool) ($activeDraftRow['is_late'] ?? 0)
                     : q2dIsPastDeadline($inquiry)),
             'both_done' => (bool) $activeDraftRow['design_2d_done'] && (bool) $activeDraftRow['quotation_done'],
+            // Final: progress ng dalawang head habang naka-submit (Designer Head = 2D/3D, Sales Head = Quotation)
+            'head_review' => (function () use ($activeDraftRow) {
+                $st = fn($v) => in_array($v, ['Approved', 'For Revision'], true) ? $v : 'Pending';
+                $designer = [$st($activeDraftRow['design_2d_review_status'] ?? null)];
+                if ((int) ($activeDraftRow['include_3d'] ?? 0) === 1) {
+                    $designer[] = $st($activeDraftRow['design_3d_review_status'] ?? null);
+                }
+                $sum = fn(array $l) => in_array('For Revision', $l, true) ? 'For Revision'
+                    : (count(array_unique($l)) === 1 && $l[0] === 'Approved' ? 'Approved' : 'Pending');
+                return [
+                    'designer_head' => $sum($designer),
+                    'sales_head'    => $sum([$st($activeDraftRow['quotation_review_status'] ?? null)]),
+                ];
+            })(),
             'design_2d' => [
                 'done' => (bool) $activeDraftRow['design_2d_done'],
                 'path' => $activeDraftRow['design_2d_path'],
@@ -1194,10 +1221,8 @@ if ($action === 'submit_final') {
         q2dRespond(false, 'Nothing to submit right now.');
     }
 
-    // FINAL: Sales must have set the Contract Amount AND attached the contract.
-    if ($isFinal && (empty($inquiry['contract_amount']) || (float) $inquiry['contract_amount'] <= 0 || empty($inquiry['contract_file']))) {
-        q2dRespond(false, 'Sales must set the Contract Amount and attach the contract before the Final can be submitted.');
-    }
+    // Ang contract ay ginagawa na ng Accounting Head PAGKATAPOS ma-approve ang Final (contracts.php),
+    // kaya hindi na ito kailangan bago mag-submit.
 
     if (!$draft['design_2d_done'] || !$draft['quotation_done']) {
         q2dRespond(false, 'Both the 2D File and Quotation File must be marked done before submitting.');

@@ -1,15 +1,19 @@
 <?php
 // checkdesigner2dquotationajax.php
 //
-// Initial 2D & Quotation approval — DESIGNER HEAD only.
-// (Final approval stays with Superadmin in check2dquotationajax.php)
+// Initial 2D & Quotation approval — hati na sa dalawang head:
+//   • Designer Head → 2D at 3D files
+//   • Sales Head    → Quotation files
+// Approved lang ang Initial kapag tapos na ang dalawa (walang "Pending" na slot).
+// Kapag may isang head na nag-revision, hinihintay pa rin ang kabila para isang balikan lang.
+// (Ang Final ay nasa check2dquotationajax.php — parehong hati.)
 // MULTI-ATTACHMENT + PER-FILE REVIEW VERSION:
 // nagbabasa/sumusulat na ng noblecrm_2dquotation_files (review_status, remarks, reviewed_at kada file).
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_DESIGNER];
+$allowedRoles = [ROLE_DESIGNER, ROLE_SALES];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
@@ -18,19 +22,29 @@ header('Content-Type: application/json');
 
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 
-// ── Designer HEAD lang ang pwede (hindi ang ibang designer staff) ──
+// ── HEAD lang ang pwede (Designer Head o Sales Head) — hindi ang ibang staff ──
+$currentRole = $_SESSION['role'] ?? '';
 $headStmt = $conn->prepare("SELECT id FROM noblerole WHERE id = ? AND role = ? AND position = ? LIMIT 1");
-$headRole = ROLE_DESIGNER;
 $headPos = POSITION_HEAD;
-$headStmt->bind_param("iss", $currentUserId, $headRole, $headPos);
+$headStmt->bind_param("iss", $currentUserId, $currentRole, $headPos);
 $headStmt->execute();
-$isDesignerHead = (bool) $headStmt->get_result()->fetch_assoc();
+$isHead = (bool) $headStmt->get_result()->fetch_assoc();
 $headStmt->close();
 
-if (!$isDesignerHead) {
-    echo json_encode(['success' => false, 'message' => 'Only the Designer Head can review Initial submissions.']);
+if (!$isHead) {
+    echo json_encode(['success' => false, 'message' => 'Only the Designer Head or Sales Head can review Initial submissions.']);
     exit;
 }
+
+$viewer = $currentRole === ROLE_SALES ? 'sales_head' : 'designer_head';
+
+// slot (files table) => may-ari
+const DCHK_SLOT_OWNER = ['2d' => 'designer_head', '3d' => 'designer_head', 'quotation' => 'sales_head'];
+const DCHK_SLOT_PREFIX = ['2d' => 'design_2d', 'quotation' => 'quotation', '3d' => 'design_3d'];
+const DCHK_SLOT_LABEL = ['2d' => '2D', 'quotation' => 'Quotation', '3d' => '3D'];
+const DCHK_OWNER_LABEL = ['designer_head' => 'Designer Head', 'sales_head' => 'Sales Head'];
+
+$mySlots = array_keys(array_filter(DCHK_SLOT_OWNER, fn($o) => $o === $viewer));
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
 
@@ -41,7 +55,21 @@ const DCHK_FILES_TABLE = 'noblecrm_2dquotation_files';
 
 function dchkSelectSql(bool $latestOnly): string
 {
+    global $conn;
     $table = DCHK_TABLE;
+
+    if (dchkReviewerColsReady($conn)) {
+        $reviewerCols = "q.design_reviewed_at, q.quotation_reviewed_at, q.design_3d_reviewed_at,
+            d2r.name AS design_reviewer_name, qtr.name AS quotation_reviewer_name, d3r.name AS design_3d_reviewer_name";
+        $reviewerJoins = "
+        LEFT JOIN noblerole d2r ON d2r.id = q.design_reviewed_by
+        LEFT JOIN noblerole qtr ON qtr.id = q.quotation_reviewed_by
+        LEFT JOIN noblerole d3r ON d3r.id = q.design_3d_reviewed_by";
+    } else {
+        $reviewerCols = "NULL AS design_reviewed_at, NULL AS quotation_reviewed_at, NULL AS design_3d_reviewed_at,
+            NULL AS design_reviewer_name, NULL AS quotation_reviewer_name, NULL AS design_3d_reviewer_name";
+        $reviewerJoins = '';
+    }
 
     $latestJoin = $latestOnly ? "
         JOIN (
@@ -66,14 +94,32 @@ function dchkSelectSql(bool $latestOnly): string
             i.target_completion_date, i.designer_id, i.sales_staff_id,
             d2u.name AS design_2d_uploader_name,
             qtu.name AS quotation_uploader_name,
-            d3u.name AS design_3d_uploader_name
+            d3u.name AS design_3d_uploader_name,
+            {$reviewerCols}
         FROM {$table} q
         {$latestJoin}
         JOIN noblecrminquiry i ON i.id = q.inquiry_id
         LEFT JOIN noblerole d2u ON d2u.id = q.design_2d_uploaded_by
         LEFT JOIN noblerole qtu ON qtu.id = q.quotation_uploaded_by
         LEFT JOIN noblerole d3u ON d3u.id = q.design_3d_uploaded_by
+        {$reviewerJoins}
     ";
+}
+
+/** May column ba (para hindi masira kung hindi pa na-run ang SQL ng reviewer columns). */
+function dchkReviewerColsReady(mysqli $conn): bool
+{
+    static $ready = null;
+    if ($ready === null) {
+        $cols = [];
+        $res = @$conn->query("SHOW COLUMNS FROM " . DCHK_TABLE);
+        if ($res) {
+            while ($c = $res->fetch_assoc()) $cols[$c['Field']] = true;
+        }
+        $ready = isset($cols['design_reviewed_by'], $cols['design_reviewed_at'], $cols['quotation_reviewed_by'],
+            $cols['quotation_reviewed_at'], $cols['design_3d_reviewed_by']);
+    }
+    return $ready;
 }
 
 function dchkRoleLabel(?string $role): string
@@ -294,12 +340,77 @@ function dchkSaveFileReviews(mysqli $conn, int $quotationId, array $items): bool
     return $ok;
 }
 
-function dchkReviewTarget(array $row): string
+// ── HATI NG REVIEW (Designer Head = 2D/3D · Sales Head = Quotation) ──
+
+function dchkMainSlots(array $row): array
 {
-    if ($row['status'] === 'Waiting for Approval') {
-        return (int) $row['include_3d'] === 1 ? 'main_with_3d' : 'main';
+    $slots = ['2d', 'quotation'];
+    if ((int) ($row['include_3d'] ?? 0) === 1) {
+        $slots[] = '3d';
     }
-    if ($row['status'] === 'Approved' && ($row['design_3d_stage'] ?? 'Locked') === 'Waiting for Approval') {
+    return $slots;
+}
+
+/** Status ng slot (NULL / blank = Pending). */
+function dchkSlotStatus(array $row, string $slot): string
+{
+    $v = $row[DCHK_SLOT_PREFIX[$slot] . '_review_status'] ?? null;
+    return in_array($v, DCHK_REVIEW_DECISIONS, true) ? $v : 'Pending';
+}
+
+/**
+ * Mga slot na wala pang desisyon habang Waiting for Approval.
+ * Kasama rin ang slot na "Approved" pero may bagong file na hindi pa nare-review.
+ */
+function dchkPendingSlots(array $row, array $filesBySlot): array
+{
+    if (($row['status'] ?? '') !== 'Waiting for Approval') {
+        return [];
+    }
+    $out = [];
+    foreach (dchkMainSlots($row) as $slot) {
+        $st = dchkSlotStatus($row, $slot);
+        if ($st === 'Pending') {
+            $out[] = $slot;
+            continue;
+        }
+        if ($st === 'Approved') {
+            foreach ($filesBySlot[$slot] ?? [] as $f) {
+                if ((int) $f['id'] > 0 && !in_array($f['review_status'] ?? 'Pending', DCHK_REVIEW_DECISIONS, true)) {
+                    $out[] = $slot;
+                    break;
+                }
+            }
+        }
+    }
+    return $out;
+}
+
+function dchkIs3dOnlyWaiting(array $row): bool
+{
+    return ($row['status'] ?? '') === 'Approved' && ($row['design_3d_stage'] ?? 'Locked') === 'Waiting for Approval';
+}
+
+function dchkWaitingOn(array $row, array $filesBySlot): array
+{
+    if (dchkIs3dOnlyWaiting($row)) {
+        return [DCHK_OWNER_LABEL['designer_head']];
+    }
+    $owners = [];
+    foreach (dchkPendingSlots($row, $filesBySlot) as $slot) {
+        $owners[DCHK_SLOT_OWNER[$slot]] = DCHK_OWNER_LABEL[DCHK_SLOT_OWNER[$slot]];
+    }
+    return array_values($owners);
+}
+
+/** Ano ang puwedeng gawin ng naka-login: main | 3d_only | none */
+function dchkReviewTarget(array $row, array $filesBySlot = []): string
+{
+    global $viewer, $mySlots;
+    if ($row['status'] === 'Waiting for Approval') {
+        return array_intersect($mySlots, dchkPendingSlots($row, $filesBySlot)) ? 'main' : 'none';
+    }
+    if (dchkIs3dOnlyWaiting($row) && $viewer === 'designer_head') {
         return '3d_only';
     }
     return 'none';
@@ -307,6 +418,12 @@ function dchkReviewTarget(array $row): string
 
 function dchkFormatRow(array $row, array $filesMap): array
 {
+    global $viewer, $mySlots;
+    $bySlot = [
+        '2d'        => dchkSlotFiles($row, '2d', $filesMap),
+        'quotation' => dchkSlotFiles($row, 'quotation', $filesMap),
+        '3d'        => dchkSlotFiles($row, '3d', $filesMap),
+    ];
     return [
         'id'                        => (int) $row['id'],
         'inquiry_id'                => (int) $row['inquiry_id'],
@@ -319,26 +436,35 @@ function dchkFormatRow(array $row, array $filesMap): array
         'target_completion_date'    => $row['target_completion_date'],
         'is_late'                   => (bool) ($row['is_late'] ?? 0),
         'design_2d_path'            => $row['design_2d_path'],
-        'design_2d_files'           => dchkSlotFiles($row, '2d', $filesMap),
+        'design_2d_files'           => $bySlot['2d'],
         'design_2d_uploader_name'   => $row['design_2d_uploader_name'] ?? '—',
         'design_2d_uploaded_role'   => dchkRoleLabel($row['design_2d_uploaded_role']),
-        'design_2d_review_status'   => $row['design_2d_review_status'] ?? 'Pending',
+        'design_2d_review_status'   => dchkSlotStatus($row, '2d'),
+        'design_2d_reviewer_name'   => $row['design_reviewer_name'] ?? null,
+        'design_2d_reviewed_at'     => $row['design_reviewed_at'] ?? null,
         'design_2d_remarks'         => $row['design_2d_remarks'],
         'quotation_path'            => $row['quotation_path'],
-        'quotation_files'           => dchkSlotFiles($row, 'quotation', $filesMap),
+        'quotation_files'           => $bySlot['quotation'],
         'quotation_uploader_name'   => $row['quotation_uploader_name'] ?? '—',
         'quotation_uploaded_role'   => dchkRoleLabel($row['quotation_uploaded_role']),
-        'quotation_review_status'   => $row['quotation_review_status'] ?? 'Pending',
+        'quotation_review_status'   => dchkSlotStatus($row, 'quotation'),
+        'quotation_reviewer_name'   => $row['quotation_reviewer_name'] ?? null,
+        'quotation_reviewed_at'     => $row['quotation_reviewed_at'] ?? null,
         'quotation_remarks'         => $row['quotation_remarks'],
         'include_3d'                => (bool) $row['include_3d'],
         'design_3d_stage'           => $row['design_3d_stage'] ?? 'Locked',
         'design_3d_path'            => $row['design_3d_path'],
-        'design_3d_files'           => dchkSlotFiles($row, '3d', $filesMap),
+        'design_3d_files'           => $bySlot['3d'],
         'design_3d_uploader_name'   => $row['design_3d_uploader_name'] ?? '—',
         'design_3d_uploaded_role'   => dchkRoleLabel($row['design_3d_uploaded_role']),
-        'design_3d_review_status'   => $row['design_3d_review_status'] ?? 'Pending',
+        'design_3d_review_status'   => dchkSlotStatus($row, '3d'),
+        'design_3d_reviewer_name'   => $row['design_3d_reviewer_name'] ?? null,
+        'design_3d_reviewed_at'     => $row['design_3d_reviewed_at'] ?? null,
         'design_3d_remarks'         => $row['design_3d_remarks'],
-        'review_target'             => dchkReviewTarget($row),
+        'review_target'             => dchkReviewTarget($row, $bySlot),
+        'waiting_on'                => dchkWaitingOn($row, $bySlot),
+        'my_slots'                  => $mySlots,
+        'viewer'                    => $viewer,
         'status'                    => $row['status'],
         'remarks'                   => $row['remarks'],
         'submitted_at'              => $row['submitted_at'],
@@ -445,7 +571,7 @@ if ($action === 'list') {
         $rows[] = dchkFormatRow($row, $filesMap);
     }
 
-    echo json_encode(['success' => true, 'rows' => $rows, 'count' => count($rows), 'server_time' => date('c')]);
+    echo json_encode(['success' => true, 'rows' => $rows, 'count' => count($rows), 'viewer' => $viewer, 'server_time' => date('c')]);
     exit;
 }
 
@@ -492,153 +618,202 @@ if ($action === 'review') {
         exit;
     }
 
-    $stmt = $conn->prepare("
-        SELECT q.status, q.inquiry_id, q.include_3d, q.design_2d_uploaded_by,
-               i.control_no, i.client_name, i.designer_id, i.sales_staff_id
-        FROM {$table} q
-        JOIN noblecrminquiry i ON i.id = q.inquiry_id
-        WHERE q.id = ? LIMIT 1
-    ");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $current = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if (!$current) {
-        echo json_encode(['success' => false, 'message' => 'Record not found.']);
+    $fail = function (string $msg) use ($conn) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'message' => $msg]);
         exit;
-    }
-    if ($current['status'] !== 'Waiting for Approval') {
-        echo json_encode(['success' => false, 'message' => 'Only submissions waiting for approval can be reviewed.']);
-        exit;
-    }
-
-    // OPTIONAL: bawal i-approve ang sariling gawa. I-uncomment kung gusto mo.
-    // if ((int) $current['design_2d_uploaded_by'] === $currentUserId) {
-    //     echo json_encode(['success' => false, 'message' => 'You cannot review your own submission.']);
-    //     exit;
-    // }
-
-    $include3d = (int) $current['include_3d'];
-    $input = dchkParseDecisions();
-    $slotFiles = dchkLoadSlotFileRows($conn, $id);
-
-    $r2d = dchkEvaluateSlot($slotFiles['2d'], $input, '2D');
-    $rq  = dchkEvaluateSlot($slotFiles['quotation'], $input, 'Quotation');
-    $r3d = $include3d ? dchkEvaluateSlot($slotFiles['3d'], $input, '3D') : null;
-
-    foreach ([$r2d, $rq, $r3d] as $r) {
-        if ($r && !empty($r['error'])) {
-            echo json_encode(['success' => false, 'message' => $r['error']]);
-            exit;
-        }
-    }
-
-    // 3D is derived from 2D — a 3D revision sends the 2D files back too.
-    if ($r3d && $r3d['status'] === 'For Revision' && $r2d['status'] === 'Approved') {
-        $r2d = dchkForceRevision($r2d, 'Automatically sent back together with the 3D file revision.');
-    }
-
-    // Slot-level (aggregate) values — para gumana pa rin ang ibang pages
-    $design2dDecision  = $r2d['status'];
-    $quotationDecision = $rq['status'];
-    $design3dDecision  = $r3d ? $r3d['status'] : '';
-
-    $overallStatus = ($design2dDecision === 'Approved' && $quotationDecision === 'Approved'
-        && (!$include3d || $design3dDecision === 'Approved'))
-        ? 'Approved'
-        : 'For Revision';
-
-    $design2dRemarksToSave  = $design2dDecision === 'For Revision' ? $r2d['remarks'] : null;
-    $quotationRemarksToSave = $quotationDecision === 'For Revision' ? $rq['remarks'] : null;
-    $design3dRemarksToSave  = ($include3d && $design3dDecision === 'For Revision') ? $r3d['remarks'] : null;
-
-    $combinedRemarks = trim(implode("\n\n", array_filter([
-        $design2dRemarksToSave ? "2D: {$design2dRemarksToSave}" : '',
-        $quotationRemarksToSave ? "Quotation: {$quotationRemarksToSave}" : '',
-        $design3dRemarksToSave ? "3D: {$design3dRemarksToSave}" : '',
-    ]))) ?: null;
-
-    if ($include3d) {
-        $new3dStage = $overallStatus;
-    } elseif ($overallStatus === 'Approved') {
-        $new3dStage = 'Draft';   // unlock 3D upload
-    } else {
-        $new3dStage = 'Locked';
-    }
+    };
 
     $conn->begin_transaction();
-
-    // 1) per-file status
-    $ok = dchkSaveFileReviews($conn, $id, $r2d['items'])
-        && dchkSaveFileReviews($conn, $id, $rq['items'])
-        && ($r3d ? dchkSaveFileReviews($conn, $id, $r3d['items']) : true);
-
-    // 2) slot-level status ng submission
-    if ($ok) {
+    try {
+        // FOR UPDATE: para hindi magbanggaan ang dalawang head na sabay nag-submit
         $stmt = $conn->prepare("
-            UPDATE {$table}
-            SET status = ?,
-                design_2d_review_status = ?, design_2d_remarks = ?,
-                quotation_review_status = ?, quotation_remarks = ?,
-                design_3d_review_status = IF(? = 1, ?, design_3d_review_status),
-                design_3d_remarks = IF(? = 1, ?, design_3d_remarks),
-                design_3d_stage = ?,
-                design_3d_reviewed_at = IF(? = 1, NOW(), design_3d_reviewed_at),
-                remarks = ?,
-                reviewed_at = NOW()
-            WHERE id = ?
+            SELECT q.*, i.control_no, i.client_name, i.designer_id, i.sales_staff_id
+            FROM {$table} q
+            JOIN noblecrminquiry i ON i.id = q.inquiry_id
+            WHERE q.id = ? LIMIT 1
+            FOR UPDATE
         ");
-        $types = 'sssssisissisi';
-        $stmt->bind_param(
-            $types,
-            $overallStatus,
-            $design2dDecision, $design2dRemarksToSave,
-            $quotationDecision, $quotationRemarksToSave,
-            $include3d, $design3dDecision,
-            $include3d, $design3dRemarksToSave,
-            $new3dStage,
-            $include3d,
-            $combinedRemarks,
-            $id
-        );
-        $ok = $stmt->execute();
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $current = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-    }
 
-    if ($ok) {
+        if (!$current) {
+            $fail('Record not found.');
+        }
+        if ($current['status'] !== 'Waiting for Approval') {
+            $fail('Only submissions waiting for approval can be reviewed.');
+        }
+
+        $include3d = (int) $current['include_3d'];
+        $slotFiles = dchkLoadSlotFileRows($conn, $id);
+        $pendingMine = array_values(array_intersect($mySlots, dchkPendingSlots($current, $slotFiles)));
+
+        if (!$pendingMine) {
+            $waiting = dchkWaitingOn($current, $slotFiles);
+            $fail($waiting
+                ? 'You have already reviewed your part. Waiting for the ' . implode(' and ', $waiting) . '.'
+                : 'Nothing for you to review here.');
+        }
+
+        // Desisyon kada file — sa mga slot lang na hawak ko
+        $input = dchkParseDecisions();
+        $results = [];
+        foreach ($pendingMine as $slot) {
+            $r = dchkEvaluateSlot($slotFiles[$slot], $input, DCHK_SLOT_LABEL[$slot]);
+            if (!empty($r['error'])) {
+                $fail($r['error']);
+            }
+            $results[$slot] = $r;
+        }
+
+        // 3D is derived from 2D — a 3D revision sends the 2D files back too (Designer Head ang may hawak ng dalawa)
+        if (isset($results['3d']) && $results['3d']['status'] === 'For Revision') {
+            $r2d = $results['2d'] ?? dchkEvaluateSlot($slotFiles['2d'], [], '2D');
+            if (empty($r2d['error']) && $r2d['status'] === 'Approved') {
+                $results['2d'] = dchkForceRevision($r2d, 'Automatically sent back together with the 3D file revision.');
+            }
+        }
+
+        // 1) per-file status
+        foreach ($results as $r) {
+            if (!dchkSaveFileReviews($conn, $id, $r['items'])) {
+                $fail('Failed to save review.');
+            }
+        }
+
+        // 2) slot-level status ng mga slot ko (+ sino at kailan)
+        $set = [];
+        $types = '';
+        $params = [];
+        $trackReviewer = dchkReviewerColsReady($conn);
+        foreach ($results as $slot => $r) {
+            $p = DCHK_SLOT_PREFIX[$slot];
+            $set[] = "{$p}_review_status = ?";
+            $set[] = "{$p}_remarks = ?";
+            $types .= 'ss';
+            $params[] = $r['status'];
+            $params[] = $r['status'] === 'For Revision' ? $r['remarks'] : null;
+        }
+        if (isset($results['3d'])) {
+            $set[] = 'design_3d_reviewed_at = NOW()';
+        }
+        if ($trackReviewer) {
+            $byCol = ['2d' => 'design_reviewed', 'quotation' => 'quotation_reviewed', '3d' => 'design_3d_reviewed'];
+            foreach (array_keys($results) as $slot) {
+                $set[] = "{$byCol[$slot]}_by = ?";
+                $types .= 'i';
+                $params[] = $currentUserId;
+                if ($slot !== '3d') {
+                    $set[] = "{$byCol[$slot]}_at = NOW()";
+                }
+            }
+        }
+        $types .= 'i';
+        $params[] = $id;
+        $stmt = $conn->prepare("UPDATE {$table} SET " . implode(', ', $set) . " WHERE id = ?");
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            $fail('Failed to save review.');
+        }
+        $stmt->close();
+
+        // 3) Bagong estado — tapos na ba ang dalawang head?
+        $after = $current;
+        foreach ($results as $slot => $r) {
+            $p = DCHK_SLOT_PREFIX[$slot];
+            $after["{$p}_review_status"] = $r['status'];
+            $after["{$p}_remarks"] = $r['status'] === 'For Revision' ? $r['remarks'] : null;
+        }
+        $afterFiles = dchkLoadSlotFileRows($conn, $id);
+        $finalized = !dchkPendingSlots($after, $afterFiles);
+        $overallStatus = 'Waiting for Approval';
+
+        if ($finalized) {
+            $allApproved = true;
+            foreach (dchkMainSlots($after) as $slot) {
+                if (dchkSlotStatus($after, $slot) !== 'Approved') $allApproved = false;
+            }
+            $overallStatus = $allApproved ? 'Approved' : 'For Revision';
+
+            $combinedRemarks = trim(implode("\n\n", array_filter([
+                dchkSlotStatus($after, '2d') === 'For Revision' && $after['design_2d_remarks'] ? "2D: {$after['design_2d_remarks']}" : '',
+                dchkSlotStatus($after, 'quotation') === 'For Revision' && $after['quotation_remarks'] ? "Quotation: {$after['quotation_remarks']}" : '',
+                $include3d && dchkSlotStatus($after, '3d') === 'For Revision' && $after['design_3d_remarks'] ? "3D: {$after['design_3d_remarks']}" : '',
+            ]))) ?: null;
+
+            if ($include3d) {
+                $new3dStage = $overallStatus;
+            } elseif ($overallStatus === 'Approved') {
+                $new3dStage = 'Draft';   // unlock 3D upload
+            } else {
+                $new3dStage = 'Locked';
+            }
+
+            $stmt = $conn->prepare("
+                UPDATE {$table}
+                SET status = ?, design_3d_stage = ?, remarks = ?, reviewed_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->bind_param("sssi", $overallStatus, $new3dStage, $combinedRemarks, $id);
+            if (!$stmt->execute()) {
+                $stmt->close();
+                $fail('Failed to save review.');
+            }
+            $stmt->close();
+        }
+
         $conn->commit();
-    } else {
+    } catch (Throwable $e) {
         $conn->rollback();
+        error_log('checkdesigner2dquotationajax review: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to save review.']);
+        exit;
     }
 
-    if ($ok) {
-        $recordForNotif = ['control_no' => $current['control_no'], 'client_name' => $current['client_name']];
-        $inquiryId = (int) $current['inquiry_id'];
+    $recordForNotif = ['control_no' => $current['control_no'], 'client_name' => $current['client_name']];
+    $inquiryId = (int) $current['inquiry_id'];
 
-        if ($overallStatus === 'Approved') {
-            dchkNotifyAccountingHead($conn, $inquiryId, $recordForNotif, $currentUserId);
-        } else {
-            if ($design2dDecision === 'For Revision') {
-                dchkNotifyUserRevision($conn, (int) $current['designer_id'], $inquiryId, $recordForNotif, $currentUserId, '2D File', $design2dRemarksToSave);
+    if ($finalized) {
+        try {
+            if ($overallStatus === 'Approved') {
+                dchkNotifyAccountingHead($conn, $inquiryId, $recordForNotif, $currentUserId);
+            } else {
+                $d3Rev = $include3d && dchkSlotStatus($after, '3d') === 'For Revision';
+                if (dchkSlotStatus($after, '2d') === 'For Revision' || $d3Rev) {
+                    dchkNotifyUserRevision($conn, (int) $current['designer_id'], $inquiryId, $recordForNotif, $currentUserId,
+                        $d3Rev ? '2D / 3D File' : '2D File', $d3Rev ? $after['design_3d_remarks'] : $after['design_2d_remarks']);
+                }
+                if (dchkSlotStatus($after, 'quotation') === 'For Revision') {
+                    dchkNotifyUserRevision($conn, (int) $current['sales_staff_id'], $inquiryId, $recordForNotif, $currentUserId,
+                        'Quotation File', $after['quotation_remarks']);
+                }
             }
-            if ($quotationDecision === 'For Revision') {
-                dchkNotifyUserRevision($conn, (int) $current['sales_staff_id'], $inquiryId, $recordForNotif, $currentUserId, 'Quotation File', $quotationRemarksToSave);
-            }
+        } catch (Throwable $e) {
+            error_log('checkdesigner2dquotationajax notify: ' . $e->getMessage());
         }
     }
 
-    // Realtime: Sales + Designer ng inquiry, ibang Designer Head (badge + listahan),
+    // Realtime: Sales + Designer ng inquiry, ang dalawang head (badge + listahan),
     // at Accounting Head kapag approved (CRM List · Waiting for deposit)
-    if ($ok) {
+    try {
         include_once ROOT_PATH . '/network/realtime-helper.php';
-        $rtGroups = [[ROLE_DESIGNER, POSITION_HEAD]];
-        if ($overallStatus === 'Approved') $rtGroups[] = [ROLE_ACCOUNTING, POSITION_HEAD];
-        nhRtInquiry($conn, (int) $current['inquiry_id'], $rtGroups, 'crm_head_review');
+        $rtGroups = [[ROLE_DESIGNER, POSITION_HEAD], [ROLE_SALES, POSITION_HEAD]];
+        if ($finalized && $overallStatus === 'Approved') $rtGroups[] = [ROLE_ACCOUNTING, POSITION_HEAD];
+        nhRtInquiry($conn, $inquiryId, $rtGroups, 'crm_head_review');
+    } catch (Throwable $e) {
+        error_log('checkdesigner2dquotationajax realtime: ' . $e->getMessage());
     }
 
-    $message = $overallStatus === 'Approved' ? 'Submission approved.' : 'Sent back for revision.';
-    echo json_encode(['success' => (bool) $ok, 'message' => $ok ? $message : 'Failed to save review.']);
+    if (!$finalized) {
+        $waiting = dchkWaitingOn($after, $afterFiles);
+        echo json_encode(['success' => true, 'message' => 'Your review is saved. Waiting for the ' . implode(' and ', $waiting) . '.']);
+        exit;
+    }
+    $message = $overallStatus === 'Approved' ? 'Initial approved — both heads are done.' : 'Sent back for revision.';
+    echo json_encode(['success' => true, 'message' => $message]);
     exit;
 }
 
@@ -647,6 +822,11 @@ if ($action === 'review') {
 // ═══════════════════════════════════════════════════════════
 
 if ($action === 'review_3d') {
+
+    if ($viewer !== 'designer_head') {
+        echo json_encode(['success' => false, 'message' => 'Only the Designer Head can review the 3D file.']);
+        exit;
+    }
 
     $table = DCHK_TABLE;
     $id = intval($_POST['id'] ?? 0);
@@ -696,7 +876,7 @@ if ($action === 'review_3d') {
         $stmt = $conn->prepare("
             UPDATE {$table}
             SET design_3d_stage = 'Approved', design_3d_review_status = 'Approved',
-                design_3d_remarks = NULL, design_3d_reviewed_at = NOW()
+                design_3d_remarks = NULL, design_3d_reviewed_at = NOW()" . (dchkReviewerColsReady($conn) ? ", design_3d_reviewed_by = {$currentUserId}" : '') . "
             WHERE id = ?
         ");
         $stmt->bind_param("i", $id);
@@ -764,7 +944,7 @@ if ($action === 'review_3d') {
     // Realtime: Sales + Designer ng inquiry at ibang Designer Head
     if ($ok) {
         include_once ROOT_PATH . '/network/realtime-helper.php';
-        nhRtInquiry($conn, (int) $current['inquiry_id'], [[ROLE_DESIGNER, POSITION_HEAD]], 'crm_head_review');
+        nhRtInquiry($conn, (int) $current['inquiry_id'], [[ROLE_DESIGNER, POSITION_HEAD], [ROLE_SALES, POSITION_HEAD]], 'crm_head_review');
     }
 
     echo json_encode(['success' => (bool) $ok, 'message' => $ok ? $message : 'Failed to save review.']);
