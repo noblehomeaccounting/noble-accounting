@@ -9,6 +9,8 @@ $crmInquiryFormUrl = BASE_URL . '/crmsales';
 // Track ng bawat inquiry (nasaan na, at kung kailangan nang ilagay ang contract) — hiwalay na endpoint
 $crmListProgressUrl = BASE_URL . '/crmlistprogressajax';
 $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
+// Contract Agreement — gawa ng Accounting Head; pipirma si Sales at ibibigay ang link sa client
+$crmContractsUrl = BASE_URL . '/crmcontracts';
 ?>
 
 <div class="max-w-6xl mx-auto">
@@ -37,7 +39,7 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
                 ['project', 'In project', 'fa-helmet-safety', 'text-sky-700'],
                 ['done', 'Turned over', 'fa-key', 'text-emerald-700'],
                 ['stopped', 'Not proceeding', 'fa-ban', 'text-red-600'],
-                ['contract', 'Needs contract', 'fa-file-signature', 'text-rose-700'],
+                ['contract', 'Contract to do', 'fa-file-signature', 'text-rose-700'],
             ] as [$val, $label, $icon, $cls]): ?>
                 <button type="button" data-stage="<?= $val ?>"
                     class="crm-stage-tab text-left rounded-xl border px-3.5 py-2 transition-colors">
@@ -250,6 +252,7 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
     const CRM_INQUIRY_FORM_URL = <?= json_encode($crmInquiryFormUrl) ?>;
     const CRM_PROGRESS_URL = <?= json_encode($crmListProgressUrl) ?>;
     const CRM_2D_FINAL_URL = <?= json_encode($crm2dQuotationFinalUrl) ?>;
+    const CRM_CONTRACTS_URL = <?= json_encode($crmContractsUrl) ?>;
     let crmProgress = {};          // { [inquiryId]: { phase, phase_label, status, tone, note, contract } }
     let crmProgressSig = '';
     let crmDetailRecord = null;
@@ -545,9 +548,9 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         }
 
         if (crmNeedsContract(row)) {
-            return `<a href="${CRM_2D_FINAL_URL}?id=${encodeURIComponent(row.id)}"
+            return `<a href="${CRM_CONTRACTS_URL}?inquiry=${encodeURIComponent(row.id)}"
                     class="${sizeCls} inline-flex items-center gap-1.5 font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 shadow-sm">
-                    <i class="fa-solid fa-file-signature"></i> Set contract
+                    <i class="fa-solid fa-file-signature"></i> ${crmContractActionLabel(row)}
                </a>`;
         }
 
@@ -630,7 +633,9 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         green: { text: 'text-emerald-700', dot: 'bg-emerald-500', box: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
         gray: { text: 'text-gray-500', dot: 'bg-gray-400', box: 'bg-gray-50 border-gray-200 text-gray-700' },
     };
-    const crmNeedsContract = r => crmProgress[r.id]?.contract === 'needed';
+    // May gagawin si Sales sa contract: pumirma, o ibigay ang link sa client
+    const crmNeedsContract = r => ['sign', 'send_link'].includes(crmProgress[r.id]?.contract);
+    const crmContractActionLabel = r => crmProgress[r.id]?.contract === 'send_link' ? 'Send to client' : 'Sign contract';
 
     // isang segment bawat hakbang; tapos = amber-700, kasalukuyan = kulay ng tone, turned over = lahat berde
     function crmTrackBar(p, size = 'sm') {
@@ -648,9 +653,15 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
 
     function crmContractChip(p) {
         if (!p) return '';
-        if (p.contract === 'needed') return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold border whitespace-nowrap bg-rose-50 text-rose-700 border-rose-200"><span class="relative flex w-1.5 h-1.5"><span class="absolute inline-flex w-full h-full rounded-full bg-rose-400 opacity-75 animate-ping"></span><span class="relative inline-flex w-1.5 h-1.5 rounded-full bg-rose-500"></span></span>Contract needed</span>`;
-        if (p.contract === 'set') return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200"><i class="fa-solid fa-check text-[9px]"></i>Contract set</span>`;
-        if (p.contract === 'locked') return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap bg-gray-50 text-gray-600 border-gray-200"><i class="fa-solid fa-lock text-[9px]"></i>Contract locked</span>`;
+        const chip = (cls, inner) => `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border whitespace-nowrap ${cls}">${inner}</span>`;
+        const ping = `<span class="relative flex w-1.5 h-1.5"><span class="absolute inline-flex w-full h-full rounded-full bg-rose-400 opacity-75 animate-ping"></span><span class="relative inline-flex w-1.5 h-1.5 rounded-full bg-rose-500"></span></span>`;
+        switch (p.contract) {
+            case 'sign': return chip('font-bold bg-rose-50 text-rose-700 border-rose-200', `${ping}Sign contract`);
+            case 'send_link': return chip('font-bold bg-rose-50 text-rose-700 border-rose-200', `${ping}Send to client`);
+            case 'preparing': return chip('bg-blue-50 text-blue-700 border-blue-200', '<i class="fa-solid fa-pen-to-square text-[9px]"></i>Contract being prepared');
+            case 'signing': case 'gm': return chip('bg-gray-50 text-gray-600 border-gray-200', '<i class="fa-solid fa-signature text-[9px]"></i>Contract signing');
+            case 'done': return chip('bg-emerald-50 text-emerald-700 border-emerald-200', '<i class="fa-solid fa-check text-[9px]"></i>Contract signed');
+        }
         return '';
     }
 
@@ -954,7 +965,7 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
             const next = {
                 schedule: ['bg-amber-50 border-amber-200 text-amber-900', 'fa-calendar-plus', 'Next: Schedule the site visit', 'Call the client, then set the measurement date and assign a designer.'],
                 sitevisit: ['bg-orange-50 border-orange-200 text-orange-900', 'fa-ruler-combined', 'Waiting for the site visit', `${crmEscapeHtml(r.designer_name)} will visit on ${crmEscapeHtml(crmFormatDateTimeLong(r.measurement_datetime))}.`],
-                quotation: ['bg-blue-50 border-blue-200 text-blue-900', 'fa-file-pen', '2D & Quotation in progress', 'Open 2D & Quotation to follow the designer\'s files and set the contract.'],
+                quotation: ['bg-blue-50 border-blue-200 text-blue-900', 'fa-file-pen', '2D & Quotation in progress', 'Open 2D & Quotation to follow the designer\'s files and upload your quotation.'],
                 stopped: ['bg-red-50 border-red-200 text-red-900', 'fa-ban', 'Client is not proceeding', 'You can update the client status if they change their mind.'],
                 project: ['bg-sky-50 border-sky-200 text-sky-900', 'fa-helmet-safety', `In project · ${crmEscapeHtml(r.project?.phase_label || '')}: ${crmEscapeHtml(r.project?.status || '')}`, crmEscapeHtml(r.project?.note || 'The project is moving through purchasing, delivery and installation.')],
                 done: ['bg-emerald-50 border-emerald-200 text-emerald-900', 'fa-key', 'Turned over to the client', crmEscapeHtml(r.project?.note || 'The project is closed.')],
@@ -1017,17 +1028,20 @@ $crm2dQuotationFinalUrl = BASE_URL . '/crm2dquotationfinal';
         }).join('');
 
         let contract = '';
-        if (p.contract === 'needed') {
+        const contractLink = (label) => `<a href="${CRM_CONTRACTS_URL}?inquiry=${encodeURIComponent(id)}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shrink-0">${label} <i class="fa-solid fa-arrow-right text-[10px]"></i></a>`;
+        if (p.contract === 'sign' || p.contract === 'send_link') {
             contract = `<div class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 flex flex-wrap items-center gap-2">
-                <p class="flex-1 min-w-[180px] text-[12px] text-rose-900"><i class="fa-solid fa-file-signature mr-1"></i><b>Time to set the contract.</b> ${crmEscapeHtml(p.note)}</p>
-                <a href="${CRM_2D_FINAL_URL}?id=${encodeURIComponent(id)}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shrink-0">Set contract <i class="fa-solid fa-arrow-right text-[10px]"></i></a>
+                <p class="flex-1 min-w-[180px] text-[12px] text-rose-900"><i class="fa-solid fa-file-signature mr-1"></i><b>${p.contract === 'sign' ? 'Sign the contract.' : 'Send the contract to the client.'}</b> ${crmEscapeHtml(p.note)}</p>
+                ${contractLink(p.contract === 'sign' ? 'Sign contract' : 'Open link')}
             </div>`;
-        } else if (p.contract === 'set') {
-            contract = `<p class="mt-3 text-[11.5px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><i class="fa-solid fa-circle-check mr-1"></i>Contract set · ${crmFormatCurrency(r.contract_amount)}. You can still change it until the Final is submitted.</p>`;
-        } else if (p.contract === 'locked') {
-            contract = `<p class="mt-3 text-[11.5px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"><i class="fa-solid fa-lock mr-1"></i>Contract locked · ${crmFormatCurrency(r.contract_amount)}.</p>`;
-        } else if (p.phase > 0) {
-            contract = `<p class="mt-3 text-[11px] text-gray-400"><i class="fa-regular fa-clock mr-1"></i>The contract is set in step 5 (Final), after the customer approves the Initial files.</p>`;
+        } else if (p.contract === 'preparing') {
+            contract = `<p class="mt-3 text-[11.5px] text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"><i class="fa-solid fa-pen-to-square mr-1"></i>The Accounting Head is preparing the contract.</p>`;
+        } else if (p.contract === 'signing' || p.contract === 'gm') {
+            contract = `<p class="mt-3 text-[11.5px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 flex flex-wrap items-center gap-2"><span class="flex-1"><i class="fa-solid fa-signature mr-1"></i>${crmEscapeHtml(p.note)}</span><a href="${CRM_CONTRACTS_URL}?inquiry=${encodeURIComponent(id)}" class="font-semibold text-amber-700 hover:underline">View contract</a></p>`;
+        } else if (p.contract === 'done') {
+            contract = `<p class="mt-3 text-[11.5px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex flex-wrap items-center gap-2"><span class="flex-1"><i class="fa-solid fa-circle-check mr-1"></i>Contract signed · ${crmFormatCurrency(r.contract_amount)}.</span><a href="${CRM_CONTRACTS_URL}?inquiry=${encodeURIComponent(id)}" class="font-semibold text-emerald-800 hover:underline">View contract</a></p>`;
+        } else if (p.phase > 0 && p.phase < 5) {
+            contract = `<p class="mt-3 text-[11px] text-gray-400"><i class="fa-regular fa-clock mr-1"></i>The Accounting Head prepares the contract after the Final is approved. You will sign it in Contracts.</p>`;
         }
 
         box.innerHTML = `<section class="bg-white border border-gray-200 rounded-xl p-4">

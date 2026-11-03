@@ -1,9 +1,11 @@
 <?php
 // crmlistresetajax.php
 // RESET ng isang inquiry (Sales & Market List): binubura ang LAHAT ng nakakabit sa inquiry —
-// site visit, spaces, 2D & Quotation (Initial/Final), revisions, feedback, customer review,
-// sales quotation, cutting/BOM, purchase request, transmittal, PC project (DR, timeline, billing,
-// delivery, turnover, punch list…) at notifications — pati ang mismong files sa uploads/.
+// site visit, spaces + items (pati item photos/PDF), 2D & Quotation (Initial/Final), revisions, feedback,
+// customer review, sales quotation, contract (pati pirma at ID ng client), cutting/BOM, purchase request,
+// transmittal, PC project (DR, timeline, billing, delivery, turnover, punch list…) at notifications —
+// pati ang mismong files sa uploads/.
+// HINDI puwedeng i-reset kapag napirmahan na ng client ang contract (legal na dokumento na).
 // Ang inquiry (client, contact, address, project details, control no.) ay NAIIWAN at bumabalik sa simula.
 //
 //   GET  ?action=preview&id=<inquiry_id>           → ano ang mabubura (bilang bawat table + files)
@@ -50,6 +52,23 @@ $stmt->close();
 if (!$inquiry) rsRespond(false, 'Inquiry not found.');
 if ((int) ($inquiry['sales_staff_id'] ?? 0) !== $currentUserId) {
     rsRespond(false, 'Only the sales staff who filed this inquiry can reset it.');
+}
+
+// Napirmahan na ng client ang contract → bawal ang reset
+try {
+    $t = $conn->query("SHOW TABLES LIKE 'noblecrm_contract'");
+    if ($t && $t->num_rows > 0) {
+        $st = $conn->prepare("SELECT status, client_signed_at FROM noblecrm_contract WHERE inquiry_id = ? LIMIT 1");
+        $st->bind_param("i", $inquiryId);
+        $st->execute();
+        $ct = $st->get_result()->fetch_assoc();
+        $st->close();
+        if ($ct && (!empty($ct['client_signed_at']) || in_array($ct['status'], ['For GM Signing', 'Completed'], true))) {
+            rsRespond(false, 'This inquiry cannot be reset because the client has already signed the contract.');
+        }
+    }
+} catch (mysqli_sql_exception $e) {
+    // walang contract table — tuloy lang
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -184,9 +203,13 @@ $scanValue = function ($v) use (&$files) {
         if ($part !== '' && stripos($part, 'uploads/') !== false) $files[$part] = true;
     }
 };
-// Hindi kasama ang mga signature/logo/avatar — pag-aari ng user, ginagamit din sa ibang record
-$skipCol = fn(string $col) => (bool) preg_match('/signature|avatar|logo|profile/i', $col);
-foreach ($rowsByTable as $rows) foreach ($rows as $r) foreach ($r as $col => $v) if (!$skipCol((string) $col)) $scanValue($v);
+// Hindi kasama ang mga signature/logo/avatar — pag-aari ng user, ginagamit din sa ibang record.
+// Eksepsyon: pirma at ID ng client sa contract (nasa crm-contract-private) — sa inquiry lang ito.
+$skipCol = function (string $col, $v): bool {
+    if (is_string($v) && stripos($v, 'crm-contract-private/') !== false) return false;
+    return (bool) preg_match('/signature|avatar|logo|profile/i', $col);
+};
+foreach ($rowsByTable as $rows) foreach ($rows as $r) foreach ($r as $col => $v) if (!$skipCol((string) $col, $v)) $scanValue($v);
 foreach (['contract_file', 'contract_path', 'contract_attachment'] as $c) $scanValue($inquiry[$c] ?? null);
 
 $existingFiles = [];
@@ -238,10 +261,12 @@ if ($existingFiles) {
 $labels = [
     'noblecrm_sitevisit' => 'Site visit records',
     'noblecrm_sitevisit_space' => 'Site visit spaces',
+    'noblecrm_sitevisit_space_item' => 'Site visit items',
     'noblecrm_2dquotation' => '2D & Quotation (Initial) entries',
     'noblecrm_2dquotation_files' => '2D & Quotation files',
     'noblecrm_2dquotation_customer_review' => 'Customer review decisions',
     'noblecrm_2dquotation_final' => 'Final 2D & Quotation entries',
+    'noblecrm_contract' => 'Contract (with signatures)',
     'noblecrm_2d_feedback' => 'Cutting feedback',
     'noblecrm_2d_revision' => '2D revisions',
     'noblecrm_2d_revision_file' => '2D revision files',
@@ -358,10 +383,11 @@ try {
 }
 
 // Realtime: naapektuhan ng reset ang maraming page/badge — Sales, ang dating Designer,
-// Designer Head, Superadmin, Cutting, PO at Accounting Head
+// Designer Head, Sales Head (Initial/Final approval), Superadmin, Cutting, PO at Accounting Head (contract)
 include_once ROOT_PATH . '/network/realtime-helper.php';
 nhRtInquiry($conn, $inquiryId, [
     [ROLE_DESIGNER, POSITION_HEAD],
+    [ROLE_SALES, POSITION_HEAD],
     [ROLE_SUPERADMIN, null],
     [ROLE_CUTTING, null],
     [ROLE_PO, null],

@@ -26,8 +26,11 @@ function slpRespond(bool $success, string $message = '', array $extra = []): voi
 }
 
 // phase: 1 Schedule · 2 Site visit · 3 Initial 2D · 4 Customer · 5 Final & Contract · 6 Cutting
-// tone:  amber = si Sales ang may gagawin · blue = nasa iba (designer / head / superadmin)
+// tone:  amber = si Sales ang may gagawin · blue = nasa iba (designer / head / accounting / GM)
 //        red   = may babaguhin · green = tapos · gray = huminto
+// contract: later (hindi pa) · preparing (Accounting Head gumagawa) · sign (pipirma si Sales) · signing (hinihintay ang Designer)
+//           send_link (ibibigay ni Sales ang link sa client) · client (hinihintay ang client) · gm (hinihintay ang GM) · done
+// Approval: Initial at Final — Designer Head (2D/3D) + Sales Head (Quotation). Contract — gawa ng Accounting Head pagka-Approved ng Final.
 function slpStage(array $r): array
 {
     $mk = fn($phase, $status, $tone, $note, $contract = 'later') => [
@@ -38,11 +41,6 @@ function slpStage(array $r): array
         'note' => $note,
         'contract' => $contract,
     ];
-    $hasContract = (float) ($r['contract_amount'] ?? 0) > 0 && trim((string) ($r['contract_file'] ?? '')) !== '';
-    $missing = [];
-    if ((float) ($r['contract_amount'] ?? 0) <= 0) $missing[] = 'amount';
-    if (trim((string) ($r['contract_file'] ?? '')) === '') $missing[] = 'file';
-    $missingTxt = implode(' and ', $missing);
 
     if (($r['client_status'] ?? '') === 'no') {
         return $mk(0, 'Not proceeding', 'gray', 'The client is not proceeding.');
@@ -55,17 +53,13 @@ function slpStage(array $r): array
     if ($final !== null) {
         switch ($final) {
             case 'Approved':
-                return $mk(6, 'Final approved', 'green', 'Final 2D & Quotation approved — now with Cutting.', 'locked');
+                return slpContractStage($r, $mk);
             case 'Waiting for Approval':
-                return $mk(5, 'Final for approval', 'blue', 'The Final was submitted and is waiting for Superadmin approval. The contract is locked.', 'locked');
+                return $mk(5, 'Final for approval', 'blue', 'Waiting for the Designer Head (2D/3D) and Sales Head (Quotation) to approve the Final.');
             case 'For Revision':
-                return $hasContract
-                    ? $mk(5, 'Final revision', 'red', 'The Final was sent back for revision. Check the contract while the designer fixes the files.', 'set')
-                    : $mk(5, 'Final revision', 'red', "The Final was sent back. Add the contract {$missingTxt} in Final 2D & Quotation.", 'needed');
+                return $mk(5, 'Final revision', 'red', 'The Final was sent back for revision. Check the remarks in Final 2D & Quotation.');
             default:
-                return $hasContract
-                    ? $mk(5, 'Preparing Final', 'blue', 'Contract is set. The designer is preparing the Final files.', 'set')
-                    : $mk(5, 'Set the contract', 'amber', "Add the contract {$missingTxt} in Final 2D & Quotation.", 'needed');
+                return $mk(5, 'Preparing Final', 'amber', 'Upload your Final Quotation in Final 2D & Quotation. The designer uploads the 2D (and 3D).');
         }
     }
 
@@ -81,18 +75,16 @@ function slpStage(array $r): array
                     return $mk(3, 'Waiting for 3D', 'blue', '2D & Quotation approved · the designer is preparing the 3D.');
                 }
                 if ((int) ($r['customer_ok'] ?? 0) >= 3) {
-                    return $hasContract
-                        ? $mk(5, 'Ready for Final', 'blue', 'The customer approved all Initial files. Contract is set — the Final can be prepared.', 'set')
-                        : $mk(5, 'Set the contract', 'amber', "The customer approved all Initial files. Add the contract {$missingTxt} in Final 2D & Quotation.", 'needed');
+                    return $mk(5, 'Ready for Final', 'amber', 'The customer approved all Initial files. Prepare the Final 2D & Quotation.');
                 }
-                return $mk(4, 'With customer', 'amber', 'Approved by the Designer Head. Present it to the customer and record their decision.');
+                return $mk(4, 'With customer', 'amber', 'Approved by the Designer Head and Sales Head. Present it to the customer and record their decision.');
             case 'Waiting for Approval':
-                return $mk(3, 'For approval', 'blue', 'The Initial 2D & Quotation is waiting for Designer Head approval.');
+                return $mk(3, 'For approval', 'blue', 'Waiting for the Designer Head (2D/3D) and Sales Head (Quotation) to approve the Initial.');
             case 'For Revision':
                 if (($r['revision_source'] ?? 'Head') === 'Customer') {
                     return $mk(4, 'Customer revision', 'red', 'The customer asked for changes · the designer is revising.');
                 }
-                return $mk(3, 'Revision', 'red', 'The Designer Head returned the Initial · the designer is revising.');
+                return $mk(3, 'Revision', 'red', 'The Initial was sent back for revision. Check the remarks in 2D & Quotation.');
             default:
                 return $mk(3, 'Draft', 'blue', 'The designer is preparing the Initial 2D & Quotation.');
         }
@@ -117,6 +109,28 @@ function slpStage(array $r): array
     return $mk(3, 'Not started', 'blue', 'Site visit done · the designer is starting the Initial 2D & Quotation.');
 }
 
+// Final Approved → nasaan na ang contract (contracts.php)
+function slpContractStage(array $r, callable $mk): array
+{
+    $cs = $r['contract_status'] ?? null;
+    if ($cs === null || $cs === 'Draft') {
+        return $mk(5, 'Contract', 'blue', 'Final approved. Waiting for the Accounting Head to prepare the contract.', 'preparing');
+    }
+    if ($cs === 'For Staff Signing') {
+        if (empty($r['contract_sales_signed'])) {
+            return $mk(5, 'Sign the contract', 'amber', 'The Accounting Head prepared the contract. Sign it in Contracts.', 'sign');
+        }
+        return $mk(5, 'Contract signing', 'blue', 'You signed the contract. Waiting for the designer to sign.', 'signing');
+    }
+    if ($cs === 'For Client Signing') {
+        return $mk(5, 'Send to client', 'amber', 'Send the contract signing link to the client from Contracts.', 'send_link');
+    }
+    if ($cs === 'For GM Signing') {
+        return $mk(5, 'Contract signing', 'blue', 'The client signed. Waiting for the General Manager\'s signature.', 'gm');
+    }
+    return $mk(6, 'Contract signed', 'green', 'Contract fully signed — now with Cutting.', 'done');
+}
+
 if (($_GET['action'] ?? '') !== 'summary') {
     slpRespond(false, 'Invalid action.');
 }
@@ -132,8 +146,22 @@ if (!$ids) {
 }
 $in = implode(',', $ids); // puro integer na
 
+// May contract table na ba? (noblecrm_contract.sql)
+$hasContractTable = false;
+try {
+    $t = $conn->query("SHOW TABLES LIKE 'noblecrm_contract'");
+    $hasContractTable = $t && $t->num_rows > 0;
+} catch (Throwable $e) {
+    $hasContractTable = false;
+}
+$contractCols = $hasContractTable
+    ? "(SELECT c.status FROM noblecrm_contract c WHERE c.inquiry_id = i.id LIMIT 1) AS contract_status,
+           (SELECT c.sales_signed_at IS NOT NULL FROM noblecrm_contract c WHERE c.inquiry_id = i.id LIMIT 1) AS contract_sales_signed,"
+    : "NULL AS contract_status, 0 AS contract_sales_signed,";
+
 $res = $conn->query("
-    SELECT i.id, i.mode, i.designer_id, i.client_status, i.contract_amount, i.contract_file,
+    SELECT i.id, i.mode, i.designer_id, i.client_status, i.contract_amount,
+           {$contractCols}
            q.status AS initial_status, q.include_3d, q.design_3d_stage AS initial_3d_stage, q.revision_source,
            (SELECT COUNT(*) FROM noblecrm_2dquotation_customer_review cr
              WHERE cr.quotation_id = q.id AND cr.decision = 'Okay'

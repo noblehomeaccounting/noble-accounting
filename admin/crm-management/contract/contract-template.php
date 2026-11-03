@@ -211,11 +211,14 @@ function nhcPdfHtml(array $c, array $img): string
         . 'body { margin: 0; }'
         . '#nhc-fixed-head { position: fixed; top: -100px; left: 0; right: 0; }'
         . '#nhc-fixed-foot { position: fixed; bottom: -60px; left: 0; right: 0; }'
+        . '#nhc-last-cover { position: absolute; bottom: -70px; left: -20px; right: -20px; height: 70px; background: #fff; }'
         . nhcCss() . nhcPageSignaturesCss()
         . '</style></head><body>'
         . '<div id="nhc-fixed-head">' . nhcHeaderHtml($img) . '</div>'
         . '<div id="nhc-fixed-foot">' . nhcPageSignatures($c, $img) . '</div>'
         . nhcRenderContract($c, $img, true)
+        // Huling page (buong pirmahan na) → tinatakpan ang maliit na pirma sa ibaba
+        . '<div id="nhc-last-cover"></div>'
         . '</body></html>';
 }
 
