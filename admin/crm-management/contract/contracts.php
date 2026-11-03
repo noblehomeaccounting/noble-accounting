@@ -77,8 +77,8 @@ $nhcIntro = [
     <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden">
         <div class="max-w-6xl mx-auto">
 
-            <section class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-4">
-                <div class="nhc-hazard h-1.5"></div>
+            <section class="relative z-20 bg-white border border-gray-200 rounded-xl mb-4">
+                <div class="nhc-hazard h-1.5 rounded-t-xl"></div>
                 <div class="p-5 flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-3 min-w-0">
                         <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-lg"></i></span>
@@ -97,11 +97,63 @@ $nhcIntro = [
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex flex-wrap items-center gap-2">
-                    <div class="relative flex-1 min-w-[200px] max-w-md">
+                <!-- Search · Date · Status · Sort (iisang hilera) -->
+                <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl flex flex-wrap items-center gap-2">
+                    <div class="relative flex-1 min-w-[200px] max-w-sm">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input id="nhcSearch" type="text" placeholder="Search control no. or client…" class="nhc-field pl-8 text-xs" style="padding-left:2rem">
                     </div>
+
+                    <!-- Date: isang button, bukas ang panel kapag pinindot -->
+                    <div class="relative" id="nhcDateWrap">
+                        <button type="button" id="nhcDateBtn" aria-haspopup="true" aria-expanded="false"
+                            class="h-9 inline-flex items-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300">
+                            <i class="fa-regular fa-calendar text-gray-400"></i>
+                            <span id="nhcDateBtnText">Any date</span>
+                            <span id="nhcDateBtnX" class="hidden w-4 h-4 -mr-1 rounded-full bg-amber-700 text-white text-[9px] leading-4 text-center" title="Clear date">&times;</span>
+                            <i class="fa-solid fa-chevron-down text-[9px] text-gray-400"></i>
+                        </button>
+                        <div id="nhcDatePop" class="hidden absolute left-0 top-full mt-1.5 z-30 w-[320px] max-w-[calc(100vw-2.5rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-3.5">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Last update</p>
+                            <div class="grid grid-cols-3 gap-1.5 mb-3">
+                                <button type="button" data-nhc-q="today" class="nhc-q h-8 text-[11px] font-semibold bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                                <button type="button" data-nhc-q="week" class="nhc-q h-8 text-[11px] font-semibold bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                                <button type="button" data-nhc-q="month" class="nhc-q h-8 text-[11px] font-semibold bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <label class="block"><span class="block text-[10px] font-semibold text-gray-500 mb-0.5">Month</span><input id="nhcFMonth" type="month" class="nhc-field text-xs"></label>
+                                <label class="block"><span class="block text-[10px] font-semibold text-gray-500 mb-0.5">Day</span><input id="nhcFDay" type="date" class="nhc-field text-xs"></label>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="block"><span class="block text-[10px] font-semibold text-gray-500 mb-0.5">From</span><input id="nhcFFrom" type="date" class="nhc-field text-xs"></label>
+                                <label class="block"><span class="block text-[10px] font-semibold text-gray-500 mb-0.5">To</span><input id="nhcFTo" type="date" class="nhc-field text-xs"></label>
+                            </div>
+                            <p id="nhcFHint" class="text-[10.5px] text-gray-400 mt-2.5 leading-snug empty:hidden"></p>
+                            <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-100">
+                                <button type="button" id="nhcFClear" class="text-[11px] font-semibold text-gray-500 hover:text-amber-700">Clear date</button>
+                                <button type="button" id="nhcDateDone" class="px-3 py-1.5 text-[11px] font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800">Done</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <select id="nhcFStatus" class="h-9 pl-3 pr-8 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 hover:border-gray-300" title="Status">
+                        <option value="">All statuses</option>
+                        <option value="Not created">Not created</option>
+                        <option value="Draft">Draft</option>
+                        <option value="returned">Returned for correction</option>
+                        <option value="For Staff Signing">For Staff Signing</option>
+                        <option value="For Client Signing">For Client Signing</option>
+                        <option value="For GM Signing">For GM Signing</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                    <select id="nhcFSort" class="h-9 pl-3 pr-8 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 hover:border-gray-300" title="Sort by">
+                        <option value="updated">Sort: Recently updated</option>
+                        <option value="oldest">Sort: Oldest update</option>
+                        <option value="amount_desc">Sort: Amount high → low</option>
+                        <option value="amount_asc">Sort: Amount low → high</option>
+                        <option value="client">Sort: Client A–Z</option>
+                        <option value="control">Sort: Control no.</option>
+                    </select>
                     <span id="nhcCount" class="ml-auto text-[11px] text-gray-400"></span>
                 </div>
             </section>
@@ -142,6 +194,91 @@ $nhcIntro = [
         let nhcTimer = null;
         let nhcSig = '';
 
+        // ═══ Filters: petsa ng huling update · status · sort ═══
+        let nhcF = { day: '', month: '', week: '', from: '', to: '' }, nhcFStatus = '', nhcSortBy = 'updated';
+        const NHC_WARN_DAYS = 3;   // "Your turn" na 3+ araw na → pula
+        const nhcPad = n => String(n).padStart(2, '0');
+        const nhcYmd = d => `${d.getFullYear()}-${nhcPad(d.getMonth() + 1)}-${nhcPad(d.getDate())}`;
+        const nhcDt = v => { if (!v) return null; const d = new Date(String(v).replace(' ', 'T')); return isNaN(d) ? null : d; };
+        const nhcAgeSec = v => { const d = nhcDt(v); return d ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000)) : null; };
+        function nhcAgo(v) {
+            const s = nhcAgeSec(v);
+            if (s === null) return '';
+            if (s < 60) return 'just now';
+            if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+            if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+            const d = Math.floor(s / 86400);
+            if (d === 1) return 'yesterday';
+            if (d < 30) return `${d} days ago`;
+            const m = Math.floor(d / 30);
+            return m < 12 ? `${m} month${m === 1 ? '' : 's'} ago` : `${Math.floor(d / 365)}y ago`;
+        }
+        function nhcAgoHtml(r) {
+            const s = nhcAgeSec(r.updated_at);
+            if (s === null) return r.status === 'Not created' ? '<span class="text-gray-400">Final approved · contract not started</span>' : '';
+            const ago = nhcAgo(r.updated_at);
+            if (r.my_action !== 'none' && r.status !== 'Completed' && s >= NHC_WARN_DAYS * 86400)
+                return `<span class="font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>Updated ${ago} · still waiting</span>`;
+            return `<span class="${s < 3600 ? 'font-semibold text-green-600' : 'text-gray-500'}">Updated ${ago}</span>`;
+        }
+        const nhcDateActive = () => !!(nhcF.day || nhcF.month || nhcF.week || nhcF.from || nhcF.to);
+        function nhcDateOk(r) {
+            if (!nhcDateActive()) return true;
+            const d = String(r.updated_at || '').slice(0, 10);
+            if (!d) return false;
+            if (nhcF.from || nhcF.to) return (!nhcF.from || d >= nhcF.from) && (!nhcF.to || d <= nhcF.to);
+            if (nhcF.day) return d === nhcF.day;
+            if (nhcF.month) return d.slice(0, 7) === nhcF.month;
+            const end = new Date(nhcF.week + 'T00:00:00'); end.setDate(end.getDate() + 6);
+            return d >= nhcF.week && d <= nhcYmd(end);
+        }
+        const nhcStatusOk = r => !nhcFStatus || (nhcFStatus === 'returned' ? !!r.returned : r.status === nhcFStatus);
+        function nhcDateLabel() {
+            const f = v => new Date(v + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+            if (nhcF.from || nhcF.to) return nhcF.from && nhcF.to ? `from ${f(nhcF.from)} to ${f(nhcF.to)}` : nhcF.from ? `from ${f(nhcF.from)} onwards` : `up to ${f(nhcF.to)}`;
+            if (nhcF.day) return 'on ' + f(nhcF.day);
+            if (nhcF.month) return 'in ' + new Date(nhcF.month + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+            return nhcF.week ? 'this week' : '';
+        }
+        function nhcSortRows(rows) {
+            const ts = r => { const d = nhcDt(r.updated_at); return d ? d.getTime() : 0; };
+            const by = {
+                updated: (a, b) => ts(b) - ts(a) || b.inquiry_id - a.inquiry_id,
+                oldest: (a, b) => (ts(a) || Infinity) - (ts(b) || Infinity) || a.inquiry_id - b.inquiry_id,
+                amount_desc: (a, b) => (b.amount || 0) - (a.amount || 0),
+                amount_asc: (a, b) => (a.amount || 0) - (b.amount || 0),
+                client: (a, b) => String(a.client_name || '').localeCompare(String(b.client_name || '')),
+                control: (a, b) => String(a.control_no || '').localeCompare(String(b.control_no || '')),
+            };
+            return rows.sort(by[nhcSortBy] || by.updated);
+        }
+        function nhcSyncFilters() {
+            const g = id => document.getElementById(id);
+            g('nhcFMonth').value = nhcF.month; g('nhcFDay').value = nhcF.day;
+            g('nhcFFrom').value = nhcF.from; g('nhcFTo').value = nhcF.to;
+            g('nhcFFrom').max = nhcF.to || ''; g('nhcFTo').min = nhcF.from || '';
+            // label ng Date button
+            const f = v => new Date(v + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+            const t0 = nhcYmd(new Date());
+            g('nhcDateBtnText').textContent = !nhcDateActive() ? 'Any date'
+                : nhcF.day ? (nhcF.day === t0 ? 'Today' : f(nhcF.day))
+                : nhcF.week ? 'This week'
+                : nhcF.month ? new Date(nhcF.month + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'short', year: 'numeric' })
+                : nhcF.from && nhcF.to ? `${f(nhcF.from)} – ${f(nhcF.to)}` : nhcF.from ? `From ${f(nhcF.from)}` : `Until ${f(nhcF.to)}`;
+            g('nhcDateBtnX').classList.toggle('hidden', !nhcDateActive());
+            g('nhcDateBtn').classList.toggle('border-amber-600', nhcDateActive());
+            g('nhcDateBtn').classList.toggle('bg-amber-50', nhcDateActive());
+            const t = nhcYmd(new Date());
+            document.querySelectorAll('.nhc-q').forEach(b => {
+                const q = b.dataset.nhcQ;
+                const on = (q === 'today' && nhcF.day === t) || (q === 'month' && nhcF.month === t.slice(0, 7)) || (q === 'week' && !!nhcF.week);
+                ['bg-amber-700', 'text-white', 'border-amber-700'].forEach(c => b.classList.toggle(c, on));
+                ['bg-white', 'text-gray-600', 'border-gray-200'].forEach(c => b.classList.toggle(c, !on));
+            });
+            g('nhcFHint').textContent = nhcDateActive() ? 'Contracts not yet started have no date, so they are hidden while a date is chosen.' : '';
+        }
+        function nhcSetDate(next) { nhcF = Object.assign({ day: '', month: '', week: '', from: '', to: '' }, next); nhcSyncFilters(); nhcRender(); }
+
         function nhcEsc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
         function nhcMoney(v) { const n = Number(v); return isNaN(n) ? '—' : '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function nhcDate(v) { if (!v) return ''; const d = new Date(String(v).replace(' ', 'T')); return isNaN(d) ? v : d.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
@@ -178,17 +315,18 @@ $nhcIntro = [
         }
 
         function nhcFilter(rows) {
-            return rows.filter(r => {
+            return nhcSortRows(rows.filter(r => nhcDateOk(r) && nhcStatusOk(r)).filter(r => {
                 if (nhcTab === 'todo') return r.my_action !== 'none';
                 if (nhcTab === 'done') return r.status === 'Completed';
                 if (nhcTab === 'progress') return r.status !== 'Completed' && r.my_action === 'none';
                 return true;
-            });
+            }));
         }
 
         function nhcRender() {
-            const counts = { todo: 0, progress: 0, done: 0, '': nhcRows.length };
-            nhcRows.forEach(r => {
+            const shown = nhcRows.filter(r => nhcDateOk(r) && nhcStatusOk(r));
+            const counts = { todo: 0, progress: 0, done: 0, '': shown.length };
+            shown.forEach(r => {
                 if (r.my_action !== 'none') counts.todo++;
                 if (r.status === 'Completed') counts.done++;
                 else if (r.my_action === 'none') counts.progress++;
@@ -199,12 +337,12 @@ $nhcIntro = [
             });
 
             const rows = nhcFilter(nhcRows);
-            document.getElementById('nhcCount').textContent = `${rows.length} contract${rows.length === 1 ? '' : 's'}`;
+            document.getElementById('nhcCount').textContent = `${rows.length} contract${rows.length === 1 ? '' : 's'}` + (nhcDateActive() ? ` · updated ${nhcDateLabel()}` : '');
             const list = document.getElementById('nhcList');
             if (!rows.length) {
                 list.innerHTML = `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl px-6 py-12 text-center">
                     <div class="w-12 h-12 mx-auto rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mb-2"><i class="fa-regular fa-folder-open"></i></div>
-                    <p class="text-sm font-semibold text-gray-700">${nhcTab === 'todo' ? 'Nothing for you right now.' : 'No contracts here.'}</p></div>`;
+                    <p class="text-sm font-semibold text-gray-700">${(nhcDateActive() || nhcFStatus) ? 'No contracts match the filters.' : nhcTab === 'todo' ? 'Nothing for you right now.' : 'No contracts here.'}</p></div>`;
                 return;
             }
             list.innerHTML = rows.map(r => {
@@ -221,6 +359,7 @@ $nhcIntro = [
                             </div>
                             <p class="mt-1 text-sm font-semibold text-gray-900 truncate capitalize">${nhcEsc(r.client_name)}</p>
                             <p class="text-[11px] text-gray-500">${nhcEsc(r.project_type || '')}${r.amount ? ` <span class="text-gray-300 mx-1">·</span><span class="font-semibold text-gray-700">${nhcMoney(r.amount)}</span>` : ''}</p>
+                            <p class="text-[11px] mt-0.5" title="${nhcEsc(nhcDate(r.updated_at))}"><i class="fa-regular fa-clock mr-1 text-gray-300"></i>${nhcAgoHtml(r)}</p>
                         </div>
                         ${nhcProgress(r)}
                         <div class="ml-auto shrink-0">
@@ -625,6 +764,34 @@ $nhcIntro = [
             nhcRender();
         }));
         try { const t = sessionStorage.getItem('nhcTab'); if (t !== null) nhcTab = t; } catch (e) { }
+
+        document.querySelectorAll('.nhc-q').forEach(b => b.addEventListener('click', () => {
+            const now = new Date(), q = b.dataset.nhcQ;
+            if (q === 'today') { const t = nhcYmd(now); nhcSetDate(nhcF.day === t ? {} : { day: t }); }
+            else if (q === 'month') { const m = nhcYmd(now).slice(0, 7); nhcSetDate(nhcF.month === m ? {} : { month: m }); }
+            else { const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); nhcSetDate(nhcF.week ? {} : { week: nhcYmd(mon) }); }
+        }));
+        document.getElementById('nhcFMonth').addEventListener('change', e => nhcSetDate(e.target.value ? { month: e.target.value } : {}));
+        document.getElementById('nhcFDay').addEventListener('change', e => nhcSetDate(e.target.value ? { day: e.target.value } : {}));
+        document.getElementById('nhcFFrom').addEventListener('change', e => nhcSetDate({ from: e.target.value, to: nhcF.to }));
+        document.getElementById('nhcFTo').addEventListener('change', e => nhcSetDate({ from: nhcF.from, to: e.target.value }));
+        document.getElementById('nhcFClear').addEventListener('click', () => nhcSetDate({}));
+        (function nhcDatePopover() {
+            const btn = document.getElementById('nhcDateBtn'), pop = document.getElementById('nhcDatePop');
+            const show = on => { pop.classList.toggle('hidden', !on); btn.setAttribute('aria-expanded', String(on)); };
+            btn.addEventListener('click', e => {
+                if (e.target.closest('#nhcDateBtnX')) { nhcSetDate({}); show(false); return; }
+                show(pop.classList.contains('hidden'));
+            });
+            document.getElementById('nhcDateDone').addEventListener('click', () => show(false));
+            document.addEventListener('click', e => { if (!e.target.closest('#nhcDateWrap')) show(false); });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') show(false); });
+        })();
+        document.getElementById('nhcFStatus').addEventListener('change', e => { nhcFStatus = e.target.value; nhcRender(); });
+        document.getElementById('nhcFSort').addEventListener('change', e => { nhcSortBy = e.target.value; nhcRender(); });
+        // para gumalaw ang "x minutes ago"
+        setInterval(() => { if (!document.hidden && nhcRows.length) nhcRender(); }, 60000);
+        nhcSyncFilters();
 
         let nhcDeb = null;
         document.getElementById('nhcSearch').addEventListener('input', function () {
