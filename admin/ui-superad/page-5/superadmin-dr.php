@@ -1,13 +1,19 @@
 <?php
-// superadmin-dr.php  —  Superadmin: Delivery Receipt approvals
+// superadmin-dr.php  —  PC Head: Delivery Receipt approvals (Superadmin = tingin lang)
 // Dito pinipirmahan ang DR na gawa ng Project Coordinator. Mapi-print lang ng PC kapag approved na.
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_PC];
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Project Coordinator Head na · Superadmin = review / monitor lang (walang Approve / Return)
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_PC);
+nhApproverPageGuard($nhApprover, 'Project Coordinator Head');
+$nhCanApprove = $nhApprover === 'head';
 
 $saAjaxUrl = BASE_URL . '/superadmindrajax';
 ?>
@@ -64,7 +70,7 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                 <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-lg"></i></div>
                 <div class="min-w-0">
                     <h1 class="text-xl font-bold text-gray-900 leading-tight">Delivery Receipt Approvals</h1>
-                    <p class="text-xs text-gray-500">Sign the DRs made by the Project Coordinator. They can print a DR only after you approve it.</p>
+                    <p class="text-xs text-gray-500"><?= $nhCanApprove ? 'Sign the DRs made by the Project Coordinator. They can print a DR only after you approve it.' : 'View only — the Project Coordinator Head signs these DRs.' ?></p>
                 </div>
             </div>
             <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
@@ -101,6 +107,42 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                         class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
                 </div>
             </div>
+            <!-- Filters: petsa · sort -->
+            <div class="flex flex-wrap items-end gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
+                <div class="flex items-center gap-1">
+                    <button type="button" data-nhf-q="today" class="nhf-q px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                    <button type="button" data-nhf-q="week" class="nhf-q px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                    <button type="button" data-nhf-q="month" class="nhf-q px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                </div>
+                <label class="block">
+                    <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
+                    <input id="nhfMonth" type="month" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                </label>
+                <label class="block">
+                    <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
+                    <input id="nhfDay" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                </label>
+                <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
+                        <input id="nhfFrom" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
+                        <input id="nhfTo" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                    </label>
+                    <button type="button" id="nhfClear" class="hidden px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                <label class="block ml-auto">
+                    <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Sort by</span>
+                    <select id="nhfSort" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                        <option value="oldest">Oldest first</option>
+                        <option value="newest">Newest first</option>
+                        <option value="amount_desc">Amount: high → low</option>
+                        <option value="amount_asc">Amount: low → high</option>
+                        <option value="name">Client (A–Z)</option>
+                    </select>
+                </label>
+                <p id="nhfHint" class="basis-full text-[10.5px] text-gray-400 empty:hidden"></p>
+            </div>
             <div id="saInfo" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
             <div id="saList" class="divide-y divide-gray-100">
                 <div class="px-6 py-14 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div>
@@ -136,6 +178,7 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
     </div>
 
     <script>
+        const NH_CAN_APPROVE = <?= json_encode($nhCanApprove) ?>; // PC Head lang; Superadmin = tingin lang
         (function () {
             'use strict';
             const AJAX = <?= json_encode($saAjaxUrl) ?>;
@@ -161,6 +204,101 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                 get: k => { try { return localStorage.getItem('nh-sadr-' + k); } catch (e) { return null; } },
                 set: (k, v) => { try { localStorage.setItem('nh-sadr-' + k, v); } catch (e) { } },
             };
+
+            // ═════════════ FILTERS: petsa · sort · gaano na katagal ═════════════
+            // Petsang ginagamit: naghihintay = kailan dumating sa iyo · approved = kailan na-approve · returned = kailan ibinalik
+            let nhfDate = { day: '', month: '', week: '', from: '', to: '' }, nhfSortBy = 'oldest';
+            const NHF_WARN_DAYS = 3;   // ilang araw na naghihintay bago maging pula
+            const nhfWhen = r => r.status === 'approved' ? r.approved_at : r.status === 'returned' ? (r.returned_at || r.submitted_at) : r.submitted_at;
+            const nhfAmt = r => num(r.total);
+            const nhfName = r => r.client_name;
+            const nhfWaiting = r => r.status === 'pending';
+            const nhfPad = n => String(n).padStart(2, '0');
+            const nhfYmd = d => `${d.getFullYear()}-${nhfPad(d.getMonth() + 1)}-${nhfPad(d.getDate())}`;
+            const nhfDt = v => { if (!v) return null; const d = new Date(String(v).replace(' ', 'T')); return isNaN(d) ? null : d; };
+            const nhfAgeSec = v => { const d = nhfDt(v); return d ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000)) : null; };
+            function nhfAgo(v) {
+                const s = nhfAgeSec(v);
+                if (s === null) return '';
+                if (s < 60) return 'just now';
+                if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+                if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+                const d = Math.floor(s / 86400);
+                if (d === 1) return 'yesterday';
+                if (d < 30) return `${d} days ago`;
+                const m = Math.floor(d / 30);
+                return m < 12 ? `${m} month${m === 1 ? '' : 's'} ago` : `${Math.floor(d / 365)}y ago`;
+            }
+            // "3h ago" · berde kapag < 1 oras · pula kapag naghihintay nang 3+ araw
+            function nhfAgoHtml(r, v) {
+                const s = nhfAgeSec(v);
+                if (s === null) return '';
+                if (nhfWaiting(r) && s >= NHF_WARN_DAYS * 86400) return `<b class="text-red-600"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>${nhfAgo(v)} · still waiting</b>`;
+                return `<b class="${s < 3600 ? 'text-green-600' : ''}">${nhfAgo(v)}</b>`;
+            }
+            const nhfActive = () => !!(nhfDate.day || nhfDate.month || nhfDate.week || nhfDate.from || nhfDate.to);
+            function nhfOk(r) {
+                if (!nhfActive()) return true;
+                const d = String(nhfWhen(r) || '').slice(0, 10);
+                if (!d) return false;
+                if (nhfDate.from || nhfDate.to) return (!nhfDate.from || d >= nhfDate.from) && (!nhfDate.to || d <= nhfDate.to);
+                if (nhfDate.day) return d === nhfDate.day;
+                if (nhfDate.month) return d.slice(0, 7) === nhfDate.month;
+                const end = new Date(nhfDate.week + 'T00:00:00'); end.setDate(end.getDate() + 6);
+                return d >= nhfDate.week && d <= nhfYmd(end);
+            }
+            function nhfSort(list) {
+                const ts = r => { const d = nhfDt(nhfWhen(r)); return d ? d.getTime() : 0; };
+                const by = {
+                    oldest: (a, b) => ts(a) - ts(b) || a.id - b.id,
+                    newest: (a, b) => ts(b) - ts(a) || b.id - a.id,
+                    amount_desc: (a, b) => nhfAmt(b) - nhfAmt(a),
+                    amount_asc: (a, b) => nhfAmt(a) - nhfAmt(b),
+                    name: (a, b) => String(nhfName(a) || '').localeCompare(String(nhfName(b) || '')),
+                };
+                return list.sort(by[nhfSortBy] || by.oldest);
+            }
+            function nhfLabel() {
+                if (nhfDate.from || nhfDate.to) {
+                    const f = v => new Date(v + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                    return nhfDate.from && nhfDate.to ? `from ${f(nhfDate.from)} to ${f(nhfDate.to)}` : nhfDate.from ? `from ${f(nhfDate.from)} onwards` : `up to ${f(nhfDate.to)}`;
+                }
+                if (nhfDate.day) return 'on ' + toD(nhfDate.day).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                if (nhfDate.month) return 'in ' + new Date(nhfDate.month + '-01T00:00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+                return nhfDate.week ? 'this week' : '';
+            }
+            function nhfSync() {
+                F('nhfMonth').value = nhfDate.month;
+                F('nhfDay').value = nhfDate.day;
+                F('nhfFrom').value = nhfDate.from;
+                F('nhfTo').value = nhfDate.to;
+                F('nhfFrom').max = nhfDate.to || '';
+                F('nhfTo').min = nhfDate.from || '';
+                F('nhfClear').classList.toggle('hidden', !nhfActive());
+                const t = nhfYmd(new Date());
+                document.querySelectorAll('.nhf-q').forEach(b => {
+                    const q = b.dataset.nhfQ;
+                    const on = (q === 'today' && nhfDate.day === t) || (q === 'month' && nhfDate.month === t.slice(0, 7)) || (q === 'week' && !!nhfDate.week);
+                    ['bg-amber-700', 'text-white', 'border-amber-700'].forEach(c => b.classList.toggle(c, on));
+                    ['bg-white', 'text-gray-600', 'border-gray-200'].forEach(c => b.classList.toggle(c, !on));
+                });
+                F('nhfHint').textContent = nhfActive() ? `Date filter: ${nhfLabel()} · waiting = when it reached you, approved = when it was signed, returned = when it was sent back` : '';
+            }
+            function nhfSet(next) { nhfDate = Object.assign({ day: '', month: '', week: '', from: '', to: '' }, next); nhfSync(); render(); }
+            document.querySelectorAll('.nhf-q').forEach(b => b.addEventListener('click', () => {
+                const now = new Date(), q = b.dataset.nhfQ;
+                if (q === 'today') { const t = nhfYmd(now); nhfSet(nhfDate.day === t ? {} : { day: t }); }
+                else if (q === 'month') { const m = nhfYmd(now).slice(0, 7); nhfSet(nhfDate.month === m ? {} : { month: m }); }
+                else { const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); nhfSet(nhfDate.week ? {} : { week: nhfYmd(mon) }); }
+            }));
+            F('nhfMonth').addEventListener('change', e => nhfSet(e.target.value ? { month: e.target.value } : {}));
+            F('nhfDay').addEventListener('change', e => nhfSet(e.target.value ? { day: e.target.value } : {}));
+            F('nhfClear').addEventListener('click', () => nhfSet({}));
+            F('nhfFrom').addEventListener('change', e => nhfSet({ from: e.target.value, to: nhfDate.to }));
+            F('nhfTo').addEventListener('change', e => nhfSet({ from: nhfDate.from, to: e.target.value }));
+            F('nhfSort').addEventListener('change', e => { nhfSortBy = e.target.value; render(); });
+            // para gumalaw ang "x minutes ago" kahit walang bagong data
+            setInterval(() => { if (!document.hidden) render(); }, 60000);
 
             function toast(message, type = 'success', duration = 3500) {
                 const p = type === 'success'
@@ -211,7 +349,8 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
             }
 
             function renderTabs() {
-                const list = k => k === 'all' ? rows : rows.filter(r => r.status === k);
+                const fr = rows.filter(nhfOk);   // sumusunod sa date filter
+                const list = k => k === 'all' ? fr : fr.filter(r => r.status === k);
                 document.querySelectorAll('.sa-tab').forEach(b => b.dataset.active = String(b.dataset.tab === tab));
                 document.querySelectorAll('[data-count]').forEach(el => el.textContent = list(el.dataset.count).length);
                 document.querySelectorAll('[data-sum]').forEach(el => {
@@ -223,21 +362,21 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
             function render() {
                 renderTabs();
                 const q = F('saSearch').value.trim().toLowerCase();
-                const list = rows.filter(r => (tab === 'all' || r.status === tab)
-                    && (!q || `${r.dr_no} ${r.client_name} ${r.ref_no} ${r.project_name ?? ''} ${r.req_no ?? ''} ${r.prepared_by ?? ''}`.toLowerCase().includes(q)));
+                const list = nhfSort(rows.filter(r => nhfOk(r) && (tab === 'all' || r.status === tab)
+                    && (!q || `${r.dr_no} ${r.client_name} ${r.ref_no} ${r.project_name ?? ''} ${r.req_no ?? ''} ${r.prepared_by ?? ''}`.toLowerCase().includes(q))));
                 const label = { pending: 'waiting for your signature', returned: 'returned to the PC', approved: 'approved', all: 'in total' }[tab];
-                F('saInfo').innerHTML = `<b class="text-gray-700">${list.length}</b> DR${list.length === 1 ? '' : 's'} ${label}${q ? ' (filtered)' : ''}`;
+                F('saInfo').innerHTML = `<b class="text-gray-700">${list.length}</b> DR${list.length === 1 ? '' : 's'} ${label}${nhfActive() ? ' · ' + nhfLabel() : ''}${q ? ' (filtered)' : ''}`;
 
                 if (!list.length) {
-                    const msg = q ? 'No match.' : { pending: 'All caught up! No DR is waiting for your signature.', returned: 'No DR is waiting for the PC to fix.', approved: 'No approved DR yet.', all: 'No DR yet.' }[tab];
+                    const msg = q ? 'No match.' : nhfActive() ? `No DR ${nhfLabel()}.` : { pending: 'All caught up! No DR is waiting for your signature.', returned: 'No DR is waiting for the PC to fix.', approved: 'No approved DR yet.', all: 'No DR yet.' }[tab];
                     F('saList').innerHTML = `<div class="px-6 py-14 text-center"><div class="w-12 h-12 mx-auto rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mb-3"><i class="fa-solid ${tab === 'pending' && !q ? 'fa-mug-hot' : 'fa-file-circle-question'}"></i></div><p class="text-sm font-semibold text-gray-700">${msg}</p></div>`;
                     return;
                 }
                 F('saList').innerHTML = list.map(r => {
                     const s = ST[r.status] || ST.pending;
-                    const sub = r.status === 'approved' ? `<span class="text-emerald-700"><i class="fa-solid fa-signature mr-1"></i>Signed ${fmtY(r.approved_at)}${r.approved_by ? ' by ' + esc(r.approved_by) : ''}</span>`
-                        : r.status === 'returned' ? `<span class="text-red-700"><i class="fa-solid fa-comment-dots mr-1"></i>${esc(r.return_remarks || '')}</span>`
-                        : `<span class="text-amber-700"><i class="fa-regular fa-clock mr-1"></i>Submitted ${ago(r.submitted_at)}</span>`;
+                    const sub = r.status === 'approved' ? `<span class="text-emerald-700"><i class="fa-solid fa-signature mr-1"></i>Signed ${fmtY(r.approved_at)}${r.approved_by ? ' by ' + esc(r.approved_by) : ''} · ${nhfAgoHtml(r, r.approved_at)}</span>`
+                        : r.status === 'returned' ? `<span class="text-red-700"><i class="fa-solid fa-comment-dots mr-1"></i>${r.returned_at ? nhfAgoHtml(r, r.returned_at) + ' · ' : ''}${esc(r.return_remarks || '')}</span>`
+                        : `<span class="text-amber-700"><i class="fa-regular fa-clock mr-1"></i>Submitted ${nhfAgoHtml(r, r.submitted_at)}${r.submitted_at ? ' · ' + fmtY(r.submitted_at) : ''}</span>`;
                     return `<button type="button" data-id="${r.id}" class="sa-row relative w-full text-left flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5 hover:bg-amber-50/40 transition">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${s.bar}"></span>
                         <span class="min-w-0 flex-1 basis-[260px]">
@@ -353,6 +492,10 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                     return;
                 }
 
+                if (!NH_CAN_APPROVE) {
+                    side.innerHTML = `<div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900"><p class="font-bold text-sm mb-1"><i class="fa-solid fa-eye mr-1"></i>Waiting for the PC Head</p><p>View only — the Project Coordinator Head signs this.</p></div>${facts}`;
+                    return;
+                }
                 // ── PENDING: sign or return ──
                 // Pirma = active signature mo sa Insert Signature (noblesignature), gaya ng sa budget request
                 side.innerHTML = `
@@ -362,7 +505,7 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2"><i class="fa-solid fa-signature mr-1 text-amber-700"></i>Your signature</p>
                         ${mySignature
                             ? `<div class="rounded-xl border border-gray-200 bg-white p-3 flex items-center justify-center h-28"><img src="${esc(mySignature)}" alt="Your signature" class="max-h-full max-w-full object-contain"></div>
-                               <p class="text-[11px] text-gray-500 mt-2">Signing as <b class="text-gray-800">${esc(me || 'Superadmin')}</b> · goes on <b>Noted By</b>.</p>`
+                               <p class="text-[11px] text-gray-500 mt-2">Signing as <b class="text-gray-800">${esc(me || 'PC Head')}</b> · goes on <b>Noted By</b>.</p>`
                             : `<div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
                                 <p class="font-bold mb-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>No active signature yet</p>
                                 <p>Add your signature first, then come back to approve.</p>
@@ -492,6 +635,7 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
             // ═════════════ INIT ═════════════
             tab = store.get('tab') || 'pending';
             if (!['pending', 'returned', 'approved', 'all'].includes(tab)) tab = 'pending';
+            nhfSync();
             load();
 
             // ═════════════ REALTIME (koneksyon ng sidebar: window.NH_RT) ═════════════

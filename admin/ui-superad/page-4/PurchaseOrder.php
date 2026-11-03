@@ -1,13 +1,19 @@
 <?php
-// PurchaseOrder.php  —  Superadmin (CEO): approval ng Purchase Requests
+// PurchaseOrder.php  —  Purchasing (PO) Head: approval ng Purchase Requests · Superadmin = tingin lang
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_PO];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Purchasing Head na · Superadmin = review / monitor lang (walang Approve / Return)
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_PO);
+nhApproverPageGuard($nhApprover, 'Purchasing Head');
+$nhCanApprove = $nhApprover === 'head';
 
 $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
 ?>
@@ -46,7 +52,7 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                 <div>
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
                     <h1 class="text-gray-900 text-xl font-semibold">Purchase Request Approval</h1>
-                    <p class="text-gray-400 text-xs mt-0.5">Review purchase requests from Purchasing. Approving signs the form as CEO.</p>
+                    <p class="text-gray-400 text-xs mt-0.5"><?= $nhCanApprove ? 'Review purchase requests from Purchasing. Approving signs the form as Purchasing Head.' : 'View only — the Purchasing Head approves these requests.' ?></p>
                 </div>
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
                     <span id="praLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
@@ -91,18 +97,56 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                             </button>
                         <?php endforeach; ?>
                     </div>
-                    <div class="relative ml-auto w-full sm:w-72">
+                    <div class="relative ml-auto w-full sm:w-80">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
-                        <input type="text" id="praSearch" placeholder="Search req no., client or requester..."
+                        <input type="text" id="praSearch" placeholder="Search req no., control no., BOM no., client..."
                             class="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600 transition-colors">
                     </div>
                 </div>
 
+                <!-- Filters: petsa + sort -->
+                <div class="flex flex-wrap items-end gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
+                    <div class="flex items-center gap-1">
+                        <button type="button" data-pra-qdate="today" class="pra-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                        <button type="button" data-pra-qdate="week" class="pra-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                        <button type="button" data-pra-qdate="month" class="pra-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                    </div>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
+                        <input id="praMonth" type="month" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
+                        <input id="praDay" type="date" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
+                        <input id="praFrom" type="date" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
+                        <input id="praTo" type="date" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <button type="button" id="praDateClear" class="hidden px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                    <p id="praDateHint" class="text-[10.5px] text-gray-400 pb-1.5"></p>
+                    <label class="block ml-auto">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Sort by</span>
+                        <select id="praSort" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="amount_desc">Amount: high → low</option>
+                            <option value="amount_asc">Amount: low → high</option>
+                            <option value="client">Client (A–Z)</option>
+                        </select>
+                    </label>
+                </div>
+
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm min-w-[880px]">
+                    <table class="w-full text-sm min-w-[1020px]">
                         <thead class="bg-gray-50 text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
                             <tr class="border-b border-gray-200">
                                 <th class="px-5 py-3 text-left">Req No.</th>
+                                <th class="px-5 py-3 text-left">Project ID</th>
                                 <th class="px-5 py-3 text-left">Client</th>
                                 <th class="px-5 py-3 text-left">Requested / Prepared</th>
                                 <th class="px-5 py-3 text-center">Items</th>
@@ -112,7 +156,7 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                             </tr>
                         </thead>
                         <tbody id="praList" class="divide-y divide-gray-100">
-                            <tr><td colspan="7" class="px-5 py-12 text-center text-gray-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</td></tr>
+                            <tr><td colspan="8" class="px-5 py-12 text-center text-gray-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -165,11 +209,13 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                 </div>
                 <div class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-xs text-gray-600 space-y-1">
                     <p><span class="text-gray-400">Client:</span> <span id="praApproveClient" class="font-semibold text-gray-800"></span></p>
+                    <p><span class="text-gray-400">Control No.:</span> <span id="praApproveControl" class="font-mono font-semibold text-amber-700"></span></p>
+                    <p><span class="text-gray-400">BOM No.:</span> <span id="praApproveBom" class="font-mono text-gray-700"></span></p>
                     <p><span class="text-gray-400">Total:</span> <span id="praApproveTotal" class="font-semibold text-gray-800"></span></p>
                 </div>
                 <p class="text-[11px] text-gray-500 mt-3 leading-relaxed">
                     <i class="fa-solid fa-signature text-green-600 mr-1"></i>
-                    Your name and saved signature will be placed in <b>Approved By</b> as CEO. This cannot be undone.
+                    Your name and saved signature will be placed in <b>Approved By</b> as Purchasing Head. This cannot be undone.
                 </p>
             </div>
             <div class="flex justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-100">
@@ -200,13 +246,14 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
     </div>
 
     <script>
+        const NH_CAN_APPROVE = <?= json_encode($nhCanApprove) ?>; // Purchasing Head lang; Superadmin = tingin lang
 // PRSheet — iisang itsura ng naka-submit na Purchase Request Form
 // Ginagamit ng index-purchaserequest.php (PO) at PurchaseOrder.php (Superadmin).
 // PRSheet.render(element, data, { base: BASE_URL })
 (function () {
     const SIGN = {
         noted:    { name: '',                                   title: 'SITE OPERATIONS MANAGER' },
-        approved: { name: 'KEN YANG',                           title: 'CEO' },
+        approved: { name: '',                                   title: 'Purchasing Head' },
         reviewed: { name: 'MARY GRACE RIVERA',                  title: 'ACCOUNTING HEAD' },
         released: { name: 'JOLINA JEAN EPA/JAYA JEAN LIBRANDO', title: 'ACCOUNTING STAFF' },
     };
@@ -415,8 +462,8 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
             { label: 'Submitted', done: true, at: d.created_at, who: d.prepared_by, role: d.prepared_by_title || 'Purchasing', sig: d.prepared_by_signature_path, desc: 'Prepared by', wait: '' },
             { label: 'Requested', done: !!d.requested_by, at: null, who: d.requested_by, role: 'From BOM', sig: d.requested_by_signature_path, desc: 'Requested by', wait: 'Waiting for requester' },
             rejected
-                ? { label: 'Returned', done: true, bad: true, at: d.rejected_at, who: '', role: 'CEO', desc: 'Returned by the CEO', note: d.rejection_remarks, wait: '' }
-                : { label: 'Approved', done: d.status === 'Approved', at: d.approved_at, who: d.approved_by, role: d.approved_by_title || 'CEO', sig: d.approved_by_signature_path, desc: 'Approved by', wait: 'Waiting for CEO approval' },
+                ? { label: 'Returned', done: true, bad: true, at: d.rejected_at, who: '', role: 'Purchasing Head', desc: 'Returned by the Purchasing Head', note: d.rejection_remarks, wait: '' }
+                : { label: 'Approved', done: d.status === 'Approved', at: d.approved_at, who: d.approved_by, role: d.approved_by_title || 'Purchasing Head', sig: d.approved_by_signature_path, desc: 'Approved by', wait: 'Waiting for Purchasing Head approval' },
         ];
         if (!rejected) steps.push(
             { label: 'Reviewed', done: !!d.reviewed_at, at: d.reviewed_at, who: d.reviewed_by, role: d.reviewed_by_title || 'Accounting Head', sig: d.reviewed_by_signature_path, desc: 'Reviewed by', wait: 'Waiting for Accounting Head review' },
@@ -494,12 +541,91 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
             let rows = [];
             let tab = 'Pending';
             let current = null;   // bukas na request sa modal
+            let dateF = { day: '', month: '', week: '', from: '', to: '' };   // isa lang ang aktibo
+            let sortBy = 'newest';
+            const WAIT_WARN_DAYS = 3;   // ilang araw na For Approval bago maging pula
 
             const esc = s => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
             const money = n => (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const toDate = v => v ? new Date(String(v).replace(' ', 'T')) : null;
             const fmtDate = v => { const d = toDate(v); return d && !isNaN(d) ? d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; };
             const fmtTime = v => { const d = toDate(v); return d && !isNaN(d) ? d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : ''; };
+
+            // Gaano na katagal: "Just now", "20m ago", "2h ago", "Yesterday", "4 days ago"
+            const ageSec = v => { const d = toDate(v); return d && !isNaN(d) ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000)) : null; };
+            function ago(v) {
+                const s = ageSec(v);
+                if (s === null) return '';
+                if (s < 60) return 'Just now';
+                if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+                if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+                const d = Math.floor(s / 86400);
+                if (d === 1) return 'Yesterday';
+                if (d < 30) return `${d} days ago`;
+                const m = Math.floor(d / 30);
+                return m < 12 ? `${m} month${m === 1 ? '' : 's'} ago` : `${Math.floor(d / 365)}y ago`;
+            }
+
+            // Petsang ipinapakita sa bawat tab (Submitted / Approved / Returned)
+            const whenOf = r => r.status === 'Pending' ? r.created_at : r.status === 'Approved' ? r.approved_at : r.rejected_at;
+
+            const pad = n => String(n).padStart(2, '0');
+            const ymd = dt => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+            const dateActive = () => !!(dateF.day || dateF.month || dateF.week || dateF.from || dateF.to);
+            function dateOk(r) {
+                if (!dateActive()) return true;
+                const d = String(whenOf(r) || '').slice(0, 10);
+                if (!d) return false;
+                if (dateF.from || dateF.to) return (!dateF.from || d >= dateF.from) && (!dateF.to || d <= dateF.to);
+                if (dateF.day) return d === dateF.day;
+                if (dateF.month) return d.slice(0, 7) === dateF.month;
+                const end = new Date(dateF.week + 'T00:00:00'); end.setDate(end.getDate() + 6);
+                return d >= dateF.week && d <= ymd(end);
+            }
+            function dateLabel() {
+                if (dateF.from || dateF.to) {
+                    const f = v => new Date(v + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                    return dateF.from && dateF.to ? `${f(dateF.from)} – ${f(dateF.to)}` : dateF.from ? `${f(dateF.from)} onwards` : `up to ${f(dateF.to)}`;
+                }
+                if (dateF.day) return fmtDate(dateF.day + ' 00:00:00');
+                if (dateF.month) { const d = toDate(dateF.month + '-01 00:00:00'); return d ? d.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }) : dateF.month; }
+                return dateF.week ? 'this week' : '';
+            }
+            const datePhrase = () => dateF.week ? 'this week' : (dateF.from || dateF.to) ? 'from ' + dateLabel() : 'on ' + dateLabel();
+            function syncDateUI() {
+                document.getElementById('praMonth').value = dateF.month;
+                document.getElementById('praDay').value = dateF.day;
+                document.getElementById('praFrom').value = dateF.from;
+                document.getElementById('praTo').value = dateF.to;
+                document.getElementById('praFrom').max = dateF.to || '';
+                document.getElementById('praTo').min = dateF.from || '';
+                document.getElementById('praDateClear').classList.toggle('hidden', !dateActive());
+                const t = ymd(new Date());
+                document.querySelectorAll('.pra-qdate').forEach(b => {
+                    const q = b.dataset.praQdate;
+                    const on = (q === 'today' && dateF.day === t) || (q === 'month' && dateF.month === t.slice(0, 7)) || (q === 'week' && !!dateF.week);
+                    ['bg-amber-700', 'text-white', 'border-amber-700'].forEach(c => b.classList.toggle(c, on));
+                    ['bg-white', 'text-gray-600', 'border-gray-200'].forEach(c => b.classList.toggle(c, !on));
+                });
+                const basis = tab === 'Pending' ? 'submitted' : tab === 'Approved' ? 'approved' : 'returned';
+                document.getElementById('praDateHint').textContent = dateActive() ? `Showing requests ${basis} ${datePhrase()}` : '';
+            }
+            function setDate(next) {
+                dateF = Object.assign({ day: '', month: '', week: '', from: '', to: '' }, next);
+                syncDateUI();
+                render();
+            }
+
+            // Control No. at BOM No. — para makilala ang project kahit pareho ang pangalan ng client
+            function idCell(r) {
+                const ctrl = r.control_no
+                    ? String(r.control_no).split(', ').map(c => `<span class="block font-mono text-[11.5px] font-semibold text-amber-700 whitespace-nowrap">${esc(c)}</span>`).join('')
+                    : '<span class="block text-[11px] text-gray-300">No control no.</span>';
+                const bom = r.bom_numbers
+                    ? String(r.bom_numbers).split(', ').map(b => `<span class="block font-mono text-[10px] text-gray-400 whitespace-nowrap">${esc(b)}</span>`).join('')
+                    : '';
+                return ctrl + bom;
+            }
 
             function toast(message, type = 'success', duration = 4000) {
                 const box = document.getElementById('crmToastContainer');
@@ -529,50 +655,85 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                     b.classList.toggle('text-gray-500', !on);
                 });
                 document.getElementById('praColDate').textContent = t === 'Pending' ? 'Submitted' : t === 'Approved' ? 'Approved' : 'Returned';
+                syncDateUI();
                 render();
             }
             document.querySelectorAll('.pra-tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
             document.getElementById('praSearch').addEventListener('input', render);
+            document.getElementById('praSort').addEventListener('change', e => { sortBy = e.target.value; render(); });
+            document.querySelectorAll('.pra-qdate').forEach(b => b.addEventListener('click', () => {
+                const now = new Date();
+                const q = b.dataset.praQdate;
+                if (q === 'today') { const t = ymd(now); setDate(dateF.day === t ? {} : { day: t }); }
+                else if (q === 'month') { const m = ymd(now).slice(0, 7); setDate(dateF.month === m ? {} : { month: m }); }
+                else { const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); setDate(dateF.week ? {} : { week: ymd(mon) }); }
+            }));
+            document.getElementById('praMonth').addEventListener('change', e => setDate(e.target.value ? { month: e.target.value } : {}));
+            document.getElementById('praDay').addEventListener('change', e => setDate(e.target.value ? { day: e.target.value } : {}));
+            document.getElementById('praDateClear').addEventListener('click', () => setDate({}));
+            document.getElementById('praFrom').addEventListener('change', e => setDate({ from: e.target.value, to: dateF.to }));
+            document.getElementById('praTo').addEventListener('change', e => setDate({ from: dateF.from, to: e.target.value }));
+            // para gumalaw ang "x minutes ago" kahit walang bagong data
+            setInterval(() => { if (!document.hidden && !anyOpen()) render(); }, 60000);
 
             // ── list ──
             function render() {
                 const by = s => rows.filter(r => r.status === s);
-                ['Pending', 'Approved', 'Rejected'].forEach(s => document.querySelector(`[data-count="${s}"]`).textContent = by(s).length);
+                // bilang sa tabs: sumusunod sa date filter
+                ['Pending', 'Approved', 'Rejected'].forEach(s => document.querySelector(`[data-count="${s}"]`).textContent = by(s).filter(dateOk).length);
                 document.getElementById('praStatPending').textContent = by('Pending').length;
                 document.getElementById('praStatToday').textContent = rows.filter(r => r.approved_today).length;
                 document.getElementById('praStatAmount').textContent = '₱ ' + money(by('Pending').reduce((a, r) => a + Number(r.total_amount || 0), 0));
 
                 const q = document.getElementById('praSearch').value.trim().toLowerCase();
-                const source = by(tab);
-                const list = source.filter(r => !q || `${r.req_no} ${r.client} ${r.requested_by ?? ''} ${r.prepared_by ?? ''}`.toLowerCase().includes(q));
+                const source = by(tab).filter(dateOk);
+                const list = source.filter(r => !q || `${r.req_no} ${r.control_no ?? ''} ${r.bom_numbers ?? ''} ${r.client} ${r.project_scope ?? ''} ${r.requested_by ?? ''} ${r.prepared_by ?? ''}`.toLowerCase().includes(q));
+                const ts = r => { const d = toDate(whenOf(r)); return d && !isNaN(d) ? d.getTime() : 0; };
+                const sorters = {
+                    newest: (a, b) => ts(b) - ts(a) || b.id - a.id,
+                    oldest: (a, b) => ts(a) - ts(b) || a.id - b.id,
+                    amount_desc: (a, b) => Number(b.total_amount || 0) - Number(a.total_amount || 0),
+                    amount_asc: (a, b) => Number(a.total_amount || 0) - Number(b.total_amount || 0),
+                    client: (a, b) => String(a.client || '').localeCompare(String(b.client || '')),
+                };
+                list.sort(sorters[sortBy] || sorters.newest);
 
                 const body = document.getElementById('praList');
                 if (!list.length) {
                     const msg = source.length ? 'No requests match your search.'
+                        : dateActive() ? `No requests ${tab === 'Pending' ? 'submitted' : tab === 'Approved' ? 'approved' : 'returned'} ${datePhrase()}.`
                         : tab === 'Pending' ? 'Nothing waiting for approval.' : tab === 'Approved' ? 'No approved requests yet.' : 'No returned requests.';
-                    body.innerHTML = `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular ${tab === 'Pending' && !source.length ? 'fa-circle-check text-green-400' : 'fa-folder-open text-gray-300'} text-2xl block mb-2"></i>${msg}</td></tr>`;
+                    body.innerHTML = `<tr><td colspan="8" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular ${tab === 'Pending' && !source.length ? 'fa-circle-check text-green-400' : 'fa-folder-open text-gray-300'} text-2xl block mb-2"></i>${msg}</td></tr>`;
                 } else {
                     body.innerHTML = list.map(r => {
-                        const when = r.status === 'Pending' ? r.created_at : r.status === 'Approved' ? r.approved_at : r.rejected_at;
+                        const when = whenOf(r);
+                        const days = Math.floor((ageSec(when) ?? 0) / 86400);
+                        const fresh = (ageSec(when) ?? 1e9) < 3600;
+                        const late = r.status === 'Pending' && when && days >= WAIT_WARN_DAYS;
+                        const agoHtml = !when ? '' : late
+                            ? `<p class="text-[11px] font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>${esc(ago(when))} · still waiting</p>`
+                            : `<p class="text-[11px] font-semibold ${fresh ? 'text-green-600' : 'text-gray-500'}">${esc(ago(when))}</p>`;
                         const action = r.status === 'Pending'
                             ? `<button type="button" data-open="${r.id}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-magnifying-glass"></i> Review</button>`
                             : `<button type="button" data-open="${r.id}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"><i class="fa-solid fa-eye"></i> View</button>`;
                         return `
                         <tr class="hover:bg-amber-50/30 transition-colors">
-                            <td class="px-5 py-3.5"><p class="font-mono text-[12px] font-semibold text-red-600">${esc(r.req_no)}</p><p class="text-[11px] text-gray-400">Needed: ${esc(r.date_needed || '—')}</p></td>
+                            <td class="px-5 py-3.5"><p class="font-mono text-[12px] font-semibold text-red-600 whitespace-nowrap">${esc(r.req_no)}</p><p class="text-[11px] text-gray-400">Needed: ${esc(r.date_needed || '—')}</p></td>
+                            <td class="px-5 py-3.5">${idCell(r)}</td>
                             <td class="px-5 py-3.5 max-w-[220px]"><p class="font-semibold text-gray-800 truncate">${esc(r.client)}</p><p class="text-[11px] text-gray-400 truncate">${esc(r.project_scope || '')}</p></td>
                             <td class="px-5 py-3.5"><p class="text-gray-700">${esc(r.requested_by || '—')}</p><p class="text-[11px] text-gray-400">by ${esc(r.prepared_by || '—')}</p></td>
                             <td class="px-5 py-3.5 text-center tabular-nums text-gray-700">${r.item_count}</td>
                             <td class="px-5 py-3.5 text-right tabular-nums font-semibold text-gray-900">₱ ${money(r.total_amount)}</td>
-                            <td class="px-5 py-3.5 whitespace-nowrap">
-                                <p class="text-gray-700">${fmtDate(when)}</p>
-                                <p class="text-[11px] text-gray-400 truncate max-w-[180px]" title="${esc(r.rejection_remarks || '')}">${r.status === 'Rejected' ? esc(r.rejection_remarks || '') : fmtTime(when)}</p>
+                            <td class="px-5 py-3.5 whitespace-nowrap" title="${esc(fmtDate(when) + ' ' + fmtTime(when))}">
+                                <p class="text-gray-700">${fmtDate(when)} <span class="text-[11px] text-gray-400">${fmtTime(when)}</span></p>
+                                ${agoHtml}
+                                ${r.status === 'Rejected' && r.rejection_remarks ? `<p class="text-[11px] text-gray-400 truncate max-w-[180px]" title="${esc(r.rejection_remarks)}">${esc(r.rejection_remarks)}</p>` : ''}
                             </td>
                             <td class="px-5 py-3.5 text-right whitespace-nowrap">${action}</td>
                         </tr>`;
                     }).join('');
                 }
-                document.getElementById('praFooter').textContent = `Showing ${list.length} of ${source.length} request${source.length === 1 ? '' : 's'}`;
+                document.getElementById('praFooter').textContent = `Showing ${list.length} of ${source.length} request${source.length === 1 ? '' : 's'}` + (dateActive() ? ` · ${dateLabel()}` : '');
             }
 
             let loading = false, loadAgain = false;
@@ -615,11 +776,11 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                     PRSheet.render(sheet, current, { base: BASE });
                     PRSheet.history(document.getElementById('praHistory'), current, { base: BASE });
 
-                    const pending = current.status === 'Pending';
+                    const pending = current.status === 'Pending' && NH_CAN_APPROVE;
                     document.getElementById('praApproveBtn').classList.toggle('hidden', !pending);
                     document.getElementById('praRejectBtn').classList.toggle('hidden', !pending);
                     document.getElementById('praModalNo').textContent = current.req_no;
-                    document.getElementById('praModalSub').textContent = `${current.client} · ₱ ${money(current.total_amount)}`;
+                    document.getElementById('praModalSub').textContent = [current.control_no ? `Control ${current.control_no}` : '', current.bom_numbers ? `BOM ${current.bom_numbers}` : '', current.client, `₱ ${money(current.total_amount)}`].filter(Boolean).join(' · ');
 
                     const notice = document.getElementById('praNotice');
                     notice.className = 'mx-4 mt-3 rounded-lg px-3 py-2 text-xs';
@@ -643,6 +804,8 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                 if (!current) return;
                 document.getElementById('praApproveNo').textContent = current.req_no;
                 document.getElementById('praApproveClient').textContent = current.client;
+                document.getElementById('praApproveControl').textContent = current.control_no || '—';
+                document.getElementById('praApproveBom').textContent = current.bom_numbers || '—';
                 document.getElementById('praApproveTotal').textContent = '₱ ' + money(current.total_amount);
                 openModal('praApproveModal');
             });

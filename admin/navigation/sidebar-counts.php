@@ -181,9 +181,9 @@ if (!function_exists('getSidebarCounts')) {
             }
         }
 
-        // E-Wood Management (Superadmin): mga upload ng Cutting na naghihintay ng QR approval
-        // (parehong kondisyon ng "To review" sa ewood.php)
-        if ($role === ROLE_SUPERADMIN) {
+        // QR Approvals (Cutting Head — dating Superadmin): mga upload ng Cutting na naghihintay ng QR approval
+        // (parehong kondisyon ng "To review" sa ewood.php). Superadmin: makikita rin (review / monitor).
+        if (($role === ROLE_CUTTING && $isHead) || $role === ROLE_SUPERADMIN) {
             try {
                 $c['ewoodPending'] = sidebarScalar(
                     $conn,
@@ -300,9 +300,9 @@ if (!function_exists('getSidebarCounts')) {
             }
         }
 
-        // Purchase Order Approval (Superadmin/CEO): Purchase Request na naghihintay ng approval
-        // (parehong "For Approval" ng PurchaseOrder.php)
-        if ($role === ROLE_SUPERADMIN) {
+        // PR Approval (Purchasing Head — dating Superadmin/CEO): Purchase Request na naghihintay ng approval
+        // (parehong "For Approval" ng PurchaseOrder.php). Superadmin: makikita rin (review / monitor).
+        if (($role === ROLE_PO && $isHead) || $role === ROLE_SUPERADMIN) {
             try {
                 $c['prApproval'] = sidebarScalar(
                     $conn,
@@ -464,14 +464,22 @@ if (!function_exists('getSidebarCounts')) {
             }
         }
 
-        // ── Superadmin: mga papel ng PC na naghihintay ng pirma mo (pareho ng "For signing" ng bawat page) ──
-        if ($role === ROLE_SUPERADMIN) {
-            foreach ([
+        // ── Mga papel ng PC na naghihintay ng pirma (pareho ng "For signing" ng bawat page) ──
+        //   PC Head (dating Superadmin): DR, Labor Quotation, Billing
+        //   Superadmin: parehong bilang (review / monitor — para alam may bago) + Turnover Letter (siya pa rin ang pipirma)
+        $pcSign = [];
+        if (($role === ROLE_PC && $isHead) || $role === ROLE_SUPERADMIN) {
+            $pcSign = [
                 'saDrPending' => "SELECT COUNT(*) FROM noblepc_dr WHERE COALESCE(status, 'pending') = 'pending'",
                 'saLaborPending' => "SELECT COUNT(*) FROM noblepc_laborquote WHERE status = 'pending'",
                 'saBillingPending' => "SELECT COUNT(*) FROM noblepc_billing WHERE status = 'pending_sa'",   // na-note na ng Accounting Head
-                'saTurnoverPending' => "SELECT COUNT(*) FROM noblepc_turnover WHERE status = 'pending_sa'",
-            ] as $key => $sql) {
+            ];
+        }
+        if ($role === ROLE_SUPERADMIN) {
+            $pcSign['saTurnoverPending'] = "SELECT COUNT(*) FROM noblepc_turnover WHERE status = 'pending_sa'";
+        }
+        if ($pcSign) {
+            foreach ($pcSign as $key => $sql) {
                 try {
                     $c[$key] = sidebarScalar($conn, $sql);
                 } catch (Throwable $e) {

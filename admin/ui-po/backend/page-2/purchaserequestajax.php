@@ -222,11 +222,12 @@ if ($action === 'create') {
         prOut(['success' => false, 'message' => $msg]);
     }
 
-    // Abisuhan ang Superadmin (CEO) na may bagong request na aaprubahan
+    // Abisuhan ang Purchasing (PO) Head na may bagong request na aaprubahan (Superadmin = tingin na lang)
     try {
-        $roleSa = ROLE_SUPERADMIN;
-        $sa = $conn->prepare("SELECT id FROM noblerole WHERE role = ?");
-        $sa->bind_param('s', $roleSa);
+        $roleHead = ROLE_PO;
+        $posHead = POSITION_HEAD;
+        $sa = $conn->prepare("SELECT id FROM noblerole WHERE role = ? AND position = ? AND id <> ?");
+        $sa->bind_param('ssi', $roleHead, $posHead, $currentUserId);
         $sa->execute();
         $saIds = array_column($sa->get_result()->fetch_all(MYSQLI_ASSOC), 'id');
         $sa->close();
@@ -245,7 +246,7 @@ if ($action === 'create') {
         $n->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang pag-save */ }
 
-    // Realtime: Superadmin/CEO (approval + bell), ibang PO (Purchase Orders, Client Series, listahan) + Sales/Designer ng inquiry
+    // Realtime: PO Head (approval + bell), Superadmin (monitor), ibang PO (Purchase Orders, Client Series, listahan) + Sales/Designer ng inquiry
     try {
         include_once ROOT_PATH . '/network/realtime-helper.php';
         $qq = $conn->prepare("SELECT quotation_id FROM noblecrm_bom WHERE id = ? LIMIT 1");

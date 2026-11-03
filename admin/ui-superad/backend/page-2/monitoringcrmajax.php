@@ -39,6 +39,13 @@ const MON_STATUSES = [
     'FINAL FOR APPROVAL'      => 'blue',
     'FINAL REVISION'          => 'red',
     'FINAL APPROVED'          => 'green',
+    // ── Contract (Accounting Head → Sales/Designer → Client → GM) ──
+    'CONTRACT PREPARING'      => 'amber',
+    'CONTRACT RETURNED'       => 'red',
+    'CONTRACT FOR SIGNING'    => 'blue',
+    'CONTRACT SENT TO CLIENT' => 'blue',
+    'CLIENT SIGNED'           => 'blue',
+    'CONTRACT SIGNED'         => 'green',
     // ── Notice to Proceed → Delivery (galing sa accounting / production / purchasing) ──
     'NOTICE TO PROCEED'       => 'green',
     'CUTTING LIST UPLOADED'   => 'blue',
@@ -105,11 +112,11 @@ const MON_PIPELINE_NEXT = [
     'CUTTING LIST UPLOADED'     => ['Cutting list uploaded, waiting for QR approval', 'Cutting List Approval'],
     'CUTTING LIST REJECTED'     => ['Cutting list was rejected, needs re-upload', 'Re-upload Cutting List'],
     'CUTTING LIST APPROVED'     => ['Cutting list approved', 'BOM'],
-    'BOM SUBMITTED'             => ['BOM submitted, waiting for Superadmin approval', 'BOM Approval'],
+    'BOM SUBMITTED'             => ['BOM submitted, waiting for approval', 'BOM Approval'],
     'BOM APPROVED'              => ['BOM approved, waiting for Purchasing to receive it', 'Purchasing'],
     'BOM RECEIVED'              => ['BOM received by Purchasing', 'Purchase Request'],
-    'PR SUBMITTED'              => ['Purchase request waiting for CEO approval', 'PR Approval'],
-    'PR RETURNED'               => ['Purchase request was returned by the CEO', 'New Purchase Request'],
+    'PR SUBMITTED'              => ['Purchase request waiting for the Purchasing Head\'s approval', 'PR Approval'],
+    'PR RETURNED'               => ['Purchase request was returned by the Purchasing Head', 'New Purchase Request'],
     'PR APPROVED'               => ['Purchase request approved, for Accounting review', 'Accounting Review'],
     'PR REVIEWED'               => ['Reviewed by the Accounting Head', 'Accounting Staff'],
     'PR RECEIVED BY ACCOUNTING' => ['Received by Accounting Staff', 'Release'],
@@ -118,17 +125,17 @@ const MON_PIPELINE_NEXT = [
     'TRANSMITTAL ISSUED'        => ['Transmittal issued, for delivery', 'Delivery'],
     'DELIVERED'                 => ['Items delivered to the client', 'Delivery Receipt'],
     'DR CREATED'                => ['Delivery receipt prepared by the Project Coordinator', 'DR Approval'],
-    'DR FOR APPROVAL'           => ['Delivery receipt waiting for the Superadmin\'s signature', 'DR Approval'],
+    'DR FOR APPROVAL'           => ['Delivery receipt waiting for the PC Head\'s signature', 'DR Approval'],
     'DR RETURNED'               => ['Delivery receipt returned to the Project Coordinator', 'Fix & resubmit DR'],
     'DR APPROVED'               => ['Delivery receipt signed, can be printed', 'Foreman ID'],
     'FOREMAN ASSIGNED'          => ['Foreman and ID recorded', 'Labor Quotation'],
-    'LABOR QUOTE SUBMITTED'     => ['Labor quotation waiting for the Superadmin\'s signature', 'Labor Quote Approval'],
+    'LABOR QUOTE SUBMITTED'     => ['Labor quotation waiting for the PC Head\'s signature', 'Labor Quote Approval'],
     'LABOR QUOTE RETURNED'      => ['Labor quotation returned to the Project Coordinator', 'Fix & resubmit Labor Quote'],
     'LABOR QUOTE APPROVED'      => ['Labor quotation approved', 'Timeline'],
     'TIMELINE SET'              => ['Project timeline prepared', 'Progress Billing'],
     'BILLING SUBMITTED'         => ['Progress billing waiting for the Accounting Head', 'Accounting Head (Noted by)'],
     'BILLING RETURNED'          => ['Progress billing returned to the Project Coordinator', 'Fix & resubmit Billing'],
-    'BILLING NOTED'             => ['Noted by the Accounting Head, waiting for the Superadmin', 'Superadmin (Approved by)'],
+    'BILLING NOTED'             => ['Noted by the Accounting Head, waiting for the PC Head', 'PC Head (Approved by)'],
     'BILLING APPROVED'          => ['Progress billing approved', 'Next Billing'],
     'FULLY BILLED'              => ['Contract is fully billed and approved', 'Punch List'],
     'PUNCH LIST OPEN'           => ['Punch list items being fixed', 'Verify Punch List'],
@@ -151,6 +158,8 @@ function monStage(array $r): array
 
     // 1-2. Wala pang designer
     if (!$hasDesigner) {
+        if ($readyForQuotation && $cs !== 'no')
+            return ['CONTACTING CLIENT', 'amber', 'New customer (material only) · waiting for a designer to prepare the quotation', 'Quotation'];
         if ($cs === 'no')
             return ['NOT PROCEEDING', 'red', 'Client is not proceeding', '—'];
         if ($cs === 'tentative')
@@ -162,19 +171,13 @@ function monStage(array $r): array
     if ($final !== null) {
         switch ($final) {
             case 'Approved':
-                return ['FINAL APPROVED', 'green', 'Final 2D & Quotation approved', 'Cutting'];
+                return monContractStage($r);
             case 'Waiting for Approval':
-                return ['FINAL FOR APPROVAL', 'blue', 'Waiting for Superadmin approval', 'Final Approval'];
+                return ['FINAL FOR APPROVAL', 'blue', 'Waiting for the Designer Head (2D/3D) and Sales Head (Quotation)', 'Final Approval'];
             case 'For Revision':
                 return ['FINAL REVISION', 'red', 'Final submission needs revision', 'Re-submit Final'];
             default: // Draft
-                $contractMissing = empty($r['contract_amount']) || (float) $r['contract_amount'] <= 0 || empty($r['contract_file']);
-                return [
-                    'FINAL IN PROGRESS',
-                    'green',
-                    $contractMissing ? 'Contract not yet set by Sales' : 'Preparing Final 2D & Quotation',
-                    'Final Submission',
-                ];
+                return ['FINAL IN PROGRESS', 'green', 'Preparing Final 2D & Quotation', 'Final Submission'];
         }
     }
 
@@ -200,9 +203,9 @@ function monStage(array $r): array
                 if ((int) ($r['customer_ok'] ?? 0) >= 3) {
                     return ['CUSTOMER APPROVED', 'green', 'Customer approved all Initial files', 'Final Submission'];
                 }
-                return ['FOR CLIENT REVIEW', 'blue', 'Fully approved by Designer Head, waiting for the customer\'s decision', 'Customer Decision'];
+                return ['FOR CLIENT REVIEW', 'blue', 'Approved by the heads, waiting for the customer\'s decision', 'Customer Decision'];
             case 'Waiting for Approval':
-                return ['INITIAL FOR APPROVAL', 'blue', 'Waiting for Designer Head approval', 'Initial Approval'];
+                return ['INITIAL FOR APPROVAL', 'blue', 'Waiting for the Designer Head (2D/3D) and Sales Head (Quotation)', 'Initial Approval'];
             case 'For Revision':
                 if (($r['revision_source'] ?? 'Head') === 'Customer') {
                     return ['CUSTOMER REVISION', 'red', 'Customer requested changes on the Initial files', 'Re-submit Initial'];
@@ -236,14 +239,51 @@ function monStage(array $r): array
     return ['2D DESIGN', 'green', $note, 'Initial Submission'];
 }
 
+// Final Approved → nasaan na ang contract (contracts.php)
+function monContractStage(array $r): array
+{
+    $cs = $r['contract_status'] ?? null;
+    if ($cs === null) return ['FINAL APPROVED', 'green', 'Final approved · waiting for the Accounting Head to prepare the contract', 'Contract'];
+    if ($cs === 'Draft') {
+        return !empty($r['contract_returned'])
+            ? ['CONTRACT RETURNED', 'red', 'Contract returned to the Accounting Head for correction', 'Fix & re-issue Contract']
+            : ['CONTRACT PREPARING', 'amber', 'The Accounting Head is preparing the contract', 'Contract Signing'];
+    }
+    if ($cs === 'For Staff Signing') return ['CONTRACT FOR SIGNING', 'blue', 'Signed by the Accounting Head · waiting for Sales and Designer', 'Sales & Designer signature'];
+    if ($cs === 'For Client Signing') return ['CONTRACT SENT TO CLIENT', 'blue', 'Waiting for the client to sign through the link', 'Client signature'];
+    if ($cs === 'For GM Signing') return ['CLIENT SIGNED', 'blue', 'Client signed · waiting for the General Manager', 'GM signature'];
+    return ['CONTRACT SIGNED', 'green', 'Contract fully signed', 'Deposit / Notice to Proceed'];
+}
+
+// May contract table na ba? (noblecrm_contract.sql) — para hindi masira kapag wala pa
+function monHasContractTable(mysqli $conn): bool
+{
+    static $has = null;
+    if ($has === null) {
+        try {
+            $t = $conn->query("SHOW TABLES LIKE 'noblecrm_contract'");
+            $has = $t && $t->num_rows > 0;
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
 // Shared SELECT (walang WHERE) — gamit ng list at ng monLoadRow
 function monBaseSql(): string
 {
+    global $conn;
+    $contract = monHasContractTable($conn)
+        ? "(SELECT c.status FROM noblecrm_contract c WHERE c.inquiry_id = i.id LIMIT 1) AS contract_status,
+               (SELECT c.returned_at IS NOT NULL AND c.remarks IS NOT NULL FROM noblecrm_contract c WHERE c.inquiry_id = i.id LIMIT 1) AS contract_returned,"
+        : "NULL AS contract_status, 0 AS contract_returned,";
     return "
         SELECT i.id, i.control_no, i.client_name, i.contact_number, i.project_type, i.mode, i.status,
+               {$contract}
                i.client_status, i.measurement_datetime, i.designer_id, i.sales_staff_id, i.created_at,
                i.design_progress, i.design_confirmed,
-               i.contract_amount, i.contract_file,
+               i.contract_amount,
                d.name AS designer_name, s.name AS sales_name,
                q.status AS initial_status, q.include_3d, q.design_3d_stage AS initial_3d_stage,
                q.revision_source,
@@ -292,7 +332,8 @@ function monHistoryData(mysqli $conn, array $ids): array
     foreach ($ids as $id) {
         $out[(int) $id] = ['sv' => [], 'initials' => [], 'reviews' => [], 'finals' => [],
                            'cutting' => [], 'boms' => [], 'prs' => [], 'trs' => [], 'drs' => [],
-                           'dr_ap' => [], 'foremen' => [], 'lqs' => [], 'timelines' => [], 'billings' => [], 'punch' => [], 'turnovers' => []];
+                           'dr_ap' => [], 'foremen' => [], 'lqs' => [], 'timelines' => [], 'billings' => [], 'punch' => [], 'turnovers' => [],
+                           'contracts' => []];
     }
     if (!$out) {
         return $out;
@@ -311,6 +352,13 @@ function monHistoryData(mysqli $conn, array $ids): array
         'initials' => "SELECT * FROM noblecrm_2dquotation WHERE inquiry_id IN ($in) AND stage = 'Initial' ORDER BY id ASC",
         'reviews'  => "SELECT inquiry_id, slot, decision, decided_at FROM noblecrm_2dquotation_customer_review WHERE inquiry_id IN ($in) ORDER BY id ASC",
         'finals'   => "SELECT * FROM noblecrm_2dquotation_final WHERE inquiry_id IN ($in) ORDER BY id ASC",
+        'contracts' => "SELECT c.inquiry_id, c.status, c.created_at, c.issued_at, c.sales_signed_at, c.designer_signed_at, c.designer_user_id,
+                               c.client_signed_at, c.client_signed_name, c.gm_signed_at, c.returned_at, c.remarks, c.contract_amount,
+                               a.name AS acct_name, g.name AS gm_name
+                        FROM noblecrm_contract c
+                        LEFT JOIN noblerole a ON a.id = c.acct_signed_by
+                        LEFT JOIN noblerole g ON g.id = c.gm_signed_by
+                        WHERE c.inquiry_id IN ($in)",
 
         // ── Cutting list → Delivery (lahat naka-link sa inquiry sa pamamagitan ng 2D quotation) ──
         'cutting'  => "SELECT q.inquiry_id, p.*, u.name AS uploaded_by_name, a.name AS approved_by_name, rj.name AS rejected_by_name
@@ -446,7 +494,7 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         $add('2D & QUOTATION', 'green', $q['created_at'], $idx === 0 ? 'Preparing Initial 2D & Quotation' : 'Preparing revised files');
 
         if (!empty($q['submitted_at'])) {
-            $note = 'Submitted for Designer Head approval';
+            $note = 'Submitted for the Designer Head and Sales Head';
             if (!empty($q['is_late'])) $note .= ' · Late submission';
             if (!empty($q['include_3d'])) $note .= ' · with 3D';
             $add('INITIAL FOR APPROVAL', 'blue', $q['submitted_at'], $note);
@@ -454,9 +502,9 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         if (!empty($q['reviewed_at'])) {
             $fromCustomer = ($q['status'] === 'For Revision' && ($q['revision_source'] ?? 'Head') === 'Customer');
             if ($q['status'] === 'Approved' || $fromCustomer) {
-                $add('INITIAL APPROVED', 'green', $q['reviewed_at'], 'Approved by Designer Head');
+                $add('INITIAL APPROVED', 'green', $q['reviewed_at'], 'Approved by the Designer Head and Sales Head');
             } elseif ($q['status'] === 'For Revision') {
-                $add('INITIAL REVISION', 'red', $q['reviewed_at'], 'Sent back by Designer Head');
+                $add('INITIAL REVISION', 'red', $q['reviewed_at'], 'Sent back for revision');
             }
         }
     }
@@ -489,10 +537,31 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
     // 5. Final — hindi sigurado ang lahat ng column, kaya chine-check muna kung meron
     foreach ($data['finals'] as $f) {
         if (!empty($f['created_at'])) $add('FINAL IN PROGRESS', 'green', $f['created_at'], 'Preparing Final 2D & Quotation');
-        if (!empty($f['submitted_at'])) $add('FINAL FOR APPROVAL', 'blue', $f['submitted_at'], 'Submitted for Superadmin approval');
+        if (!empty($f['submitted_at'])) $add('FINAL FOR APPROVAL', 'blue', $f['submitted_at'], 'Submitted for the Designer Head and Sales Head');
         if (!empty($f['reviewed_at'])) {
             if (($f['status'] ?? '') === 'Approved') $add('FINAL APPROVED', 'green', $f['reviewed_at'], 'Final 2D & Quotation approved');
             elseif (($f['status'] ?? '') === 'For Revision') $add('FINAL REVISION', 'red', $f['reviewed_at'], 'Final submission sent back for revision');
+        }
+    }
+
+    // 5b. Contract (Accounting Head → Sales/Designer → Client → GM)
+    foreach ($data['contracts'] ?? [] as $c) {
+        $add('CONTRACT PREPARING', 'amber', $c['created_at'], 'Accounting Head started the contract');
+        if (!empty($c['returned_at']) && !empty($c['remarks'])) {
+            $add('CONTRACT RETURNED', 'red', $c['returned_at'], 'Returned for correction — “' . $c['remarks'] . '”');
+        }
+        if (!empty($c['issued_at'])) {
+            $add('CONTRACT FOR SIGNING', 'blue', $c['issued_at'], 'Signed ' . $by($c['acct_name']) . ' · ₱' . number_format((float) $c['contract_amount'], 2));
+        }
+        $staffDone = array_filter([$c['sales_signed_at'], (int) $c['designer_user_id'] > 0 ? $c['designer_signed_at'] : $c['sales_signed_at']]);
+        if (count($staffDone) === 2 && !empty($c['sales_signed_at'])) {
+            $add('CONTRACT SENT TO CLIENT', 'blue', max($staffDone), 'Sales and Designer signed · signing link ready for the client');
+        }
+        if (!empty($c['client_signed_at'])) {
+            $add('CLIENT SIGNED', 'blue', $c['client_signed_at'], 'Signed by ' . ($c['client_signed_name'] ?: 'the client') . ' with ID');
+        }
+        if (!empty($c['gm_signed_at'])) {
+            $add('CONTRACT SIGNED', 'green', $c['gm_signed_at'], 'Final signature ' . $by($c['gm_name']));
         }
     }
 
@@ -520,7 +589,7 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
     foreach ($data['prs'] ?? [] as $p) {
         $addP('PR SUBMITTED', $p['created_at'], 'Purchase request ' . $by($p['prepared_by']), $p['req_no']);
         if (($p['status'] ?? '') === 'Rejected')
-            $addP('PR RETURNED', $p['rejected_at'], !empty($p['rejection_remarks']) ? '“' . $p['rejection_remarks'] . '”' : 'Returned by the CEO', $p['req_no']);
+            $addP('PR RETURNED', $p['rejected_at'], !empty($p['rejection_remarks']) ? '“' . $p['rejection_remarks'] . '”' : 'Returned by the Purchasing Head', $p['req_no']);
         $addP('PR APPROVED', $p['approved_at'], $by($p['approved_by']), $p['req_no']);
         $addP('PR REVIEWED', $p['reviewed_at'], 'Accounting Head ' . $by($p['reviewed_by']), $p['req_no']);
         $addP('PR RECEIVED BY ACCOUNTING', $p['staff_received_at'], $by($p['staff_received_by']), $p['req_no']);
@@ -553,7 +622,7 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
         $permit = $d['permit_required'] === null ? '' : ((int) $d['permit_required'] === 1 ? ' · Needs permit' : ' · No permit needed');
         $cycle(['DR FOR APPROVAL', 'DR RETURNED', 'DR APPROVED'], $d['created_at'], $d['submitted_at'], $d['returned_at'],
             trim($by($d['returned_by']) . $quoteNote($d['return_remarks'])), $d['approved_at'], 'Signed ' . $by($d['approved_by']),
-            'DR# ' . $d['dr_no'], 'Sent to the Superadmin for signing' . $permit);
+            'DR# ' . $d['dr_no'], 'Sent to the PC Head for signing' . $permit);
     }
     foreach ($data['foremen'] ?? [] as $f) {
         $addP('FOREMAN ASSIGNED', $f['created_at'], 'Foreman: ' . $f['name'], 'DR# ' . $f['dr_no']);
@@ -570,7 +639,7 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
     $billedByDr = [];
     foreach ($data['billings'] ?? [] as $b) {
         $what = $b['billing_type'] === 'dp' ? 'Down payment' : 'Application for Payment ' . (int) $b['app_no'];
-        $stage = ($b['returned_stage'] ?? '') === 'sa' ? 'Superadmin' : 'Accounting Head';
+        $stage = ($b['returned_stage'] ?? '') === 'sa' ? 'PC Head' : 'Accounting Head';
         $cycle(['BILLING SUBMITTED', 'BILLING RETURNED', 'BILLING NOTED'], $b['created_at'], $b['submitted_at'], $b['returned_at'],
             trim('by the ' . $stage . ($b['returned_by'] ? ' (' . $b['returned_by'] . ')' : '') . $quoteNote($b['return_remarks'])), $b['head_at'], 'Noted ' . $by($b['head_by']),
             $b['ref_no'], $what . ' · ' . $peso($b['this_period']));
@@ -627,6 +696,131 @@ function monBuildHistory(mysqli $conn, array $r, ?array $data = null): array
     return $ev;
 }
 
+// ── Para madaling ma-monitor: anong bahagi na, sino ang hinihintay, kailan huling gumalaw ──
+// Customer stages (ayon kay boss) — para makita agad kung nasaang bahagi na ang bawat customer.
+//   Modular (site visit):   New Customer → Site Measurement → 2D & Design → Final Design & Quotation → Contract → Project Execution
+//   Material only:          New Customer → Quotation → Contract → Order Processing (order lang, walang installation)
+const MON_STAGES = [
+    'new'       => 'New Customer',
+    'site'      => 'Site Measurement',
+    'design'    => '2D & Design',
+    'final'     => 'Final Design & Quotation',
+    'quotation' => 'Quotation',
+    'contract'  => 'Contract',
+    'order'     => 'Project Execution',
+];
+const MON_STAGE_FLOW = [
+    'site_visit'          => ['new', 'site', 'design', 'final', 'contract', 'order'],
+    'ready_for_quotation' => ['new', 'quotation', 'contract', 'order'],
+];
+const MON_STAGE_MAT_ORDER = 'Order Processing';   // pangalan ng huling stage para sa Materials
+const MON_STALE_DAYS = 7;   // ilang araw na walang galaw bago ituring na "stuck"
+
+function monIsMaterial(array $r): bool
+{
+    return ($r['mode'] ?? 'site_visit') === 'ready_for_quotation';
+}
+
+/** Customer stage key ng kasalukuyang status ('closed' kapag hindi na tutuloy). */
+function monStageKey(string $label, bool $material): string
+{
+    static $map = null;
+    if ($map === null) {
+        $groups = [
+            'new'      => ['CONTACTING CLIENT', 'WAITING FOR CLIENT'],
+            'site'     => ['WAITING FOR MEASUREMENT', 'REVISIT NEEDED', 'SITE VISIT DONE'],
+            'design'   => ['2D DESIGN', '2D & QUOTATION', 'INITIAL FOR APPROVAL', 'INITIAL REVISION', 'INITIAL APPROVED',
+                           'WAITING FOR 3D', '3D FOR APPROVAL', '3D REVISION', 'FOR CLIENT REVIEW', 'CUSTOMER REVISION', 'CUSTOMER APPROVED'],
+            'final'    => ['FINAL IN PROGRESS', 'FINAL FOR APPROVAL', 'FINAL REVISION'],
+            'contract' => ['FINAL APPROVED', 'CONTRACT PREPARING', 'CONTRACT RETURNED', 'CONTRACT FOR SIGNING',
+                           'CONTRACT SENT TO CLIENT', 'CLIENT SIGNED', 'CONTRACT SIGNED'],
+            'closed'   => ['NOT PROCEEDING'],
+        ];
+        $map = [];
+        foreach ($groups as $k => $ls) foreach ($ls as $l) $map[$l] = $k;
+    }
+    $k = $map[$label] ?? 'order';   // Notice to Proceed pataas → Project Execution
+    if ($material && in_array($k, ['site', 'design', 'final'], true)) $k = 'quotation';
+    return $k;
+}
+
+/** Sub-step sa loob ng Project Execution (para alam kung production / purchasing / delivery / billing / turnover na) */
+function monOrderStep(string $label): string
+{
+    if ($label === 'NOTICE TO PROCEED') return 'Notice to Proceed';
+    if (preg_match('/^(CUTTING|BOM)/', $label)) return 'Production';
+    if (preg_match('/^(PR |TRANSMITTAL)/', $label)) return 'Purchasing';
+    if (preg_match('/^(DELIVERED|DR |FOREMAN|LABOR|TIMELINE)/', $label)) return 'Delivery & Installation';
+    if (preg_match('/BILL/', $label)) return 'Billing';
+    if (preg_match('/^(PUNCH|TURNOVER|PARTLY|TURNED)/', $label)) return 'Turnover';
+    return '';
+}
+
+// Sino ang may hawak ngayon (para makita agad kung kanino nakabinbin)
+function monWaitingOn(string $label): string
+{
+    static $map = [
+        'CONTACTING CLIENT' => 'Sales', 'WAITING FOR CLIENT' => 'Sales', 'REVISIT NEEDED' => 'Sales',
+        'WAITING FOR MEASUREMENT' => 'Designer', 'SITE VISIT DONE' => 'Designer', '2D DESIGN' => 'Designer', '2D & QUOTATION' => 'Designer & Sales',
+        'INITIAL FOR APPROVAL' => 'Designer Head & Sales Head', 'INITIAL REVISION' => 'Designer & Sales', 'INITIAL APPROVED' => 'Sales',
+        'WAITING FOR 3D' => 'Designer', '3D FOR APPROVAL' => 'Designer Head', '3D REVISION' => 'Designer',
+        'FOR CLIENT REVIEW' => 'Client (via Sales)', 'CUSTOMER REVISION' => 'Designer', 'CUSTOMER APPROVED' => 'Designer & Sales',
+        'FINAL IN PROGRESS' => 'Designer & Sales', 'FINAL FOR APPROVAL' => 'Designer Head & Sales Head', 'FINAL REVISION' => 'Designer & Sales',
+        'FINAL APPROVED' => 'Accounting Head', 'CONTRACT PREPARING' => 'Accounting Head', 'CONTRACT RETURNED' => 'Accounting Head',
+        'CONTRACT FOR SIGNING' => 'Sales & Designer', 'CONTRACT SENT TO CLIENT' => 'Client (via Sales)', 'CLIENT SIGNED' => 'General Manager',
+        'CONTRACT SIGNED' => 'Accounting', 'NOTICE TO PROCEED' => 'Cutting',
+        'CUTTING LIST UPLOADED' => 'Cutting Head', 'CUTTING LIST REJECTED' => 'Cutting', 'CUTTING LIST APPROVED' => 'Cutting',
+        'BOM SUBMITTED' => 'BOM approver', 'BOM APPROVED' => 'Purchasing', 'BOM RECEIVED' => 'Purchasing',
+        'PR SUBMITTED' => 'Purchasing Head', 'PR RETURNED' => 'Purchasing', 'PR APPROVED' => 'Accounting Head',
+        'PR REVIEWED' => 'Accounting Staff', 'PR RECEIVED BY ACCOUNTING' => 'Custodian', 'PR RELEASED' => 'Custodian',
+        'PR PAID' => 'Purchasing', 'TRANSMITTAL ISSUED' => 'Purchasing',
+        'DELIVERED' => 'Project Coordinator', 'DR CREATED' => 'PC Head', 'DR FOR APPROVAL' => 'PC Head', 'DR RETURNED' => 'Project Coordinator',
+        'DR APPROVED' => 'Project Coordinator', 'FOREMAN ASSIGNED' => 'Project Coordinator', 'LABOR QUOTE SUBMITTED' => 'PC Head',
+        'LABOR QUOTE RETURNED' => 'Project Coordinator', 'LABOR QUOTE APPROVED' => 'Project Coordinator', 'TIMELINE SET' => 'Project Coordinator',
+        'BILLING SUBMITTED' => 'Accounting Head', 'BILLING RETURNED' => 'Project Coordinator', 'BILLING NOTED' => 'PC Head',
+        'BILLING APPROVED' => 'Project Coordinator', 'FULLY BILLED' => 'Project Coordinator',
+        'PUNCH LIST OPEN' => 'Project Coordinator', 'PUNCH LIST CLOSED' => 'Project Coordinator', 'TURNOVER SUBMITTED' => 'General Manager',
+        'TURNOVER RETURNED' => 'Project Coordinator', 'TURNOVER SIGNED' => 'Client (via PC)', 'PARTLY TURNED OVER' => 'Project Coordinator',
+    ];
+    return $map[$label] ?? '';
+}
+
+/** Buod ng galaw ng project galing sa history: huling update, ilang araw na sa stage, phase, sino ang hinihintay. */
+function monPulse(array $events, array $r): array
+{
+    $cur = $events[count($events) - 1];
+    $last = null;       // pinakahuling event na may totoong oras
+    foreach ($events as $e) {
+        if (!empty($e['time']) && $e['ts']) {
+            if ($last === null || $e['ts'] >= $last['ts']) $last = $e;
+        }
+    }
+    $since = !empty($cur['time']) && $cur['ts'] ? $cur['ts'] : ($last['ts'] ?? null);
+    $done = in_array($cur['label'], ['TURNED OVER', 'NOT PROCEEDING'], true);
+    $days = $since ? max(0, (int) floor((time() - $since) / 86400)) : null;
+    $material = monIsMaterial($r);
+    $flow = MON_STAGE_FLOW[$material ? 'ready_for_quotation' : 'site_visit'];
+    $key = monStageKey($cur['label'], $material);
+    $idx = array_search($key, $flow, true);
+    return [
+        'stage_key'    => $key,
+        'stage_name'   => $key === 'closed' ? 'Closed' : (($material && $key === 'order') ? MON_STAGE_MAT_ORDER : (MON_STAGES[$key] ?? '—')),
+        'stage_step'   => $idx === false ? 0 : $idx + 1,     // 1-based, 0 = closed
+        'stage_total'  => count($flow),
+        'stage_sub'    => $key === 'order' ? ($cur['label'] === 'TURNED OVER' ? 'Completed' : monOrderStep($cur['label'])) : '',
+        'material'     => $material,
+        'waiting_on'   => $done ? '' : monWaitingOn($cur['label']),
+        'last_ts'      => $last['ts'] ?? null,
+        'last_time'    => $last['time'] ?? null,                                   // raw (para walang timezone gulo)
+        'last_age'     => isset($last['ts']) ? max(0, time() - $last['ts']) : null, // ilang segundo na (server clock)
+        'last_label'   => $last['label'] ?? null,
+        'last_note'    => $last['note'] ?? null,
+        'stage_days'   => $days,
+        'stuck'        => !$done && $days !== null && $days >= MON_STALE_DAYS,
+        'done'         => $done,
+    ];
+}
+
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 if ($action === 'filter_options') {
@@ -650,6 +844,10 @@ if ($action === 'filter_options') {
         'designers' => $designers,
         'sales'     => $sales,
         'statuses'  => MON_STATUSES,
+        'stages'     => MON_STAGES,
+        'flows'      => MON_STAGE_FLOW,
+        'mat_order'  => MON_STAGE_MAT_ORDER,
+        'stale_days' => MON_STALE_DAYS,
     ]);
 }
 
@@ -663,6 +861,21 @@ if ($action === 'list') {
     $from     = trim($_GET['from'] ?? '');              // date filed
     $to       = trim($_GET['to'] ?? '');
     $sort     = $_GET['sort'] ?? 'newest';
+    $cstage   = trim($_GET['cstage'] ?? '');            // customer stage key | 'stuck' | 'today'
+    $basis    = ($_GET['date_basis'] ?? 'filed') === 'updated' ? 'updated' : 'filed';
+    $month    = trim($_GET['month'] ?? '');             // YYYY-MM
+    $day      = trim($_GET['day'] ?? '');               // YYYY-MM-DD
+    if (!preg_match('/^\d{4}-\d{2}$/', $month)) $month = '';
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) $day = '';
+    // Saklaw ng month/day (inuuna ang day kapag parehong may laman)
+    $dFrom = $dTo = null;
+    if ($day !== '') {
+        $dFrom = strtotime($day . ' 00:00:00');
+        $dTo = strtotime($day . ' 23:59:59');
+    } elseif ($month !== '') {
+        $dFrom = strtotime($month . '-01 00:00:00');
+        $dTo = strtotime(date('Y-m-t', $dFrom) . ' 23:59:59');
+    }
 
     // Status-history filters
     $statusSel = array_values(array_intersect(
@@ -715,18 +928,30 @@ if ($action === 'list') {
     } elseif ($cstatus === 'none') {
         $where[] = "(i.client_status IS NULL OR i.client_status = '')";
     }
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+    // Range: kapag "Last update" ang basehan, sa ibaba ito sinasala (galing sa history)
+    $rFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) ? strtotime($from . ' 00:00:00') : null;
+    $rTo   = preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) ? strtotime($to . ' 23:59:59') : null;
+    if ($basis === 'filed' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
         $where[] = 'DATE(i.created_at) >= ?';
         $types .= 's';
         $params[] = $from;
     }
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+    if ($basis === 'filed' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
         $where[] = 'DATE(i.created_at) <= ?';
         $types .= 's';
         $params[] = $to;
     }
+    if ($dFrom !== null && $basis === 'filed') {
+        $where[] = 'i.created_at BETWEEN ? AND ?';
+        $types .= 'ss';
+        array_push($params, date('Y-m-d H:i:s', $dFrom), date('Y-m-d H:i:s', $dTo));
+    }
 
     $orderBy = [
+        'updated' => 'i.created_at DESC, i.id DESC',   // inaayos pa ulit sa ibaba ayon sa huling galaw
+        'stage_asc'  => 'i.created_at DESC, i.id DESC',
+        'stage_desc' => 'i.created_at DESC, i.id DESC',
+        'stuck'   => 'i.created_at DESC, i.id DESC',
         'newest'  => 'i.created_at DESC, i.id DESC',
         'oldest'  => 'i.created_at ASC, i.id ASC',
         'client'  => 'i.client_name ASC',
@@ -747,6 +972,8 @@ if ($action === 'list') {
     $hasDateRange = ($sFrom !== null || $sTo !== null);
 
     $statusCounts = array_fill_keys(array_keys(MON_STATUSES), 0);
+    $stageCounts = array_fill_keys(array_merge(array_keys(MON_STAGES), ['closed', 'stuck', 'today', 'all']), 0);
+    $todayStart = strtotime('today');
     $rows = [];
 
     foreach ($all as $r) {
@@ -800,7 +1027,51 @@ if ($action === 'list') {
             'created_at'     => $r['created_at'],
             'stage'          => $curLabel,
             'stage_color'    => $curEvent['color'],
-        ];
+            'stage_note'     => $curEvent['note'] ?? '',
+        ] + monPulse($events, $r);
+        $row = &$rows[count($rows) - 1];
+        $row['mode'] = $r['mode'] ?: 'site_visit';
+
+        // Date filter batay sa huling update (month/day)
+        if ($dFrom !== null && $basis === 'updated') {
+            $lt = $row['last_ts'];
+            if ($lt === null || $lt < $dFrom || $lt > $dTo) { array_pop($rows); unset($row); continue; }
+        }
+        if ($basis === 'updated' && ($rFrom !== null || $rTo !== null)) {
+            $lt = $row['last_ts'];
+            if ($lt === null || ($rFrom !== null && $lt < $rFrom) || ($rTo !== null && $lt > $rTo)) { array_pop($rows); unset($row); continue; }
+        }
+
+        // Bilang para sa stage tabs (bago i-apply ang mismong stage tab)
+        $isToday = $row['last_ts'] !== null && $row['last_ts'] >= $todayStart;
+        $stageCounts['all']++;
+        $stageCounts[$row['stage_key']] = ($stageCounts[$row['stage_key']] ?? 0) + 1;
+        if ($row['stuck']) $stageCounts['stuck']++;
+        if ($isToday) $stageCounts['today']++;
+
+        $keep = $cstage === ''
+            || ($cstage === 'stuck' && $row['stuck'])
+            || ($cstage === 'today' && $isToday)
+            || $cstage === $row['stage_key'];
+        if (!$keep) array_pop($rows);
+        unset($row);
+    }
+
+    // Pinakabagong galaw muna / pinakamatagal na nakabinbin muna
+    if ($sort === 'updated') {
+        usort($rows, fn($a, $b) => ($b['last_ts'] ?? 0) <=> ($a['last_ts'] ?? 0));
+    } elseif ($sort === 'stage_asc' || $sort === 'stage_desc') {
+        // Ayon sa customer stage (New Customer → Project Execution); Closed sa dulo
+        $ord = array_flip(['new', 'site', 'quotation', 'design', 'final', 'contract', 'order']);
+        $dir = $sort === 'stage_asc' ? 1 : -1;
+        usort($rows, function ($a, $b) use ($ord, $dir) {
+            $oa = $ord[$a['stage_key']] ?? 99;
+            $ob = $ord[$b['stage_key']] ?? 99;
+            if ($oa === 99 || $ob === 99) return $oa <=> $ob;
+            return ($oa <=> $ob) * $dir ?: (($b['last_ts'] ?? 0) <=> ($a['last_ts'] ?? 0));
+        });
+    } elseif ($sort === 'stuck') {
+        usort($rows, fn($a, $b) => [(int) $b['stuck'], $b['stage_days'] ?? -1] <=> [(int) $a['stuck'], $a['stage_days'] ?? -1]);
     }
 
     monRespond(true, '', [
@@ -808,6 +1079,8 @@ if ($action === 'list') {
         'count'         => count($rows),
         'total'         => count($all),
         'status_counts' => $statusCounts,
+        'stage_counts'  => $stageCounts,
+        'now'           => time(),
     ]);
 }
 
@@ -827,6 +1100,7 @@ if ($action === 'status_detail') {
     // Kapag nasa Cutting list → Delivery na, iyon ang ipapakita
     $hist = monBuildHistory($conn, $r);
     $cur = $hist[count($hist) - 1] ?? null;
+    $pulse = monPulse($hist, $r);
     if ($cur && in_array($cur['group'] ?? '', ['pipeline', 'ops'], true)) {
         $label = $cur['label'];
         $color = $cur['color'];
@@ -845,7 +1119,11 @@ if ($action === 'status_detail') {
         'designer'    => $r['designer_name'] ?: null,
         'started'     => $r['created_at'],
         'site_visit'  => ($r['client_status'] === 'confirmed') ? $r['measurement_datetime'] : null,
-    ]]);
+        'contact'     => $r['contact_number'],
+        'sales'       => $r['sales_name'] ?: null,
+        'project'     => $r['project_type'],
+        'flow'        => array_map(fn($k) => ['key' => $k, 'name' => (monIsMaterial($r) && $k === 'order') ? MON_STAGE_MAT_ORDER : MON_STAGES[$k]], MON_STAGE_FLOW[monIsMaterial($r) ? 'ready_for_quotation' : 'site_visit']),
+    ] + $pulse]);
 }
 
 if ($action === 'status_history') {

@@ -1,14 +1,19 @@
 <?php
-// superadminlaborajax.php  —  Superadmin: pirmahan (Conforme) o ibalik ang Labor Quotation ng PC
+// superadminlaborajax.php  —  PC Head (dating Superadmin; Superadmin = tingin lang): pirmahan (Conforme) o ibalik ang Labor Quotation ng PC
 // Pirma = active signature sa noblesignature (gaya ng budget request approval)
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_PC];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Project Coordinator Head na · Superadmin = review / monitor lang
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_PC);
+nhApproverGuard($nhApprover, (string) ($_GET['action'] ?? $_POST['action'] ?? ''), ['approve', 'return'], 'Project Coordinator Head');
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store');

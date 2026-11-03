@@ -135,7 +135,7 @@ if ($role === ROLE_HR) {
 }
 
 if ($role === ROLE_SALES) {
-    if ($isMainBranch && $isHead) {
+    if ($isMainBranch) {
         $add('Main', $I('/salesmarket', 'fa-solid fa-wallet', 'Budget Request list', null, 'Sales Market'));
     }
     $add('Main', $I('/crmsales', 'fa-solid fa-users', 'CRM Main'));
@@ -164,8 +164,9 @@ if ($role === ROLE_DESIGNER) {
 
 if ($role === ROLE_SUPERADMIN) {
     if ($isMainBranch) {
-        $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Quotation', 'finalReview', '2D & Quotation Approval'));
+        $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Design & Quotation Final ', 'finalReview', '2D & Quotation Approval'));
     }
+    // Review / monitor na lang (ang Head ng department ang nag-a-approve) — may badge pa rin para alam may bago
     $add('Main', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'E-Wood Management', 'ewoodPending'));
     $add('Main', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
 
@@ -183,6 +184,10 @@ if ($role === ROLE_CUTTING) {
         $add('Main', $I('/crmcuttinglist', 'fa-solid fa-pen-ruler', 'Cutting List', 'cuttingTodo', '2D & Quotation Approval'));
     }
     $add('Main', $I('/crmewood', 'fa-solid fa-tree', 'E-Woodfile', 'ewoodTodo', 'Wood Working'));
+    if ($isHead) {
+        // QR approval ng mga upload ng Cutting (dating Superadmin)
+        $add('Manage', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'QR Approvals', 'ewoodPending', 'E-Wood Management'));
+    }
 }
 
 if ($role === ROLE_IT) {
@@ -200,6 +205,10 @@ if ($role === ROLE_PO) {
     }
     $add('Main', $I('/clientseries', 'fa-solid fa-user-gear', 'Client Series'));
     $add('Main', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal Summary', 'poForDelivery'));
+    if ($isHead) {
+        // Approval ng Purchase Request (dating Superadmin/CEO)
+        $add('Manage', $I('/purchaseorderapproval', 'fa-solid fa-file-signature', 'PR Approval', 'prApproval', 'Purchase Request Approval'));
+    }
 }
 
 if ($role === ROLE_PC) {
@@ -210,6 +219,17 @@ if ($role === ROLE_PC) {
     $add('Main', $I('/coordinatortimeline', 'fa-solid fa-chart-gantt', 'Timeline', 'pcTimelineTodo'));
     $add('Progress Billing', $I('/coordinatorbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'pcBillingTodo'));
     $add('Punch list & Turnover', $I('/coordinatorturnover', 'fa-solid fa-key', 'Turnover Letter', 'pcTurnoverTodo'));
+    if ($isHead) {
+        // Approval ng DR, Labor Quotation at Billing (dating Superadmin)
+        $add('Approvals', $I('/superadmin-dr', 'fa-solid fa-truck', 'Delivery Receipt', 'saDrPending', 'DR Approval'));
+        $add('Approvals', $I('/superadminlabor', 'fa-solid fa-helmet-safety', 'Labor Quotation', 'saLaborPending', 'Labor Approval'));
+        $add('Approvals', $I('/superadminbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'saBillingPending', 'Billing Approval'));
+    }
+}
+
+// Para sa lahat ng role: Transmittal (staff o head) — ang PO ay may sarili na sa itaas
+if ($role !== '' && $role !== ROLE_PO) {
+    $add('Team', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal'));
 }
 
 // Para sa lahat ng role: Virtual Office (sino ang online)
@@ -222,7 +242,9 @@ $sbAccountingAll = $role === ROLE_ACCOUNTING && in_array($position, [POSITION_HE
 $sbFollowups = $sbAccountingAll
     ? [$I('/accountingfollowups', 'fa-solid fa-file-arrow-up', 'Follow-ups', 'followupWaiting')]
     : [];
-$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC || $role === ROLE_SALES || $role === ROLE_DESIGNER)
+// Signatured Request (pag-set ng e-signature) — kasama na ang Sales at Designer para makapirma sa Contract
+$sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC
+    || $role === ROLE_SALES || $role === ROLE_DESIGNER)
     ? [$I('/accountingsignatured', 'fa-solid fa-signature', 'Signatured Request')]
     : [];
 

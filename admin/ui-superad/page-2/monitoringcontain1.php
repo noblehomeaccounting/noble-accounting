@@ -2,7 +2,7 @@
 // monitoringcontain1.php — included by monitoringcrm.php
 $box1Url = BASE_URL . '/monitoringcrmajax';
 ?>
-<section id="monBox1" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[300px]">
+<section id="monBox1" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[360px]">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-800">Project Status</h2>
         <span id="monBox1Label" class="text-[11px] font-mono text-gray-400"></span>
@@ -68,15 +68,67 @@ $box1Url = BASE_URL . '/monitoringcrmajax';
                 <dd class="text-gray-800 font-medium min-w-0 break-words">${valueHtml}</dd>`;
         }
 
+        function ago(s) {
+            if (s == null) return '';
+            if (s < 3600) return Math.max(1, Math.floor(s / 60)) + 'm ago';
+            if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+            const d = Math.floor(s / 86400);
+            return d === 1 ? 'yesterday' : d + ' days ago';
+        }
+
+        // New Customer → … → Project Execution (Materials: 4 steps lang)
+        function stepper(it) {
+            if (!it.flow || !it.flow.length) return '';
+            if (it.stage_key === 'closed') {
+                return '<div class="mb-3 text-[11px] font-semibold text-red-600">Closed · client is not proceeding</div>';
+            }
+            const step = it.stage_step || 0;
+            const items = it.flow.map((f, i) => {
+                const n = i + 1;
+                const done = n < step || (it.done && n === step);
+                const cur = n === step && !it.done;
+                const dot = done
+                    ? '<span class="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]"><i class="fa-solid fa-check"></i></span>'
+                    : cur
+                        ? `<span class="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-amber-100">${n}</span>`
+                        : `<span class="w-5 h-5 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px] font-bold">${n}</span>`;
+                const line = n < it.flow.length
+                    ? `<span class="flex-1 h-0.5 mt-2.5 mx-1 ${n < step ? 'bg-emerald-400' : 'bg-gray-200'}"></span>` : '';
+                return `
+                    <div class="flex items-start ${n < it.flow.length ? 'flex-1' : ''} min-w-0">
+                        <div class="flex flex-col items-center w-11 sm:w-14 shrink-0">
+                            ${dot}
+                            <span class="mt-1 text-[9px] sm:text-[9.5px] leading-tight text-center break-words ${cur ? 'font-bold text-amber-700' : (done ? 'text-gray-600' : 'text-gray-400')}">${esc(f.name)}</span>
+                        </div>
+                        ${line}
+                    </div>`;
+            }).join('');
+            return `<div class="flex items-start mb-3 -mx-1">${items}</div>`;
+        }
+
         function card(it) {
             const designer = it.designer
                 ? esc(it.designer)
                 : '<span class="text-amber-600">Not yet assigned</span>';
 
+            const daysTxt = it.done ? 'Completed'
+                : it.stage_days == null ? '—'
+                : it.stage_days === 0 ? 'Today'
+                : `${it.stage_days} ${it.stage_days === 1 ? 'day' : 'days'}`;
+            const waiting = it.waiting_on
+                ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-hourglass-half text-amber-500 text-[10px]"></i>${esc(it.waiting_on)}</span>`
+                : '<span class="text-gray-400">—</span>';
+
             const rows = [
                 row('Client', esc(it.client_name)),
+                it.contact ? row('Contact', esc(it.contact)) : '',
+                row('Type', it.material ? 'Materials (no site visit)' : 'Modular (with site visit)'),
                 it.site_visit ? row('Site Visit', fmtDateTime(it.site_visit)) : '',
-                row('Assigned to', designer),
+                row('Sales', it.sales ? esc(it.sales) : '<span class="text-gray-400">—</span>'),
+                row('Designer', designer),
+                row('Waiting on', waiting),
+                row('In this status', it.stuck ? `<span class="text-red-600 font-semibold">⚠ ${esc(daysTxt)} — no movement</span>` : esc(daysTxt)),
+                row('Last update', it.last_time ? `${String(it.last_time).length <= 10 ? esc(it.last_time) : fmtDateTime(it.last_time)} <span class="text-gray-400 font-normal">(${ago(it.last_age)})</span>` : '—'),
                 row('Expected Next', esc(it.next)),
             ].join('');
 
@@ -86,10 +138,12 @@ $box1Url = BASE_URL . '/monitoringcrmajax';
 
             return `
             <div class="text-[13px]">
+                ${stepper(it)}
                 <span class="inline-flex items-center gap-2 px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border ${STAGE_BADGE[it.color] || 'bg-gray-50 text-gray-600 border-gray-200'}">
                     <span class="w-1.5 h-1.5 rounded-full shrink-0 ${DOT[it.color] || 'bg-gray-400'}"></span>
                     ${esc(it.stage)}
                 </span>
+                ${it.stage_name ? `<span class="ml-1 text-[11px] text-gray-500">${esc(it.stage_name)}${it.stage_sub ? ' · ' + esc(it.stage_sub) : ''}</span>` : ''}
                 <dl class="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 mt-3">
                     ${rows}
                 </dl>

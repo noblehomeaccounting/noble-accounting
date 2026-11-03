@@ -4,7 +4,12 @@
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_PO];
+// Transmittal: magagamit na ng LAHAT ng role (staff o head)
+$allowedRoles = array_values(array_unique(array_filter(array_map(
+    fn($c) => defined($c) ? constant($c) : null,
+    ['ROLE_SUPERADMIN', 'ROLE_PO', 'ROLE_PC', 'ROLE_ACCOUNTING', 'ROLE_SALES', 'ROLE_DESIGNER', 'ROLE_CUTTING',
+     'ROLE_OPERATIONS', 'ROLE_GRAPHIC', 'ROLE_HR', 'ROLE_IT']
+))));
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';

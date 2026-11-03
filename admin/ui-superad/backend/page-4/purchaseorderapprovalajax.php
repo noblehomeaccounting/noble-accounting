@@ -1,13 +1,19 @@
 <?php
-// purchaseorderapprovalajax.php  —  Superadmin (CEO): approve / return Purchase Requests
+// purchaseorderapprovalajax.php  —  Purchasing (PO) Head: approve / return Purchase Requests
+// (Superadmin = tingin lang)
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_PO];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Purchasing Head na · Superadmin = review / monitor lang
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_PO);
+nhApproverGuard($nhApprover, (string) ($_GET['action'] ?? $_POST['action'] ?? ''), ['approve', 'reject'], 'Purchasing Head');
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
@@ -26,7 +32,7 @@ function praOut(array $d): void
     exit;
 }
 
-// Pangalan at aktibong pirma ng Superadmin
+// Pangalan at aktibong pirma ng nag-a-approve (Purchasing Head)
 function praApprover(mysqli $conn, int $userId): array
 {
     $out = ['name' => '', 'signature_path' => null];
@@ -108,17 +114,53 @@ function praRealtime(mysqli $conn, int $prId, array $groups, string $type): void
     }
 }
 
+// Project ID ng bawat PR: PR → BOM (bom_id at/o noblepurchaserequest_bom) → quotation → inquiry.control_no
+function praHasPrLink(mysqli $conn): bool
+{
+    static $has = null;
+    if ($has === null) {
+        try {
+            $t = $conn->query("SHOW TABLES LIKE 'noblepurchaserequest_bom'");
+            $has = $t && $t->num_rows > 0;
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
+function praIdSql(mysqli $conn): string
+{
+    $bomMatch = praHasPrLink($conn)
+        ? "(b.id = p.bom_id OR b.id IN (SELECT pb.bom_id FROM noblepurchaserequest_bom pb WHERE pb.pr_id = p.id))"
+        : "b.id = p.bom_id";
+    return "
+        (SELECT GROUP_CONCAT(DISTINCT iq.control_no ORDER BY iq.control_no SEPARATOR ', ')
+           FROM noblecrm_bom b
+           JOIN noblecrm_2dquotation q ON q.id = b.quotation_id
+           JOIN noblecrminquiry iq ON iq.id = q.inquiry_id
+          WHERE $bomMatch)                                                         AS control_no,
+        (SELECT GROUP_CONCAT(DISTINCT b.bom_number ORDER BY b.bom_number SEPARATOR ', ')
+           FROM noblecrm_bom b WHERE $bomMatch AND b.bom_number IS NOT NULL)        AS bom_numbers";
+}
+
 // ================= LIST =================
 if ($action === 'list') {
-    $rows = $conn->query("
+    $sqlBase = "
         SELECT p.id, p.req_no, p.client, p.project_scope, p.request_date, p.date_needed,
                p.requested_by, p.prepared_by, p.total_amount, p.status,
                p.approved_by, p.approved_at, p.rejection_remarks, p.rejected_at, p.created_at,
                (SELECT COUNT(*) FROM noblepurchaserequest_items i WHERE i.pr_id = p.id) AS item_count,
-               (p.approved_at IS NOT NULL AND DATE(p.approved_at) = CURDATE())          AS approved_today
+               (p.approved_at IS NOT NULL AND DATE(p.approved_at) = CURDATE())          AS approved_today%s
         FROM noblepurchaserequest p
-        ORDER BY (p.status <> 'Pending'), p.id DESC
-    ")->fetch_all(MYSQLI_ASSOC);
+        ORDER BY (p.status <> 'Pending'), p.id DESC";
+    try {
+        $rows = $conn->query(sprintf($sqlBase, ',' . praIdSql($conn)))->fetch_all(MYSQLI_ASSOC);
+    } catch (Throwable $e) {
+        // kung iba ang tables sa server — listahan pa rin, walang Project ID
+        error_log('pra list ids: ' . $e->getMessage());
+        $rows = $conn->query(sprintf($sqlBase, ", NULL AS control_no, NULL AS bom_numbers"))->fetch_all(MYSQLI_ASSOC);
+    }
 
     foreach ($rows as &$r) {
         $r['id'] = (int) $r['id'];
@@ -139,6 +181,19 @@ if ($action === 'view') {
     $st->close();
     if (!$pr) praOut(['success' => false, 'message' => 'Purchase request not found.']);
 
+    // Project ID (Control No. + BOM No.) para sa header ng modal
+    $pr['control_no'] = null;
+    $pr['bom_numbers'] = null;
+    try {
+        $ids = $conn->prepare("SELECT " . praIdSql($conn) . " FROM noblepurchaserequest p WHERE p.id = ? LIMIT 1");
+        $ids->bind_param('i', $id);
+        $ids->execute();
+        $x = $ids->get_result()->fetch_assoc() ?: [];
+        $ids->close();
+        $pr['control_no'] = $x['control_no'] ?? null;
+        $pr['bom_numbers'] = $x['bom_numbers'] ?? null;
+    } catch (Throwable $e) { error_log('pra view ids: ' . $e->getMessage()); }
+
     $it = $conn->prepare("SELECT * FROM noblepurchaserequest_items WHERE pr_id = ? ORDER BY item_no ASC");
     $it->bind_param('i', $id);
     $it->execute();
@@ -149,14 +204,14 @@ if ($action === 'view') {
 }
 
 // ================= APPROVE =================
-// Inilalagay ang pangalan + pirma ng Superadmin sa "Approved By" (CEO)
+// Inilalagay ang pangalan + pirma ng Purchasing Head sa "Approved By"
 if ($action === 'approve') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') praOut(['success' => false, 'message' => 'Invalid request.']);
     $id = intval($_POST['id'] ?? 0);
 
     $ap = praApprover($conn, $currentUserId);
     if ($ap['name'] === '') praOut(['success' => false, 'message' => 'Your account could not be found. Please log in again.']);
-    $title = 'CEO';
+    $title = 'Purchasing Head';
 
     $st = $conn->prepare("
         UPDATE noblepurchaserequest
@@ -171,7 +226,7 @@ if ($action === 'approve') {
 
     if ($affected < 1) praOut(['success' => false, 'message' => 'This request was already approved or returned. Refreshing the list.']);
 
-    praNotify($conn, $id, $currentUserId, 'Your purchase request has been approved by the CEO.');
+    praNotify($conn, $id, $currentUserId, 'Your purchase request has been approved by the Purchasing Head.');
 
     // Abisuhan ang Accounting Head na may susunod na ire-review
     try {
@@ -189,7 +244,7 @@ if ($action === 'approve') {
         $heads = array_column($h->get_result()->fetch_all(MYSQLI_ASSOC), 'id');
         $h->close();
 
-        $msg  = "Purchase request {$pr['req_no']} — {$pr['client']} was approved by the CEO and is ready for your review.";
+        $msg  = "Purchase request {$pr['req_no']} — {$pr['client']} was approved by the Purchasing Head and is ready for your review.";
         $link = PRA_ACCOUNTING_LINK;
         $n = $conn->prepare("
             INSERT INTO noblenotification (user_id, request_id, control_no, type, message, is_read, created_at, sender_id, link)
@@ -203,7 +258,7 @@ if ($action === 'approve') {
         $n->close();
     } catch (Throwable $e) { /* hindi dapat pigilan ng notification ang approval */ }
 
-    // Superadmin (ibang CEO/badge), PO (listahan, Client Series), Accounting Head (susunod na ire-review)
+    // Superadmin (monitor), PO (Head + staff: listahan, Client Series), Accounting Head (susunod na ire-review)
     praRealtime($conn, $id, [[ROLE_SUPERADMIN, null], [ROLE_PO, null], [ROLE_ACCOUNTING, POSITION_HEAD]], 'pr_approved');
     praOut(['success' => true, 'has_signature' => $ap['signature_path'] !== null]);
 }

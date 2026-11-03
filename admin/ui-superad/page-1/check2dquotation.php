@@ -108,9 +108,36 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 <?php endforeach; ?>
             </div>
 
-            <!-- ===================== SEARCH ===================== -->
-            <div class="flex items-center justify-between gap-2 mb-3">
-                <p id="chk2dTabLabel" class="text-xs font-semibold text-gray-700"></p>
+            <!-- ===================== DATE + SEARCH ===================== -->
+            <div class="flex flex-wrap items-end justify-between gap-2 mb-3">
+                <p id="chk2dTabLabel" class="text-xs font-semibold text-gray-700 w-full lg:w-auto lg:mb-2"></p>
+
+                <!-- Date filter (petsa ng submission) -->
+                <div class="flex flex-wrap items-end gap-1.5">
+                    <div class="flex items-center gap-1">
+                        <button type="button" data-chk2d-qdate="today" class="chk2d-qdate px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                        <button type="button" data-chk2d-qdate="week" class="chk2d-qdate px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                        <button type="button" data-chk2d-qdate="month" class="chk2d-qdate px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                    </div>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
+                        <input id="chk2dMonth" type="month" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
+                        <input id="chk2dDay" type="date" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
+                        <input id="chk2dFrom" type="date" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
+                        <input id="chk2dTo" type="date" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <button type="button" id="chk2dDateClear" class="hidden px-2 py-2 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                </div>
+
                 <div class="relative w-full sm:w-72">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                     <input id="chk2dSearch" type="text" placeholder="Search control no., client, contact"
@@ -194,6 +221,10 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         let chk2dLastRows = [];
         let chk2dDecisions = {};
 
+        // Date filter (submitted_at): isa lang ang aktibo — day, week, o month
+        let chk2dDate = { day: '', month: '', week: '', from: '', to: '' };   // week = petsa ng Lunes (YYYY-MM-DD)
+        const CHK2D_WAIT_WARN_DAYS = 3;                    // ilang araw na Queuing bago maging pula
+
         // ── helpers ──
         function chk2dEscapeHtml(str) {
             const div = document.createElement('div');
@@ -227,6 +258,86 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             const dt = new Date(value.replace(' ', 'T'));
             if (isNaN(dt.getTime())) return value;
             return dt.toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        // Gaano na katagal mula nang na-submit: "Just now", "5m ago", "3h ago", "Yesterday", "4 days ago"
+        function chk2dParse(v) {
+            if (!v) return null;
+            const dt = new Date(String(v).replace(' ', 'T'));
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+        function chk2dDaysSince(v) {
+            const dt = chk2dParse(v);
+            return dt ? Math.max(0, Math.floor((Date.now() - dt.getTime()) / 86400000)) : null;
+        }
+        function chk2dAgo(v) {
+            const dt = chk2dParse(v);
+            if (!dt) return '';
+            const s = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 1000));
+            if (s < 60) return 'Just now';
+            if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+            if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+            const d = Math.floor(s / 86400);
+            if (d === 1) return 'Yesterday';
+            if (d < 30) return `${d} days ago`;
+            const m = Math.floor(d / 30);
+            return m < 12 ? `${m} month${m === 1 ? '' : 's'} ago` : `${Math.floor(d / 365)}y ago`;
+        }
+
+        const chk2dPad = n => String(n).padStart(2, '0');
+        const chk2dYmd = dt => `${dt.getFullYear()}-${chk2dPad(dt.getMonth() + 1)}-${chk2dPad(dt.getDate())}`;
+        function chk2dDateActive() { return !!(chk2dDate.day || chk2dDate.month || chk2dDate.week || chk2dDate.from || chk2dDate.to); }
+        function chk2dDateOk(row) {
+            if (!chk2dDateActive()) return true;
+            const d = String(row.submitted_at || '').slice(0, 10);
+            if (!d) return false;
+            if (chk2dDate.from || chk2dDate.to) return (!chk2dDate.from || d >= chk2dDate.from) && (!chk2dDate.to || d <= chk2dDate.to);
+            if (chk2dDate.day) return d === chk2dDate.day;
+            if (chk2dDate.month) return d.slice(0, 7) === chk2dDate.month;
+            const start = new Date(chk2dDate.week + 'T00:00:00');
+            const end = new Date(start); end.setDate(end.getDate() + 6);
+            return d >= chk2dDate.week && d <= chk2dYmd(end);
+        }
+        function chk2dDateLabel() {
+            if (chk2dDate.from || chk2dDate.to) {
+                const f = v => new Date(v + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                return chk2dDate.from && chk2dDate.to ? `${f(chk2dDate.from)} – ${f(chk2dDate.to)}` : chk2dDate.from ? `${f(chk2dDate.from)} onwards` : `up to ${f(chk2dDate.to)}`;
+            }
+            if (chk2dDate.day) {
+                const dt = chk2dParse(chk2dDate.day + ' 00:00:00');
+                return dt ? dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : chk2dDate.day;
+            }
+            if (chk2dDate.month) {
+                const dt = chk2dParse(chk2dDate.month + '-01 00:00:00');
+                return dt ? dt.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }) : chk2dDate.month;
+            }
+            if (chk2dDate.week) return 'this week';
+            return '';
+        }
+        function chk2dSyncDateUI() {
+            document.getElementById('chk2dMonth').value = chk2dDate.month;
+            document.getElementById('chk2dDay').value = chk2dDate.day;
+            document.getElementById('chk2dFrom').value = chk2dDate.from;
+            document.getElementById('chk2dTo').value = chk2dDate.to;
+            document.getElementById('chk2dFrom').max = chk2dDate.to || '';
+            document.getElementById('chk2dTo').min = chk2dDate.from || '';
+            document.getElementById('chk2dDateClear').classList.toggle('hidden', !chk2dDateActive());
+            const today = chk2dYmd(new Date());
+            const thisMonth = today.slice(0, 7);
+            document.querySelectorAll('.chk2d-qdate').forEach(b => {
+                const q = b.dataset.chk2dQdate;
+                const on = (q === 'today' && chk2dDate.day === today)
+                    || (q === 'month' && chk2dDate.month === thisMonth)
+                    || (q === 'week' && !!chk2dDate.week);
+                ['bg-amber-700', 'text-white', 'border-amber-700'].forEach(c => b.classList.toggle(c, on));
+                ['bg-white', 'text-gray-600', 'border-gray-200'].forEach(c => b.classList.toggle(c, !on));
+            });
+        }
+        function chk2dSetDate(next) {
+            chk2dDate = Object.assign({ day: '', month: '', week: '', from: '', to: '' }, next);
+            chk2dSyncDateUI();
+            chk2dLastSignature = '';
+            chk2dFetchList();
         }
 
         function chk2dFormatCurrency(value) {
@@ -353,8 +464,9 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 const data = await res.json();
                 if (!data.success) return;
 
-                const counts = { '': data.rows.length, 'Waiting for Approval': 0, 'Approved': 0, 'For Revision': 0 };
-                data.rows.forEach(row => { if (counts[row.status] !== undefined) counts[row.status]++; });
+                const rows = data.rows.filter(chk2dDateOk);
+                const counts = { '': rows.length, 'Waiting for Approval': 0, 'Approved': 0, 'For Revision': 0 };
+                rows.forEach(row => { if (counts[row.status] !== undefined) counts[row.status]++; });
 
                 document.querySelectorAll('.chk2d-tab').forEach(btn => {
                     const el = btn.querySelector('.chk2d-tab-count');
@@ -374,6 +486,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
         function chk2dEmptyState() {
             const message = chk2dSearchTerm ? `No submissions match "${chk2dEscapeHtml(chk2dSearchTerm)}".`
+                : chk2dDateActive() ? `No submissions ${chk2dDate.week ? 'this week' : (chk2dDate.from || chk2dDate.to) ? 'from ' + chk2dEscapeHtml(chk2dDateLabel()) : 'on ' + chk2dEscapeHtml(chk2dDateLabel())}.`
                 : (chk2dStatusFilter === 'Waiting for Approval' ? 'Nothing in the queue. New final submissions will show up here.' : 'No submissions here.');
             return `<div class="bg-white border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 py-14 text-center">
                     <i class="fa-regular fa-folder-open text-3xl text-gray-300"></i>
@@ -390,6 +503,20 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
                 class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors whitespace-nowrap">
                 View <i class="fa-solid fa-chevron-right text-[9px]"></i></button>`;
+        }
+
+        // "Submitted Nov 3, 2026 · 2h ago" — pula kapag matagal nang naka-Queuing
+        function chk2dSubmittedLine(row) {
+            if (!row.submitted_at) return `<p class="text-gray-300 text-[11px] mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>Not yet submitted</p>`;
+            const days = chk2dDaysSince(row.submitted_at);
+            const ago = chk2dAgo(row.submitted_at);
+            const fresh = ago === 'Just now' || /m ago$/.test(ago);
+            const late = row.status === 'Waiting for Approval' && days !== null && days >= CHK2D_WAIT_WARN_DAYS;
+            const agoHtml = late
+                ? `<span class="font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>${chk2dEscapeHtml(ago)} · still waiting</span>`
+                : `<span class="font-semibold ${fresh ? 'text-green-600' : 'text-gray-500'}">${chk2dEscapeHtml(ago)}</span>`;
+            return `<p class="text-gray-400 text-[11px] mt-0.5" title="${chk2dEscapeHtml(chk2dFormatDateTimeLong(row.submitted_at))}">
+                <i class="fa-regular fa-calendar mr-1"></i>Submitted ${chk2dFormatDate(row.submitted_at)} · ${agoHtml}</p>`;
         }
 
         // kulay ng gilid ng card ayon sa status
@@ -421,7 +548,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                                 <span class="font-mono text-[11.5px] font-bold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>${turnTag}${newTag}
                             </div>
                             <p class="text-gray-900 text-sm font-semibold mt-0.5 truncate">${chk2dEscapeHtml(row.client_name)}</p>
-                            <p class="text-gray-400 text-[11px] mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>Submitted ${chk2dFormatDate(row.submitted_at)}</p>
+                            ${chk2dSubmittedLine(row)}
                         </div>
                         <div class="basis-[210px]" onclick="event.stopPropagation()">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Files</p>
@@ -457,13 +584,17 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     return;
                 }
 
-                const signature = JSON.stringify(data.rows.map(r => `${r.id}:${r.status}:${r.design_3d_stage}:${r.design_2d_review_status}:${r.quotation_review_status}:${r.design_3d_review_status}:${r.review_target}`)) + chk2dStatusFilter;
+                const rows = data.rows.filter(chk2dDateOk);
+                // kasama ang minuto para gumalaw ang "x minutes ago" kahit walang bagong data
+                const signature = JSON.stringify(rows.map(r => `${r.id}:${r.status}:${r.design_3d_stage}:${r.design_2d_review_status}:${r.quotation_review_status}:${r.design_3d_review_status}:${r.review_target}`))
+                    + chk2dStatusFilter + JSON.stringify(chk2dDate) + Math.floor(Date.now() / 60000);
                 if (signature !== chk2dLastSignature) {
-                    chk2dRenderRows(data.rows);
+                    chk2dRenderRows(rows);
                     chk2dLastSignature = signature;
                 }
 
-                document.getElementById('chk2dCount').textContent = `${data.count} submission${data.count === 1 ? '' : 's'} found`;
+                const n = rows.length;
+                document.getElementById('chk2dCount').textContent = `${n} submission${n === 1 ? '' : 's'} found` + (chk2dDateActive() ? ` · ${chk2dDateLabel()}` : '');
                 chk2dFetchCounts();
             } catch (e) {
                 console.error('chk2dFetchList:', e);
@@ -533,6 +664,28 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             chk2dFetchList();
             chk2dSearchInput.focus();
         });
+
+        // ── date filter events ──
+        document.querySelectorAll('.chk2d-qdate').forEach(b => b.addEventListener('click', () => {
+            const now = new Date();
+            const q = b.dataset.chk2dQdate;
+            if (q === 'today') {
+                const t = chk2dYmd(now);
+                chk2dSetDate(chk2dDate.day === t ? {} : { day: t });
+            } else if (q === 'month') {
+                const m = chk2dYmd(now).slice(0, 7);
+                chk2dSetDate(chk2dDate.month === m ? {} : { month: m });
+            } else {
+                const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));   // Lunes
+                chk2dSetDate(chk2dDate.week ? {} : { week: chk2dYmd(mon) });
+            }
+        }));
+        document.getElementById('chk2dMonth').addEventListener('change', e => chk2dSetDate(e.target.value ? { month: e.target.value } : {}));
+        document.getElementById('chk2dDay').addEventListener('change', e => chk2dSetDate(e.target.value ? { day: e.target.value } : {}));
+        document.getElementById('chk2dDateClear').addEventListener('click', () => chk2dSetDate({}));
+        // Range: pinapanatili ang kabilang dulo
+        document.getElementById('chk2dFrom').addEventListener('change', e => chk2dSetDate({ from: e.target.value, to: chk2dDate.to }));
+        document.getElementById('chk2dTo').addEventListener('change', e => chk2dSetDate({ from: chk2dDate.from, to: e.target.value }));
 
         // ── review panel: body (sections) ──
         function chk2dSection(title, rowsHtml) {
@@ -786,7 +939,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                     chk2dSection('Project', [
                         chk2dDetailRow('Contract Amount', chk2dFormatCurrency(r.contract_amount)),
                         chk2dDetailRowHighlight('Target Completion Date', chk2dFormatDate(r.target_completion_date)),
-                        chk2dDetailRow('Submitted', chk2dFormatDateTimeLong(r.submitted_at)),
+                        chk2dDetailRow('Submitted', chk2dFormatDateTimeLong(r.submitted_at) + (r.submitted_at ? ` <span class="text-gray-400 font-normal">(${chk2dEscapeHtml(chk2dAgo(r.submitted_at))})</span>` : '')),
                     ].join('')),
 
                     chk2dSection('Files &amp; Review', [
@@ -856,6 +1009,7 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         }
 
         chk2dInitTabs();
+        chk2dSyncDateUI();
         chk2dFetchList().then(chk2dStartPolling);
     </script>
 </body>

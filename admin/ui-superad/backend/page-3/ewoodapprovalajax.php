@@ -5,10 +5,15 @@
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_CUTTING];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Cutting Head na · Superadmin = review / monitor lang
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_CUTTING);
+nhApproverGuard($nhApprover, (string) ($_GET['action'] ?? $_POST['action'] ?? ''), ['approve', 'reject'], 'Cutting Head');
 
 // dompdf — needed for the bom_pdf action below.
 require_once ROOT_PATH . '/vendor/autoload.php';

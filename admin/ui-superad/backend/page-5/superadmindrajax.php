@@ -1,14 +1,19 @@
 <?php
-// superadmindrajax.php  —  Superadmin: pirmahan (approve) o ibalik (return) ang Delivery Receipt ng PC
+// superadmindrajax.php  —  PC Head (dating Superadmin; Superadmin = tingin lang): pirmahan (approve) o ibalik (return) ang Delivery Receipt ng PC
 // Mapi-print lang ng PC ang DR kapag approved na dito.
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_PC];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Project Coordinator Head na · Superadmin = review / monitor lang
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_PC);
+nhApproverGuard($nhApprover, (string) ($_GET['action'] ?? $_POST['action'] ?? ''), ['approve', 'return'], 'Project Coordinator Head');
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store');

@@ -3,7 +3,7 @@
 // Status History: lahat ng status na dinaanan ng napiling project.
 $box2Url = BASE_URL . '/monitoringcrmajax';
 ?>
-<section id="monBox2" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[300px]">
+<section id="monBox2" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[360px]">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-800">Status History</h2>
         <span id="monBox2Label" class="text-[11px] font-mono text-gray-400"></span>
@@ -109,9 +109,11 @@ $box2Url = BASE_URL . '/monitoringcrmajax';
                 }
 
                 label.textContent = data.control_no;
-                let shown = false, shownOps = false;
+                let shown = false, shownOps = false, shownContract = false;
+                const CONTRACT = /^(CONTRACT |CLIENT SIGNED)/;
                 const html = data.events.map(e => {
                     let head = '';
+                    if (CONTRACT.test(e.label) && !shownContract) { shownContract = true; head = divider('Contract'); }
                     if (e.group === 'pipeline' && !shown) { shown = true; head = divider('Notice to Proceed → Delivery'); }
                     if (e.group === 'ops' && !shownOps) { shownOps = true; head = divider('Operations → Turnover'); }
                     return head + item(e);

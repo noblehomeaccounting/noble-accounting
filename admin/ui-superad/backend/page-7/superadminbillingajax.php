@@ -1,14 +1,19 @@
 <?php
-// superadminbillingajax.php  —  Superadmin: pirmahan o ibalik ang Progress Billing (Application for Payment)
-// Daloy: PC → Accounting Head (Noted by) → Superadmin (Approved by). Pirma = active signature sa noblesignature.
+// superadminbillingajax.php  —  PC Head (dating Superadmin; Superadmin = tingin lang): pirmahan o ibalik ang Progress Billing (Application for Payment)
+// Daloy: PC → Accounting Head (Noted by) → PC Head (Approved by). Pirma = active signature sa noblesignature.
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_PC];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Project Coordinator Head na · Superadmin = review / monitor lang
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_PC);
+nhApproverGuard($nhApprover, (string) ($_GET['action'] ?? $_POST['action'] ?? ''), ['approve', 'return'], 'Project Coordinator Head');
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store');

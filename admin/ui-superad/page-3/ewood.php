@@ -1,14 +1,20 @@
 <?php
-// ewood.php  —  Superadmin: QR Approvals (Cutting Department)
+// ewood.php  —  Cutting Head: QR Approvals (Cutting Department) · Superadmin = tingin lang
 // Bawat upload ng cutting ay may QR photo at BOM. Titingnan dito, saka i-Approve o ibalik for Revision.
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
 
-$allowedRoles = [ROLE_SUPERADMIN];
+$allowedRoles = [ROLE_SUPERADMIN, ROLE_CUTTING];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
+
+// Approval: Cutting Head na · Superadmin = review / monitor lang (walang Approve / Send back)
+include_once ROOT_PATH . '/network/head-approval.php';
+$nhApprover = nhApproverViewer($conn, ROLE_CUTTING);
+nhApproverPageGuard($nhApprover, 'Cutting Head');
+$nhCanApprove = $nhApprover === 'head';
 
 $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 ?>
@@ -46,8 +52,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                                     id="ewoodLiveDot" title="Connecting…"
                                     class="inline-block w-2 h-2 rounded-full bg-amber-400 ml-1 align-middle"></span>
                             </h1>
-                            <p class="text-gray-400 text-[11px] mt-0.5">Check the QR photo and the BOM of each upload,
-                                then approve it or send it back for revision.</p>
+                            <p class="text-gray-400 text-[11px] mt-0.5"><?= $nhCanApprove
+                                ? 'Check the QR photo and the BOM of each upload, then approve it or send it back for revision.'
+                                : 'View only — the Cutting Head approves these uploads.' ?></p>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
@@ -90,6 +97,48 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                         <input type="text" id="ewoodSearch" placeholder="Search control no., client, BOM no.…"
                             class="w-full h-9 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:bg-white focus:border-amber-600">
                     </div>
+                </div>
+
+                <!-- Filters: petsa · uploaded by · sort -->
+                <div class="px-5 py-2.5 flex flex-wrap items-end gap-2 border-t border-gray-100 bg-gray-50/60">
+                    <div class="flex items-center gap-1">
+                        <button type="button" data-ew-qdate="today" class="ew-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                        <button type="button" data-ew-qdate="week" class="ew-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                        <button type="button" data-ew-qdate="month" class="ew-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                    </div>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
+                        <input id="ewoodMonth" type="month" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
+                        <input id="ewoodDay" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
+                        <input id="ewoodFrom" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
+                        <input id="ewoodTo" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                    </label>
+                    <button type="button" id="ewoodDateClear" class="hidden px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                    <label class="block">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Uploaded by</span>
+                        <select id="ewoodUploader" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                            <option value="">Everyone</option>
+                        </select>
+                    </label>
+                    <label class="block ml-auto">
+                        <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Sort by</span>
+                        <select id="ewoodSort" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                            <option value="oldest">Oldest first</option>
+                            <option value="newest">Newest first</option>
+                            <option value="client">Client (A–Z)</option>
+                            <option value="control">Control no.</option>
+                        </select>
+                    </label>
+                    <p id="ewoodDateHint" class="basis-full text-[10.5px] text-gray-400 -mt-0.5 empty:hidden"></p>
                 </div>
             </section>
 
@@ -160,6 +209,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
     </div>
 
     <script>
+        const NH_CAN_APPROVE = <?= json_encode($nhCanApprove) ?>; // Cutting Head lang; Superadmin = tingin lang
         function crmShowToast(message, type = 'success', duration = 4000) {
             const container = document.getElementById('crmToastContainer');
             const palette = type === 'success'
@@ -226,6 +276,16 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             const d = Math.floor(h / 24);
             return `${d} day${d === 1 ? '' : 's'} ago`;
         }
+        // "just now" (berde) · "2 hrs ago" · "4 days ago · still waiting" (pula, kapag naghihintay pa)
+        function ewoodAgoHtml(value, waiting) {
+            if (!value) return '';
+            const ago = ewoodAgo(value);
+            const mins = Math.floor((Date.now() - new Date(String(value).replace(' ', 'T'))) / 60000);
+            if (waiting && mins >= EWOOD_WAIT_WARN_DAYS * 1440) {
+                return `<span class="font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>${ewoodEscapeHtml(ago)} · still waiting</span>`;
+            }
+            return `<span class="font-semibold ${mins < 60 ? 'text-green-600' : 'text-gray-500'}">${ewoodEscapeHtml(ago)}</span>`;
+        }
         const ewoodQty = q => { const n = parseFloat(q); return isNaN(n) ? '' : n.toFixed(2).replace(/\.?0+$/, ''); };
 
         function ewoodStatusBadge(status) {
@@ -242,9 +302,92 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         let ewoodPending = [], ewoodApproved = [];
         const ewoodLoaded = { pending: false, approved: false };
 
+        // ── Filters (petsa · uploaded by · sort) ──
+        // Petsang ginagamit: To review = petsa ng upload · Approved = petsa ng approval
+        let ewoodDateF = { day: '', month: '', week: '', from: '', to: '' };
+        let ewoodUploaderF = '';
+        let ewoodSortBy = 'oldest';      // pinakamatagal nang naghihintay muna (para sa To review)
+        const EWOOD_WAIT_WARN_DAYS = 3;  // ilang araw na naghihintay bago maging pula
+
+        const ewoodPad = n => String(n).padStart(2, '0');
+        const ewoodYmd = dt => `${dt.getFullYear()}-${ewoodPad(dt.getMonth() + 1)}-${ewoodPad(dt.getDate())}`;
+        const ewoodDateOf = (e, key) => String((key === 'approved' ? e.approved_at : e.created_at) || '').slice(0, 10);
+        const ewoodDateActive = () => !!(ewoodDateF.day || ewoodDateF.month || ewoodDateF.week || ewoodDateF.from || ewoodDateF.to);
+        function ewoodDateOk(e, key) {
+            if (!ewoodDateActive()) return true;
+            const d = ewoodDateOf(e, key);
+            if (!d) return false;
+            if (ewoodDateF.from || ewoodDateF.to) return (!ewoodDateF.from || d >= ewoodDateF.from) && (!ewoodDateF.to || d <= ewoodDateF.to);
+            if (ewoodDateF.day) return d === ewoodDateF.day;
+            if (ewoodDateF.month) return d.slice(0, 7) === ewoodDateF.month;
+            const end = new Date(ewoodDateF.week + 'T00:00:00'); end.setDate(end.getDate() + 6);
+            return d >= ewoodDateF.week && d <= ewoodYmd(end);
+        }
+        const ewoodUploaderOk = e => !ewoodUploaderF || (e.uploaded_by || '') === ewoodUploaderF;
+        const ewoodPass = (e, key) => ewoodDateOk(e, key) && ewoodUploaderOk(e);
+        function ewoodDateLabel() {
+            if (ewoodDateF.from || ewoodDateF.to) {
+                const f = v => new Date(v + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+                return ewoodDateF.from && ewoodDateF.to ? `${f(ewoodDateF.from)} – ${f(ewoodDateF.to)}` : ewoodDateF.from ? `${f(ewoodDateF.from)} onwards` : `up to ${f(ewoodDateF.to)}`;
+            }
+            if (ewoodDateF.day) return ewoodFmt(ewoodDateF.day + ' 00:00:00', false);
+            if (ewoodDateF.month) { const d = new Date(ewoodDateF.month + '-01T00:00:00'); return isNaN(d) ? ewoodDateF.month : d.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }); }
+            return ewoodDateF.week ? 'this week' : '';
+        }
+        const ewoodDatePhrase = () => ewoodDateF.week ? 'this week' : (ewoodDateF.from || ewoodDateF.to) ? 'from ' + ewoodDateLabel() : 'on ' + ewoodDateLabel();
+        function ewoodSorted(list, key) {
+            const ts = e => { const v = key === 'approved' ? e.approved_at : e.created_at; const d = v ? new Date(String(v).replace(' ', 'T')) : null; return d && !isNaN(d) ? d.getTime() : 0; };
+            const by = {
+                oldest: (a, b) => ts(a) - ts(b) || a.id - b.id,
+                newest: (a, b) => ts(b) - ts(a) || b.id - a.id,
+                client: (a, b) => String(a.client_name || '').localeCompare(String(b.client_name || '')),
+                control: (a, b) => String(a.control_no || '').localeCompare(String(b.control_no || '')),
+            };
+            return [...list].sort(by[ewoodSortBy] || by.oldest);
+        }
+        function ewoodSyncFilterUI() {
+            document.getElementById('ewoodMonth').value = ewoodDateF.month;
+            document.getElementById('ewoodDay').value = ewoodDateF.day;
+            document.getElementById('ewoodFrom').value = ewoodDateF.from;
+            document.getElementById('ewoodTo').value = ewoodDateF.to;
+            document.getElementById('ewoodFrom').max = ewoodDateF.to || '';
+            document.getElementById('ewoodTo').min = ewoodDateF.from || '';
+            document.getElementById('ewoodDateClear').classList.toggle('hidden', !ewoodDateActive());
+            const t = ewoodYmd(new Date());
+            document.querySelectorAll('.ew-qdate').forEach(b => {
+                const q = b.dataset.ewQdate;
+                const on = (q === 'today' && ewoodDateF.day === t) || (q === 'month' && ewoodDateF.month === t.slice(0, 7)) || (q === 'week' && !!ewoodDateF.week);
+                ['bg-amber-700', 'text-white', 'border-amber-700'].forEach(c => b.classList.toggle(c, on));
+                ['bg-white', 'text-gray-600', 'border-gray-200'].forEach(c => b.classList.toggle(c, !on));
+            });
+            document.getElementById('ewoodDateHint').textContent = ewoodDateActive()
+                ? `Showing uploads ${ewoodTab === 'approved' ? 'approved' : 'uploaded'} ${ewoodDatePhrase()}` : '';
+        }
+        // Listahan ng nag-upload (galing sa data)
+        function ewoodFillUploaders() {
+            const sel = document.getElementById('ewoodUploader');
+            const names = [...new Set([...ewoodPending, ...ewoodApproved].map(e => e.uploaded_by).filter(Boolean))].sort();
+            const keep = ewoodUploaderF;
+            sel.innerHTML = '<option value="">Everyone</option>' + names.map(n => `<option value="${ewoodEscapeHtml(n)}">${ewoodEscapeHtml(n)}</option>`).join('');
+            sel.value = names.includes(keep) ? keep : '';
+            if (sel.value !== keep) ewoodUploaderF = '';
+        }
+        function ewoodRefilter(resort = false) {
+            ewoodSyncFilterUI();
+            if (resort) {
+                if (!ewoodBusyForm()) ewoodRenderPending();
+                if (ewoodLoaded.approved) document.getElementById('ewoodApprovedList').innerHTML = ewoodSorted(ewoodApproved, 'approved').map(ewoodApprovedRow).join('');
+            }
+            ewoodApplyFilter();
+            ewoodStats();
+        }
+        // may bukas na Approve confirm / Send back form → huwag i-render ulit ang To review
+        const ewoodBusyForm = () => !!document.querySelector('.ewood-actions .ewood-rev, .ewood-actions [data-act="approve-yes"]');
+
         function ewoodSwitchTab(tab) {
             ewoodTab = tab;
             try { sessionStorage.setItem('nh-ewood-tab', tab); } catch (e) { }
+            if (typeof ewoodSyncFilterUI === 'function') ewoodSyncFilterUI();
             document.getElementById('ewoodPanelPending').classList.toggle('hidden', tab !== 'pending');
             document.getElementById('ewoodPanelApproved').classList.toggle('hidden', tab !== 'approved');
             document.querySelectorAll('.ewood-tab').forEach(btn => {
@@ -262,9 +405,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         function ewoodStats() {
             const today = new Date().toDateString();
             document.getElementById('ewoodStatPending').textContent = ewoodLoaded.pending ? ewoodPending.length : '—';
-            document.getElementById('ewoodPendingCount').textContent = ewoodLoaded.pending ? ewoodPending.length : '—';
+            document.getElementById('ewoodPendingCount').textContent = ewoodLoaded.pending ? ewoodPending.filter(e => ewoodPass(e, 'pending')).length : '—';
             document.getElementById('ewoodStatApproved').textContent = ewoodLoaded.approved ? ewoodApproved.length : '—';
-            document.getElementById('ewoodApprovedCount').textContent = ewoodLoaded.approved ? ewoodApproved.length : '—';
+            document.getElementById('ewoodApprovedCount').textContent = ewoodLoaded.approved ? ewoodApproved.filter(e => ewoodPass(e, 'approved')).length : '—';
             document.getElementById('ewoodStatToday').textContent = ewoodLoaded.approved
                 ? ewoodApproved.filter(e => e.approved_at && new Date(String(e.approved_at).replace(' ', 'T')).toDateString() === today).length : '—';
         }
@@ -313,7 +456,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             const [qr, ...more] = entry.photos || [];
             const boms = entry.boms || [];
             return `
-            <article id="ewoodApproval_${entry.id}" data-search="${ewoodEscapeHtml(ewoodHay(entry))}"
+            <article id="ewoodApproval_${entry.id}" data-search="${ewoodEscapeHtml(ewoodHay(entry))}" data-id="${entry.id}"
                 class="ewood-card bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                 <div class="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
                     <!-- QR + photos -->
@@ -335,7 +478,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                             <div class="min-w-0">
                                 <p class="notranslate font-mono text-[11px] font-semibold text-amber-700">${ewoodEscapeHtml(entry.control_no)}</p>
                                 <h3 class="text-base font-semibold text-gray-900 capitalize break-words">${ewoodEscapeHtml(entry.client_name)}</h3>
-                                <p class="text-[11px] text-gray-400 mt-0.5">Uploaded ${entry.created_at ? ewoodEscapeHtml(ewoodAgo(entry.created_at)) + ' · ' + ewoodEscapeHtml(ewoodFmt(entry.created_at)) : ''}${entry.uploaded_by ? ' · by <span class="text-gray-600 font-medium">' + ewoodEscapeHtml(entry.uploaded_by) + '</span>' : ''}</p>
+                                <p class="text-[11px] text-gray-400 mt-0.5">Uploaded ${ewoodAgoHtml(entry.created_at, true)}${entry.created_at ? ' · ' + ewoodEscapeHtml(ewoodFmt(entry.created_at)) : ''}${entry.uploaded_by ? ' · by <span class="text-gray-600 font-medium">' + ewoodEscapeHtml(entry.uploaded_by) + '</span>' : ''}</p>
                             </div>
                             ${ewoodStatusBadge(entry.status)}
                         </div>
@@ -355,6 +498,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         }
 
         function ewoodActionsIdle() {
+            if (!NH_CAN_APPROVE) {
+                return `<p class="text-[11px] text-amber-800"><i class="fa-solid fa-eye mr-1"></i>View only — waiting for the Cutting Head to approve.</p>`;
+            }
             return `<div class="flex flex-wrap items-center justify-between gap-2">
                 <p class="text-[11px] text-gray-400"><i class="fa-solid fa-qrcode mr-1"></i>Scan the QR first, then decide.</p>
                 <div class="flex items-center gap-2 ml-auto">
@@ -365,7 +511,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 
         function ewoodRenderPending() {
             const list = document.getElementById('ewoodApprovalList');
-            list.innerHTML = ewoodPending.map(ewoodPendingCard).join('');
+            list.innerHTML = ewoodSorted(ewoodPending, 'pending').map(ewoodPendingCard).join('');
             ewoodApplyFilter();
         }
 
@@ -378,6 +524,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 const before = new Set(ewoodPending.map(e => e.id));
                 ewoodPending = data.entries || [];
                 ewoodLoaded.pending = true;
+                ewoodFillUploaders();
                 const fresh = silent ? ewoodPending.filter(e => !before.has(e.id)).length : 0;
                 ewoodRenderPending();
                 if (fresh) crmShowToast(`${fresh} new upload${fresh === 1 ? '' : 's'} to review.`);
@@ -563,7 +710,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         // ═════════════ APPROVED ═════════════
         function ewoodApprovedRow(entry) {
             const qr = (entry.photos || [])[0];
-            return `<div id="ewoodApproved_${entry.id}" data-search="${ewoodEscapeHtml(ewoodHay(entry))}" class="ewood-card flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-4 py-3">
+            return `<div id="ewoodApproved_${entry.id}" data-search="${ewoodEscapeHtml(ewoodHay(entry))}" data-id="${entry.id}" class="ewood-card flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 ${qr ? `<a href="${qr}" target="_blank" rel="noopener" class="shrink-0"><img src="${qr}" alt="" class="w-12 h-12 object-cover rounded-lg border border-gray-200 hover:border-amber-500"></a>`
                     : '<span class="w-12 h-12 shrink-0 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300"><i class="fa-solid fa-qrcode"></i></span>'}
                 <div class="min-w-0 flex-1 basis-[180px]">
@@ -575,7 +722,8 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 </div>
                 <div class="text-right shrink-0 ml-auto">
                     <p class="text-[11px] text-green-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>${ewoodEscapeHtml(ewoodFmt(entry.approved_at))}</p>
-                    <p class="text-[10.5px] text-gray-400">${entry.approved_by ? 'by ' + ewoodEscapeHtml(entry.approved_by) : ''}</p>
+                    <p class="text-[10.5px] text-gray-400">${ewoodAgoHtml(entry.approved_at, false)}${entry.approved_by ? ' · by ' + ewoodEscapeHtml(entry.approved_by) : ''}</p>
+                    ${entry.uploaded_by ? `<p class="text-[10px] text-gray-300">Uploaded by ${ewoodEscapeHtml(entry.uploaded_by)}</p>` : ''}
                 </div>
             </div>`;
         }
@@ -588,7 +736,8 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 if (!data.success) throw new Error(data.message || 'Failed to load approved uploads.');
                 ewoodApproved = data.entries || [];
                 ewoodLoaded.approved = true;
-                list.innerHTML = ewoodApproved.map(ewoodApprovedRow).join('');
+                ewoodFillUploaders();
+                list.innerHTML = ewoodSorted(ewoodApproved, 'approved').map(ewoodApprovedRow).join('');
                 ewoodApplyFilter();
             } catch (e) {
                 console.error(e);
@@ -605,23 +754,49 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         function ewoodApplyFilter() {
             const q = document.getElementById('ewoodSearch').value.trim().toLowerCase();
             [
-                { key: 'pending', listId: 'ewoodApprovalList', emptyId: 'ewoodApprovalEmpty', emptyMsg: 'All caught up. Nothing to review.' },
-                { key: 'approved', listId: 'ewoodApprovedList', emptyId: 'ewoodApprovedEmpty', emptyMsg: 'No approvals yet.' },
+                { key: 'pending', listId: 'ewoodApprovalList', emptyId: 'ewoodApprovalEmpty', emptyMsg: 'All caught up. Nothing to review.', data: ewoodPending },
+                { key: 'approved', listId: 'ewoodApprovedList', emptyId: 'ewoodApprovedEmpty', emptyMsg: 'No approvals yet.', data: ewoodApproved },
             ].forEach(cfg => {
                 if (!ewoodLoaded[cfg.key]) return;
+                const byId = new Map(cfg.data.map(e => [e.id, e]));
                 const cards = document.querySelectorAll(`#${cfg.listId} .ewood-card`);
-                let visible = 0;
+                let visible = 0, passFilters = 0;
                 cards.forEach(card => {
-                    const show = !q || card.dataset.search.includes(q);
+                    const e = byId.get(+card.dataset.id);
+                    const okFilters = !e || ewoodPass(e, cfg.key);
+                    if (okFilters) passFilters++;
+                    const show = okFilters && (!q || card.dataset.search.includes(q));
                     card.classList.toggle('hidden', !show);
                     if (show) visible++;
                 });
                 const empty = document.getElementById(cfg.emptyId);
                 empty.classList.toggle('hidden', visible > 0);
-                empty.querySelector('.ewood-empty-msg').textContent = cards.length === 0 ? cfg.emptyMsg : 'No results match your search.';
+                empty.querySelector('.ewood-empty-msg').textContent = cards.length === 0 ? cfg.emptyMsg
+                    : passFilters === 0 ? `Nothing ${cfg.key === 'approved' ? 'approved' : 'uploaded'}${ewoodDateActive() ? (' ' + ewoodDatePhrase()) : ''}${ewoodUploaderF ? ' by ' + ewoodUploaderF : ''}.`
+                    : 'No results match your search.';
             });
         }
         document.getElementById('ewoodSearch').addEventListener('input', ewoodApplyFilter);
+
+        // ── Filter events ──
+        function ewoodSetDate(next) {
+            ewoodDateF = Object.assign({ day: '', month: '', week: '', from: '', to: '' }, next);
+            ewoodRefilter();
+        }
+        document.querySelectorAll('.ew-qdate').forEach(b => b.addEventListener('click', () => {
+            const now = new Date();
+            const q = b.dataset.ewQdate;
+            if (q === 'today') { const t = ewoodYmd(now); ewoodSetDate(ewoodDateF.day === t ? {} : { day: t }); }
+            else if (q === 'month') { const m = ewoodYmd(now).slice(0, 7); ewoodSetDate(ewoodDateF.month === m ? {} : { month: m }); }
+            else { const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); ewoodSetDate(ewoodDateF.week ? {} : { week: ewoodYmd(mon) }); }
+        }));
+        document.getElementById('ewoodMonth').addEventListener('change', e => ewoodSetDate(e.target.value ? { month: e.target.value } : {}));
+        document.getElementById('ewoodDay').addEventListener('change', e => ewoodSetDate(e.target.value ? { day: e.target.value } : {}));
+        document.getElementById('ewoodDateClear').addEventListener('click', () => ewoodSetDate({}));
+        document.getElementById('ewoodFrom').addEventListener('change', e => ewoodSetDate({ from: e.target.value, to: ewoodDateF.to }));
+        document.getElementById('ewoodTo').addEventListener('change', e => ewoodSetDate({ from: ewoodDateF.from, to: e.target.value }));
+        document.getElementById('ewoodUploader').addEventListener('change', e => { ewoodUploaderF = e.target.value; ewoodRefilter(); });
+        document.getElementById('ewoodSort').addEventListener('change', e => { ewoodSortBy = e.target.value; ewoodRefilter(true); });
 
         // ═════════════ BOM VIEW (full form) ═════════════
         // Fetches one BOM's full data (header + items) and renders it inside
@@ -781,6 +956,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         let ewoodStartTab = 'pending';
         try { ewoodStartTab = sessionStorage.getItem('nh-ewood-tab') || 'pending'; } catch (e) { }
         ewoodSwitchTab(ewoodStartTab === 'approved' ? 'approved' : 'pending');
+        ewoodSyncFilterUI();
         ewoodLoadApprovalList();
         ewoodLoadApprovedList();
 
