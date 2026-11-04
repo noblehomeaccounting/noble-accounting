@@ -284,4 +284,7 @@ return [
     'salespoapproval'                       => 'admin/crm-management/purchaseorder/salespoapproval.php',
     'salespoajax'                           => 'admin/crm-management/purchaseorder/backend/salespoajax.php',
     'salespovendor'                            => 'admin/crm-management/purchaseorder/salespovendor.php',
+        // support (lahat ng admin): report ng sira / suggestion + system updates
+    'reportbugandimprovement'               => 'admin/ui-informationtech/page-3/reportbugandimprovement.php',
+    'systemupdates'                         => 'admin/ui-informationtech/page-3/systemupdates.php',
 ];

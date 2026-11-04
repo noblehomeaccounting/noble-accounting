@@ -253,7 +253,11 @@ if ($role !== '' && $role !== ROLE_PO) {
     $add('Team', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal'));
 }
 
-
+// Para sa lahat ng role: System Updates + Report a Problem
+if ($role !== '') {
+    $add('Support', $I('/systemupdates', 'fa-solid fa-bullhorn', 'System Updates', null, "What's New"));
+    $add('Support', $I('/reportbugandimprovement', 'fa-solid fa-bug', $role === ROLE_IT ? 'Bug Reports' : 'Report a Problem', null, 'Report Bug & Improvement'));
+}
 
 // Para sa lahat ng role: Virtual Office (sino ang online)
 if ($role !== '') {
