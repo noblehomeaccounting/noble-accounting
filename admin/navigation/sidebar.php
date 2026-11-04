@@ -83,6 +83,9 @@ $add = function (string $section, array $item) use (&$sbMenu) {
 $I = fn($href, $icon, $label, $badge = null, $tip = null, $active = null) =>
     ['href' => $href, 'icon' => $icon, 'label' => $label, 'badge' => $badge, 'tip' => $tip ?? $label, 'active' => $active ?? $href];
 
+// PO Supplier List — laging katabi ng Purchase Order / Sales PO
+$sbVendorPo = fn() => $I('/salespovendor', 'fa-solid fa-truck-ramp-box', 'PO Supplier List', null, 'Purchase Orders by Supplier');
+
 if ($role === ROLE_ACCOUNTING) {
     if ($isHead) {
         $add('Main', $I('/generalannouncement', 'fa-solid fa-bullhorn', 'General Announce'));
@@ -100,6 +103,9 @@ if ($role === ROLE_ACCOUNTING) {
         $add('CRM Manage', $I('/crmaccounting', 'fa-solid fa-folder-tree', 'CRM List', 'depositWaiting'));
         $add('CRM Manage', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
         $add('PO Manage', $I('/accountingpurchaseorder', 'fa-solid fa-cart-flatbed', 'Purchase Order List', 'poToReview'));
+        // Sales PO — Accounting Head: Acknowledged by
+        $add('PO Manage', $I('/salespoapproval', 'fa-solid fa-file-invoice', 'Sales PO', 'spoTodo', 'Sales Purchase Order'));
+        $add('PO Manage', $sbVendorPo());
         $add('Billing', $I('/accountingbilling', 'fa-solid fa-file-invoice-dollar', 'Progress Billing', 'billingPending', 'Billing'));
         $add('Billing', $I('/projectcost', 'fa-solid fa-scale-balanced', 'Project Cost'));
     }
@@ -110,6 +116,9 @@ if ($role === ROLE_ACCOUNTING) {
         $add('Main', $I('/projectmonitor', 'fa-solid fa-file-circle-check', 'Project Monitor'));
         $add('Main', $I('/cashvoucherdashboard', 'fa-solid fa-money-bills', 'Approval Cash Voucher', 'unpreparedVoucher'));
         $add('Main', $I('/accountingstaffpurchase', 'fa-solid fa-folder-tree', 'Receive Purchase', 'prToReceive', 'Receive Purchase Request'));
+        // Sales PO — Accounting Staff: Received by
+        $add('Main', $I('/salespoapproval', 'fa-solid fa-file-invoice', 'Sales PO', 'spoTodo', 'Sales Purchase Order'));
+        $add('Main', $sbVendorPo());
     }
     if ($isCustodian) {
         $add('Main', $I('/accountingcustodiandashboard', 'fa-solid fa-chart-line', 'Dashboard Records'));
@@ -119,10 +128,16 @@ if ($role === ROLE_ACCOUNTING) {
         $add('Manage', $I('/projectmonitor', 'fa-solid fa-file-circle-check', 'Project Monitor'));
         $add('Manage', $I('/cashvoucherdashboard', 'fa-solid fa-ticket-simple', 'Approval Cash Voucher', 'unpreparedVoucher'));
         $add('Manage', $I('/accountingcustodianpurchaseorder', 'fa-solid fa-file-signature', 'Purchase Request', 'prToRelease'));
+        // Sales PO — Custodian: Released by
+        $add('Manage', $I('/salespoapproval', 'fa-solid fa-file-invoice', 'Sales PO', 'spoTodo', 'Sales Purchase Order'));
+        $add('Manage', $sbVendorPo());
     }
     if ($isCustooAssistant) {
         $add('Manage', $I('/accountingcustodian', 'fa-solid fa-circle-dollar-to-slot', 'Cash Voucher Request', 'toRelease'));
         $add('Manage', $I('/accountingcustodianassistantpurchaseorder', 'fa-solid fa-file-circle-check', 'Purchase Request', 'prToRelease'));
+        // Sales PO — Custodian Assistant: Released by
+        $add('Manage', $I('/salespoapproval', 'fa-solid fa-file-invoice', 'Sales PO', 'spoTodo', 'Sales Purchase Order'));
+        $add('Manage', $sbVendorPo());
     }
 }
 
@@ -142,6 +157,9 @@ if ($role === ROLE_SALES) {
     $add('Main', $I('/crmsaleslist', 'fa-solid fa-list-ol', 'CRM List', 'crmPending'));
     $add('Main', $I('/quotation', 'fa-solid fa-file-pen', 'Quotation'));
     $add('Main', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
+    // Purchase Order — Sales ang gumagawa (Prepared by)
+    $add('PO Reports', $I('/purchaseordermain', 'fa-solid fa-file-invoice', 'Purchase Order', 'spoSales', 'Purchase Order'));
+    $add('PO Reports', $sbVendorPo());
     if ($isHead) {
         // Initial at Final approval ng Quotation (Sales Head)
         $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Initial Approval', 'designerReview', 'Initial 2D & Quotation Approval'));
@@ -164,7 +182,7 @@ if ($role === ROLE_DESIGNER) {
 
 if ($role === ROLE_SUPERADMIN) {
     if ($isMainBranch) {
-        $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Design & Quotation Final ', 'finalReview', '2D & Quotation Approval'));
+        $add('Main', $I('/crm-main', 'fa-solid fa-file-circle-check', '2D & Quotation', 'finalReview', '2D & Quotation Approval'));
     }
     // Review / monitor na lang (ang Head ng department ang nag-a-approve) — may badge pa rin para alam may bago
     $add('Main', $I('/crmewoodapproval', 'fa-solid fa-business-time', 'E-Wood Management', 'ewoodPending'));
@@ -172,6 +190,9 @@ if ($role === ROLE_SUPERADMIN) {
 
     $add('Tracking', $I('/monitoring', 'fa-solid fa-chart-simple', 'Monitoring & WorkBench', null, 'Monitoring'));
     $add('Tracking', $I('/purchaseorderapproval', 'fa-solid fa-file-signature', 'Purchase Order Approval', 'prApproval', 'Purchase Order'));
+    // Sales PO — Superadmin: Approved by
+    $add('Tracking', $I('/salespoapproval', 'fa-solid fa-file-invoice', 'Sales PO Approval', 'spoTodo', 'Sales Purchase Order'));
+    $add('Tracking', $sbVendorPo());
     $add('Tracking', $I('/superadmin-dr', 'fa-solid fa-truck', 'Delivery Receipt', 'saDrPending'));
     $add('Tracking', $I('/superadminlabor', 'fa-solid fa-helmet-safety', 'Labor Quotation', 'saLaborPending'));
     $add('Tracking', $I('/superadminbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'saBillingPending'));
@@ -231,6 +252,8 @@ if ($role === ROLE_PC) {
 if ($role !== '' && $role !== ROLE_PO) {
     $add('Team', $I('/transmittalsummary', 'fa-solid fa-truck-pickup', 'Transmittal'));
 }
+
+
 
 // Para sa lahat ng role: Virtual Office (sino ang online)
 if ($role !== '') {

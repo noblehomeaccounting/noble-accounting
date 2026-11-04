@@ -24,11 +24,13 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 </head>
 
 <body class="bg-slate-100">
+
     <main class="ml-56 min-h-screen p-8">
 
         <?php include ROOT_PATH . '/admin/requestcentral/requests-view.php'; ?>
 
     </main>
+    
 </body>
 
 </html>

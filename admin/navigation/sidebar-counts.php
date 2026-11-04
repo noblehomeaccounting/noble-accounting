@@ -58,6 +58,8 @@ if (!function_exists('getSidebarCounts')) {
             'pcTimelineTodo' => 0,
             'pcBillingTodo' => 0,
             'pcTurnoverTodo' => 0,
+            'spoTodo' => 0,      // Sales PO na hinihintay ang pirma mo
+            'spoSales' => 0,     // Sales: draft o ibinalik na PO
             'saDrPending' => 0,
             'saLaborPending' => 0,
             'saBillingPending' => 0,
@@ -579,6 +581,24 @@ if (!function_exists('getSidebarCounts')) {
             } catch (Throwable $e) {
                 error_log('sidebar pcTurnoverTodo: ' . $e->getMessage());
             }
+        }
+
+        // ── Sales Purchase Order (noblesales_po) ──
+        // Accounting Head → Acknowledged · Superadmin → Approved · Accounting Staff → Received · Custodian / Asst. → Released
+        try {
+            $spoStatus = null;
+            if ($role === ROLE_SUPERADMIN) $spoStatus = 'pending_approval';
+            elseif ($role === ROLE_ACCOUNTING && $isHead) $spoStatus = 'pending_ack';
+            elseif ($role === ROLE_ACCOUNTING && $isStaff) $spoStatus = 'pending_receive';
+            elseif ($role === ROLE_ACCOUNTING && ($isCustodian || $isCustoAssist)) $spoStatus = 'pending_release';
+            if ($spoStatus !== null) {
+                $c['spoTodo'] = sidebarScalar($conn, "SELECT COUNT(*) FROM noblesales_po WHERE status = ?", 's', [$spoStatus]);
+            }
+            if ($role === ROLE_SALES) {
+                $c['spoSales'] = sidebarScalar($conn, "SELECT COUNT(*) FROM noblesales_po WHERE prepared_by_id = ? AND status IN ('draft', 'returned')", 'i', [$user_id]);
+            }
+        } catch (Throwable $e) {
+            error_log('sidebar spo: ' . $e->getMessage());   // wala pang noblesales_po table
         }
 
         return $c;
