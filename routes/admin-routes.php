@@ -163,6 +163,10 @@ return [
     'profileupdateajax'                     => 'admin/ui-humanresource/backend/page-1/profileupdateajax.php',
     'profileofficialajax'                   => 'admin/ui-humanresource/backend/page-1/profileofficialajax.php',
     'listaccountajax'                       => 'admin/ui-humanresource/backend/page-5/listaccountajax.php',
+        // hr page 6: Memorandum (NTE / NOD / COE)
+    'memo'                                  => 'admin/ui-humanresource/page-6/memo.php',
+    'memoajax'                              => 'admin/ui-humanresource/backend/page-6/memoajax.php',
+   
 
     // operation
     'operation'                             => 'admin/ui-operation/index-operation-main.php',
@@ -233,6 +237,7 @@ return [
     'superadminturnoverajax'                => 'admin/ui-superad/backend/page-8/superadminturnoverajax.php',
     'projectcost'                           => 'admin/ui-superad/page-9/project-cost.php',
     'projectcostajax'                       => 'admin/ui-superad/backend/page-9/projectcostajax.php',
+    'memoapproval'                          => 'admin/ui-superad/page-10/memoapproval.php',
 
     // virtual office (lahat ng admin)
     'virtualoffice'                         => 'admin/ui-office/page-1/virtual-office.php',

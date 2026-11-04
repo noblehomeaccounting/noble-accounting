@@ -32,6 +32,23 @@ if ($fuNavUserId && isset($conn)) {
     } catch (Throwable $e) { /* hindi pa nagagawa ang column, i-skip */
     }
 }
+
+// Bilang ng memo galing HR na hindi pa nababasa
+$memoNavCount = 0;
+if ($fuNavUserId && isset($conn)) {
+    try {
+        if ($mmStmt = $conn->prepare("SELECT COUNT(*) FROM noblememo_recipient x JOIN noblememo m ON m.id = x.memo_id
+                                      WHERE x.account_id = ? AND m.status = 'sent' AND x.read_at IS NULL")) {
+            $mmStmt->bind_param("i", $fuNavUserId);
+            $mmStmt->execute();
+            $mmStmt->bind_result($memoNavCount);
+            $mmStmt->fetch();
+            $mmStmt->close();
+        }
+    } catch (Throwable $e) { /* wala pang memo table, i-skip */
+    }
+}
+$memoNavBadge = $memoNavCount > 9 ? '9+' : (int) $memoNavCount;
 ?>
 
 
@@ -421,7 +438,7 @@ if ($fuNavUserId && isset($conn)) {
             <!-- Desktop user (avatar + name + status + chevron) -->
             <div class="relative hidden md:block" id="user-dropdown-wrapper">
                 <button onclick="toggleDropdown()"
-                    class="flex items-center gap-3 pl-1 pr-2 lg:pr-3 py-1.5 rounded-full hover:bg-white/10 transition-colors text-left">
+                    class="relative flex items-center gap-3 pl-1 pr-2 lg:pr-3 py-1.5 rounded-full hover:bg-white/10 transition-colors text-left">
                     <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-offset-2 ring-offset-[#333]"
                         style="--tw-ring-color: var(--nh-orange); background:#fff1e0;">
                         <?php if (!empty($_SESSION['picture'])): ?>
@@ -431,6 +448,9 @@ if ($fuNavUserId && isset($conn)) {
                             <i class="fa-solid fa-user text-sm" style="color:var(--nh-orange)"></i>
                         <?php endif; ?>
                     </div>
+                    <span id="memo-avatar-dot"
+                        class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> absolute top-1 left-9 w-3 h-3 bg-red-500 rounded-full ring-2 ring-[#333]"
+                        title="New memo from HR"></span>
                     <div class="hidden lg:block leading-tight min-w-0">
                         <p class="text-[14px] font-semibold text-white max-w-[150px] truncate">
                             <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
@@ -473,6 +493,12 @@ if ($fuNavUserId && isset($conn)) {
                     <a href="<?= BASE_URL ?>/userprofile"
                         class="flex items-center gap-3 px-4 py-3 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors">
                         <i class="fa-regular fa-id-card w-4 text-center"></i> My Employee ID
+                    </a>
+                    <a href="<?= BASE_URL ?>/memouser"
+                        class="flex items-center gap-3 px-4 py-3 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors">
+                        <i class="fa-solid fa-envelope-open-text w-4 text-center"></i> Memo
+                        <span id="memo-nav-badge"
+                            class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> ml-auto min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center"><?= $memoNavBadge ?></span>
                     </a>
                     <div class="border-t border-gray-100"></div>
                     <a href="<?= BASE_URL ?>/logoutuser"
@@ -597,6 +623,16 @@ if ($fuNavUserId && isset($conn)) {
             class="flex items-center gap-3 px-3 py-2.5 rounded-r-xl text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all border-l-[3px] border-transparent">
             <i class="fa-regular fa-id-card w-4 text-center text-gray-400"></i>
             <span>My Employee ID</span>
+        </a>
+
+        <?php $memoActive = str_starts_with($relativePath, '/memouser'); ?>
+
+        <a href="<?= BASE_URL ?>/memouser"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-r-xl text-sm transition-all border-l-[3px] <?= $memoActive ? 'bg-orange-50 text-orange-600 font-semibold border-[#f7941d]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800 border-transparent' ?>">
+            <i class="fa-solid fa-envelope-open-text w-4 text-center <?= $memoActive ? 'text-orange-500' : 'text-gray-400' ?>"></i>
+            <span>Memo</span>
+            <span id="mob-memo-badge"
+                class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"><?= $memoNavBadge ?></span>
         </a>
     </nav>
 
@@ -800,6 +836,18 @@ if ($fuNavUserId && isset($conn)) {
             if (n > 0) { el.textContent = n > 9 ? '9+' : n; el.classList.remove('hidden'); }
             else el.classList.add('hidden');
         });
+    };
+
+    // ── Memo Badge ───────────────────────────────────────
+    // Tinatawag ng memouser.php kapag may nabasang memo
+    window.setMemoBadge = function (n) {
+        ['memo-nav-badge', 'mob-memo-badge'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (n > 0) { el.textContent = n > 9 ? '9+' : n; el.classList.remove('hidden'); }
+            else el.classList.add('hidden');
+        });
+        document.getElementById('memo-avatar-dot')?.classList.toggle('hidden', !(n > 0));
     };
 
     fetchNotifications();

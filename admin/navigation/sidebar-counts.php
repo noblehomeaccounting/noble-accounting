@@ -60,6 +60,7 @@ if (!function_exists('getSidebarCounts')) {
             'pcTurnoverTodo' => 0,
             'spoTodo' => 0,      // Sales PO na hinihintay ang pirma mo
             'spoSales' => 0,     // Sales: draft o ibinalik na PO
+            'memoTodo' => 0,     // HR Memo: hinihintay ang pirma mo / ibinalik sa HR
             'saDrPending' => 0,
             'saLaborPending' => 0,
             'saBillingPending' => 0,
@@ -599,6 +600,24 @@ if (!function_exists('getSidebarCounts')) {
             }
         } catch (Throwable $e) {
             error_log('sidebar spo: ' . $e->getMessage());   // wala pang noblesales_po table
+        }
+
+        // ── HR Memo (noblememo) ──
+        // HR Head → Verified (pending_verify) + ibinalik sa HR · HR Assistant → ibinalik sa HR
+        // Superadmin → Approved (pending_approval — yung pinili lang ng HR na "Needs Superadmin approval")
+        try {
+            if ($role === ROLE_HR) {
+                $c['memoTodo'] = sidebarScalar(
+                    $conn,
+                    $isHead
+                        ? "SELECT COUNT(*) FROM noblememo WHERE status IN ('pending_verify', 'returned')"
+                        : "SELECT COUNT(*) FROM noblememo WHERE status = 'returned'"
+                );
+            } elseif ($role === ROLE_SUPERADMIN) {
+                $c['memoTodo'] = sidebarScalar($conn, "SELECT COUNT(*) FROM noblememo WHERE status = 'pending_approval' AND need_superadmin = 1");
+            }
+        } catch (Throwable $e) {
+            error_log('sidebar memo: ' . $e->getMessage());   // wala pang noblememo table
         }
 
         return $c;

@@ -37,7 +37,8 @@ return [
     'fetchnotificationsuser'                => 'user/navigation/backend/backend-notification/fetchnotifications.php',
     'readnotificationuser'                  => 'user/navigation/backend/backend-notification/readnotification.php',
     'notificationsuser'                     => 'user/ui/index-notifications.php',
-
+    'memouser'                              => 'user/profile/memouser.php',
+    'memouserajax'                          => 'user/profile/backend/memouserajax.php',
     'contractsign'                          => 'admin/crm-management/contract/contract-sign.php',
     'contractsignajax'                      => 'admin/crm-management/contract/backend/contractsignajax.php',
 ];

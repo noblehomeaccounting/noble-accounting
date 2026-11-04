@@ -145,6 +145,8 @@ if ($role === ROLE_HR) {
     $add('Main', $I('/humanresourcerequest', 'fa-solid fa-address-book', 'Budget Request', null, 'Request'));
     $add('Announcement', $I('/hrannouncement', 'fa-solid fa-pen-to-square', 'Insert Announcement'));
     $add('Announcement', $I('/payrollannouncement', 'fa-solid fa-money-check-dollar', 'Payroll Announcement'));
+    // Memorandum: NTE / NOD / COE (HR Assistant: Prepared by · HR Head: Verified by)
+    $add('Memorandum', $I('/memo', 'fa-solid fa-envelope-open-text', 'Memorandum', 'memoTodo', 'Notice to Explain, Decision & COE'));
     $add('Profile & Accounts', $I('/hrprofile', 'fa-solid fa-id-card', 'Insert ID Profile', null, 'Profile'));
     $add('Profile & Accounts', $I('/listaccount', 'fa-solid fa-users-gear', 'List of Accounts'));
 }
@@ -197,6 +199,8 @@ if ($role === ROLE_SUPERADMIN) {
     $add('Tracking', $I('/superadminlabor', 'fa-solid fa-helmet-safety', 'Labor Quotation', 'saLaborPending'));
     $add('Tracking', $I('/superadminbilling', 'fa-solid fa-file-invoice-dollar', 'Billing', 'saBillingPending'));
     $add('Tracking', $I('/superadminturnover', 'fa-solid fa-key', 'Turnover Letter', 'saTurnoverPending'));
+    // Memo ng HR — Superadmin: Approved by (kapag "Needs Superadmin approval")
+    $add('Tracking', $I('/memoapproval', 'fa-solid fa-envelope-open-text', 'Memo Approval', 'memoTodo', 'HR Memo Approval'));
     $add('Tracking', $I('/projectcost', 'fa-solid fa-scale-balanced', 'Project Cost'));
 }
 
@@ -271,7 +275,7 @@ $sbFollowups = $sbAccountingAll
     : [];
 // Signatured Request (pag-set ng e-signature) — kasama na ang Sales at Designer para makapirma sa Contract
 $sbSettings = ($sbAccountingAll || $role === ROLE_SUPERADMIN || $role === ROLE_PO || $role === ROLE_CUTTING || $role === ROLE_PC
-    || $role === ROLE_SALES || $role === ROLE_DESIGNER)
+    || $role === ROLE_SALES || $role === ROLE_DESIGNER || $role === ROLE_HR)
     ? [$I('/accountingsignatured', 'fa-solid fa-signature', 'Signatured Request')]
     : [];
 
