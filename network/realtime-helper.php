@@ -96,6 +96,19 @@ if (!function_exists('nhRealtimeFlush')) {
             curl_close($ch);
         }
         curl_multi_close($mh);
+
+        // ── Phone push: tuwing may doorbell, ipadala rin sa phone ang mga bagong notification ──
+        //    (tapos na ang sagot sa browser dito, kaya hindi bumabagal ang page)
+        try {
+            $pc = ($GLOBALS['conn'] ?? null) instanceof mysqli ? $GLOBALS['conn'] : null;
+            if (!$pc) { include ROOT_PATH . '/network/connect.php'; $pc = $conn ?? null; }
+            if ($pc instanceof mysqli && is_file(ROOT_PATH . '/network/push/push-dispatch-lib.php')) {
+                include_once ROOT_PATH . '/network/push/push-dispatch-lib.php';
+                nhPushDispatch($pc);
+            }
+        } catch (Throwable $e) {
+            error_log('nhRealtimeFlush push: ' . $e->getMessage());
+        }
     }
 }
 
