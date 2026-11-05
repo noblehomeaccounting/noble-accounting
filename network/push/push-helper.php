@@ -12,10 +12,26 @@
 include_once ROOT_PATH . '/network/push/push-config.php';
 
 if (!function_exists('nhPush')) {
+    // Naka-on ba ang push para sa 'user' / 'admin'? (IT → /itpush). Walang table = naka-on.
+    function nhPushIsOn(mysqli $conn, string $type): bool
+    {
+        static $cache = null;
+        if ($cache === null) {
+            $cache = [];
+            try {
+                $r = $conn->query("SELECT name, value FROM noblepush_setting");
+                if ($r) foreach ($r->fetch_all(MYSQLI_ASSOC) as $row) $cache[$row['name']] = $row['value'];
+            } catch (Throwable $e) { /* wala pang table */ }
+        }
+        return ($cache['enabled_' . $type] ?? '1') === '1';
+    }
+
     function nhPush(mysqli $conn, string $type, $ids, string $title, string $body = '', string $url = '', string $tag = ''): int
     {
         try {
             if (!in_array($type, ['user', 'admin'], true) || !nhPushEnabled()) return 0;
+            // naka-off ng IT? (ang test ng IT ay puwedeng lumampas gamit ang $GLOBALS['nhPushForce'])
+            if (empty($GLOBALS['nhPushForce']) && !nhPushIsOn($conn, $type)) return 0;
             $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids))));
             if (!$ids) return 0;
             require_once ROOT_PATH . '/vendor/autoload.php';

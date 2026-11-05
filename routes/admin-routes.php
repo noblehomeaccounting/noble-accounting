@@ -19,7 +19,7 @@ return [
     'generalannouncement'                   => 'admin/announcementcentral/announcement-view.php',
     'cleanupannouncements'                  => 'admin/announcementcentral/cleanup-announcements.php',
 
-    //user
+    
     //IT page 1
     'superad'                               => 'admin/ui-informationtech/page-1/it-registration-account.php',
     'createaccount'                         => 'admin/ui-informationtech/page-1/createaccount-main.php',
@@ -35,6 +35,8 @@ return [
 
     //IT page 2
     'it'                                    => 'admin/ui-informationtech/page-2/index-it-main.php',
+    'itpush'                                => 'admin/ui-informationtech/pui-it/itpush.php',
+    'itpushajax'                            => 'admin/ui-informationtech/backend/page-2/ackend/itpushajax.php',
 
     // accounting
     'accounting'                            => 'admin/ui-accounting/page-1/index-accounting-main.php',

@@ -222,6 +222,7 @@ if ($role === ROLE_IT) {
     $add('Main', $I('#', 'fa-solid fa-wrench', 'Maintenance', null, null, ''));
     $add('Manage', $I('/superad', 'fa-solid fa-user-plus', 'Create Account', null, 'Manage Accounts'));
     $add('Manage', $I('/createaccount', 'fa-solid fa-user-gear', 'Account Management'));
+    $add('Manage', $I('/itpush', 'fa-solid fa-mobile-screen-button', 'Phone Notifications'));
 }
 
 if ($role === ROLE_PO) {
