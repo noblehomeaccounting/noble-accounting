@@ -27,4 +27,5 @@ $nhPushCfg = [
 ];
 ?>
 <script>window.NH_PUSH_CFG = <?= json_encode($nhPushCfg, JSON_HEX_TAG | JSON_UNESCAPED_SLASHES) ?>;</script>
-<script src="<?= BASE_URL ?>/js/push-client.js?v=1" defer></script>
+<?php $nhPushVer = @filemtime(ROOT_PATH . '/js/push-client.js') ?: time();   // nagbabago kapag pinalitan ang file → walang lumang cache ?>
+<script src="<?= BASE_URL ?>/js/push-client.js?v=<?= $nhPushVer ?>" defer></script>
