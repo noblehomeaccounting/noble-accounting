@@ -293,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Create Account</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -307,6 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
         .reg-inp.bad { border-color: #fca5a5; box-shadow: 0 0 0 3px #fee2e2; }
         select.reg-inp { appearance: none; padding-right: 34px; cursor: pointer; }
         .reg-ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 13px; pointer-events: none; }
+        @media (max-width: 639px) { .reg-inp { height: 44px; } }
         .reg-lbl { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; margin-bottom: 6px; }
         .reg-pos[data-on="1"] { border-color: #b45309; background: #fffbeb; box-shadow: 0 0 0 1px #b45309; color: #92400e; }
         .reg-scroll { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
@@ -314,22 +315,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8">
+    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 px-3 pb-6 sm:px-4 md:p-8">
         <div class="max-w-5xl mx-auto">
 
             <!-- ═══ HEADER ═══ -->
             <section class="bg-white border border-gray-200 rounded-xl mb-5 overflow-hidden">
                 <div class="reg-hazard h-1.5"></div>
-                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                     <div class="flex items-center gap-3">
-                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-user-plus text-lg"></i></span>
+                        <span class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-user-plus text-lg"></i></span>
                         <div>
                             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">IT · Accounts</p>
                             <h1 class="text-gray-900 text-lg font-semibold leading-tight">Create Account</h1>
                             <p class="text-gray-400 text-[11px] mt-0.5">Register a new admin account for a department and branch.</p>
                         </div>
                     </div>
-                    <a href="<?= BASE_URL ?>/createaccount" class="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700">
+                    <a href="<?= BASE_URL ?>/createaccount" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700">
                         <i class="fa-solid fa-users-gear"></i> Manage Accounts
                     </a>
                 </div>
@@ -350,13 +351,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
                 </div>
             <?php endif; ?>
 
-            <div class="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 sm:gap-5 items-start">
 
                 <!-- ═══ FORM ═══ -->
                 <form method="POST" action="" id="registerForm" novalidate class="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
                     <!-- 1 · Account -->
-                    <div class="px-6 pt-6 pb-5">
+                    <div class="px-4 sm:px-6 pt-5 sm:pt-6 pb-5">
                         <p class="flex items-center gap-2 text-[12px] font-bold text-gray-800 mb-4">
                             <span class="w-6 h-6 rounded-md bg-gray-900 text-amber-400 text-[11px] flex items-center justify-center">1</span> Account details
                         </p>
@@ -382,7 +383,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
                     </div>
 
                     <!-- 2 · Assignment -->
-                    <div class="px-6 py-5 border-t border-gray-100">
+                    <div class="px-4 sm:px-6 py-5 border-t border-gray-100">
                         <p class="flex items-center gap-2 text-[12px] font-bold text-gray-800 mb-4">
                             <span class="w-6 h-6 rounded-md bg-gray-900 text-amber-400 text-[11px] flex items-center justify-center">2</span> Department &amp; branch
                         </p>
@@ -440,7 +441,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
                     </div>
 
                     <!-- 3 · Password -->
-                    <div class="px-6 py-5 border-t border-gray-100">
+                    <div class="px-4 sm:px-6 py-5 border-t border-gray-100">
                         <p class="flex items-center gap-2 text-[12px] font-bold text-gray-800 mb-4">
                             <span class="w-6 h-6 rounded-md bg-gray-900 text-amber-400 text-[11px] flex items-center justify-center">3</span> Password
                         </p>
@@ -468,11 +469,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
                     </div>
 
                     <!-- Submit -->
-                    <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/70 flex flex-wrap items-center justify-between gap-3">
-                        <p id="formErr" class="text-[12px] text-red-600 font-medium"></p>
-                        <div class="flex items-center gap-2 ml-auto">
-                            <button type="reset" id="regReset" class="px-4 h-10 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Clear</button>
-                            <button type="submit" id="regSubmit" class="inline-flex items-center gap-2 px-5 h-10 text-sm font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm disabled:opacity-60">
+                    <div class="px-4 sm:px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 border-t border-gray-100 bg-gray-50/70 flex flex-wrap items-center justify-between gap-3">
+                        <p id="formErr" class="text-[12px] text-red-600 font-medium empty:hidden sm:empty:block"></p>
+                        <div class="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                            <button type="reset" id="regReset" class="px-4 h-11 sm:h-10 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Clear</button>
+                            <button type="submit" id="regSubmit" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 h-11 sm:h-10 text-sm font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm disabled:opacity-60">
                                 <i class="fa-solid fa-user-plus"></i> Register Account
                             </button>
                         </div>
@@ -509,15 +510,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_action'])) {
     </main>
 
     <!-- ═══ MANAGE MODAL (Department / Branch) ═══ -->
-    <div id="manageModalOverlay" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[9998] p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+    <div id="manageModalOverlay" class="fixed inset-0 bg-black/50 hidden items-end sm:items-center justify-center z-[9998] p-0 sm:p-4">
+        <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
             <div class="reg-hazard h-1"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div class="flex items-center gap-2.5">
                     <span id="manageIcon" class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-regular fa-building"></i></span>
                     <h2 id="manageModalTitle" class="text-sm font-semibold text-gray-900">Manage Departments</h2>
                 </div>
-                <button type="button" onclick="closeManageModal()" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="closeManageModal()" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <div class="px-5 py-4">
                 <div class="flex gap-2 mb-3">

@@ -175,17 +175,19 @@ if (!empty($_SESSION['logged_in'])) {
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
         /* Phone: paliitin ang Turnstile widget (65px → ~52px taas), sakop pa rin ang buong lapad */
+        /* Buong taas ng NAKIKITANG screen (dvh) — hindi lumalampas dahil sa address bar ng phone */
+        .nh-vh { min-height: 100vh; min-height: 100dvh; }
         .ts-wrap { min-height: 65px; }
         @media (max-width: 639px) {
-            .ts-wrap { min-height: 0; height: 53px; overflow: visible; }
+            .ts-wrap { min-height: 0; height: 53px; overflow: hidden; }
             .ts-wrap .cf-turnstile { width: 125%; transform: scale(.8); transform-origin: 0 0; }
         }
     </style>
 </head>
 
-<body class="min-h-screen min-h-[100dvh] m-0 bg-gray-50">
+<body class="nh-vh m-0 bg-gray-50">
 
-    <div class="min-h-screen min-h-[100dvh] grid grid-cols-1 lg:grid-cols-2">
+    <div class="nh-vh grid grid-cols-1 lg:grid-cols-2">
 
         
         <!-- LEFT: Brand panel -->
@@ -262,7 +264,7 @@ if (!empty($_SESSION['logged_in'])) {
 
         <!-- RIGHT: Login -->
         <div
-            class="relative flex items-center justify-center min-h-screen min-h-[100dvh] px-5 sm:px-8 py-8 sm:py-10 overflow-hidden bg-gray-50">
+            class="relative flex items-center justify-center nh-vh px-5 sm:px-8 py-8 sm:py-10 overflow-hidden bg-gray-50">
 
             <!-- Orange shapes (top-right) -->
             <div class="absolute -top-24 -right-24 w-44 h-44 sm:-top-28 sm:-right-28 sm:w-80 sm:h-80 rotate-45 bg-gradient-to-br from-orange-400 to-[#ff7a00]">

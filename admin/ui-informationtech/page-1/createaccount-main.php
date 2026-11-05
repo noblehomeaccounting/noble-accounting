@@ -12,7 +12,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Manage Accounts</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -20,15 +20,15 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 <body class="bg-slate-100">
 
-    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8">
+    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 px-3 pb-6 sm:px-4 md:p-8">
         <div class="max-w-7xl mx-auto">
 
             <!-- ═══ HEADER ═══ -->
             <section class="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden">
                 <div class="h-1.5" style="background:repeating-linear-gradient(-45deg,#f59e0b 0 10px,#1f2937 10px 20px)"></div>
-                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-users-gear text-lg"></i></span>
+                <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-users-gear text-lg"></i></span>
                         <div>
                             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">IT · Accounts</p>
                             <h1 class="text-gray-900 text-lg font-semibold leading-tight">Manage Accounts <span id="acc-count" class="ml-1 text-[12px] font-medium text-gray-400"></span></h1>
@@ -38,48 +38,66 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                             </p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="openSettingsModal('department')" class="inline-flex items-center gap-2 h-10 px-3.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700"><i class="fa-regular fa-building"></i> Departments</button>
-                        <button type="button" onclick="openSettingsModal('branch')" class="inline-flex items-center gap-2 h-10 px-3.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700"><i class="fa-solid fa-location-dot"></i> Branches</button>
-                        <a href="<?= BASE_URL ?>/superad" class="inline-flex items-center gap-2 h-10 px-4 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-user-plus"></i> New Account</a>
+                    <div class="w-full sm:w-auto grid grid-cols-3 sm:flex items-center gap-2">
+                        <button type="button" onclick="openSettingsModal('department')" class="inline-flex items-center justify-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-3.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700"><i class="fa-regular fa-building"></i> <span class="sm:hidden">Depts</span><span class="hidden sm:inline">Departments</span></button>
+                        <button type="button" onclick="openSettingsModal('branch')" class="inline-flex items-center justify-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-3.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700"><i class="fa-solid fa-location-dot"></i> Branches</button>
+                        <a href="<?= BASE_URL ?>/superad" class="inline-flex items-center justify-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-4 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-user-plus"></i> <span class="sm:hidden">New</span><span class="hidden sm:inline">New Account</span></a>
                     </div>
                 </div>
 
                 <!-- stat cards -->
-                <div class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <?php foreach ([['stat-total', 'Total accounts', 'fa-users', 'text-gray-900'], ['stat-head', 'Heads', 'fa-user-tie', 'text-amber-700'], ['stat-staff', 'Staff', 'fa-user', 'text-blue-700'], ['stat-nobranch', 'No branch', 'fa-circle-exclamation', 'text-red-600']] as [$sid, $slbl, $sico, $scls]): ?>
-                        <div class="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
-                            <span class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"><i class="fa-solid <?= $sico ?> text-[10px]"></i><?= $slbl ?></span>
-                            <span id="<?= $sid ?>" class="block text-xl font-bold leading-tight tabular-nums <?= $scls ?>">0</span>
+                <div class="px-4 sm:px-5 pb-3 sm:pb-4 grid grid-cols-4 gap-1.5 sm:gap-2">
+                    <?php foreach ([['stat-total', 'Total accounts', 'fa-users', 'text-gray-900', 'Total'], ['stat-head', 'Heads', 'fa-user-tie', 'text-amber-700', 'Heads'], ['stat-staff', 'Staff', 'fa-user', 'text-blue-700', 'Staff'], ['stat-nobranch', 'No branch', 'fa-circle-exclamation', 'text-red-600', 'No br.']] as [$sid, $slbl, $sico, $scls, $sshort]): ?>
+                        <div class="rounded-lg sm:rounded-xl border border-gray-200 bg-white px-2 sm:px-3.5 py-1.5 sm:py-2.5 min-w-0">
+                            <span class="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-gray-500 whitespace-nowrap"><i class="fa-solid <?= $sico ?> text-[9px] sm:text-[10px]"></i><span class="sm:hidden"><?= $sshort ?></span><span class="hidden sm:inline"><?= $slbl ?></span></span>
+                            <span id="<?= $sid ?>" class="block text-base sm:text-xl font-bold leading-tight tabular-nums <?= $scls ?>">0</span>
                         </div>
                     <?php endforeach; ?>
                 </div>
 
-                <!-- filters -->
-                <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 space-y-2.5">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mr-1"><i class="fa-solid fa-location-dot mr-1 text-amber-600"></i>Branch</span>
-                        <div id="branch-chips" class="flex items-center gap-1.5 flex-wrap"></div>
-                    </div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <div class="relative flex-1 min-w-[220px] max-w-sm">
+                <!-- filters (sa phone: search + Filters button; nasa drawer ang Branch, Department, Position) -->
+                <div class="px-4 sm:px-5 py-3 border-t border-gray-100 bg-gray-50/60 sm:flex sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-2.5">
+                    <div class="flex items-center gap-2 sm:contents">
+                        <div class="relative flex-1 min-w-0 sm:min-w-[220px] sm:max-w-sm">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
                             <input id="acc-search" type="text" placeholder="Search name or email…"
-                                class="w-full h-9 border border-gray-200 rounded-lg pl-8 pr-3 text-xs text-gray-800 bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100 transition">
+                                class="w-full h-[38px] sm:h-9 border border-gray-200 rounded-lg pl-8 pr-3 text-xs text-gray-800 bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100 transition">
                         </div>
-                        <select id="role-filter" class="h-9 border border-gray-200 rounded-lg px-3 text-xs text-gray-700 bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100 cursor-pointer">
+                        <button type="button" data-fd-open="accFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 "><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
+                    </div>
+                    <div id="accFdBackdrop" class="nh-fd-backdrop"></div>
+                    <div id="accFd" class="nh-fd" role="dialog" aria-label="Filters">
+                        <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                            <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+                            <button type="button" data-fd-close aria-label="Close" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+                        </div>
+                        <div class="nh-fd-body">
+                    
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap sm:w-full sm:order-first">
+                            <span class="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-700 sm:text-gray-400 mr-1"><i class="fa-solid fa-location-dot mr-1 text-amber-600"></i>Branch</span>
+                            <div id="branch-chips" class="flex items-center gap-1.5 flex-wrap"></div>
+                            <input type="text" id="branch-fd-val" class="hidden" tabindex="-1" aria-hidden="true">
+                        </div>
+                        <p class="nh-fd-only nh-fd-label">Department</p>
+                        <select id="role-filter" class="w-full sm:w-auto h-10 sm:h-9 border border-gray-200 rounded-lg px-3 text-xs text-gray-700 bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100 cursor-pointer">
                             <option value="">All departments</option>
                         </select>
-                        <select id="position-filter" class="h-9 border border-gray-200 rounded-lg px-3 text-xs text-gray-700 bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100 cursor-pointer">
+                        <p class="nh-fd-only nh-fd-label">Position</p>
+                        <select id="position-filter" class="w-full sm:w-auto h-10 sm:h-9 border border-gray-200 rounded-lg px-3 text-xs text-gray-700 bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100 cursor-pointer">
                             <option value="">All positions</option>
                             <option value="staff">Staff</option>
                             <option value="head">Head</option>
                             <option value="custodian">Custodian</option>
                             <option value="custoassistant">Custodian Assistant</option>
                         </select>
-                        <button type="button" id="clear-filters" onclick="clearFilters()" class="hidden text-[11px] font-semibold text-gray-500 hover:text-amber-700 px-2 h-9">
+                        <button type="button" id="clear-filters" onclick="clearFilters()" class="hidden text-[11px] font-semibold text-gray-500 hover:text-amber-700 px-2 h-9 sm:w-auto border border-gray-200 sm:border-0 rounded-lg bg-white sm:bg-transparent">
                             <i class="fa-solid fa-xmark mr-1"></i>Clear filters
                         </button>
+                    
+                        </div>
+                        <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+                            <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -87,9 +105,11 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             <!-- ═══ TABLE ═══ -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <!-- tabs: All / Heads / Staff (hindi kasama sa scroll) -->
-                <div id="acc-group-tabs" class="px-5 py-2.5 border-b border-gray-100 bg-gray-50/70"></div>
+                <div id="acc-group-tabs" class="px-3 sm:px-5 py-2.5 border-b border-gray-100 bg-gray-50/70"></div>
                 <!-- scrollable: header ng table nakadikit sa taas habang nag-i-scroll -->
-                <div id="acc-scroll" class="overflow-auto [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]">
+                <!-- phone: cards -->
+                <div id="accounts-cards" class="md:hidden divide-y divide-gray-100"></div>
+                <div id="acc-scroll" class="hidden md:block overflow-auto [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]">
                     <table class="w-full text-sm min-w-[900px]">
                         <thead class="sticky top-0 z-10">
                             <tr class="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shadow-[inset_0_-1px_0_#f3f4f6]">
@@ -116,8 +136,8 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
     </main>
 
     <!-- ═══ EDIT MODAL ═══ -->
-    <div id="edit-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div id="edit-modal" class="fixed inset-0 z-[9998] hidden items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md max-h-[92dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
             <div class="h-1" style="background:repeating-linear-gradient(-45deg,#f59e0b 0 8px,#1f2937 8px 16px)"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div class="flex items-center gap-2.5">
@@ -127,7 +147,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                         <p id="edit-sub" class="text-[11px] text-gray-400"></p>
                     </div>
                 </div>
-                <button onclick="closeEditModal()" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeEditModal()" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
 
             <form class="px-5 py-4 space-y-4" onsubmit="return false;">
@@ -164,15 +184,15 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
     </div>
 
     <!-- ═══ SETTINGS MODAL (Department / Branch) ═══ -->
-    <div id="settings-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div id="settings-modal" class="fixed inset-0 z-[9998] hidden items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md max-h-[92dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
             <div class="h-1" style="background:repeating-linear-gradient(-45deg,#f59e0b 0 8px,#1f2937 8px 16px)"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div class="flex items-center gap-2.5">
                     <span id="settings-icon" class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-regular fa-building"></i></span>
                     <h2 id="settings-title" class="text-sm font-semibold text-gray-900">Manage Departments</h2>
                 </div>
-                <button onclick="closeSettingsModal()" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeSettingsModal()" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <div class="px-5 py-4">
                 <div class="flex gap-2 mb-3">
@@ -188,7 +208,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         </div>
     </div>
 
-    <div id="acc-toast" class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+    <div id="acc-toast" class="fixed bottom-4 left-4 right-4 sm:left-auto z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
         let previousCount = 0;
@@ -253,6 +273,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         const VISIBLE_ROWS = 6;
         function fitRows() {
             const box = document.getElementById('acc-scroll');
+            if (!box.offsetParent) { box.style.maxHeight = ''; return; }   // phone: cards ang gamit
             const rows = [...document.querySelectorAll('#accounts-tbody > tr')];
             let seen = 0, h = box.querySelector('thead').offsetHeight;
             for (const tr of rows) {
@@ -280,13 +301,13 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             ];
             // tabs: Head · Staff
             document.getElementById('acc-group-tabs').innerHTML = `
-                <div class="inline-flex items-center gap-1 p-1 rounded-xl bg-white border border-gray-200">
+                <div class="flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-white border border-gray-200">
                     ${tabs.map(([v, label, icon, n]) => {
                         const on = groupView === v;
                         return `<button type="button" data-group="${v}"
-                            class="inline-flex items-center gap-2 h-8 px-3.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 sm:gap-2 h-8 px-2 sm:px-3.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition
                             ${on ? (v === 'head' ? 'bg-gray-900 text-amber-400 shadow-sm' : 'bg-amber-600 text-white shadow-sm') : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}">
-                            <i class="fa-solid ${icon}"></i>${label}
+                            <i class="fa-solid ${icon} hidden sm:inline"></i>${label}
                             <span class="px-1.5 py-px rounded-full text-[10px] ${on ? 'bg-white/20' : 'bg-gray-100 text-gray-500'}">${n}</span></button>`;
                     }).join('')}
                 </div>`;
@@ -340,11 +361,13 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
             const list = filteredRows();
             const on = branchFilter || groupView !== 'all' || document.getElementById('acc-search').value.trim() || document.getElementById('role-filter').value || document.getElementById('position-filter').value;
             document.getElementById('clear-filters').classList.toggle('hidden', !on);
+            document.getElementById('branch-fd-val').value = branchFilter;   // para mabilang sa badge ng Filters (phone)
             document.getElementById('acc-count').textContent = on ? `· ${list.length} of ${allRows.length}` : `· ${allRows.length}`;
             if (!allRows.length) {
                 document.getElementById('acc-group-tabs').innerHTML = '';
                 document.getElementById('accounts-tbody').innerHTML =
                     `<tr><td colspan="7" class="px-5 py-8 text-center text-gray-400 text-sm">No accounts found.</td></tr>`;
+                document.getElementById('accounts-cards').innerHTML = `<p class="px-4 py-8 text-center text-gray-400 text-sm">No accounts found.</p>`;
                 return;
             }
             renderAccounts(list);   // laging may tabs (All / Heads / Staff), kahit walang tugma sa filter
@@ -399,6 +422,56 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         </tr>
     `);
 
+            // ─── Phone: cards (parehong data at parehong actions ng table) ───
+            const posOpts = row => [['staff', 'Staff'], ['head', 'Head'], ['custodian', 'Custodian'], ['custoassistant', 'Custodian Asst.']]
+                .map(([v, l]) => `<option value="${v}" ${row.position === v ? 'selected' : ''}>${l}</option>`).join('');
+            const brOpts = row => `<option value="">— None —</option>`
+                + branchList.map(b => `<option value="${accEsc(b.name)}" ${row.branch === b.name ? 'selected' : ''}>${accEsc(b.name)}</option>`).join('')
+                + (row.branch && !branchList.some(b => b.name === row.branch) ? `<option value="${accEsc(row.branch)}" selected>${accEsc(row.branch)} (removed)</option>` : '');
+            const card = row => `
+                <div data-acc class="px-4 py-3">
+                    <div class="flex items-start gap-3">
+                        <span class="w-10 h-10 rounded-lg ${row.position === 'head' ? 'bg-gray-900 text-amber-400' : 'bg-amber-50 text-amber-700'} text-[14px] font-bold flex items-center justify-center shrink-0">${accEsc((row.name || '?').trim().charAt(0).toUpperCase())}</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <p class="font-semibold text-gray-900 text-[13px] truncate flex-1">${accEsc(row.name)}</p>
+                                <span class="text-gray-400 font-mono text-[10px] shrink-0">#${row.id}</span>
+                            </div>
+                            <p class="text-[11px] text-gray-400 truncate">${accEsc(row.email)}</p>
+                            <span class="mt-1.5 inline-block max-w-full truncate align-middle bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide">${accEsc(row.role)}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5 grid grid-cols-2 gap-2">
+                        <label class="block min-w-0">
+                            <span class="block text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Position</span>
+                            <select onchange="changePosition(${row.id}, this.value)"
+                                class="${POS_CLS[row.position] || POS_CLS.staff} w-full h-9 text-[11px] font-semibold pl-2.5 pr-7 rounded-md uppercase tracking-wide border-0 outline-none cursor-pointer focus:ring-2 focus:ring-amber-200">${posOpts(row)}</select>
+                        </label>
+                        <label class="block min-w-0">
+                            <span class="block text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Branch</span>
+                            <select onchange="changeBranch(${row.id}, this)"
+                                class="${row.branch ? 'bg-sky-50 text-sky-700' : 'bg-red-50 text-red-600'} w-full h-9 text-[11px] font-semibold pl-2.5 pr-7 rounded-md uppercase tracking-wide border-0 outline-none cursor-pointer focus:ring-2 focus:ring-amber-200">${brOpts(row)}</select>
+                        </label>
+                    </div>
+                    <div class="mt-2.5 flex items-center justify-between gap-2">
+                        <span class="text-[11px] text-gray-400"><i class="fa-regular fa-calendar mr-1"></i>${fmtCreated(row.created_at)}</span>
+                        <button onclick="openEditModal(${row.id})"
+                            class="inline-flex items-center gap-1.5 h-9 px-3.5 text-[11px] font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit
+                        </button>
+                    </div>
+                </div>`;
+            const heads = data.filter(isHeadRow), staff = data.filter(r => !isHeadRow(r));
+            const cEmpty = label => `<p class="px-4 py-6 text-center text-xs text-gray-400 italic">No ${label} in this filter.</p>`;
+            const cSection = (label, icon, cls, rows) => `
+                <div class="px-4 pt-3 pb-1.5 bg-gray-50/70"><span class="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider ${cls}"><i class="fa-solid ${icon}"></i>${label} · ${rows.length}</span></div>
+                ${rows.length ? rows.map(card).join('') : cEmpty(label.toLowerCase())}`;
+            document.getElementById('accounts-cards').innerHTML =
+                !data.length ? `<p class="px-4 py-8 text-center text-gray-400 text-sm">No accounts match the filters. <button type="button" onclick="clearFilters()" class="ml-1 font-semibold text-amber-700 hover:underline">Clear filters</button></p>`
+                : groupView === 'head' ? (heads.length ? heads.map(card).join('') : cEmpty('heads'))
+                : groupView === 'staff' ? (staff.length ? staff.map(card).join('') : cEmpty('staff'))
+                : cSection('Heads', 'fa-user-tie', 'text-amber-700', heads) + cSection('Staff', 'fa-users', 'text-gray-600', staff);
+
             fitRows();
 
             const now = new Date();
@@ -422,6 +495,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
                 .catch(() => {
                     document.getElementById('accounts-tbody').innerHTML =
                         `<tr><td colspan="7" class="px-5 py-8 text-center text-red-400">Failed to load data.</td></tr>`;
+                    document.getElementById('accounts-cards').innerHTML = `<p class="px-4 py-8 text-center text-red-400 text-sm">Failed to load data.</p>`;
                 });
         }
 
@@ -723,6 +797,61 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
         });
     </script>
 
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>
