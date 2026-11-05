@@ -8,8 +8,8 @@ $error = '';
 // ── Cloudflare Turnstile (human check bago mag-login) ──
 // Galing ang keys sa .env → index.php (TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY constants)
 // Kapag walang laman sa .env, gagamitin ang TEST keys ng Cloudflare (laging pumapasa) — para sa localhost lang.
-$tsSiteKey   = defined('TURNSTILE_SITE_KEY') && TURNSTILE_SITE_KEY !== '' ? TURNSTILE_SITE_KEY : '1x00000000000000000000AA';
-$tsSecretKey = defined('TURNSTILE_SECRET_KEY') && TURNSTILE_SECRET_KEY !== '' ? TURNSTILE_SECRET_KEY : '1x0000000000000000000000000000000AA';
+$tsSiteKey   = defined('TURNSTILE_SITE_KEY')   && trim(TURNSTILE_SITE_KEY)   !== '' ? trim(TURNSTILE_SITE_KEY)   : '1x00000000000000000000AA';
+$tsSecretKey = defined('TURNSTILE_SECRET_KEY') && trim(TURNSTILE_SECRET_KEY) !== '' ? trim(TURNSTILE_SECRET_KEY) : '1x0000000000000000000000000000000AA';
 
 /**
  * Sine-check sa Cloudflare kung totoo ang token na galing sa widget.
@@ -173,6 +173,14 @@ if (!empty($_SESSION['logged_in'])) {
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <!-- Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        /* Phone: paliitin ang Turnstile widget (65px → ~52px taas), sakop pa rin ang buong lapad */
+        .ts-wrap { min-height: 65px; }
+        @media (max-width: 639px) {
+            .ts-wrap { min-height: 0; height: 53px; overflow: visible; }
+            .ts-wrap .cf-turnstile { width: 125%; transform: scale(.8); transform-origin: 0 0; }
+        }
+    </style>
 </head>
 
 <body class="min-h-screen min-h-[100dvh] m-0 bg-gray-50">
@@ -275,13 +283,13 @@ if (!empty($_SESSION['logged_in'])) {
             <div class="relative z-10 w-full max-w-[540px] px-0 sm:px-10 py-4 sm:py-10">
 
                 <div class="flex justify-center">
-                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Noblehome logo" class="w-32 sm:w-44 h-auto object-contain">
+                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Noblehome logo" class="w-24 sm:w-44 h-auto object-contain">
                 </div>
 
-                <h2 class="mt-5 sm:mt-6 text-center text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
+                <h2 class="mt-3 sm:mt-6 text-center text-xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
                     NOBLE<span class="text-[#ff9a1f]">HOME</span> ACCOUNTING
                 </h2>
-                <p class="mt-2 mb-6 sm:mb-7 text-center text-[13px] sm:text-sm text-gray-500">Please sign in to access your admin account.</p>
+                <p class="mt-1.5 mb-5 sm:mb-7 text-center text-xs sm:text-sm text-gray-500">Please sign in to access your admin account.</p>
 
                 <?php if (!empty($error)): ?>
                     <div role="alert"
@@ -295,29 +303,29 @@ if (!empty($_SESSION['logged_in'])) {
                 <form method="POST" action="">
 
                     <!-- Email -->
-                    <div class="mb-5">
-                        <label for="email" class="block text-sm font-semibold text-gray-900 mb-2">Email Address</label>
+                    <div class="mb-4 sm:mb-5">
+                        <label for="email" class="block text-[13px] sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Email Address</label>
                         <div class="relative">
                             <i
                                 class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
                             <input type="email" id="email" name="email" autocomplete="email"
                                 placeholder="Enter your email address"
                                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required
-                                class="w-full h-12 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
+                                class="w-full h-11 sm:h-12 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
                         </div>
                         <p class="text-[11px] text-gray-400 mt-1.5">Only <span
                                 class="text-[#ff7a00] font-medium">@noble.com</span> emails are accepted.</p>
                     </div>
 
                     <!-- Password -->
-                    <div class="mb-5">
-                        <label for="password" class="block text-sm font-semibold text-gray-900 mb-2">Password</label>
+                    <div class="mb-4 sm:mb-5">
+                        <label for="password" class="block text-[13px] sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Password</label>
                         <div class="relative">
                             <i
                                 class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 pointer-events-none"></i>
                             <input type="password" id="password" name="password" autocomplete="current-password"
                                 placeholder="Enter your password" required
-                                class="w-full h-12 pl-11 pr-12 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
+                                class="w-full h-11 sm:h-12 pl-11 pr-12 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#ff7a00] focus:ring-4 focus:ring-orange-500/15 transition">
                             <button type="button" id="togglePassword" aria-label="Show password"
                                 class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-gray-700 hover:text-gray-900 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ff7a00]">
                                 <i class="fa-regular fa-eye" id="eyeIcon"></i>
@@ -327,25 +335,25 @@ if (!empty($_SESSION['logged_in'])) {
 
 
                     <!-- Security check (Cloudflare Turnstile) -->
-                    <div class="mb-5">
-                        <div class="cf-turnstile min-h-[65px]"
+                    <div class="mb-4 sm:mb-5">
+                        <div class="ts-wrap"><div class="cf-turnstile"
                             data-sitekey="<?= htmlspecialchars($tsSiteKey) ?>"
                             data-action="login"
                             data-size="flexible"
                             data-theme="light"
                             data-callback="nhTurnstileOk"
                             data-expired-callback="nhTurnstileReset"
-                            data-error-callback="nhTurnstileReset"></div>
-                        <p id="tsHint" class="text-[11px] text-gray-400 mt-1.5">Verifying you're human… the Sign In button unlocks once it's done.</p>
+                            data-error-callback="nhTurnstileReset"></div></div>
+                        <p id="tsHint" class="text-[10px] sm:text-[11px] text-gray-400 mt-1 sm:mt-1.5">Verifying you're human… the Sign In button unlocks once it's done.</p>
                     </div>
 
                     <button type="submit" id="signInBtn" disabled
-                        class="disabled:opacity-50 disabled:cursor-not-allowed w-full h-12 sm:h-14 flex items-center justify-center gap-3 text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
+                        class="disabled:opacity-50 disabled:cursor-not-allowed w-full h-11 sm:h-14 flex items-center justify-center gap-2 sm:gap-3 text-[15px] sm:text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
                         <i class="fa-solid fa-right-to-bracket"></i> Sign In
                     </button>
                 </form>
 
-                <div class="flex items-center gap-3 sm:gap-4 mt-6 sm:mt-7 text-xs sm:text-sm text-gray-500">
+                <div class="flex items-center gap-3 sm:gap-4 mt-5 sm:mt-7 text-[11px] sm:text-sm text-gray-500">
                     <span class="flex-1 h-px bg-gray-200"></span>
                     <span class="whitespace-nowrap">NobleHome Admin Panel</span>
                     <span class="flex-1 h-px bg-gray-200"></span>
