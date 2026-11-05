@@ -2,7 +2,8 @@
 // push-subscribe.php — ise-save / buburahin ang subscription ng device na ito
 //   Ini-include ng admin/navigation/push-subscribe-admin.php ($pushType = 'admin')
 //   at ng user/navigation/push-subscribe-user.php ($pushType = 'user')
-//   POST JSON: { action: 'subscribe' | 'unsubscribe', subscription: { endpoint, keys: { p256dh, auth } } }
+//   POST JSON: { action: 'subscribe' | 'unsubscribe' | 'test', subscription: { endpoint, keys: { p256dh, auth } } }
+//   'test' = magpadala ng sample na push sa sarili mong account (para masubukan)
 
 include ROOT_PATH . '/network/connect.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -34,6 +35,22 @@ try {
     }
 
     if ($uid <= 0) psOut(['success' => false, 'message' => 'Please log in first.'], 401);
+
+    // ── Send test: magpadala ng sample push sa sariling account ──
+    if ($action === 'test') {
+        include_once ROOT_PATH . '/network/push/push-helper.php';
+        $c = $conn->prepare("SELECT COUNT(*) AS n FROM noblepush_subscription WHERE account_type = ? AND account_id = ?");
+        $c->bind_param('si', $pushType, $uid);
+        $c->execute();
+        $n = (int) $c->get_result()->fetch_assoc()['n'];
+        $c->close();
+        if (!$n) psOut(['success' => false, 'message' => 'This account has no device with notifications on yet.']);
+        $sent = nhPush($conn, $pushType, $uid, 'NobleHome test', 'Push notifications are working on this device.', '/', 'nh-test');
+        psOut($sent > 0
+            ? ['success' => true, 'message' => "Test sent to $sent device(s)."]
+            : ['success' => false, 'message' => 'Could not send. Check the PHP error log (nhPush).']);
+    }
+
     if ($p256 === '' || $auth === '') psOut(['success' => false, 'message' => 'Invalid subscription.'], 422);
 
     // Iisang device = iisang may-ari: kung may ibang nag-login sa device na ito, sa kanya na lilipat
@@ -48,5 +65,9 @@ try {
     psOut(['success' => true]);
 } catch (Throwable $e) {
     error_log('push-subscribe: ' . $e->getMessage());
-    psOut(['success' => false, 'message' => 'Could not save.'], 500);
+    $msg = $e->getMessage();
+    $hint = stripos($msg, "doesn't exist") !== false
+        ? 'Could not save: table noblepush_subscription is missing. Run push.sql on this database.'
+        : 'Could not save (database error). Check the PHP error log for "push-subscribe".';
+    psOut(['success' => false, 'message' => $hint], 500);
 }
