@@ -260,6 +260,7 @@ return [
     'setactivesignature'                    => 'admin/navigation/settings/backend/backend-signatured/set-active-signature.php',
     'deletesignature'                       => 'admin/navigation/settings/backend/backend-signatured/delete-signature.php',
     'updatesignature'                       => 'admin/navigation/settings/backend/backend-signatured/update-signature.php',
+    'pushsubscribeadmin'                    => 'admin/navigation/push-subscribe-admin.php',
 
     //profile
     'profile'                               => 'admin/navigation/ui-profile/profile.php',

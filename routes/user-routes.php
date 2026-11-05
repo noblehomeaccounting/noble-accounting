@@ -32,6 +32,7 @@ return [
     'rejectedrequests'                      => 'user/ui/index-rejected-requests.php',
     'fetchrejectedrequests'                 => 'user/ui/backend/fetch-rejected-requests.php',
     'resubmitrequest'                       => 'user/ui/backend/index-resubmit-request.php',
+    'pushsubscribeuser'                     => 'user/navigation/push-subscribe-user.php',
 
     //user
     'fetchnotificationsuser'                => 'user/navigation/backend/backend-notification/fetchnotifications.php',
