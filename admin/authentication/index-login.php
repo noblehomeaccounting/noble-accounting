@@ -5,6 +5,59 @@ include ROOT_PATH . '/network/connect.php';
 
 $error = '';
 
+// ── Cloudflare Turnstile (human check bago mag-login) ──
+// Galing ang keys sa .env → index.php (TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY constants)
+// Kapag walang laman sa .env, gagamitin ang TEST keys ng Cloudflare (laging pumapasa) — para sa localhost lang.
+$tsSiteKey   = defined('TURNSTILE_SITE_KEY') && TURNSTILE_SITE_KEY !== '' ? TURNSTILE_SITE_KEY : '1x00000000000000000000AA';
+$tsSecretKey = defined('TURNSTILE_SECRET_KEY') && TURNSTILE_SECRET_KEY !== '' ? TURNSTILE_SECRET_KEY : '1x0000000000000000000000000000000AA';
+
+/**
+ * Sine-check sa Cloudflare kung totoo ang token na galing sa widget.
+ * Ibinabalik ang true kapag pumasa.
+ */
+function turnstileVerify(string $secret, string $token): bool
+{
+    if ($token === '' || strlen($token) > 2048) return false;
+
+    // Kung naka-proxy ang site sa Cloudflare, nasa CF-Connecting-IP ang totoong IP ng user
+    $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? '');
+    $post = http_build_query(['secret' => $secret, 'response' => $token, 'remoteip' => $ip]);
+    $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+    $body = false;
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $post,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+        ]);
+        $body = curl_exec($ch);
+        curl_close($ch);
+    } else {
+        $body = @file_get_contents($url, false, stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+            'content' => $post,
+            'timeout' => 8,
+        ]]));
+    }
+    if ($body === false) {
+        error_log('Turnstile: could not reach Cloudflare');
+        return false;   // hindi maabot ang Cloudflare → huwag papasukin
+    }
+    $res = json_decode($body, true);
+    if (empty($res['success'])) {
+        error_log('Turnstile failed: ' . implode(',', $res['error-codes'] ?? []));
+        return false;
+    }
+    // Siguraduhing galing sa login widget ang token (hindi sa ibang form)
+    if (isset($res['action']) && $res['action'] !== '' && $res['action'] !== 'login') return false;
+    return true;
+}
+
 function getRouteFor($role, $position, $branch)
 {
     $isMainBranch = (strtolower(trim($branch)) === 'main branch'); // i-adjust base sa actual value sa DB mo
@@ -57,7 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if (empty($email) || empty($password)) {
+    if (!turnstileVerify($tsSecretKey, (string) ($_POST['cf-turnstile-response'] ?? ''))) {
+        // Inuuna ang human check bago galawin ang database
+        $error = 'Please complete the security check and try again.';
+    } elseif (empty($email) || empty($password)) {
         $error = 'Please enter your email and password.';
     } elseif (!str_ends_with(strtolower($email), '@noble.com')) {
         $error = 'Only @noble.com email addresses are allowed.';
@@ -115,6 +171,8 @@ if (!empty($_SESSION['logged_in'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Admin Login — Noblehome</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
 <body class="min-h-screen min-h-[100dvh] m-0 bg-gray-50">
@@ -268,8 +326,21 @@ if (!empty($_SESSION['logged_in'])) {
                     </div>
 
 
-                    <button type="submit"
-                        class="w-full h-12 sm:h-14 flex items-center justify-center gap-3 text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
+                    <!-- Security check (Cloudflare Turnstile) -->
+                    <div class="mb-5">
+                        <div class="cf-turnstile min-h-[65px]"
+                            data-sitekey="<?= htmlspecialchars($tsSiteKey) ?>"
+                            data-action="login"
+                            data-size="flexible"
+                            data-theme="light"
+                            data-callback="nhTurnstileOk"
+                            data-expired-callback="nhTurnstileReset"
+                            data-error-callback="nhTurnstileReset"></div>
+                        <p id="tsHint" class="text-[11px] text-gray-400 mt-1.5">Verifying you're human… the Sign In button unlocks once it's done.</p>
+                    </div>
+
+                    <button type="submit" id="signInBtn" disabled
+                        class="disabled:opacity-50 disabled:cursor-not-allowed w-full h-12 sm:h-14 flex items-center justify-center gap-3 text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
                         <i class="fa-solid fa-right-to-bracket"></i> Sign In
                     </button>
                 </form>
@@ -323,6 +394,16 @@ if (!empty($_SESSION['logged_in'])) {
                 } catch (e) { }
             });
         })();
+
+        // Cloudflare Turnstile: bukas lang ang Sign In kapag pumasa na ang check
+        function nhTurnstileOk() {
+            document.getElementById('signInBtn').disabled = false;
+            document.getElementById('tsHint').textContent = 'Security check passed.';
+        }
+        function nhTurnstileReset() {
+            document.getElementById('signInBtn').disabled = true;
+            document.getElementById('tsHint').textContent = 'Security check expired or failed. Please wait for it to refresh.';
+        }
 
         sessionStorage.clear();
     </script>
