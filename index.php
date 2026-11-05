@@ -2,7 +2,7 @@
 // index.php
 define('ROOT_PATH', __DIR__);
 
-require_once ROOT_PATH . '/vendor/autoload.php';  
+require_once ROOT_PATH . '/vendor/autoload.php';
 
 // ─── Load .env ────────────────────────────────────────────────────────────────
 $envFile = ROOT_PATH . '/.env';
@@ -25,6 +25,10 @@ foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line)
 // ─── Constants ────────────────────────────────────────────────────────────────
 define('GOOGLE_CLIENT_ID', $_ENV['GOOGLE_CLIENT_ID'] ?? '');
 define('GOOGLE_CLIENT_SECRET', $_ENV['GOOGLE_CLIENT_SECRET'] ?? '');
+
+// Cloudflare Turnstile (login security check) — keys galing sa .env
+define('TURNSTILE_SITE_KEY', $_ENV['TURNSTILE_SITE_KEY'] ?? '');
+define('TURNSTILE_SECRET_KEY', $_ENV['TURNSTILE_SECRET_KEY'] ?? '');
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 $isLocalhost = (
