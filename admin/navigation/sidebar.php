@@ -429,12 +429,6 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
         include ROOT_PATH . '/admin/navigation/settings/translate.php'; ?>
         <?php foreach ($sbSettings as $it)
             echo sbItem($it); ?>
-        <!-- Push notification sa phone / browser -->
-        <button type="button" onclick="window.NHPush && NHPush.panel ? NHPush.panel() : null" data-tooltip="Phone notifications"
-            class="group/it relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition <?= SB_TIP ?>">
-            <i class="fa-solid fa-mobile-screen-button w-4 text-center text-[13px] shrink-0 text-gray-400 group-hover/it:text-gray-600"></i>
-            <span class="sidebar-label flex-1 text-left truncate group-[.collapsed]/sb:hidden">Phone notifications</span>
-        </button>
     </nav>
 
     <!-- User Profile Block -->
@@ -640,12 +634,6 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             <?php foreach ($sbSettings as $it)
                 echo sbItem($it, true); ?>
         <?php endif; ?>
-        <!-- Push notification sa phone -->
-        <button type="button" onclick="closeMobileDrawer(); window.NHPush && NHPush.panel ? NHPush.panel() : null"
-            class="group/it w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition text-left">
-            <i class="fa-solid fa-mobile-screen-button w-4 text-center text-sm shrink-0 text-gray-400"></i>
-            <span class="flex-1 truncate">Phone notifications</span>
-        </button>
     </nav>
 </div>
 
