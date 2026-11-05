@@ -820,4 +820,10 @@ if (!defined('NH_RT_LOADED'))
 
 <script src="<?= BASE_URL ?>/js/global-notif.js?v=<?= time() ?>"></script>
 
+<?php
+// Push notification sa phone / browser (admin = noblerole)
+$pushType = 'admin';
+include ROOT_PATH . '/network/push/push-include.php';
+?>
+
 <?php include ROOT_PATH . '/admin/navigation/sidebar-script.php'; ?>

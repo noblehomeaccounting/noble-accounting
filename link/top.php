@@ -30,6 +30,14 @@ $cursorUri  = is_file($cursorFile)
 
 <link rel="icon" type="image/png" href="<?= BASE_URL ?>/icon/icon.png">
 
+<link rel="manifest" href="<?= BASE_URL ?>/manifest.json">
+<meta name="theme-color" content="#b45309">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<meta name="apple-mobile-web-app-title" content="NobleHome">
+
+<link rel="apple-touch-icon" href="<?= BASE_URL ?>/icon/icon.png">
+
 <style>
     * {
         font-family: 'Plus Jakarta Sans', sans-serif;

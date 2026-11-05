@@ -5,6 +5,7 @@
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
+include_once ROOT_PATH . '/network/push/push-helper.php';   // push sa phone (hindi nag-e-error kapag hindi pa naka-setup)
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -77,6 +78,10 @@ function m_send(mysqli $c, array $m): int
     $now = date('Y-m-d H:i:s');
     $st = $c->prepare("UPDATE noblememo SET status = 'sent', sent_at = ?, memo_date = COALESCE(memo_date, CURDATE()) WHERE id = ?");
     $st->bind_param('si', $now, $m['id']); $st->execute(); $st->close();
+
+    // Push sa phone ng bawat employee (pangkalahatang text lang — walang detalye sa lock screen)
+    $label = ['nte' => 'Notice to Explain', 'nod' => 'Notice of Decision', 'coe' => 'Certificate of Employment'][$m['type']] ?? 'Memo';
+    nhPush($c, 'user', $ids, 'New memo from HR', $label . ' · tap to read', '/memouser?memo=' . (int) $m['id'], 'memo-' . (int) $m['id']);
     return count($ids);
 }
 
@@ -230,6 +235,8 @@ try {
 
             $sent = $next === 'sent' ? m_send($conn, m_get($conn, $id)) : 0;
             $conn->commit();
+            if ($next === 'pending_verify')   nhPushRole($conn, ROLE_HR, POSITION_HEAD, 'Memo to verify', 'A memo is waiting for your signature', '/memo?memo=' . $id, 'memo-' . $id);
+            if ($next === 'pending_approval') nhPushRole($conn, ROLE_SUPERADMIN, null, 'Memo for approval', 'HR sent a memo for your signature', '/memoapproval?memo=' . $id, 'memo-' . $id);
             mo(['success' => true, 'id' => $id, 'message' => $next === 'sent' ? "Memo sent to $sent employee(s)."
                 : ($next === 'pending_approval' ? 'Submitted. Waiting for the Superadmin.' : 'Submitted. Waiting for the HR Head.')]);
 
@@ -257,6 +264,7 @@ try {
 
             $sent = $next === 'sent' ? m_send($conn, m_get($conn, $id)) : 0;
             $conn->commit();
+            if ($next === 'pending_approval') nhPushRole($conn, ROLE_SUPERADMIN, null, 'Memo for approval', 'HR sent a memo for your signature', '/memoapproval?memo=' . $id, 'memo-' . $id);
             mo(['success' => true, 'message' => $next === 'sent' ? "Signed and sent to $sent employee(s)." : 'Verified. Sent to the Superadmin for approval.']);
 
         // ─── RETURN (ibalik sa HR) ─────────────────────────

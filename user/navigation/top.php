@@ -496,7 +496,7 @@ $memoNavBadge = $memoNavCount > 9 ? '9+' : (int) $memoNavCount;
                     </a>
                     <a href="<?= BASE_URL ?>/memouser"
                         class="flex items-center gap-3 px-4 py-3 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors">
-                        <i class="fa-solid fa-envelope-open-text w-4 text-center"></i> Memo
+                        <i class="fa-solid fa-envelope-open-text w-4 text-center"></i> My Memos
                         <span id="memo-nav-badge"
                             class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> ml-auto min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center"><?= $memoNavBadge ?></span>
                     </a>
@@ -624,13 +624,11 @@ $memoNavBadge = $memoNavCount > 9 ? '9+' : (int) $memoNavCount;
             <i class="fa-regular fa-id-card w-4 text-center text-gray-400"></i>
             <span>My Employee ID</span>
         </a>
-
         <?php $memoActive = str_starts_with($relativePath, '/memouser'); ?>
-
         <a href="<?= BASE_URL ?>/memouser"
             class="flex items-center gap-3 px-3 py-2.5 rounded-r-xl text-sm transition-all border-l-[3px] <?= $memoActive ? 'bg-orange-50 text-orange-600 font-semibold border-[#f7941d]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800 border-transparent' ?>">
             <i class="fa-solid fa-envelope-open-text w-4 text-center <?= $memoActive ? 'text-orange-500' : 'text-gray-400' ?>"></i>
-            <span>Memo</span>
+            <span>My Memos</span>
             <span id="mob-memo-badge"
                 class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"><?= $memoNavBadge ?></span>
         </a>
@@ -853,3 +851,9 @@ $memoNavBadge = $memoNavCount > 9 ? '9+' : (int) $memoNavCount;
     fetchNotifications();
     setInterval(fetchNotifications, 30000);
 </script>
+
+<?php
+// Push notification sa phone / browser (user = nobleaccount)
+$pushType = 'user';
+include ROOT_PATH . '/network/push/push-include.php';
+?>

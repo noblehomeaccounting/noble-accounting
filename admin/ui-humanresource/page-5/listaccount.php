@@ -111,91 +111,103 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Human Resource List of Accounts</title>
+    <title>Account Monitoring</title>
+    <style>
+        .la-hazard { background: repeating-linear-gradient(-45deg, #f59e0b 0 10px, #1f2937 10px 20px); }
+        .la-tab[data-on="1"] { background: #111827; color: #fbbf24; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+        .la-tab[data-on="1"] .la-badge { background: rgba(255,255,255,.15); color: #fff; }
+        .la-chip[data-on="1"] { background: #b45309; border-color: #b45309; color: #fff; }
+        .la-scroll { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+    </style>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8">
+    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8">
+      <div class="max-w-7xl mx-auto">
 
-        <!-- ═════ HEADER ═════ -->
-        <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
-            <div>
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#F7941D]">Human Resource</p>
-                <h1 class="text-2xl font-bold text-slate-900 mt-0.5">Account Monitoring</h1>
-                <p class="text-sm text-slate-500 mt-0.5">View-only list of every user and admin account in the system.</p>
+        <!-- ═════ HEADER + TABS ═════ -->
+        <section class="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden">
+            <div class="la-hazard h-1.5"></div>
+            <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-users-viewfinder text-lg"></i></span>
+                    <div>
+                        <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">HR · View only</p>
+                        <h1 class="text-gray-900 text-lg font-semibold leading-tight">Account Monitoring</h1>
+                        <p class="text-gray-400 text-[11px] mt-0.5">Every user and admin account in the system.</p>
+                    </div>
+                </div>
+                <div class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white h-9 px-3 text-[11px] text-gray-500">
+                    <i class="fa-regular fa-clock"></i> As of <?= date('M j, Y · g:i A') ?>
+                    <button type="button" onclick="location.reload()" class="ml-1 w-6 h-6 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-amber-700 hover:bg-amber-50" title="Refresh"><i class="fa-solid fa-rotate-right text-[11px]"></i></button>
+                </div>
             </div>
-            <div class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
-                <i class="fa-regular fa-clock"></i> As of <?= date('M j, Y · g:i A') ?>
-                <button type="button" onclick="location.reload()" class="ml-1 text-slate-400 hover:text-[#F7941D]" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+            <div class="px-5 pb-4">
+                <div class="inline-flex items-center gap-1 p-1 rounded-xl bg-gray-50 border border-gray-200">
+                    <button type="button" data-tab="users" data-on="1"
+                        class="la-tab inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 transition">
+                        <i class="fa-solid fa-users"></i> User Accounts
+                        <span class="la-badge px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px]"><?= $uStats['total'] ?></span>
+                    </button>
+                    <button type="button" data-tab="admins" data-on="0"
+                        class="la-tab inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 transition">
+                        <i class="fa-solid fa-user-shield"></i> Admin Accounts
+                        <span class="la-badge px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px]"><?= $aStats['total'] ?></span>
+                    </button>
+                </div>
             </div>
-        </div>
-
-        <!-- ═════ TABS ═════ -->
-        <div class="flex gap-1 border-b border-slate-200 mb-6">
-            <button type="button" data-tab="users"
-                class="la-tab relative inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold text-slate-900">
-                <i class="fa-solid fa-users"></i> User Accounts
-                <span class="rounded-full bg-slate-900 text-white px-2 text-[11px] font-bold"><?= $uStats['total'] ?></span>
-                <span class="la-bar absolute inset-x-3 -bottom-px h-[3px] rounded-t bg-[#F7941D]"></span>
-            </button>
-            <button type="button" data-tab="admins"
-                class="la-tab relative inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-900">
-                <i class="fa-solid fa-user-shield"></i> Admin Accounts
-                <span class="rounded-full bg-slate-200 text-slate-600 px-2 text-[11px] font-bold"><?= $aStats['total'] ?></span>
-                <span class="la-bar hidden absolute inset-x-3 -bottom-px h-[3px] rounded-t bg-[#F7941D]"></span>
-            </button>
-        </div>
+        </section>
 
         <?php
         // maliit na helper para sa stat cards
         function statCard($icon, $iconCls, $label, $value, $hint = '', $id = '')
         { ?>
-            <div class="rounded-xl bg-white border border-slate-200 px-5 py-4 flex items-center gap-4">
-                <span class="w-11 h-11 rounded-xl flex items-center justify-center text-base <?= $iconCls ?>"><i class="<?= $icon ?>"></i></span>
-                <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400"><?= $label ?></p>
-                    <p class="text-2xl font-bold text-slate-900 leading-tight tabular-nums"<?= $id ? ' id="' . $id . '"' : '' ?>><?= $value ?></p>
-                    <?php if ($hint): ?><p class="text-[11px] text-slate-400"><?= $hint ?></p><?php endif; ?>
+            <div class="rounded-xl bg-white border border-gray-200 px-4 py-3.5 flex items-center gap-3.5">
+                <span class="w-10 h-10 rounded-xl flex items-center justify-center text-sm shrink-0 <?= $iconCls ?>"><i class="<?= $icon ?>"></i></span>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500"><?= $label ?></p>
+                    <p class="text-xl font-bold text-gray-900 leading-tight tabular-nums"<?= $id ? ' id="' . $id . '"' : '' ?>><?= $value ?></p>
+                    <?php if ($hint): ?><p class="text-[10.5px] text-gray-400 truncate"><?= $hint ?></p><?php endif; ?>
                 </div>
             </div>
         <?php } ?>
 
         <!-- ═════════════ USER ACCOUNTS ═════════════ -->
         <section id="panel-users" class="la-panel">
-            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
                 <?php
                 statCard('fa-solid fa-users', 'bg-slate-100 text-slate-700', 'Total Users', $uStats['total'], $uStats['new'] . ' new this week');
                 statCard('fa-solid fa-circle-check', 'bg-green-50 text-green-600', 'Verified', $uStats['verified'],
                     $uStats['total'] ? round($uStats['verified'] / $uStats['total'] * 100) . '% of users' : '');
                 statCard('fa-solid fa-envelope-circle-check', 'bg-amber-50 text-amber-600', 'Not Verified', $uStats['unverified'], 'Email not yet confirmed');
-                statCard('fa-solid fa-id-card', 'bg-orange-50 text-[#F7941D]', 'Linked to ID', $uStats['linked'],
+                statCard('fa-solid fa-id-card', 'bg-amber-50 text-amber-700', 'Linked to ID', $uStats['linked'],
                     ($uStats['total'] - $uStats['linked']) . ' without employee ID');
                 ?>
             </div>
 
-            <div class="rounded-xl bg-white border border-slate-200 overflow-hidden">
+            <div class="rounded-xl bg-white border border-gray-200 overflow-hidden">
                 <!-- toolbar -->
-                <div class="flex flex-wrap items-center gap-3 px-5 py-3.5 border-b border-slate-200">
+                <div class="flex flex-wrap items-center gap-2.5 px-5 py-3 border-b border-gray-100 bg-gray-50/60">
                     <div class="relative flex-1 min-w-[220px] max-w-sm">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" data-q="users" placeholder="Search name, email or employee ID…"
-                            class="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-sm outline-none focus:border-[#F7941D] focus:bg-white focus:ring-2 focus:ring-orange-100">
+                            class="w-full h-9 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                     </div>
                     <div class="flex flex-wrap gap-1.5" data-chips="users">
                         <?php foreach (['all' => 'All', 'verified' => 'Verified', 'unverified' => 'Not Verified', 'linked' => 'Linked ID', 'nolink' => 'No ID', 'new' => 'New (7 days)'] as $k => $lbl): ?>
                             <button type="button" data-filter="<?= $k ?>"
-                                class="la-chip rounded-full border px-3 py-1 text-xs font-semibold transition <?= $k === 'all' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300' ?>"><?= $lbl ?></button>
+                                data-on="<?= $k === 'all' ? 1 : 0 ?>" class="la-chip rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-semibold text-gray-600 hover:border-amber-300 transition"><?= $lbl ?></button>
                         <?php endforeach; ?>
                     </div>
                     <span class="ml-auto text-xs text-slate-400" data-count="users"></span>
                 </div>
 
-                <div class="overflow-auto max-h-[62vh]">
+                <div class="overflow-auto max-h-[62vh] la-scroll">
                     <table class="w-full text-sm min-w-[880px]">
-                        <thead class="sticky top-0 z-10 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                            <tr class="border-b border-slate-200">
+                        <thead class="sticky top-0 z-10 bg-gray-50 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                            <tr class="shadow-[inset_0_-1px_0_#f3f4f6]">
                                 <th class="px-5 py-3 text-left">Account</th>
                                 <th class="px-5 py-3 text-left">Role</th>
                                 <th class="px-5 py-3 text-left">Email Status</th>
@@ -209,15 +221,15 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                                 if ($u['is_new']) $tags[] = 'new';
                                 $search = strtolower($u['name'] . ' ' . $u['email'] . ' ' . ($u['employeeid'] ?? ''));
                             ?>
-                                <tr class="hover:bg-orange-50/40 transition" data-tags="<?= implode(' ', $tags) ?>" data-search="<?= e($search) ?>">
+                                <tr class="hover:bg-amber-50/40 transition" data-tags="<?= implode(' ', $tags) ?>" data-search="<?= e($search) ?>">
                                     <td class="px-5 py-3">
                                         <div class="flex items-center gap-3">
-                                            <span class="w-9 h-9 shrink-0 rounded-full bg-slate-800 text-white text-xs font-bold flex items-center justify-center"><?= e(initials($u['name'])) ?></span>
+                                            <span class="w-9 h-9 shrink-0 rounded-lg bg-amber-50 text-amber-700 text-xs font-bold flex items-center justify-center"><?= e(initials($u['name'])) ?></span>
                                             <div class="min-w-0">
                                                 <p class="font-semibold text-slate-900 truncate flex items-center gap-1.5">
                                                     <?= e($u['name']) ?>
                                                     <?php if (!empty($u['is_official'])): ?><i class="fa-solid fa-circle-check text-sky-500 text-xs" title="Official Employee"></i><?php endif; ?>
-                                                    <?php if ($u['is_new']): ?><span class="rounded bg-orange-100 text-orange-700 px-1.5 text-[10px] font-bold">NEW</span><?php endif; ?>
+                                                    <?php if ($u['is_new']): ?><span class="rounded bg-amber-100 text-amber-800 px-1.5 text-[10px] font-bold">NEW</span><?php endif; ?>
                                                 </p>
                                                 <p class="text-xs text-slate-500 truncate"><?= e($u['email']) ?></p>
                                             </div>
@@ -258,7 +270,7 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
 
         <!-- ═════════════ ADMIN ACCOUNTS ═════════════ -->
         <section id="panel-admins" class="la-panel hidden">
-            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
                 <?php
                 statCard('fa-solid fa-user-shield', 'bg-slate-100 text-slate-700', 'Total Admins', $aStats['total'], count($roleList) . ' roles');
                 statCard('fa-solid fa-signal', 'bg-green-50 text-green-600', 'Online Now', $aStats['online'], '<span class="inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>Live · updates every 15s</span>', 'st-online');
@@ -267,14 +279,14 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                 ?>
             </div>
 
-            <div class="rounded-xl bg-white border border-slate-200 overflow-hidden">
-                <div class="flex flex-wrap items-center gap-3 px-5 py-3.5 border-b border-slate-200">
+            <div class="rounded-xl bg-white border border-gray-200 overflow-hidden">
+                <div class="flex flex-wrap items-center gap-2.5 px-5 py-3 border-b border-gray-100 bg-gray-50/60">
                     <div class="relative flex-1 min-w-[220px] max-w-sm">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" data-q="admins" placeholder="Search name, email or branch…"
-                            class="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-sm outline-none focus:border-[#F7941D] focus:bg-white focus:ring-2 focus:ring-orange-100">
+                            class="w-full h-9 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                     </div>
-                    <select data-rolefilter="admins" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#F7941D]">
+                    <select data-rolefilter="admins" class="h-9 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                         <option value="">All roles</option>
                         <?php foreach (array_keys($roleList) as $r): ?>
                             <option value="<?= e(strtolower($r)) ?>"><?= e($prettyRole($r)) ?></option>
@@ -283,16 +295,16 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                     <div class="flex flex-wrap gap-1.5" data-chips="admins">
                         <?php foreach (['all' => 'All', 'online' => 'Online', 'today' => 'Active Today', 'inactive' => 'Inactive'] as $k => $lbl): ?>
                             <button type="button" data-filter="<?= $k ?>"
-                                class="la-chip rounded-full border px-3 py-1 text-xs font-semibold transition <?= $k === 'all' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300' ?>"><?= $lbl ?></button>
+                                data-on="<?= $k === 'all' ? 1 : 0 ?>" class="la-chip rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-semibold text-gray-600 hover:border-amber-300 transition"><?= $lbl ?></button>
                         <?php endforeach; ?>
                     </div>
                     <span class="ml-auto text-xs text-slate-400" data-count="admins"></span>
                 </div>
 
-                <div class="overflow-auto max-h-[62vh]">
+                <div class="overflow-auto max-h-[62vh] la-scroll">
                     <table class="w-full text-sm min-w-[900px]">
-                        <thead class="sticky top-0 z-10 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                            <tr class="border-b border-slate-200">
+                        <thead class="sticky top-0 z-10 bg-gray-50 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                            <tr class="shadow-[inset_0_-1px_0_#f3f4f6]">
                                 <th class="px-5 py-3 text-left">Admin</th>
                                 <th class="px-5 py-3 text-left">Role</th>
                                 <th class="px-5 py-3 text-left">Position</th>
@@ -309,10 +321,10 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                                 if ($a['is_inactive']) $tags[] = 'inactive';
                                 $search = strtolower($a['name'] . ' ' . $a['email'] . ' ' . ($a['branch'] ?? '') . ' ' . ($a['position'] ?? ''));
                             ?>
-                                <tr class="hover:bg-orange-50/40 transition" data-id="<?= (int) $a['id'] ?>" data-tags="<?= implode(' ', $tags) ?>" data-search="<?= e($search) ?>" data-role="<?= e(strtolower($a['role'] ?? '')) ?>">
+                                <tr class="hover:bg-amber-50/40 transition" data-id="<?= (int) $a['id'] ?>" data-tags="<?= implode(' ', $tags) ?>" data-search="<?= e($search) ?>" data-role="<?= e(strtolower($a['role'] ?? '')) ?>">
                                     <td class="px-5 py-3">
                                         <div class="flex items-center gap-3">
-                                            <span class="relative w-9 h-9 shrink-0 rounded-full bg-[#F7941D] text-white text-xs font-bold flex items-center justify-center">
+                                            <span class="relative w-9 h-9 shrink-0 rounded-lg bg-gray-900 text-amber-400 text-xs font-bold flex items-center justify-center">
                                                 <?= e(initials($a['name'])) ?>
                                                 <span data-live="dot" class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white <?= $a['is_online'] ? 'bg-green-500' : 'bg-slate-300' ?>"></span>
                                             </span>
@@ -323,10 +335,10 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                                         </div>
                                     </td>
                                     <td class="px-5 py-3">
-                                        <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"><?= e($prettyRole($a['role'])) ?></span>
+                                        <span class="inline-block rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10.5px] font-semibold text-amber-800 uppercase tracking-wide"><?= e($prettyRole($a['role'])) ?></span>
                                     </td>
                                     <td class="px-5 py-3 text-slate-600"><?= e($prettyRole($a['position'])) ?: '—' ?></td>
-                                    <td class="px-5 py-3 text-slate-600"><?= e($a['branch'] ?: '—') ?></td>
+                                    <td class="px-5 py-3"><?php if (!empty($a['branch'])): ?><span class="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700"><i class="fa-solid fa-location-dot text-[10px]"></i><?= e($a['branch']) ?></span><?php else: ?><span class="text-xs text-red-500">No branch</span><?php endif; ?></td>
                                     <td class="px-5 py-3" data-live="status"></td>
                                     <td class="px-5 py-3 whitespace-nowrap" data-live="last"></td>
                                     <script>window.__la = window.__la || []; window.__la.push(<?= json_encode(['id' => (int) $a['id'], 'idle_sec' => $a['idle_sec'], 'is_today' => $a['is_today'], 'last_label' => $a['last_label']]) ?>);</script>
@@ -340,6 +352,7 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                 </div>
             </div>
         </section>
+      </div>
     </main>
 
     <script>
@@ -347,14 +360,7 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
             // ── Tabs ──
             const tabs = document.querySelectorAll('.la-tab');
             tabs.forEach(t => t.addEventListener('click', () => {
-                tabs.forEach(x => {
-                    const on = x === t;
-                    x.classList.toggle('text-slate-900', on);
-                    x.classList.toggle('text-slate-500', !on);
-                    x.querySelector('.la-bar').classList.toggle('hidden', !on);
-                    const badge = x.querySelector('.rounded-full');
-                    badge.className = 'rounded-full px-2 text-[11px] font-bold ' + (on ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600');
-                });
+                tabs.forEach(x => { x.dataset.on = x === t ? '1' : '0'; });
                 document.querySelectorAll('.la-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'panel-' + t.dataset.tab));
                 try { localStorage.setItem('la-tab', t.dataset.tab); } catch (e) { }
             }));
@@ -396,11 +402,7 @@ $prettyRole = fn($r) => strlen((string) $r) <= 3 ? strtoupper((string) $r) : ucw
                 const chips = document.querySelectorAll(`[data-chips="${key}"] .la-chip`);
                 chips.forEach(c => c.addEventListener('click', () => {
                     state.f = c.dataset.filter;
-                    chips.forEach(x => {
-                        const on = x === c;
-                        x.classList.toggle('border-slate-900', on); x.classList.toggle('bg-slate-900', on); x.classList.toggle('text-white', on);
-                        x.classList.toggle('border-slate-200', !on); x.classList.toggle('bg-white', !on); x.classList.toggle('text-slate-600', !on);
-                    });
+                    chips.forEach(x => { x.dataset.on = x === c ? '1' : '0'; });
                     apply();
                 }));
                 apply();

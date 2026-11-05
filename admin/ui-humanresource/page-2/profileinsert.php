@@ -14,8 +14,8 @@ if (empty($_SESSION['csrf'])) {
     $_SESSION['csrf'] = bin2hex(random_bytes(32));
 }
 
-$inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 focus:outline-none transition';
-$labelClass = 'block text-xs font-semibold text-gray-600 mb-1';
+$inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[13px] text-gray-800 placeholder-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100 focus:outline-none transition';
+$labelClass = 'block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5';
 
 // ── Saved profiles + accounts + roles (para sa linking / editing) ─────
 $profiles = [];
@@ -55,6 +55,12 @@ foreach ($profiles as $p) {
     }
 }
 
+// Bilang para sa header
+$stTotal = count($profiles);
+$stAcc = count(array_filter($profiles, fn($p) => !empty($p['account_id'])));
+$stRole = count(array_filter($profiles, fn($p) => !empty($p['role_id'])));
+$stOff = count(array_filter($profiles, fn($p) => !empty($p['is_official'])));
+
 // JSON na ilalagay sa data-profile ng bawat row (para sa Edit modal)
 function profileJson(array $p): string
 {
@@ -79,7 +85,13 @@ function profileJson(array $p): string
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile</title>
+    <title>Employee Profiles</title>
+    <style>
+        .pf-hazard { background: repeating-linear-gradient(-45deg, #f59e0b 0 10px, #1f2937 10px 20px); }
+        .pf-scroll { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+        .pf-chip[data-on="1"] { background: #b45309; border-color: #b45309; color: #fff; }
+        .pf-chip[data-on="1"] span { background: rgba(255,255,255,.2); color: #fff; }
+    </style>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 </head>
@@ -90,37 +102,54 @@ function profileJson(array $p): string
         <div class="max-w-7xl mx-auto">
 
             <!-- Header -->
-            <div class="mb-5">
-                <h1 class="text-xl font-bold text-gray-800">My Profile</h1>
-                <p class="text-xs text-gray-500">Fill in the employee information, then link it to a user account and/or a role.</p>
-            </div>
+            <section class="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden">
+                <div class="pf-hazard h-1.5"></div>
+                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-id-card text-lg"></i></span>
+                        <div>
+                            <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">HR · Employee ID</p>
+                            <h1 class="text-gray-900 text-lg font-semibold leading-tight">Employee Profiles</h1>
+                            <p class="text-gray-400 text-[11px] mt-0.5">Fill in the employee information, then link it to a user account and/or a role.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <?php foreach ([['Profiles', $stTotal, 'fa-id-badge', 'text-gray-900'], ['Linked accounts', $stAcc, 'fa-link', 'text-emerald-700'], ['Linked roles', $stRole, 'fa-user-shield', 'text-indigo-700'], ['Official', $stOff, 'fa-certificate', 'text-sky-700']] as [$l, $n, $ic, $c]): ?>
+                        <div class="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
+                            <span class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"><i class="fa-solid <?= $ic ?> text-[10px]"></i><?= $l ?></span>
+                            <span class="block text-xl font-bold leading-tight tabular-nums <?= $c ?>"><?= (int) $n ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
 
             <!-- Success -->
             <div id="profile-success"
-                class="hidden mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                class="hidden mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                 <i class="fa-solid fa-circle-check mr-1"></i>
                 <span id="profile-success-msg"></span>
             </div>
 
             <!-- Errors -->
-            <div id="profile-errors" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div id="profile-errors" class="hidden mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 <p class="font-semibold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Please fix the following:</p>
                 <ul id="profile-errors-list" class="list-disc pl-5 space-y-0.5 text-xs"></ul>
             </div>
 
             <!-- ═════ Two containers: Form (left) + Saved Profiles (right) ═════ -->
-            <div class="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+            <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
 
                 <!-- ───────── LEFT: Form ───────── -->
                 <form id="profile-form" enctype="multipart/form-data" autocomplete="off"
-                    class="xl:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
+                    class="xl:col-span-3 bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
 
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
 
                     <!-- Employee info -->
-                    <section class="p-4 md:p-5">
-                        <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-id-badge text-orange-500"></i> Employee Information
+                    <section class="p-5 md:p-6">
+                        <h2 class="text-[12px] font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-md bg-gray-900 text-amber-400 text-[11px] flex items-center justify-center">1</span> Employee Information
                         </h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
@@ -149,13 +178,13 @@ function profileJson(array $p): string
                                 <div class="grid grid-cols-2 gap-3">
                                     <label class="cursor-pointer">
                                         <input type="radio" name="emp_level" value="staff" class="peer sr-only" checked>
-                                        <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-500 transition hover:border-orange-300 peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-600 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-200">
+                                        <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-500 transition hover:border-amber-300 peer-checked:border-amber-700 peer-checked:bg-amber-50 peer-checked:text-amber-800 peer-checked:shadow-[0_0_0_1px_#b45309] peer-focus-visible:ring-2 peer-focus-visible:ring-amber-200">
                                             <i class="fa-solid fa-user"></i> Staff
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
                                         <input type="radio" name="emp_level" value="head" class="peer sr-only">
-                                        <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-500 transition hover:border-orange-300 peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-600 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-200">
+                                        <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-500 transition hover:border-amber-300 peer-checked:border-amber-700 peer-checked:bg-amber-50 peer-checked:text-amber-800 peer-checked:shadow-[0_0_0_1px_#b45309] peer-focus-visible:ring-2 peer-focus-visible:ring-amber-200">
                                             <i class="fa-solid fa-user-tie"></i> Head
                                         </div>
                                     </label>
@@ -165,9 +194,9 @@ function profileJson(array $p): string
                     </section>
 
                     <!-- Contact & Government -->
-                    <section class="p-4 md:p-5">
-                        <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-address-book text-orange-500"></i> Contact &amp; Government Numbers
+                    <section class="p-5 md:p-6">
+                        <h2 class="text-[12px] font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-md bg-gray-900 text-amber-400 text-[11px] flex items-center justify-center">2</span> Contact &amp; Government Numbers
                         </h2>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
@@ -194,9 +223,9 @@ function profileJson(array $p): string
                     </section>
 
                     <!-- Photo, QR & Signature -->
-                    <section class="p-4 md:p-5">
-                        <h2 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-image-portrait text-orange-500"></i> Photo, QR &amp; Signature
+                    <section class="p-5 md:p-6">
+                        <h2 class="text-[12px] font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-md bg-gray-900 text-amber-400 text-[11px] flex items-center justify-center">3</span> Photo, QR &amp; Signature
                         </h2>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 
@@ -204,7 +233,7 @@ function profileJson(array $p): string
                             <div>
                                 <label class="<?= $labelClass ?>">Photo</label>
                                 <label for="photo"
-                                    class="flex flex-col items-center justify-center h-28 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-orange-300 hover:bg-orange-50/40 cursor-pointer transition overflow-hidden">
+                                    class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-amber-400 hover:bg-amber-50/50 cursor-pointer transition overflow-hidden">
                                     <img id="photo-preview" class="hidden max-h-full max-w-full object-contain" alt="">
                                     <div id="photo-placeholder" class="text-center text-gray-400 px-2">
                                         <i class="fa-solid fa-camera text-xl mb-1"></i>
@@ -219,7 +248,7 @@ function profileJson(array $p): string
                             <!-- QR (auto-generated) -->
                             <div>
                                 <label class="<?= $labelClass ?>">QR Code</label>
-                                <div class="flex flex-col items-center justify-center h-28 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-center text-gray-400 px-3">
+                                <div class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-center text-gray-400 px-3">
                                     <i class="fa-solid fa-qrcode text-xl mb-1"></i>
                                     <p class="text-[10px]">Auto-generated from the Employee ID when you save.</p>
                                 </div>
@@ -229,7 +258,7 @@ function profileJson(array $p): string
                             <div>
                                 <label class="<?= $labelClass ?>">Signature</label>
                                 <label for="signature"
-                                    class="flex flex-col items-center justify-center h-28 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-orange-300 hover:bg-orange-50/40 cursor-pointer transition overflow-hidden">
+                                    class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-amber-400 hover:bg-amber-50/50 cursor-pointer transition overflow-hidden">
                                     <img id="signature-preview" class="hidden max-h-full max-w-full object-contain" alt="">
                                     <div id="signature-placeholder" class="text-center text-gray-400 px-2">
                                         <i class="fa-solid fa-signature text-xl mb-1"></i>
@@ -244,32 +273,47 @@ function profileJson(array $p): string
                     </section>
 
                     <!-- Actions -->
-                    <div class="px-4 md:px-5 py-3 flex items-center justify-end gap-3 bg-gray-50/60 rounded-b-2xl">
+                    <div class="px-5 md:px-6 py-4 flex items-center justify-end gap-2 bg-gray-50/70">
                         <button type="reset" id="profile-clear"
-                            class="px-4 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition">
+                            class="px-4 h-10 rounded-lg text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition">
                             Clear
                         </button>
                         <button type="submit" id="profile-submit"
-                            class="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed">
-                            <i class="fa-solid fa-floppy-disk mr-1"></i> <span id="profile-submit-text">Save Profile</span>
+                            class="inline-flex items-center gap-2 px-5 h-10 rounded-lg text-sm font-semibold text-white bg-amber-700 hover:bg-amber-800 shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-floppy-disk"></i> <span id="profile-submit-text">Save Profile</span>
                         </button>
                     </div>
                 </form>
 
                 <!-- ───────── RIGHT: Saved profiles + Link / Edit ───────── -->
-                <div class="xl:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm xl:sticky xl:top-5">
-                    <div class="p-4 md:p-5 border-b border-gray-100">
-                        <h2 class="text-sm font-bold text-gray-800 flex items-center gap-2">
-                            <i class="fa-solid fa-link text-orange-500"></i> Saved Profiles
-                            <span class="ml-1 text-[11px] font-semibold text-gray-400">(<?= count($profiles) ?>)</span>
+                <div class="xl:col-span-2 bg-white rounded-xl border border-gray-200 xl:sticky xl:top-5 overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-gray-100 bg-gray-900 text-white">
+                        <h2 class="text-[12px] font-bold flex items-center gap-2 uppercase tracking-wider">
+                            <i class="fa-solid fa-users text-amber-400"></i> Saved Profiles
+                            <span class="ml-auto px-2 py-0.5 rounded-full bg-white/10 text-[10.5px]"><?= count($profiles) ?></span>
                         </h2>
-                        <p class="text-xs text-gray-500 mt-1">Edit a profile, or link it to a user account and/or a role.</p>
+                        <p class="text-[11px] text-white/50 mt-0.5 normal-case">Edit a profile, or link it to a user account and/or a role.</p>
                     </div>
+                    <?php if ($profiles): ?>
+                    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/70 space-y-2">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                            <input type="text" id="pf-search" placeholder="Search name, employee ID or position…"
+                                class="w-full h-9 border border-gray-200 rounded-lg pl-8 pr-3 text-xs bg-white outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                        </div>
+                        <div class="flex flex-wrap gap-1.5" id="pf-chips">
+                            <?php foreach ([['all', 'All'], ['unlinked', 'Not linked'], ['head', 'Heads'], ['official', 'Official'], ['notofficial', 'Not official']] as [$fv, $fl]): ?>
+                                <button type="button" data-f="<?= $fv ?>" data-on="<?= $fv === 'all' ? 1 : 0 ?>"
+                                    class="pf-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-200 bg-white text-[11px] font-semibold text-gray-600 hover:border-amber-300"><?= $fl ?> <span class="px-1.5 rounded-full bg-gray-100 text-[10px] text-gray-500" data-fcount="<?= $fv ?>">0</span></button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <?php if (!$profiles): ?>
-                        <p class="p-6 text-xs text-gray-400 text-center">No saved profiles yet.</p>
+                        <div class="p-10 text-center"><div class="w-12 h-12 mx-auto rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mb-2"><i class="fa-regular fa-id-card"></i></div><p class="text-xs text-gray-500">No saved profiles yet.</p></div>
                     <?php else: ?>
-                        <ul class="divide-y divide-gray-100 max-h-[65vh] overflow-y-auto" id="link-list">
+                        <ul class="divide-y divide-gray-100 max-h-[62vh] overflow-y-auto pf-scroll" id="link-list">
                             <?php foreach ($profiles as $p): ?>
                                 <?php
                                 $linked = !empty($p['account_id']);
@@ -277,33 +321,36 @@ function profileJson(array $p): string
                                 $isHead = (($p['emp_level'] ?? 'staff') === 'head');
                                 $isOfficial = !empty($p['is_official']);
                                 ?>
-                                <li class="p-4 flex flex-col gap-3"
+                                <li class="p-4 flex flex-col gap-2.5 hover:bg-amber-50/30 transition"
+                                    data-search="<?= htmlspecialchars(mb_strtolower(($p['fullname'] ?? '') . ' ' . ($p['employeeid'] ?? '') . ' ' . ($p['position'] ?? ''))) ?>"
+                                    data-flags="<?= trim(($linked || $roleLinked ? '' : 'unlinked ') . ($isHead ? 'head ' : '') . ($isOfficial ? 'official' : 'notofficial')) ?>"
                                     data-employeeid="<?= htmlspecialchars($p['employeeid']) ?>"
                                     data-profile="<?= profileJson($p) ?>">
 
                                     <div class="min-w-0 flex items-center gap-3">
                                         <?php if (!empty($p['photo'])): ?>
                                             <img src="<?= htmlspecialchars(BASE_URL . '/' . ltrim($p['photo'], '/')) ?>"
-                                                alt="" class="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0">
+                                                alt="" class="w-11 h-11 rounded-xl object-cover border border-gray-200 shrink-0">
                                         <?php else: ?>
-                                            <div class="w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center shrink-0">
-                                                <i class="fa-solid fa-user text-sm"></i>
+                                            <div class="w-11 h-11 rounded-xl <?= $isHead ? 'bg-gray-900 text-amber-400' : 'bg-amber-50 text-amber-700' ?> font-bold flex items-center justify-center shrink-0">
+                                                <?= htmlspecialchars(mb_strtoupper(mb_substr(trim($p['fullname'] ?? '?'), 0, 1))) ?>
                                             </div>
                                         <?php endif; ?>
                                         <div class="min-w-0 flex-1">
                                             <p class="text-sm font-semibold text-gray-800 truncate flex items-center gap-1.5">
                                                 <span class="truncate"><?= htmlspecialchars($p['fullname']) ?></span>
-                                                <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide <?= $isHead ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500' ?>">
+                                                <?php if ($isOfficial): ?><i class="fa-solid fa-circle-check text-sky-500 text-[12px] shrink-0" title="Official employee"></i><?php endif; ?>
+                                                <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide <?= $isHead ? 'bg-gray-900 text-amber-400' : 'bg-gray-100 text-gray-500' ?>">
                                                     <?= $isHead ? 'Head' : 'Staff' ?>
                                                 </span>
                                             </p>
                                             <p class="text-[11px] text-gray-500 truncate">
-                                                <?= htmlspecialchars($p['employeeid']) ?> · <?= htmlspecialchars($p['position']) ?>
+                                                <span class="font-mono"><?= htmlspecialchars($p['employeeid']) ?></span> · <?= htmlspecialchars($p['position']) ?>
                                             </p>
                                         </div>
                                         <button type="button" data-action="edit"
-                                            class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
-                                            <i class="fa-solid fa-pen-to-square mr-1"></i> Edit
+                                            class="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-semibold text-gray-700 bg-white border border-gray-200 hover:border-amber-300 hover:text-amber-700 transition">
+                                            <i class="fa-solid fa-pen-to-square"></i> Edit
                                         </button>
                                     </div>
 
@@ -331,7 +378,7 @@ function profileJson(array $p): string
                                                 <?php endforeach; ?>
                                             </select>
                                             <button type="button" data-action="link"
-                                                class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white bg-orange-500 hover:bg-orange-600 transition disabled:opacity-60">
+                                                class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-800 transition disabled:opacity-60">
                                                 Link
                                             </button>
                                         <?php endif; ?>
@@ -400,16 +447,21 @@ function profileJson(array $p): string
         <div class="absolute inset-0 bg-black/50" data-close="1"></div>
 
         <form id="edit-form" enctype="multipart/form-data" autocomplete="off"
-            class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl my-6">
+            class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl my-6 overflow-hidden">
+            <div class="pf-hazard h-1"></div>
 
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
             <input type="hidden" name="orig_employeeid" id="e-orig">
 
             <div class="flex items-center justify-between px-5 md:px-6 py-4 border-b border-gray-100">
-                <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
-                    <i class="fa-solid fa-pen-to-square text-orange-500"></i> Edit Profile
-                </h3>
-                <button type="button" data-close="1" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+                <div class="flex items-center gap-2.5">
+                    <span class="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-user-pen"></i></span>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Edit Profile</h3>
+                        <p id="e-sub" class="text-[11px] text-gray-400"></p>
+                    </div>
+                </div>
+                <button type="button" data-close="1" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="p-5 md:p-6 space-y-4">
@@ -443,13 +495,13 @@ function profileJson(array $p): string
                         <div class="grid grid-cols-2 gap-2">
                             <label class="cursor-pointer">
                                 <input type="radio" name="emp_level" value="staff" class="peer sr-only" checked>
-                                <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500 transition hover:border-orange-300 peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-600">
+                                <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500 transition hover:border-amber-300 peer-checked:border-amber-700 peer-checked:bg-amber-50 peer-checked:text-amber-800 peer-checked:shadow-[0_0_0_1px_#b45309]">
                                     <i class="fa-solid fa-user"></i> Staff
                                 </div>
                             </label>
                             <label class="cursor-pointer">
                                 <input type="radio" name="emp_level" value="head" class="peer sr-only">
-                                <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500 transition hover:border-orange-300 peer-checked:border-orange-500 peer-checked:bg-orange-50 peer-checked:text-orange-600">
+                                <div class="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500 transition hover:border-amber-300 peer-checked:border-amber-700 peer-checked:bg-amber-50 peer-checked:text-amber-800 peer-checked:shadow-[0_0_0_1px_#b45309]">
                                     <i class="fa-solid fa-user-tie"></i> Head
                                 </div>
                             </label>
@@ -478,7 +530,7 @@ function profileJson(array $p): string
                     <div>
                         <label class="<?= $labelClass ?>">Photo</label>
                         <label for="e-photo"
-                            class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-orange-300 hover:bg-orange-50/40 cursor-pointer transition overflow-hidden">
+                            class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-amber-400 hover:bg-amber-50/50 cursor-pointer transition overflow-hidden">
                             <img id="e-photo-preview" class="hidden max-h-full max-w-full object-contain" alt="">
                             <div id="e-photo-placeholder" class="text-center text-gray-400 px-2">
                                 <i class="fa-solid fa-camera text-2xl mb-1"></i>
@@ -493,7 +545,7 @@ function profileJson(array $p): string
                     <div>
                         <label class="<?= $labelClass ?>">Signature</label>
                         <label for="e-signature"
-                            class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-orange-300 hover:bg-orange-50/40 cursor-pointer transition overflow-hidden">
+                            class="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-amber-400 hover:bg-amber-50/50 cursor-pointer transition overflow-hidden">
                             <img id="e-signature-preview" class="hidden max-h-full max-w-full object-contain" alt="">
                             <div id="e-signature-placeholder" class="text-center text-gray-400 px-2">
                                 <i class="fa-solid fa-signature text-2xl mb-1"></i>
@@ -506,12 +558,12 @@ function profileJson(array $p): string
                 </div>
             </div>
 
-            <div class="px-5 md:px-6 py-4 flex items-center justify-end gap-3 bg-gray-50/60 rounded-b-2xl">
+            <div class="px-5 md:px-6 py-4 flex items-center justify-end gap-2 bg-gray-50/70 border-t border-gray-100">
                 <button type="button" data-close="1"
-                    class="px-4 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+                    class="px-4 h-10 rounded-lg text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition">Cancel</button>
                 <button type="submit" id="edit-submit"
-                    class="px-5 py-2 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-floppy-disk mr-1"></i> <span id="edit-submit-text">Save Changes</span>
+                    class="inline-flex items-center gap-2 px-5 h-10 rounded-lg text-sm font-semibold text-white bg-amber-700 hover:bg-amber-800 shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-floppy-disk"></i> <span id="edit-submit-text">Save Changes</span>
                 </button>
             </div>
         </form>
@@ -543,7 +595,7 @@ function profileJson(array $p): string
                     if (!file) { resetOne(input); return; }
 
                     if (file.size > 10 * 1024 * 1024) {
-                        alert('Max file size is 10MB.');
+                        showErrors(['Max file size is 10MB.']);
                         input.value = '';
                         resetOne(input);
                         return;
@@ -654,6 +706,7 @@ function profileJson(array $p): string
                 editForm.reset();
 
                 document.getElementById('e-orig').value = p.employeeid;
+                document.getElementById('e-sub').textContent = `${p.employeeid} · ${p.fullname}`;
                 ['employeeid', 'fullname', 'position', 'contactno', 'address', 'sss', 'tin', 'datestarted'].forEach(k => {
                     document.getElementById('e-' + k).value = p[k] || '';
                 });
@@ -690,7 +743,7 @@ function profileJson(array $p): string
                     const file = input.files[0];
                     if (!file) return;
                     if (file.size > 10 * 1024 * 1024) {
-                        alert('Max file size is 10MB.');
+                        fillErrors(editErrBox, editErrList, ['Max file size is 10MB.']);
                         input.value = '';
                         return;
                     }
@@ -726,6 +779,35 @@ function profileJson(array $p): string
                     editSubmitText.textContent = 'Save Changes';
                 }
             });
+
+            // ── Search + filter ng Saved Profiles ──
+            const pfSearch = document.getElementById('pf-search');
+            let pfFilter = 'all';
+            function pfApply() {
+                const lst = document.getElementById('link-list');
+                if (!lst) return;
+                const q = (pfSearch?.value || '').trim().toLowerCase();
+                const rows = [...lst.querySelectorAll(':scope > li[data-employeeid]')];
+                const has = (li, f) => f === 'all' || (' ' + li.dataset.flags + ' ').includes(' ' + f + ' ');
+                document.querySelectorAll('[data-fcount]').forEach(c => c.textContent = rows.filter(li => has(li, c.dataset.fcount)).length);
+                let shown = 0;
+                rows.forEach(li => {
+                    const ok = has(li, pfFilter) && (!q || li.dataset.search.includes(q));
+                    li.classList.toggle('hidden', !ok);
+                    if (ok) shown++;
+                });
+                let empty = document.getElementById('pf-empty');
+                if (!empty) { empty = document.createElement('li'); empty.id = 'pf-empty'; empty.className = 'p-8 text-center text-xs text-gray-400'; empty.textContent = 'No profiles match.'; lst.appendChild(empty); }
+                empty.classList.toggle('hidden', shown > 0);
+            }
+            if (pfSearch) pfSearch.addEventListener('input', pfApply);
+            document.getElementById('pf-chips')?.addEventListener('click', e => {
+                const b = e.target.closest('[data-f]'); if (!b) return;
+                pfFilter = b.dataset.f;
+                document.querySelectorAll('#pf-chips [data-f]').forEach(x => x.dataset.on = x === b ? '1' : '0');
+                pfApply();
+            });
+            pfApply();
 
             // ── Link / Unlink (account + role) / Official / Edit (row buttons) ────────
             const list = document.getElementById('link-list');
