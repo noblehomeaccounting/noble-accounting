@@ -500,6 +500,10 @@ $memoNavBadge = $memoNavCount > 9 ? '9+' : (int) $memoNavCount;
                         <span id="memo-nav-badge"
                             class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> ml-auto min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center"><?= $memoNavBadge ?></span>
                     </a>
+                    <button type="button" onclick="window.NHPush && NHPush.panel ? NHPush.panel() : null"
+                        class="w-full flex items-center gap-3 px-4 py-3 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-600 font-medium transition-colors text-left">
+                        <i class="fa-solid fa-mobile-screen-button w-4 text-center"></i> Phone notifications
+                    </button>
                     <div class="border-t border-gray-100"></div>
                     <a href="<?= BASE_URL ?>/logoutuser"
                         class="flex items-center gap-3 px-4 py-3 text-xs text-red-500 hover:bg-red-50 font-medium transition-colors">
@@ -632,6 +636,11 @@ $memoNavBadge = $memoNavCount > 9 ? '9+' : (int) $memoNavCount;
             <span id="mob-memo-badge"
                 class="<?= $memoNavCount > 0 ? '' : 'hidden' ?> ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"><?= $memoNavBadge ?></span>
         </a>
+        <button type="button" onclick="closeMobileSidebar(); window.NHPush && NHPush.panel ? NHPush.panel() : null"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-r-xl text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all border-l-[3px] border-transparent text-left">
+            <i class="fa-solid fa-mobile-screen-button w-4 text-center text-gray-400"></i>
+            <span>Phone notifications</span>
+        </button>
     </nav>
 
     <!-- Logout -->
