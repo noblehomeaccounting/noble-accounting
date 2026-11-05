@@ -461,7 +461,7 @@ if (!function_exists('getSidebarCounts')) {
         // Transmittal Summary (PO): na-save na ang transmittal pero hindi pa na-mark na Delivered ("For Delivery")
         if ($role === ROLE_PO) {
             try {
-                $c['poForDelivery'] = sidebarScalar($conn, "SELECT COUNT(*) FROM nobletransmittal WHERE delivered_at IS NULL");
+                $c['poForDelivery'] = sidebarScalar($conn, "SELECT COUNT(*) FROM nobletransmittal WHERE delivered_at IS NULL AND pr_id IS NOT NULL");
             } catch (Throwable $e) {
                 error_log('sidebar poForDelivery: ' . $e->getMessage());
             }
@@ -499,7 +499,8 @@ if (!function_exists('getSidebarCounts')) {
                     $conn,
                     "SELECT COUNT(*) FROM nobletransmittal t
                      LEFT JOIN noblepc_dr d ON d.transmittal_id = t.id
-                     WHERE (d.id IS NULL AND t.delivered_at IS NOT NULL) OR d.status = 'returned'"
+                     WHERE t.pr_id IS NOT NULL   -- transmittal na walang PR (Sales, atbp.) ay hindi para sa DR
+                       AND ((d.id IS NULL AND t.delivered_at IS NOT NULL) OR d.status = 'returned')"
                 );
             } catch (Throwable $e) {
                 error_log('sidebar pcDrTodo: ' . $e->getMessage());

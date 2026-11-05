@@ -22,6 +22,13 @@ include_once ROOT_PATH . '/network/po-bom-group.php';   // isang PR = lahat ng B
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// Sino ang nakakakita ng LAHAT ng transmittal at gumagawa mula sa paid na Purchase Request.
+// Ang ibang role (Sales, Designer, atbp.): sariling transmittal lang (created_by), at gumagawa nang walang PR.
+$trCanAll = in_array($_SESSION['role'] ?? '', array_filter([
+    defined('ROLE_PO') ? ROLE_PO : null,
+    defined('ROLE_SUPERADMIN') ? ROLE_SUPERADMIN : null,
+]), true);
+
 // Gitnang bahagi ng Ref No (permanente): <taon>06-<sunod-sunod>, hal. 202606-01
 const TR_REF_MIDDLE = '06';
 
@@ -112,7 +119,8 @@ function trPaidPr(mysqli $conn, int $prId): ?array
 // ================= LIST =================
 // ready = paid na PR na wala pang transmittal | done = mga nagawa nang transmittal
 if ($action === 'list') {
-    $ready = $conn->query("
+    // Paid na PR na naghihintay ng transmittal — PO / Superadmin lang
+    $ready = $trCanAll ? $conn->query("
         SELECT p.id, p.req_no, p.client, p.project_scope, p.total_amount, p.paid_at,
                b.bom_number,
                (SELECT COUNT(*) FROM noblepurchaserequest_items i WHERE i.pr_id = p.id) AS item_count
@@ -121,16 +129,23 @@ if ($action === 'list') {
         LEFT JOIN nobletransmittal t ON t.pr_id = p.id
         WHERE p.status = 'Approved' AND p.paid_at IS NOT NULL AND t.id IS NULL
         ORDER BY p.paid_at DESC, p.id DESC
-    ")->fetch_all(MYSQLI_ASSOC);
+    ")->fetch_all(MYSQLI_ASSOC) : [];
 
-    $done = $conn->query("
+    // PO / Superadmin: lahat · iba: sariling gawa lang
+    $st = $conn->prepare("
         SELECT t.id, t.ref_no, t.transmittal_date, t.project_name, t.client_name, t.subject,
                t.issued_by, t.received_by, t.created_at, p.req_no,
                (SELECT COUNT(*) FROM nobletransmittal_items i WHERE i.transmittal_id = t.id) AS item_count
         FROM nobletransmittal t
         LEFT JOIN noblepurchaserequest p ON p.id = t.pr_id
+        WHERE (? = 1 OR t.created_by = ?)
         ORDER BY t.id DESC
-    ")->fetch_all(MYSQLI_ASSOC);
+    ");
+    $all = $trCanAll ? 1 : 0;
+    $st->bind_param('ii', $all, $currentUserId);
+    $st->execute();
+    $done = $st->get_result()->fetch_all(MYSQLI_ASSOC);
+    $st->close();
 
     foreach ($ready as &$r) {
         $r['id'] = (int) $r['id'];
@@ -141,12 +156,14 @@ if ($action === 'list') {
     foreach ($done as &$r) { $r['id'] = (int) $r['id']; $r['item_count'] = (int) $r['item_count']; }
     unset($r);
 
-    trOut(['success' => true, 'ready' => $ready, 'done' => $done]);
+    trOut(['success' => true, 'ready' => $ready, 'done' => $done, 'can_all' => $trCanAll,
+           'ref_preview' => date('Y') . TR_REF_MIDDLE . '-xx']);
 }
 
 // ================= PREFILL =================
 // Laman ng bagong form galing sa paid na Purchase Request
 if ($action === 'prefill') {
+    if (!$trCanAll) trOut(['success' => false, 'message' => 'Only Purchasing can make a transmittal from a purchase request.']);
     $prId = intval($_GET['pr_id'] ?? 0);
     $pr = trPaidPr($conn, $prId);
     if (!$pr) trOut(['success' => false, 'message' => 'A transmittal can only be made once the purchase request is paid.']);
@@ -180,13 +197,20 @@ if ($action === 'create') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') trOut(['success' => false, 'message' => 'Invalid request.']);
 
     $prId = intval($_POST['pr_id'] ?? 0);
-    $pr = trPaidPr($conn, $prId);
-    if (!$pr) trOut(['success' => false, 'message' => 'A transmittal can only be made once the purchase request is paid.']);
-    if (!empty($pr['transmittal_id'])) trOut(['success' => false, 'message' => 'This purchase request already has a transmittal.']);
+    if ($prId > 0) {
+        // Galing sa paid na Purchase Request (PO / Superadmin)
+        if (!$trCanAll) trOut(['success' => false, 'message' => 'Only Purchasing can make a transmittal from a purchase request.']);
+        $pr = trPaidPr($conn, $prId);
+        if (!$pr) trOut(['success' => false, 'message' => 'A transmittal can only be made once the purchase request is paid.']);
+        if (!empty($pr['transmittal_id'])) trOut(['success' => false, 'message' => 'This purchase request already has a transmittal.']);
+    } else {
+        // Walang PR (Sales, Designer, atbp.) — client name ay tina-type
+        $pr = ['client' => mb_substr(trim($_POST['client_name'] ?? ''), 0, 255), 'bom_id' => null];
+    }
 
     $date      = trim($_POST['transmittal_date'] ?? '');
     $project   = trim($_POST['project_name'] ?? '');
-    $client    = trim((string) $pr['client']);   // galing sa BOM / Purchase Request, hindi na tina-type
+    $client    = trim((string) $pr['client']);   // PR: galing sa BOM · walang PR: tina-type
     $company   = trim($_POST['client_company'] ?? '');
     $address   = trim($_POST['client_address'] ?? '');
     $subject   = trim($_POST['subject'] ?? '');
@@ -199,7 +223,7 @@ if ($action === 'create') {
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) trOut(['success' => false, 'message' => 'Date is invalid.']);
     if ($project === '') trOut(['success' => false, 'message' => 'Project name is required.']);
-    if ($client === '') trOut(['success' => false, 'message' => 'The purchase request has no client name.']);
+    if ($client === '') trOut(['success' => false, 'message' => $prId > 0 ? 'The purchase request has no client name.' : 'Client name is required.']);
     if ($particulars === '') trOut(['success' => false, 'message' => 'Particulars is required for the Summary of Transmittal.']);
 
     $items = [];
@@ -235,6 +259,7 @@ if ($action === 'create') {
         $refNo = $prefix . str_pad((string) ($last + 1), 2, '0', STR_PAD_LEFT);
 
         $bomId = $pr['bom_id'] !== null ? (int) $pr['bom_id'] : null;
+        $prIdDb = $prId > 0 ? $prId : null;   // walang PR = NULL
         $st = $conn->prepare("
             INSERT INTO nobletransmittal
                 (ref_no, pr_id, bom_id, transmittal_date, project_name, client_name, client_company, client_address, subject, notes,
@@ -242,7 +267,7 @@ if ($action === 'create') {
                  particulars, delivery_mode, summary_remarks, created_by, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $st->bind_param('siissssssssisssssi', $refNo, $prId, $bomId, $date, $project, $client, $company, $address, $subject, $notes,
+        $st->bind_param('siissssssssisssssi', $refNo, $prIdDb, $bomId, $date, $project, $client, $company, $address, $subject, $notes,
             $me['name'], $currentUserId, $me['signature_path'], $received, $particulars, $mode, $sumRemarks, $currentUserId);
         $st->execute();
         $trId = $st->insert_id;
@@ -265,7 +290,7 @@ if ($action === 'create') {
         trOut(['success' => false, 'message' => 'Could not save the transmittal. Please try again.']);
     }
 
-    trRealtime($conn, $prId, 'transmittal_created', [[ROLE_PO, null], [ROLE_PC, null], [ROLE_SUPERADMIN, null]]);
+    if ($prId > 0) trRealtime($conn, $prId, 'transmittal_created', [[ROLE_PO, null], [ROLE_PC, null], [ROLE_SUPERADMIN, null]]);
     trOut(['success' => true, 'id' => $trId, 'ref_no' => $refNo, 'has_signature' => $me['signature_path'] !== null]);
 }
 
@@ -282,6 +307,8 @@ if ($action === 'view') {
     $tr = $st->get_result()->fetch_assoc();
     $st->close();
     if (!$tr) trOut(['success' => false, 'message' => 'Transmittal not found.']);
+    // Sariling transmittal lang ang puwedeng buksan (maliban sa PO / Superadmin)
+    if (!$trCanAll && (int) $tr['created_by'] !== $currentUserId) trOut(['success' => false, 'message' => 'You can only open transmittals you made.']);
 
     $it = $conn->prepare("SELECT serial_no, description, quantity, remarks FROM nobletransmittal_items WHERE transmittal_id = ? ORDER BY item_no ASC");
     $it->bind_param('i', $id);

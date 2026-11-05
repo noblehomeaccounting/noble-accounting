@@ -16,6 +16,12 @@ $allowedRoles = array_values(array_unique(array_filter(array_map(
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 $tsAjaxUrl = BASE_URL . '/transmittalsummaryajax';
+
+// PO / Superadmin: lahat · iba: sariling transmittal lang
+$tsCanAll = in_array($_SESSION['role'] ?? '', array_filter([
+    defined('ROLE_PO') ? ROLE_PO : null,
+    defined('ROLE_SUPERADMIN') ? ROLE_SUPERADMIN : null,
+]), true);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -34,9 +40,9 @@ $tsAjaxUrl = BASE_URL . '/transmittalsummaryajax';
         <!-- ===================== HEADER ===================== -->
         <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
             <div>
-                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
+                <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5"><?= $tsCanAll ? 'Purchasing' : 'My Transmittals' ?></p>
                 <h1 class="text-gray-900 text-xl font-semibold">Summary of Transmittal</h1>
-                <p class="text-gray-400 text-xs mt-0.5">Every saved transmittal lands here as <b class="text-orange-600">For delivery</b>. Mark it delivered once the client has it.</p>
+                <p class="text-gray-400 text-xs mt-0.5"><?= $tsCanAll ? 'Every saved transmittal' : 'Each transmittal you made' ?> lands here as <b class="text-orange-600">For delivery</b>. Mark it delivered once the client has it.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="tsLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="tsLiveText">Auto-refresh</span></span>

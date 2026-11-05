@@ -20,6 +20,25 @@ header('Cache-Control: no-store');
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// PO / Superadmin: lahat ng transmittal · iba: sariling gawa lang (created_by)
+$trCanAll = in_array($_SESSION['role'] ?? '', array_filter([
+    defined('ROLE_PO') ? ROLE_PO : null,
+    defined('ROLE_SUPERADMIN') ? ROLE_SUPERADMIN : null,
+]), true);
+$trAll = $trCanAll ? 1 : 0;
+
+// Akin ba ito (o PO / Superadmin)?
+function tsMine(mysqli $conn, int $id, bool $canAll, int $uid): bool
+{
+    if ($canAll) return true;
+    $c = $conn->prepare("SELECT created_by FROM nobletransmittal WHERE id = ? LIMIT 1");
+    $c->bind_param('i', $id);
+    $c->execute();
+    $row = $c->get_result()->fetch_assoc();
+    $c->close();
+    return $row && (int) $row['created_by'] === $uid;
+}
+
 // Realtime doorbell (Supabase Broadcast): PO, Project Coordinator, Superadmin + Sales/Designer ng inquiry.
 // Hindi kailanman pinipigilan ang save — kapag pumalya, naka-log lang.
 if (!function_exists('trRealtime')) {
@@ -53,22 +72,28 @@ function tsOut(array $d): void
 
 // ================= LIST =================
 if ($action === 'list') {
-    $rows = $conn->query("
+    $st = $conn->prepare("
         SELECT t.id, t.ref_no, t.transmittal_date, t.client_name, t.client_company, t.project_name,
                t.particulars, t.delivery_mode, t.summary_remarks, t.delivered_at, t.delivered_marked_at,
                t.pr_id, p.req_no,
                (SELECT name FROM noblerole r WHERE r.id = t.delivered_by_id LIMIT 1) AS delivered_marked_by
         FROM nobletransmittal t
         LEFT JOIN noblepurchaserequest p ON p.id = t.pr_id
+        WHERE (? = 1 OR t.created_by = ?)
         ORDER BY (t.delivered_at IS NOT NULL), t.transmittal_date DESC, t.id DESC
-    ")->fetch_all(MYSQLI_ASSOC);
+    ");
+    $st->bind_param('ii', $trAll, $currentUserId);
+    $st->execute();
+    $rows = $st->get_result()->fetch_all(MYSQLI_ASSOC);
+    $st->close();
 
     foreach ($rows as &$r) { $r['id'] = (int) $r['id']; }
     unset($r);
 
-    $modes = array_column($conn->query("SELECT DISTINCT delivery_mode FROM nobletransmittal WHERE delivery_mode IS NOT NULL AND delivery_mode <> '' ORDER BY delivery_mode")->fetch_all(MYSQLI_ASSOC), 'delivery_mode');
+    $modes = array_values(array_unique(array_filter(array_column($rows, 'delivery_mode'))));
+    sort($modes);
 
-    tsOut(['success' => true, 'rows' => $rows, 'modes' => $modes]);
+    tsOut(['success' => true, 'rows' => $rows, 'modes' => $modes, 'can_all' => $trCanAll]);
 }
 
 // ================= MARK AS DELIVERED =================
@@ -92,6 +117,7 @@ if ($action === 'deliver') {
     $tr = $q->get_result()->fetch_assoc();
     $q->close();
     if (!$tr) tsOut(['success' => false, 'message' => 'Transmittal not found.']);
+    if (!tsMine($conn, $id, $trCanAll, $currentUserId)) tsOut(['success' => false, 'message' => 'You can only update transmittals you made.']);
     if (!empty($tr['delivered_at'])) tsOut(['success' => false, 'message' => 'This transmittal is already marked as delivered.']);
     if ($date < $tr['transmittal_date']) tsOut(['success' => false, 'message' => 'Date delivered cannot be earlier than the transmittal date.']);
     if ($date > date('Y-m-d')) tsOut(['success' => false, 'message' => 'Date delivered cannot be in the future.']);
@@ -108,8 +134,8 @@ if ($action === 'deliver') {
     if ($affected < 1) tsOut(['success' => false, 'message' => 'This transmittal is already marked as delivered.']);
 
     // Kusang punan ang Client Series (Date Deliver to Client / Mode) kung wala pang laman doon
-    try {
-        $prId = (int) $tr['pr_id'];
+    $prId = (int) $tr['pr_id'];
+    if ($prId > 0) try {   // walang PR = walang Client Series
         $cs = $conn->prepare("
             INSERT INTO nobleclientseries (pr_id, deliver_client_date, delivery_mode, updated_by, updated_at)
             VALUES (?, ?, ?, ?, NOW())
@@ -124,7 +150,7 @@ if ($action === 'deliver') {
     } catch (Throwable $e) { /* hindi dapat pigilan ang pag-deliver */ }
 
     // PC: lalabas agad sa "Ready for DR" · Sales: "Delivered" sa Track
-    trRealtime($conn, (int) $tr['pr_id'], 'transmittal_delivered', [[ROLE_PO, null], [ROLE_PC, null], [ROLE_SUPERADMIN, null]]);
+    if ($prId > 0) trRealtime($conn, $prId, 'transmittal_delivered', [[ROLE_PO, null], [ROLE_PC, null], [ROLE_SUPERADMIN, null]]);
     tsOut(['success' => true]);
 }
 
@@ -136,6 +162,7 @@ if ($action === 'update') {
     $mode        = mb_substr(trim($_POST['delivery_mode'] ?? ''), 0, 255);
     $remarks     = mb_substr(trim($_POST['summary_remarks'] ?? ''), 0, 1000);
     if ($particulars === '') tsOut(['success' => false, 'message' => 'Particulars is required.']);
+    if (!tsMine($conn, $id, $trCanAll, $currentUserId)) tsOut(['success' => false, 'message' => 'You can only edit transmittals you made.']);
 
     $st = $conn->prepare("UPDATE nobletransmittal SET particulars = ?, delivery_mode = ?, summary_remarks = ? WHERE id = ? AND delivered_at IS NULL");
     $st->bind_param('sssi', $particulars, $mode, $remarks, $id);

@@ -15,6 +15,12 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 
 $trAjaxUrl = BASE_URL . '/transmittalajax';
 
+// PO / Superadmin: lahat ng transmittal + gumagawa mula sa paid na PR · iba: sariling transmittal lang (walang PR)
+$trCanAll = in_array($_SESSION['role'] ?? '', array_filter([
+    defined('ROLE_PO') ? ROLE_PO : null,
+    defined('ROLE_SUPERADMIN') ? ROLE_SUPERADMIN : null,
+]), true);
+
 // "Issued by" = naka-login na PO (pangalan + pirma)
 $me = ['name' => $_SESSION['username'] ?? '', 'sig' => null];
 $uid = intval($_SESSION['account_id'] ?? 0);
@@ -89,19 +95,24 @@ if ($uid > 0) {
             <!-- ===================== HEADER ===================== -->
             <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
                 <div>
-                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
+                    <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5"><?= $trCanAll ? 'Purchasing' : 'My Transmittals' ?></p>
                     <h1 class="text-gray-900 text-xl font-semibold">Transmittal</h1>
-                    <p class="text-gray-400 text-xs mt-0.5">A transmittal can be made once the purchase request is <b class="text-green-600">Paid</b>.</p>
+                    <p class="text-gray-400 text-xs mt-0.5"><?= $trCanAll
+                        ? 'Make one from a <b class="text-green-600">Paid</b> purchase request, or start a blank transmittal.'
+                        : 'Make a transmittal for items you send out. Only you can see the ones you made.' ?></p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="trLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="trLiveText">Auto-refresh</span></span>
+                <button type="button" id="trNew" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
+                    <i class="fa-solid fa-plus"></i> New Transmittal
+                </button>
                 <div class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-                    <button type="button" data-tab="ready" class="tr-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
+                    <button type="button" data-tab="ready" class="tr-tab <?= $trCanAll ? '' : 'hidden' ?> inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Ready
                         <span data-count="ready" class="min-w-[20px] px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                     </button>
                     <button type="button" data-tab="done" class="tr-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Transmittals
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <?= $trCanAll ? 'Transmittals' : 'My Transmittals' ?>
                         <span data-count="done" class="min-w-[20px] px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                     </button>
                 </div>
@@ -218,6 +229,8 @@ if ($uid > 0) {
             const AJAX = <?= json_encode($trAjaxUrl) ?>;
             const BASE = <?= json_encode(BASE_URL) ?>;
             const ME   = <?= json_encode($me) ?>;
+            const CAN_ALL = <?= json_encode($trCanAll) ?>;   // PO / Superadmin
+            let refPreview = <?= json_encode(date('Y') . '06-xx') ?>;
             const SUMMARY_URL = <?= json_encode(BASE_URL . '/transmittalsummary') ?>;
             const SUM_IDS = { particulars: 'trParticulars', delivery_mode: 'trMode', summary_remarks: 'trSumRemarks' };
 
@@ -297,7 +310,7 @@ if ($uid > 0) {
                             <td class="px-5 py-3.5"><p class="text-gray-700">${esc(r.issued_by || '—')}</p><p class="text-[11px] text-gray-400">to ${esc(r.received_by || '—')}</p></td>
                             <td class="px-5 py-3.5 text-right"><button type="button" data-view="${r.id}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"><i class="fa-solid fa-eye"></i> View</button></td>
                         </tr>`).join('')
-                        : `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${data.done.length ? 'No transmittals match your search.' : 'No transmittals yet.'}</td></tr>`;
+                        : `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${data.done.length ? 'No transmittals match your search.' : (CAN_ALL ? 'No transmittals yet.' : 'You have no transmittals yet. Click <b>New Transmittal</b> to make one.')}</td></tr>`;
                     document.getElementById('trFooter').textContent = `Showing ${list.length} of ${data.done.length}`;
                 }
             }
@@ -318,6 +331,7 @@ if ($uid > 0) {
                     }
                     lastSig = sig;
                     data = { ready: d.ready, done: d.done };
+                    if (d.ref_preview) refPreview = d.ref_preview;
                     renderList();
                 } catch (e) { if (!silent) toast('Connection error while loading.', 'error'); }
             }
@@ -373,7 +387,7 @@ if ($uid > 0) {
 
                     <table class="bx bx-outer" style="margin-top:4px">
                         ${infoRow('PROJECT NAME:', 'project_name', d.project_name)}
-                        ${infoRow('CLIENT NAME:', 'client_name', d.client_name, 'readonly title="From the BOM / Purchase Request"')}
+                        ${infoRow('CLIENT NAME:', 'client_name', d.client_name, currentPr && currentPr.id ? 'readonly title="From the BOM / Purchase Request"' : 'placeholder="Client name"')}
                         ${infoRow('CLIENT COMPANY:', 'client_company', d.client_company)}
                         ${infoRow('CLIENT ADRESS:', 'client_address', d.client_address)}
                         ${infoRow('SUBJECT / PURPOSE:', 'subject', d.subject)}
@@ -504,6 +518,27 @@ if ($uid > 0) {
                 } catch (e) { toast('Connection error.', 'error'); }
             }
 
+            // ── bagong transmittal na walang Purchase Request (lahat ng role) ──
+            function openManual() {
+                currentPr = { id: 0, req_no: 'No purchase request', client: '' };
+                const base = {
+                    ref_preview: refPreview, transmittal_date: todayISO(),
+                    project_name: '', client_name: '', client_company: '', client_address: '',
+                    subject: '', notes: '', received_by: '', items: [],
+                };
+                const draft = readDraft();
+                const data0 = draft ? Object.assign(base, draft) : base;
+                renderSheet(data0, true);
+                Object.entries(SUM_IDS).forEach(([k, id]) => document.getElementById(id).value = data0[k] || '');
+                document.getElementById('trSumStatus').innerHTML = '<span class="text-gray-400">Goes to the summary as <b>For delivery</b> once saved</span>';
+                if (draft) toast('Your unsaved inputs were restored.');
+                document.getElementById('trHint').innerHTML = '<i class="fa-solid fa-pen text-amber-700 mr-1"></i>New transmittal. Fill in the highlighted fields.';
+                setFormMode('edit');
+                history.replaceState(null, '', `${location.pathname}?new=1`);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            document.getElementById('trNew').addEventListener('click', openManual);
+
             async function openView(id) {
                 try {
                     const res = await fetch(`${AJAX}?action=view&id=${id}`, { cache: 'no-store' });
@@ -554,6 +589,7 @@ if ($uid > 0) {
                 if (!currentPr) return;
                 const d = collect();
                 if (!d.project_name) { toast('Project name is required.', 'error'); return; }
+                if (!d.client_name) { toast('Client name is required.', 'error'); return; }
                 if (!d.particulars) { toast('Particulars is required for the Summary of Transmittal.', 'error'); document.getElementById('trParticulars').focus(); return; }
                 const count = d.items.filter(i => i.description.trim()).length;
                 if (!count) { toast('Add at least one item.', 'error'); return; }
@@ -595,10 +631,11 @@ if ($uid > 0) {
 
             // ── simula: ?pr=ID (galing sa Purchase Orders) o ?view=ID ──
             const qs = new URLSearchParams(location.search);
-            setTab('ready');
+            setTab(CAN_ALL ? 'ready' : 'done');
             load();
-            if (qs.get('pr')) openCreate(+qs.get('pr'));
+            if (qs.get('pr') && CAN_ALL) openCreate(+qs.get('pr'));
             else if (qs.get('view')) openView(+qs.get('view'));
+            else if (qs.get('new')) openManual();
 
             // ─── Realtime (koneksyon ng sidebar: window.NH_RT) ───
             // Bagong paid na PR / transmittal / delivered (ibang PO o tab) → kunin agad ang listahan.
