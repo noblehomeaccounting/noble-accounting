@@ -18,14 +18,15 @@ $inquiryId = intval($_GET['id'] ?? 0);
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>CRM Monitoring — Tracking</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8 overflow-x-hidden">
+    <main class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 overflow-x-hidden">
         <!-- #region -->
         <div class="max-w-4xl mx-auto">
 
@@ -39,7 +40,7 @@ $inquiryId = intval($_GET['id'] ?? 0);
             </a>
 
             <!-- Header card -->
-            <div id="monHeaderCard" class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-5">
+            <div id="monHeaderCard" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 mb-4 sm:mb-5">
                 <div class="h-4 w-40 rounded bg-gray-100 animate-pulse mb-2"></div>
                 <div class="h-6 w-64 rounded bg-gray-100 animate-pulse"></div>
             </div>
@@ -54,7 +55,7 @@ $inquiryId = intval($_GET['id'] ?? 0);
 
         <!-- Toast container -->
         <div id="crmToastContainer"
-            class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm">
         </div>
 
     </main>
@@ -74,7 +75,7 @@ $inquiryId = intval($_GET['id'] ?? 0);
             toast.innerHTML = `
                 <span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${palette.icon}">${palette.symbol}</span>
                 <span class="flex-1 leading-relaxed">${message}</span>
-                <button type="button" class="shrink-0 text-current opacity-50 hover:opacity-100 text-base leading-none" aria-label="Close">&times;</button>
+                <button type="button" class="shrink-0 w-5 h-5 inline-flex items-center justify-center text-current opacity-50 hover:opacity-100" aria-label="Close"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             `;
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
@@ -114,9 +115,9 @@ $inquiryId = intval($_GET['id'] ?? 0);
 
         function monDetailRow(label, value) {
             return `
-                <div class="flex justify-between gap-3 py-2 border-b border-gray-100 text-[13px] last:border-b-0">
-                    <span class="text-gray-400 whitespace-nowrap">${monEscapeHtml(label)}</span>
-                    <span class="text-gray-800 font-medium text-right">${value || '—'}</span>
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-3 py-2 border-b border-gray-100 text-[13px] last:border-b-0">
+                    <span class="text-[11.5px] sm:text-[13px] text-gray-400 sm:whitespace-nowrap">${monEscapeHtml(label)}</span>
+                    <span class="text-gray-800 font-medium sm:text-right min-w-0 break-words">${value || '—'}</span>
                 </div>
             `;
         }
@@ -125,7 +126,7 @@ $inquiryId = intval($_GET['id'] ?? 0);
             document.getElementById('monHeaderCard').innerHTML = `
                 <div class="mb-4">
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Control No. ${monEscapeHtml(inquiry.control_no)}</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">${monEscapeHtml(inquiry.client_name)}</h1>
+                    <h1 class="text-gray-900 text-lg sm:text-xl font-semibold break-words">${monEscapeHtml(inquiry.client_name)}</h1>
                     <p class="text-xs text-gray-400 mt-1">Filed ${monFormatDateTimeLong(inquiry.created_at)} ${inquiry.branch ? '· ' + monEscapeHtml(inquiry.branch) + ' Branch' : ''}</p>
                 </div>
                 <div class="pt-1 border-t border-gray-100">

@@ -18,7 +18,7 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
     <!-- ═══ HEADER ═══ -->
     <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
         <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
-        <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+        <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-3 min-w-0">
                 <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-address-book text-lg"></i></span>
                 <div class="min-w-0">
@@ -30,7 +30,7 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
         </div>
 
         <!-- Stage counters (= quick filter) -->
-        <div id="crmStageTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        <div id="crmStageTabs" class="px-4 sm:px-5 pt-px sm:pt-0 pb-4 flex sm:grid sm:grid-cols-4 lg:grid-cols-8 gap-2 overflow-x-auto sm:overflow-visible snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <?php foreach ([
                 ['', 'All', 'fa-layer-group', 'text-gray-900'],
                 ['schedule', 'To schedule', 'fa-calendar-plus', 'text-amber-700'],
@@ -42,29 +42,29 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
                 ['contract', 'Contract to do', 'fa-file-signature', 'text-rose-700'],
             ] as [$val, $label, $icon, $cls]): ?>
                 <button type="button" data-stage="<?= $val ?>"
-                    class="crm-stage-tab text-left rounded-xl border px-3.5 py-2 transition-colors">
-                    <span class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"><i class="fa-solid <?= $icon ?> text-[9px]"></i><?= htmlspecialchars($label) ?></span>
+                    class="crm-stage-tab shrink-0 sm:shrink min-w-[7.5rem] sm:min-w-0 snap-start text-left rounded-xl border px-3.5 py-2 transition-colors">
+                    <span class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 whitespace-nowrap"><i class="fa-solid <?= $icon ?> text-[9px]"></i><?= htmlspecialchars($label) ?></span>
                     <span data-stage-count="<?= $val ?>" class="block text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span>
                 </button>
             <?php endforeach; ?>
         </div>
 
         <!-- Search + filters (same IDs as before) -->
-        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60">
+        <div class="px-4 sm:px-5 py-3 border-t border-gray-100 bg-gray-50/60">
             <div class="flex flex-wrap items-center gap-2">
-                <div class="relative flex-1 min-w-[200px] max-w-md">
+                <div class="relative basis-full sm:basis-auto flex-1 sm:min-w-[200px] sm:max-w-md">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px] pointer-events-none"></i>
                     <input id="crmListSearch" type="text" placeholder="Search control no., client or contact…"
-                        class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-8 pr-8 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                        class="w-full h-10 sm:h-9 bg-white border border-gray-200 rounded-lg pl-8 pr-8 text-base sm:text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                     <button type="button" id="crmListSearchClear" aria-label="Clear search"
                         class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100"><i class="fa-solid fa-xmark text-xs leading-none"></i></button>
                 </div>
                 <button type="button" id="crmFilterToggle" onclick="crmToggleFilters()"
-                    class="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                    class="inline-flex items-center gap-1.5 h-10 sm:h-9 px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                     <i class="fa-solid fa-sliders"></i> Filters <span id="crmFilterCountBadge" class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold items-center justify-center">0</span>
                 </button>
                 <select id="crmSortSelect" aria-label="Sort"
-                    class="h-9 pl-2.5 pr-7 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600">
+                    class="flex-1 sm:flex-none min-w-0 h-10 sm:h-9 pl-2.5 pr-7 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600">
                     <option value="created_at:desc">Newest first</option>
                     <option value="created_at:asc">Oldest first</option>
                     <option value="client_name:asc">Client A–Z</option>
@@ -76,9 +76,16 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
                     class="hidden inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
                     <i class="fa-solid fa-xmark"></i> Clear filters
                 </button>
-                <span id="crmListCount" class="ml-auto text-[11px] text-gray-400"></span>
+                <span id="crmListCount" class="basis-full sm:basis-auto sm:ml-auto text-[11px] text-gray-400"></span>
             </div>
 
+<div id="crmListFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="crmListFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="-mr-2 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="nh-fd-body">
             <div id="crmFilterPanel" class="hidden mt-3 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.6fr)] gap-3">
                 <label class="block">
                     <span class="block mb-1 text-[11px] font-semibold text-gray-500">Status</span>
@@ -115,11 +122,17 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
                     </div>
                 </div>
             </div>
+
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
         </div>
     </section>
 
     <!-- ═══ LIST (may sariling scroll) ═══ -->
-    <div id="crmListCards" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[260px] overflow-y-auto py-[3px] px-[3px] [scrollbar-width:thin]"></div>
+    <div id="crmListCards" class="space-y-2.5 md:max-h-[calc(100vh-300px)] min-h-[260px] md:overflow-y-auto py-[3px] px-[3px] [scrollbar-width:thin]"></div>
     <!-- (compat: dating table body — hindi na ginagamit) -->
     <div id="crmListTbody" class="hidden"></div>
 </div>
@@ -155,8 +168,8 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
 </div>
 
 <!-- ═══ SCHEDULE & ASSIGN MODAL ═══ -->
-<div id="crmAssignModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[60] px-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[92vh] flex flex-col">
+<div id="crmAssignModal" class="fixed inset-0 bg-black/40 hidden items-end sm:items-center justify-center z-[60] sm:px-4">
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden max-h-[92vh] flex flex-col pb-[env(safe-area-inset-bottom)]">
         <div class="h-1.5 shrink-0 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
         <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
             <div class="flex items-center gap-2.5 min-w-0">
@@ -218,7 +231,7 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
 
 <!-- Toast container -->
 <div id="crmToastContainer"
-    class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
+    class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm">
 </div>
 
 <script>
@@ -393,6 +406,8 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
     }
 
     function crmToggleFilters() {
+        // Phone: drawer sa gilid (kagaya ng CRM Monitoring)
+        if (!window.matchMedia('(min-width: 640px)').matches && window.nhFdOpen) return window.nhFdOpen('crmListFd');
         const p = document.getElementById('crmFilterPanel');
         p.classList.toggle('hidden');
         try { sessionStorage.setItem('crmListFiltersOpen', p.classList.contains('hidden') ? '0' : '1'); } catch (e) { }
@@ -538,7 +553,7 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
 
     // Kung wala pang designer, "Schedule & Assign" muna ang action.
     function crmActionButton(row, size = 'normal') {
-        const sizeCls = size === 'small' ? 'px-3 py-2 text-xs w-full justify-center' : 'px-3.5 py-2 text-xs whitespace-nowrap';
+        const sizeCls = size === 'small' ? 'px-3 py-2 text-xs w-full justify-center' : 'w-full sm:w-auto justify-center px-3.5 py-2.5 sm:py-2 text-xs whitespace-nowrap';
 
         if (!row.designer_id) {
             return `<button type="button" onclick="crmOpenAssignModal(${row.id})"
@@ -667,14 +682,14 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
 
     function crmTrackRow(row) {
         const p = crmTrackOf(row);
-        if (!p) return `<div class="pl-5 pr-4 pb-3 -mt-1"><div class="h-1.5 rounded-full bg-gray-100 animate-pulse"></div></div>`;
+        if (!p) return `<div class="pl-4 sm:pl-5 pr-3 sm:pr-4 pb-3 -mt-1"><div class="h-1.5 rounded-full bg-gray-100 animate-pulse"></div></div>`;
         const t = CRM_TONE[p.tone] || CRM_TONE.blue;
-        return `<div class="pl-5 pr-4 pb-3 -mt-1">
+        return `<div class="pl-4 sm:pl-5 pr-3 sm:pr-4 pb-3 sm:-mt-1">
             ${crmTrackBar(p)}
             <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
                 <span class="font-bold uppercase tracking-wide text-[9.5px] text-gray-400">${p.phase ? `Step ${p.phase}/${CRM_TRACK_STEPS.length} · ` : ''}${crmEscapeHtml(p.phase_label)}</span>
                 <span class="font-semibold ${t.text}">${crmEscapeHtml(p.status)}</span>
-                <span class="text-gray-400 min-w-0 truncate basis-full sm:basis-auto sm:flex-1">${crmEscapeHtml(p.note)}</span>
+                <span class="text-gray-400 min-w-0 line-clamp-2 sm:line-clamp-none sm:truncate basis-full sm:basis-auto sm:flex-1">${crmEscapeHtml(p.note)}</span>
                 ${crmContractChip(p)}
             </div>
         </div>`;
@@ -706,7 +721,7 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
         let schedule;
         if (row.measurement_datetime) {
             const rel = stage === 'sitevisit' ? crmRelDay(row.measurement_datetime) : null;
-            schedule = `<dd class="text-gray-800 font-medium whitespace-nowrap">${crmEscapeHtml(crmFormatDateTimeShort(row.measurement_datetime))}</dd>
+            schedule = `<dd class="text-gray-800 font-medium sm:whitespace-nowrap">${crmEscapeHtml(crmFormatDateTimeShort(row.measurement_datetime))}</dd>
                         ${rel ? `<dd class="text-[10.5px] font-semibold ${rel.cls}">${rel.text}</dd>` : ''}`;
         } else {
             schedule = `<dd class="text-gray-400 whitespace-nowrap">${row.client_status === 'tentative' ? 'Tentative' : 'Not set'}</dd>`;
@@ -716,10 +731,10 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
         <article class="relative bg-white border rounded-xl overflow-hidden cursor-pointer transition ${isActive ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}"
             onclick="crmOpenDetailModal(${row.id})">
             <span class="absolute left-0 top-0 bottom-0 w-1 ${m.bar}"></span>
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
-                <div class="flex items-center gap-3 min-w-0 flex-1 basis-[250px]">
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
+                <div class="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-[250px]">
                     <span class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full text-xs font-bold ${crmAvatarColor(row.client_name)}">${crmEscapeHtml(crmInitials(row.client_name))}</span>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-1.5">
                             <span class="font-mono text-[11px] font-semibold text-amber-700">${crmEscapeHtml(row.control_no)}</span>
                             ${crmStageChip(row)}
@@ -730,8 +745,9 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
                             <span class="text-gray-300 mx-1.5">·</span><span class="capitalize">${crmEscapeHtml(row.project_type) || '—'}</span>
                         </p>
                     </div>
+                    <span class="sm:hidden self-start shrink-0 text-[10px] text-gray-400 whitespace-nowrap">${crmFormatDate(row.created_at)}</span>
                 </div>
-                <dl class="grid grid-cols-3 gap-x-5 text-[11px] basis-[360px] grow sm:grow-0">
+                <dl class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[360px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                     <div class="min-w-0">
                         <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Designer</dt>
                         <dd class="font-medium truncate ${row.designer_id ? 'text-gray-800' : 'text-gray-400'}">${row.designer_id ? crmEscapeHtml(row.designer_name) : 'Unassigned'}</dd>
@@ -742,11 +758,11 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
                     </div>
                     <div class="min-w-0">
                         <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Contract</dt>
-                        <dd class="font-semibold tabular-nums whitespace-nowrap ${Number(row.contract_amount) > 0 ? 'text-gray-900' : 'text-gray-400'}">${crmFormatCurrency(row.contract_amount)}</dd>
-                        <dd class="text-[10.5px] text-gray-400 whitespace-nowrap">Filed ${crmFormatDate(row.created_at)}</dd>
+                        <dd class="font-semibold tabular-nums truncate sm:whitespace-nowrap ${Number(row.contract_amount) > 0 ? 'text-gray-900' : 'text-gray-400'}">${crmFormatCurrency(row.contract_amount)}</dd>
+                        <dd class="hidden sm:block text-[10.5px] text-gray-400 whitespace-nowrap">Filed ${crmFormatDate(row.created_at)}</dd>
                     </div>
                 </dl>
-                <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${crmActionButton(row)}</div>
+                <div class="w-full sm:w-auto sm:ml-auto shrink-0" onclick="event.stopPropagation()">${crmActionButton(row)}</div>
             </div>
             ${crmTrackRow(row)}
         </article>`;
@@ -1379,4 +1395,62 @@ $crmContractsUrl = BASE_URL . '/crmcontracts';
     document.getElementById('crmAssignModal').addEventListener('click', function (e) {
         if (e.target === this) crmCloseAssignModal();
     });
+</script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+    @media (max-width: 639px) {
+        #crmListFd #crmFilterPanel { display: flex !important; flex-direction: column; gap: 14px; margin: 0; }
+        #crmListFd #crmFilterPanel select, #crmListFd #crmFilterPanel input { height: 38px; }
+    }
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
 </script>

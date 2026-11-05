@@ -15,7 +15,8 @@ $saAjaxUrl = BASE_URL . '/superadminturnoverajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Turnover Approvals</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -60,48 +61,48 @@ $saAjaxUrl = BASE_URL . '/superadminturnoverajax';
 </head>
 
 <body class="bg-gray-50">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-key text-lg"></i></div>
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-key text-lg"></i></div>
                 <div class="min-w-0"><p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Superadmin · Step 8</p>
-                    <h1 class="text-xl font-bold text-gray-900 leading-tight">Turnover Letter Approvals</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Turnover Letter Approvals</h1>
                     <p class="text-xs text-gray-500">Sign the turnover letters prepared by the Project Coordinator. They print it for the client after you sign.</p></div>
             </div>
             <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5"><span id="saLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="saLiveText">Auto-refresh</span><span class="text-gray-300">·</span><span id="saUpdated">Loading…</span></span>
         </div>
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <div class="grid grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3 mb-3 sm:mb-4">
             <?php foreach ([
-                ['pending_sa', 'For signing', 'fa-signature', 'bg-amber-50 text-amber-700'],
-                ['returned', 'Returned to PC', 'fa-rotate-left', 'bg-red-50 text-red-600'],
-                ['approved', 'Signed · with client', 'fa-user-pen', 'bg-violet-50 text-violet-600'],
-                ['closed', 'Closed', 'fa-flag-checkered', 'bg-emerald-50 text-emerald-600'],
-                ['all', 'All', 'fa-layer-group', 'bg-gray-100 text-gray-600'],
-            ] as [$k, $label, $icon, $cls]): ?>
-                <button type="button" data-tab="<?= $k ?>" class="sa-tab text-left bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
+                ['pending_sa', 'For signing', 'fa-signature', 'bg-amber-50 text-amber-700', 'To sign'],
+                ['returned', 'Returned to PC', 'fa-rotate-left', 'bg-red-50 text-red-600', 'Return'],
+                ['approved', 'Signed · with client', 'fa-user-pen', 'bg-violet-50 text-violet-600', 'Signed'],
+                ['closed', 'Closed', 'fa-flag-checkered', 'bg-emerald-50 text-emerald-600', 'Closed'],
+                ['all', 'All', 'fa-layer-group', 'bg-gray-100 text-gray-600', 'All'],
+            ] as [$k, $label, $icon, $cls, $short]): ?>
+                <button type="button" data-tab="<?= $k ?>" class="sa-tab text-left bg-white border border-gray-200 rounded-xl px-2 py-1.5 sm:p-4 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
                     <span class="hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 <?= $cls ?>"><i class="fa-solid <?= $icon ?>"></i></span>
-                    <span class="min-w-0"><span class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate"><?= $label ?></span><span class="block text-2xl font-bold text-gray-900 leading-tight tabular-nums" data-count="<?= $k ?>">—</span></span>
+                    <span class="min-w-0"><span class="block text-[9.5px] sm:text-[11px] font-semibold text-gray-500 uppercase sm:tracking-wide truncate"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $label ?></span></span><span class="block text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums" data-count="<?= $k ?>">—</span></span>
                 </button>
             <?php endforeach; ?>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
-                <input type="text" id="saSearch" placeholder="Search project, client, DR no.…" class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"></div></div>
-            <div id="saInfo" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
+            <div class="px-3 sm:px-4 py-3 border-b border-gray-100"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
+                <input type="text" id="saSearch" placeholder="Search project, client, DR no.…" class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"></div></div>
+            <div id="saInfo" class="px-3 sm:px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
             <div id="saList" class="divide-y divide-gray-100"><div class="px-6 py-14 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div></div>
         </div>
-        <div id="bpToast" class="fixed bottom-4 right-4 z-[10002] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="bpToast" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10002] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]"></div>
     </main>
-    <div id="saModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-2 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl my-auto overflow-hidden">
-            <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
+    <div id="saModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-6xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
+            <div class="sticky top-0 z-10 bg-white flex items-start justify-between gap-3 px-4 md:px-5 py-3 md:py-4 border-b border-gray-100">
                 <div class="min-w-0"><p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Turnover letter</p><p id="smTitle" class="text-base font-semibold text-gray-900 truncate"></p><p id="smSub" class="text-[11px] text-gray-400 truncate"></p></div>
-                <div class="flex items-center gap-2 shrink-0"><button type="button" id="smPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i class="fa-solid fa-print"></i> Print</button>
-                    <button type="button" id="smClose" class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xl leading-none">&times;</button></div>
+                <div class="flex items-center gap-2 shrink-0"><button type="button" id="smPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i class="fa-solid fa-print"></i><span class="hidden sm:inline"> Print</span></button>
+                    <button type="button" id="smClose" aria-label="Close" class="-mr-2 md:-mr-1 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button></div>
             </div>
             <div class="grid lg:grid-cols-[minmax(0,1fr)_330px]">
-                <div class="p-4 bg-slate-50 min-w-0 lg:border-r border-gray-100"><div id="smDoc" class="bg-white border border-gray-200 rounded-lg p-4 overflow-hidden"></div></div>
-                <div id="smSide" class="p-5 space-y-4"></div>
+                <div class="p-3 md:p-4 bg-slate-50 min-w-0 lg:border-r border-gray-100"><div id="smDoc" class="bg-white border border-gray-200 rounded-lg p-4 overflow-hidden"></div></div>
+                <div id="smSide" class="p-4 md:p-5 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-5 space-y-4"></div>
             </div>
         </div>
     </div>
@@ -216,15 +217,15 @@ $saAjaxUrl = BASE_URL . '/superadminturnoverajax';
                     const mine = r.status === 'pending_sa';
                     const sub = r.status === 'returned' ? `<span class="text-red-700"><i class="fa-solid fa-comment-dots mr-1"></i>${esc(r.return_remarks || '')}</span>` : r.status === 'closed' ? `<span class="text-emerald-700"><i class="fa-solid fa-flag-checkered mr-1"></i>Closed ${fmtY(r.closed_at)} · accepted ${fmtY(r.accepted_date)}</span>`
                         : r.status === 'approved' ? `<span class="text-violet-700"><i class="fa-solid fa-signature mr-1"></i>Signed ${fmtY(r.sa_at)} · waiting for the client</span>` : `<span class="text-amber-700"><i class="fa-regular fa-clock mr-1"></i>Submitted ${ago(r.submitted_at)} by ${esc(r.prepared_by || '')}</span>`;
-                    return `<button type="button" data-id="${r.id}" class="sa-row relative w-full text-left flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5 hover:bg-amber-50/40 transition">
+                    return `<button type="button" data-id="${r.id}" class="sa-row relative w-full text-left flex flex-wrap items-center gap-x-5 gap-y-2.5 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5 hover:bg-amber-50/40 transition">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${BAR[r.status]}"></span>
-                        <span class="min-w-0 flex-1 basis-[260px]"><span class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-gray-900 truncate">${esc(r.project)} · ${esc(r.client_name)}</span>${toChip(r.status)}</span>
-                            <span class="block text-[11px] text-gray-400 truncate mt-0.5"><span class="font-mono">DR# ${esc(r.dr_no)}</span>${r.location ? ' · ' + esc(r.location) : ''} · ${esc(r.subcontractor || '')}</span><span class="block text-[11px] truncate mt-0.5">${sub}</span></span>
-                        <span class="grid grid-cols-3 gap-x-5 text-[11px] basis-[280px] grow sm:grow-0">
+                        <span class="min-w-0 flex-1 basis-full sm:basis-[260px]"><span class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-gray-900 truncate">${esc(r.project)} · ${esc(r.client_name)}</span>${toChip(r.status)}</span>
+                            <span class="block text-[11px] text-gray-400 line-clamp-2 sm:line-clamp-none sm:truncate mt-0.5"><span class="font-mono">DR# ${esc(r.dr_no)}</span>${r.location ? ' · ' + esc(r.location) : ''} · ${esc(r.subcontractor || '')}</span><span class="block text-[11px] line-clamp-2 sm:line-clamp-none sm:truncate mt-0.5">${sub}</span></span>
+                        <span class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[280px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                             <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Letter date</span><span class="text-gray-700">${fmtY(r.letter_date)}</span></span>
                             <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Works</span><span class="text-gray-700">${r.scope_count}</span></span>
                             <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Punch items</span><span class="text-gray-700">${r.punch_total} verified</span></span></span>
-                        <span class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${mine ? 'text-white bg-amber-700 shadow-sm' : 'text-gray-600 bg-white border border-gray-200'}"><i class="fa-solid ${mine ? 'fa-pen-nib' : 'fa-eye'}"></i> ${mine ? 'Review & sign' : 'View'}</span></button>`;
+                        <span class="w-full sm:w-auto sm:ml-auto shrink-0 inline-flex justify-center items-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold rounded-lg ${mine ? 'text-white bg-amber-700 shadow-sm' : 'text-gray-600 bg-white border border-gray-200'}"><i class="fa-solid ${mine ? 'fa-pen-nib' : 'fa-eye'}"></i> ${mine ? 'Review & sign' : 'View'}</span></button>`;
                 }).join('');
                 let id = null; try { id = sessionStorage.getItem(MEMO + 'picked'); } catch (e) { }
                 document.querySelectorAll('.sa-row').forEach(el => el.setAttribute('data-picked', el.dataset.id === id ? '1' : '0'));

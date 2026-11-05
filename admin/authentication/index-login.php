@@ -111,14 +111,15 @@ if (!empty($_SESSION['logged_in'])) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Admin Login — Noblehome</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
 </head>
 
-<body class="min-h-screen m-0 bg-gray-50">
+<body class="min-h-screen min-h-[100dvh] m-0 bg-gray-50">
 
-    <div class="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+    <div class="min-h-screen min-h-[100dvh] grid grid-cols-1 lg:grid-cols-2">
 
         
         <!-- LEFT: Brand panel -->
@@ -195,34 +196,34 @@ if (!empty($_SESSION['logged_in'])) {
 
         <!-- RIGHT: Login -->
         <div
-            class="relative flex items-center justify-center min-h-screen px-4 sm:px-8 py-10 overflow-hidden bg-gray-50">
+            class="relative flex items-center justify-center min-h-screen min-h-[100dvh] px-5 sm:px-8 py-8 sm:py-10 overflow-hidden bg-gray-50">
 
             <!-- Orange shapes (top-right) -->
-            <div class="absolute -top-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-br from-orange-400 to-[#ff7a00]">
+            <div class="absolute -top-24 -right-24 w-44 h-44 sm:-top-28 sm:-right-28 sm:w-80 sm:h-80 rotate-45 bg-gradient-to-br from-orange-400 to-[#ff7a00]">
             </div>
             <div
-                class="absolute -top-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-b from-orange-300/70 to-orange-200/20">
+                class="hidden sm:block absolute -top-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-b from-orange-300/70 to-orange-200/20">
             </div>
 
             <!-- Orange shapes (bottom-right) -->
             <div
-                class="absolute -bottom-28 -right-28 w-80 h-80 rotate-45 bg-gradient-to-tl from-orange-400 to-[#ff7a00]">
+                class="absolute -bottom-24 -right-24 w-44 h-44 sm:-bottom-28 sm:-right-28 sm:w-80 sm:h-80 rotate-45 bg-gradient-to-tl from-orange-400 to-[#ff7a00]">
             </div>
             <div
-                class="absolute -bottom-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-t from-orange-300/70 to-orange-200/20">
+                class="hidden sm:block absolute -bottom-20 right-24 w-28 h-64 rotate-45 bg-gradient-to-t from-orange-300/70 to-orange-200/20">
             </div>
 
             <!-- Card -->
-            <div class="relative z-10 w-full max-w-[540px] px-8 sm:px-10 py-10">
+            <div class="relative z-10 w-full max-w-[540px] px-0 sm:px-10 py-4 sm:py-10">
 
                 <div class="flex justify-center">
-                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Noblehome logo" class="w-44 h-auto object-contain">
+                    <img src="<?= BASE_URL ?>/icon/logo.webp" alt="Noblehome logo" class="w-32 sm:w-44 h-auto object-contain">
                 </div>
 
-                <h2 class="mt-6 text-center text-3xl font-extrabold tracking-tight text-gray-900">
+                <h2 class="mt-5 sm:mt-6 text-center text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
                     NOBLE<span class="text-[#ff9a1f]">HOME</span> ACCOUNTING
                 </h2>
-                <p class="mt-2 mb-7 text-center text-sm text-gray-500">Please sign in to access your admin account.</p>
+                <p class="mt-2 mb-6 sm:mb-7 text-center text-[13px] sm:text-sm text-gray-500">Please sign in to access your admin account.</p>
 
                 <?php if (!empty($error)): ?>
                     <div role="alert"
@@ -268,14 +269,14 @@ if (!empty($_SESSION['logged_in'])) {
 
 
                     <button type="submit"
-                        class="w-full h-14 flex items-center justify-center gap-3 text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
+                        class="w-full h-12 sm:h-14 flex items-center justify-center gap-3 text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-[#ff7a00] to-orange-400 rounded-lg shadow-md hover:from-[#e56d00] hover:to-orange-500 active:translate-y-px transition">
                         <i class="fa-solid fa-right-to-bracket"></i> Sign In
                     </button>
                 </form>
 
-                <div class="flex items-center gap-4 mt-7 text-sm text-gray-500">
+                <div class="flex items-center gap-3 sm:gap-4 mt-6 sm:mt-7 text-xs sm:text-sm text-gray-500">
                     <span class="flex-1 h-px bg-gray-200"></span>
-                    <span>NobleHome Admin Panel</span>
+                    <span class="whitespace-nowrap">NobleHome Admin Panel</span>
                     <span class="flex-1 h-px bg-gray-200"></span>
                 </div>
             </div>

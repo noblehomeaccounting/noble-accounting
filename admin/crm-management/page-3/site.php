@@ -23,9 +23,9 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
     <!-- ═══ HEADER ═══ -->
     <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
         <div class="bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)] h-1.5"></div>
-        <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+        <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div class="flex items-center gap-3 min-w-0">
-                <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-compass-drafting text-lg"></i></span>
+                <span class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-compass-drafting text-lg"></i></span>
                 <div class="min-w-0">
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">CRM Management · Designer</p>
                     <h1 class="text-gray-900 text-lg font-semibold leading-tight">Assigned Inquiries</h1>
@@ -33,55 +33,55 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
                 </div>
             </div>
             <!-- Counters = filter -->
-            <div id="crmCounters" class="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full lg:w-auto">
+            <div id="crmCounters" class="grid grid-cols-5 gap-1.5 sm:gap-2 w-full lg:w-auto">
                 <?php foreach ([
-                    ['', 'All', 'text-gray-900'],
-                    ['new', 'New', 'text-amber-700'],
-                    ['Pending', 'Site visit', 'text-amber-800'],
-                    ['In Progress', '2D & Quotation', 'text-blue-700'],
-                    ['feedback', 'Feedback', 'text-red-600'],
-                ] as [$val, $label, $cls]): ?>
+                    ['', 'All', 'text-gray-900', 'All'],
+                    ['new', 'New', 'text-amber-700', 'New'],
+                    ['Pending', 'Site visit', 'text-amber-800', 'Visit'],
+                    ['In Progress', '2D & Quotation', 'text-blue-700', '2D'],
+                    ['feedback', 'Feedback', 'text-red-600', 'Feedback'],
+                ] as [$val, $label, $cls, $short]): ?>
                     <button type="button" data-filter="<?= htmlspecialchars($val) ?>"
-                        class="crm-counter relative text-left rounded-xl border px-3.5 py-2 transition-colors lg:min-w-[112px]">
+                        class="crm-counter relative min-w-0 text-left rounded-xl border px-1.5 py-1.5 sm:px-3.5 sm:py-2 transition-colors lg:min-w-[112px]">
                         <?php if ($val === 'feedback'): ?>
-                            <span id="crmFeedbackPing" class="hidden absolute top-2 right-2 flex w-2.5 h-2.5">
+                            <span id="crmFeedbackPing" class="hidden absolute top-1 right-1 sm:top-2 sm:right-2 flex w-2 h-2 sm:w-2.5 sm:h-2.5">
                                 <span class="absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
-                                <span class="relative inline-flex w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                                <span class="relative inline-flex w-full h-full rounded-full bg-red-500"></span>
                             </span>
                         <?php endif; ?>
-                        <span class="block text-[10px] font-semibold uppercase tracking-wide opacity-80"><?php if ($val === 'feedback'): ?><i class="fa-solid fa-comment-dots mr-1"></i><?php endif; ?><?= htmlspecialchars($label) ?></span>
-                        <span data-count="<?= htmlspecialchars($val === '' ? 'all' : $val) ?>" class="block text-xl font-bold leading-tight tabular-nums <?= $cls ?>">—</span>
+                        <span class="block truncate text-[9.5px] sm:text-[10px] font-semibold sm:uppercase sm:tracking-wide opacity-80"><?php if ($val === 'feedback'): ?><i class="hidden sm:inline fa-solid fa-comment-dots mr-1"></i><?php endif; ?><span class="sm:hidden"><?= htmlspecialchars($short) ?></span><span class="hidden sm:inline"><?= htmlspecialchars($label) ?></span></span>
+                        <span data-count="<?= htmlspecialchars($val === '' ? 'all' : $val) ?>" class="block text-lg sm:text-xl font-bold leading-tight tabular-nums <?= $cls ?>">—</span>
                     </button>
                 <?php endforeach; ?>
             </div>
         </div>
-        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex flex-wrap items-center gap-2">
-            <div class="relative flex-1 min-w-[200px] max-w-md">
+        <div class="px-4 sm:px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex flex-wrap items-center gap-2">
+            <div class="relative basis-full sm:basis-auto flex-1 sm:min-w-[200px] sm:max-w-md">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                 <input id="crmSearch" type="text" placeholder="Search control no., client or contact…"
-                    class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                    class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
             </div>
             <select id="crmTypeFilter"
-                class="h-9 pl-2.5 pr-7 text-xs border border-gray-200 rounded-lg bg-white outline-none focus:border-amber-600 text-gray-600">
+                class="flex-1 sm:flex-none min-w-0 h-[38px] sm:h-9 pl-2.5 pr-7 text-xs border border-gray-200 rounded-lg bg-white outline-none focus:border-amber-600 text-gray-600">
                 <option value="">All project types</option>
             </select>
-            <span id="crmAllCount" class="ml-auto text-[11px] text-gray-400"></span>
+            <span id="crmAllCount" class="ml-auto shrink-0 text-[11px] text-gray-400"></span>
         </div>
     </section>
 
     <!-- ═══ FEEDBACK BANNER (lumalabas lang kapag may feedback) ═══ -->
     <button type="button" id="crmFeedbackBanner" onclick="crmSetFilter('feedback')"
-        class="hidden w-full mb-3 text-left flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 hover:bg-red-100/70 transition">
+        class="hidden w-full mb-3 text-left flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-3 sm:px-4 py-3 hover:bg-red-100/70 transition">
         <span class="w-9 h-9 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-comment-dots"></i></span>
         <span class="min-w-0 flex-1">
             <span id="crmFeedbackBannerTitle" class="block text-sm font-semibold text-red-800"></span>
             <span id="crmFeedbackBannerText" class="block text-[11px] text-red-700/80 truncate"></span>
         </span>
-        <span class="shrink-0 text-[11px] font-semibold text-red-700">Show <i class="fa-solid fa-arrow-right ml-0.5"></i></span>
+        <span class="shrink-0 text-[11px] font-semibold text-red-700"><span class="hidden sm:inline">Show </span><i class="fa-solid fa-arrow-right ml-0.5"></i></span>
     </button>
 
     <!-- ═══ LIST ═══ -->
-    <div id="crmDesignerList" class="space-y-2.5 max-h-[calc(100vh-300px)] min-h-[320px] overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] py-1 pr-1.5">
+    <div id="crmDesignerList" class="space-y-2.5 md:max-h-[calc(100vh-300px)] min-h-[200px] md:min-h-[320px] md:overflow-y-auto md:overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] py-1 px-px md:pl-0 md:pr-1.5">
         <div class="bg-white border border-gray-200 rounded-xl px-6 py-12 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading assigned inquiries…</div>
     </div>
 
@@ -96,21 +96,21 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
 <div id="crmDetailPanel" class="pointer-events-auto h-full w-full bg-white shadow-2xl flex flex-col
            translate-x-full transition-transform duration-300 ease-out">
     <div class="bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)] h-1.5 shrink-0"></div>
-    <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+    <div class="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
         <div class="min-w-0">
             <p id="crmDetailControlNo" class="font-mono text-[11px] font-semibold text-amber-700">—</p>
             <h3 id="crmDetailClient" class="text-lg font-semibold text-gray-900 truncate capitalize">—</h3>
             <div id="crmDetailStatusBadge" class="mt-1.5 flex flex-wrap items-center gap-1.5"></div>
         </div>
         <button type="button" onclick="crmCloseDetailPanel()" aria-label="Close"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+            class="inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
     </div>
 
-    <div id="crmDetailBody" class="[scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] overscroll-contain px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60">
+    <div id="crmDetailBody" class="[scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] overscroll-contain px-4 sm:px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60">
         <!-- Populated via JS -->
     </div>
 
-    <div class="px-5 py-4 bg-white border-t border-gray-100 shrink-0">
+    <div class="px-4 sm:px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 bg-white border-t border-gray-100 shrink-0">
         <div class="grid grid-cols-2 gap-2">
             <button type="button" id="crmDetailSiteVisitBtn" onclick="crmProceedFromPanel()"
                 class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
@@ -127,7 +127,7 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
 
 <!-- Toast container -->
 <div id="crmToastContainer"
-    class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
+    class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm">
 </div>
 
 <script>
@@ -279,8 +279,8 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
             <article data-row-id="${row.id}"
                 class="crm-row relative bg-white border rounded-xl overflow-hidden cursor-pointer transition ${isActive ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}">
                 <span class="absolute left-0 top-0 bottom-0 w-1 ${bar}"></span>
-                <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
-                    <div class="min-w-0 flex-1 basis-[240px]">
+                <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 sm:gap-y-3 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
+                    <div class="min-w-0 flex-1 basis-full sm:basis-[240px]">
                         <div class="flex flex-wrap items-center gap-2">
                             ${isNew ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-500 text-white">New</span>' : ''}
                             <span class="notranslate font-mono text-[11px] font-semibold text-amber-700">${crmEscapeHtml(row.control_no)}</span>
@@ -295,10 +295,10 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
                         </p>
                     </div>
                     ${crmStageBlock(row)}
-                    <dl class="grid grid-cols-2 gap-x-5 text-[11px] basis-[260px] grow sm:grow-0">
+                    <dl class="grid grid-cols-2 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[260px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                         <div>
                             <dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">${crmIsReady(row) ? 'Mode' : 'Site visit'}</dt>
-                            <dd class="text-gray-800 font-medium whitespace-nowrap">${crmIsReady(row) ? 'No site visit' : (row.measurement_datetime ? crmEscapeHtml(crmFormatDateTimeShort(row.measurement_datetime)) : '—')}</dd>
+                            <dd class="text-gray-800 font-medium sm:whitespace-nowrap">${crmIsReady(row) ? 'No site visit' : (row.measurement_datetime ? crmEscapeHtml(crmFormatDateTimeShort(row.measurement_datetime)) : '—')}</dd>
                             ${rel ? `<dd class="text-[10.5px] font-semibold ${CRM_TONE[rel.tone]}">${rel.text}</dd>` : ''}
                         </div>
                         <div>
@@ -306,11 +306,11 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
                             <dd class="text-gray-800 font-medium whitespace-nowrap">${crmEscapeHtml(crmFormatDate(row.created_at))}</dd>
                         </div>
                     </dl>
-                    <div class="ml-auto shrink-0">${action}</div>
+                    <div class="w-full sm:w-auto sm:ml-auto shrink-0 [&>button]:w-full sm:[&>button]:w-auto [&>button]:justify-center [&>button]:py-2.5 sm:[&>button]:py-2">${action}</div>
                 </div>
-                ${fb ? `<div class="flex items-start gap-2 ml-5 mr-4 mb-3 -mt-1 rounded-lg bg-red-50/70 border border-red-100 px-3 py-2 text-[11.5px] text-red-800">
+                ${fb ? `<div class="flex items-start gap-2 ml-4 mr-3 sm:ml-5 sm:mr-4 mb-3 sm:-mt-1 rounded-lg bg-red-50/70 border border-red-100 px-3 py-2 text-[11.5px] text-red-800">
                     <i class="fa-solid fa-quote-left text-[10px] mt-0.5 text-red-400"></i>
-                    <p class="min-w-0 flex-1 truncate">${crmEscapeHtml(crmFbPreview(fb))}</p>
+                    <p class="min-w-0 flex-1 line-clamp-2 sm:line-clamp-none sm:truncate">${crmEscapeHtml(crmFbPreview(fb))}</p>
                 </div>` : ''}
             </article>`;
     }
@@ -325,10 +325,10 @@ $crmDesignerProgressUrl = BASE_URL . '/crmdesignerprogressajax';
             const cls = n < pg.phase || (n === pg.phase && pg.tone === 'green') ? 'bg-amber-600' : n === pg.phase ? t.seg : 'bg-gray-200';
             return `<span title="${n}. ${name}" class="h-1.5 flex-1 rounded-full ${cls}"></span>`;
         }).join('');
-        return `<div class="basis-[190px] sm:max-w-[200px] grow sm:grow-0 min-w-0">
+        return `<div class="basis-full sm:basis-[190px] sm:max-w-[200px] grow sm:grow-0 min-w-0">
                 <p class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Stage <span class="normal-case tracking-normal text-gray-300">· ${pg.phase} of 5</span></p>
                 <p class="mt-0.5"><span title="${crmEscapeHtml(pg.note)}" class="inline-flex flex-wrap items-center gap-x-1 px-2 py-0.5 rounded-lg border text-[10.5px] font-bold leading-tight max-w-full ${t.chip}">${crmEscapeHtml(pg.phase_label)}<span class="font-semibold opacity-80">· ${crmEscapeHtml(pg.status)}</span></span></p>
-                <div class="mt-1.5 flex gap-0.5 max-w-[160px]" aria-label="Stage ${pg.phase} of 5">${segs}</div>
+                <div class="mt-1.5 flex gap-0.5 sm:max-w-[160px]" aria-label="Stage ${pg.phase} of 5">${segs}</div>
             </div>`;
     }
 

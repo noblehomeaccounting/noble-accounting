@@ -91,7 +91,7 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
     </div>
     <?php if ($latestVisited && $inquiry['status'] === 'In Progress'): ?>
         <a href="<?= htmlspecialchars($crm2dQuotationUrl) ?>"
-            class="inline-flex items-center gap-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg px-3.5 py-2 shrink-0">
+            class="w-full sm:w-auto justify-center inline-flex items-center gap-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg px-3.5 py-2.5 sm:py-2 shrink-0">
             Go to 2D &amp; Quotation <i class="fa-solid fa-arrow-right"></i>
         </a>
     <?php endif; ?>
@@ -100,53 +100,53 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
 <!-- ═══ OVERVIEW ═══ -->
 <?php if ($latestVisited || $svSpaces): ?>
     <section class="sv-card overflow-hidden mb-4">
-        <div class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2">
+        <div class="px-4 sm:px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2">
             <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500"><i
                     class="fa-solid fa-gauge-high mr-1.5 text-amber-700"></i>Site visit overview</p>
             <span
-                class="ml-auto text-[11px] text-gray-400"><?= htmlspecialchars(date('M d, Y · g:i A', strtotime($latestVisit['visit_datetime']))) ?></span>
+                class="sm:ml-auto text-[11px] text-gray-400"><?= htmlspecialchars(date('M d, Y · g:i A', strtotime($latestVisit['visit_datetime']))) ?></span>
             <?php if ($svSpaces): ?>
                 <button type="button" data-sv-list-open
-                    class="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg px-3 py-1.5 shrink-0">
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg px-3 py-2 sm:py-1.5 shrink-0">
                     <i class="fa-solid fa-table-list"></i> View space list
                 </button>
             <?php endif; ?>
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100">
-            <div class="bg-white px-4 py-3">
+            <div class="bg-white px-3 sm:px-4 py-3 min-w-0">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i
                         class="fa-solid fa-vector-square mr-1"></i>Spaces</p>
-                <p class="text-2xl font-bold text-gray-900 leading-tight tabular-nums"><?= $ovSpaces ?></p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums"><?= $ovSpaces ?></p>
                 <p class="text-[11px] text-gray-400"><?= $ovItems ?> item<?= $ovItems === 1 ? '' : 's' ?> · <?= $ovWithReq ?> with requirements</p>
             </div>
-            <div class="bg-white px-4 py-3">
+            <div class="bg-white px-3 sm:px-4 py-3 min-w-0">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i
                         class="fa-solid fa-ruler-combined mr-1"></i>Measured</p>
                 <p
-                    class="text-2xl font-bold leading-tight tabular-nums <?= $ovSpaces && $ovMeasured === $ovSpaces ? 'text-emerald-700' : 'text-amber-700' ?>">
+                    class="text-xl sm:text-2xl font-bold leading-tight tabular-nums <?= $ovSpaces && $ovMeasured === $ovSpaces ? 'text-emerald-700' : 'text-amber-700' ?>">
                     <?= $ovMeasured ?><span class="text-sm text-gray-400 font-semibold"> / <?= $ovSpaces ?></span></p>
                 <div class="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                     <div class="h-full rounded-full <?= $ovPct === 100 ? 'bg-emerald-500' : 'bg-amber-500' ?>"
                         style="width: <?= $ovPct ?>%"></div>
                 </div>
             </div>
-            <div class="bg-white px-4 py-3">
+            <div class="bg-white px-3 sm:px-4 py-3 min-w-0">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i
                         class="fa-regular fa-image mr-1"></i>Site photos</p>
-                <p class="text-2xl font-bold text-gray-900 leading-tight tabular-nums"><?= $ovPhotos ?></p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums"><?= $ovPhotos ?></p>
                 <p class="text-[11px] text-gray-400"><?= count($svGeneralPhotos) ?> other ·
                     <?= $ovPhotos - count($svGeneralPhotos) ?> in spaces</p>
             </div>
-            <div class="bg-white px-4 py-3">
+            <div class="bg-white px-3 sm:px-4 py-3 min-w-0">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><i
                         class="fa-solid fa-ruler-combined mr-1"></i>Measurement files</p>
-                <p class="text-2xl font-bold text-gray-900 leading-tight tabular-nums"><?= $ovPdfs ?></p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums"><?= $ovPdfs ?></p>
                 <p class="text-[11px] text-gray-400"><?= $ovSpaces - $ovMeasured ?>
                     space<?= $ovSpaces - $ovMeasured === 1 ? '' : 's' ?> without measurement</p>
             </div>
         </div>
         <?php if ($svSpaces): ?>
-            <div class="px-5 py-3 border-t border-gray-100">
+            <div class="px-4 sm:px-5 py-3 border-t border-gray-100">
                 <p class="text-[10.5px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Spaces · tap to view in the
                     list</p>
                 <div class="flex flex-wrap gap-1.5">
@@ -179,16 +179,16 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
 
         <!-- Visit details -->
         <section class="sv-card overflow-hidden">
-            <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <p class="px-4 sm:px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                 <i class="fa-solid fa-clipboard-check mr-1.5 text-amber-700"></i>Visit details</p>
             <dl class="grid sm:grid-cols-2 gap-px bg-gray-100">
-                <div class="bg-white px-5 py-3">
+                <div class="bg-white px-4 sm:px-5 py-3">
                     <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Date &amp; time of
                         visit</dt>
                     <dd class="text-[13px] font-semibold text-gray-900 mt-0.5">
                         <?= htmlspecialchars(date('F d, Y · g:i A', strtotime($latestVisit['visit_datetime']))) ?></dd>
                 </div>
-                <div class="bg-white px-5 py-3">
+                <div class="bg-white px-4 sm:px-5 py-3">
                     <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Visited</dt>
                     <dd class="mt-1">
                         <span
@@ -198,12 +198,12 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
                         </span>
                     </dd>
                 </div>
-                <div class="bg-white px-5 py-3 sm:col-span-2">
+                <div class="bg-white px-4 sm:px-5 py-3 sm:col-span-2">
                     <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Address visited</dt>
                     <dd class="text-[13px] text-gray-900 mt-0.5 break-words">
                         <?= htmlspecialchars($latestVisit['address']) ?></dd>
                 </div>
-                <div class="bg-white px-5 py-3 sm:col-span-2">
+                <div class="bg-white px-4 sm:px-5 py-3 sm:col-span-2">
                     <dt class="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400">Logged on</dt>
                     <dd class="text-[12.5px] text-gray-500 mt-0.5">
                         <?= htmlspecialchars(date('F d, Y · g:i A', strtotime($latestVisit['created_at']))) ?></dd>
@@ -213,9 +213,9 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
 
         <!-- Site notes -->
         <section class="sv-card overflow-hidden">
-            <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <p class="px-4 sm:px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                 <i class="fa-solid fa-note-sticky mr-1.5 text-amber-700"></i>Site notes</p>
-            <div class="p-5 grid sm:grid-cols-3 gap-4">
+            <div class="p-4 sm:p-5 grid sm:grid-cols-3 gap-3 sm:gap-4">
                 <?php foreach ([
                     ['fa-mountain-sun', 'Site conditions', $latestVisit['site_conditions']],
                     ['fa-user-pen', 'Client requirements', $latestVisit['client_requirements']],
@@ -233,9 +233,9 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
         <?php if (!$svSpaces): ?>
             <!-- Measurements -->
             <section class="sv-card overflow-hidden">
-                <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <p class="px-4 sm:px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     <i class="fa-solid fa-ruler mr-1.5 text-amber-700"></i>Measurements</p>
-                <div class="p-5">
+                <div class="p-4 sm:p-5">
                     <?php if (!empty($latestMeasFiles)): ?>
                         <div class="grid sm:grid-cols-2 gap-2">
                             <?php foreach ($latestMeasFiles as $mi => $mPath): ?>
@@ -267,7 +267,7 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
         <!-- Prior entries -->
         <?php if (count($svHistory) > 1): ?>
             <section class="sv-card overflow-hidden">
-                <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <p class="px-4 sm:px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                     <i class="fa-solid fa-clock-rotate-left mr-1.5 text-amber-700"></i>Prior entries</p>
                 <ul class="divide-y divide-gray-100">
                     <?php foreach (array_slice($svHistory, 1) as $entry): ?>
@@ -275,11 +275,11 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
                         $entryVisited = $entry['visited'] === 'yes';
                         $entryPhotos = array_filter(explode(',', $entry['photos'] ?? ''));
                         ?>
-                        <li class="px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
+                        <li class="px-4 sm:px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
                             <span
                                 class="font-semibold text-gray-900 whitespace-nowrap"><?= htmlspecialchars(date('M d, Y g:i A', strtotime($entry['visit_datetime']))) ?></span>
                             <span
-                                class="text-gray-500 min-w-0 flex-1 truncate"><?= htmlspecialchars($entry['address']) ?></span>
+                                class="text-gray-500 min-w-0 basis-full sm:basis-auto order-last sm:order-none flex-1 truncate"><?= htmlspecialchars($entry['address']) ?></span>
                             <span class="text-gray-400 whitespace-nowrap"><i
                                     class="fa-regular fa-image mr-1"></i><?= count($entryPhotos) ?></span>
                             <span
@@ -297,7 +297,7 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
     <!-- Right column -->
     <div class="space-y-4 min-w-0">
         <section class="sv-card overflow-hidden">
-            <p class="px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <p class="px-4 sm:px-5 py-3 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                 <i
                     class="fa-solid fa-camera mr-1.5 text-amber-700"></i><?= $svSpaces ? 'Other site photos' : 'Photographs' ?>
                 <?php if (!empty($svGeneralPhotos)): ?><span
@@ -331,11 +331,11 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
 
 <?php if ($svSpaces): ?>
     <!-- ═══ SPACE LIST (modal) ═══ -->
-    <div id="svListModal" class="fixed inset-0 z-[9990] hidden items-center justify-center bg-black/50 p-3 sm:p-6"
+    <div id="svListModal" class="fixed inset-0 z-[9990] hidden items-center justify-center bg-black/50 p-0 sm:p-6"
         role="dialog" aria-modal="true" aria-labelledby="svListTitle">
-        <section class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-full flex flex-col overflow-hidden">
+        <section class="bg-white sm:rounded-2xl shadow-2xl w-full max-w-6xl h-full sm:h-auto sm:max-h-full flex flex-col overflow-hidden">
             <div class="h-1.5 shrink-0 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
-            <div class="px-5 py-3 border-b border-gray-100 flex items-center gap-3 shrink-0">
+            <div class="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center gap-3 shrink-0">
                 <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
                         class="fa-solid fa-table-list text-xs"></i></span>
                 <div class="min-w-0 flex-1">
@@ -344,12 +344,11 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
                     <p class="text-[11px] text-gray-400 truncate">Tap a photo to enlarge · tap a PDF to open</p>
                 </div>
                 <button type="button" data-sv-list-close aria-label="Close"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
-                        class="fa-solid fa-xmark text-base leading-none"></i></button>
+                    class="-mr-2 sm:-mr-1 inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <div id="svListBody"
                 class="min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]">
-                <table class="w-full min-w-[1000px] text-[12.5px]">
+                <table class="hidden md:table w-full min-w-[1000px] text-[12.5px]">
                     <thead
                         class="sticky top-0 z-10 bg-gray-50 text-[10.5px] font-bold uppercase tracking-wider text-gray-500 shadow-[0_1px_0_#e5e7eb]">
                         <tr>
@@ -444,6 +443,59 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                <!-- Phone: card bawat space (ang table ay para sa md+) -->
+                <div class="md:hidden p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] space-y-2.5">
+                    <?php foreach ($svSpaces as $si => $sp):
+                        $spFiles = $svCsv($sp['measurement_files']);
+                        $spPhotos = $svCsv($sp['photos']);
+                        $mImgs = array_values(array_filter($spFiles, $svIsImg));
+                        $mPdfs = array_values(array_filter($spFiles, fn($p) => !$svIsImg($p))); ?>
+                        <article id="sv-space-m-<?= $si + 1 ?>" class="rounded-xl border border-gray-200 bg-white p-3 text-[12.5px]">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex w-7 h-7 rounded-lg bg-amber-700 text-white text-[11px] font-bold items-center justify-center shrink-0"><?= $si + 1 ?></span>
+                                <p class="font-semibold text-gray-900 min-w-0 flex-1 break-words"><?= htmlspecialchars($sp['space_name']) ?></p>
+                                <?php if (!$spFiles && !$svItemMeasured($sp)): ?>
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10.5px] font-semibold"><i class="fa-solid fa-ruler text-[9px]"></i>No measurement</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($svSpaceItems[(int) $sp['id']])): ?>
+                                <p class="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Items</p>
+                                <div class="mt-1 text-gray-800"><?= $svItemsHtml($sp) ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($sp['requirements'])): ?>
+                                <p class="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Requirements</p>
+                                <p class="mt-0.5 text-gray-800 whitespace-pre-line break-words"><?= htmlspecialchars($sp['requirements']) ?></p>
+                            <?php endif; ?>
+                            <?php if ($spPhotos || $mImgs || $mPdfs): ?>
+                                <p class="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Photos &amp; measurement</p>
+                                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                    <?php foreach ($spPhotos as $photoPath): ?>
+                                        <button type="button" data-sv-photo="<?= (int) ($svPhotoIdx[$photoPath] ?? 0) ?>"
+                                            class="block w-14 h-14 rounded-md overflow-hidden border border-gray-200 active:ring-2 active:ring-amber-600">
+                                            <img src="<?= htmlspecialchars(BASE_URL . '/' . $photoPath) ?>" alt="" loading="lazy" class="w-full h-full object-cover">
+                                        </button>
+                                    <?php endforeach; ?>
+                                    <?php foreach ($mImgs as $mPath): ?>
+                                        <button type="button" data-sv-photo="<?= (int) ($svPhotoIdx[$mPath] ?? 0) ?>" title="Measurement photo"
+                                            class="relative block w-14 h-14 rounded-md overflow-hidden border border-gray-200">
+                                            <img src="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" alt="" loading="lazy" class="w-full h-full object-cover">
+                                            <span class="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[9px] font-bold text-center leading-4"><i class="fa-solid fa-ruler"></i></span>
+                                        </button>
+                                    <?php endforeach; ?>
+                                    <?php foreach ($mPdfs as $n => $mPath): ?>
+                                        <a href="<?= htmlspecialchars(BASE_URL . '/' . $mPath) ?>" target="_blank" rel="noopener"
+                                            class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-gray-700">
+                                            <i class="fa-solid fa-file-pdf text-red-500"></i>PDF <?= $n + 1 ?></a>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($sp['notes'])): ?>
+                                <p class="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Remark</p>
+                                <p class="mt-0.5 text-gray-800 whitespace-pre-line break-words"><?= htmlspecialchars($sp['notes']) ?></p>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </section>
     </div>
@@ -451,7 +503,7 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
 
 <!-- Photo lightbox -->
 <?php if (!empty($svLightbox)): ?>
-    <div id="svLightbox" class="fixed inset-0 z-[9998] hidden bg-black/80 flex-col items-center justify-center p-4"
+    <div id="svLightbox" class="fixed inset-0 z-[9998] hidden bg-black/80 flex-col items-center justify-center p-3 sm:p-4"
         role="dialog" aria-modal="true">
         <div class="w-full max-w-4xl flex items-center justify-between text-white mb-3">
             <span id="svLbCount" class="text-xs font-semibold opacity-80"></span>
@@ -460,8 +512,8 @@ $svItemsHtml = function (array $sp) use ($svSpaceItems, $svItemSize, $svCsv, $sv
                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
                     aria-label="Open original"><i class="fa-solid fa-up-right-from-square text-sm"></i></a>
                 <button type="button" id="svLbClose"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10 shrink-0"
-                    aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                    class="inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10 shrink-0"
+                    aria-label="Close"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
         </div>
         <div class="relative w-full max-w-4xl flex items-center justify-center">

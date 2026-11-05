@@ -86,7 +86,7 @@
                 <li class="relative flex flex-col items-center text-center px-1">
                     ${i > 0 ? `<span class="absolute top-3 right-1/2 w-full h-0.5 ${i === 4 ? 'hidden sm:block' : ''} ${st === 'todo' ? 'bg-gray-200' : 'bg-emerald-300'}"></span>` : ''}
                     <span class="relative z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${DOT[st]}">${st === 'done' ? '✓' : st === 'warn' ? '!' : i + 1}</span>
-                    <span class="mt-1.5 text-[10.5px] leading-tight ${TXT[st]}">${esc(label)}</span>
+                    <span class="mt-1.5 text-[10px] sm:text-[10.5px] leading-tight ${TXT[st]}">${esc(label)}</span>
                 </li>`).join('')}
             </ol>`;
         }
@@ -99,7 +99,7 @@
 
         function block(title, right, inner) {
             return `
-            <div class="border border-gray-100 rounded-lg p-3.5 min-w-0">
+            <div class="border border-gray-100 rounded-lg p-3 sm:p-3.5 min-w-0">
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <h4 class="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-500">${esc(title)}</h4>
                     ${right || ''}
@@ -235,7 +235,7 @@
             if (!Array.isArray(ops) || !ops.length) { wrap.classList.add('hidden'); body.innerHTML = ''; return; }
             wrap.classList.remove('hidden');
             body.innerHTML = ops.map(o => `
-                <article class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 min-w-0">
+                <article class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 min-w-0">
                     <div class="flex items-start justify-between gap-3 mb-4 flex-wrap">
                         <div class="min-w-0">
                             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Delivery receipt</p>

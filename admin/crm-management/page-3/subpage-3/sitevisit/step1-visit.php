@@ -8,10 +8,10 @@ $svVisitedRadio = function (string $value) use ($svOld): string {
     return '<input type="radio" name="visited" value="' . htmlspecialchars($value) . '" class="sr-only"' . $checked . '>';
 };
 ?>
-<section data-step="1" class="sv-card p-5">
+<section data-step="1" class="sv-card p-4 sm:p-5">
     <div class="flex items-center gap-2.5 mb-4">
         <span class="sv-num">1</span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-sm font-semibold text-gray-900 leading-tight">Visit details</h2>
             <p class="text-[11px] text-gray-400">When did you go, and did the visit happen?</p>
         </div>

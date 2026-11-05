@@ -20,7 +20,8 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Project Cost</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -40,29 +41,29 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
 </head>
 
 <body class="bg-gray-50">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-scale-balanced text-lg"></i></div>
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-scale-balanced text-lg"></i></div>
                 <div class="min-w-0"><p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Cost control</p>
-                    <h1 class="text-xl font-bold text-gray-900 leading-tight">Project Cost</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Project Cost</h1>
                     <p class="text-xs text-gray-500">Contract vs. all project costs — materials (Purchase Request) and labor. See if a project went over.</p></div>
             </div>
             <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5"><span id="pcoLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="pcoLiveText">Auto-refresh</span><span class="text-gray-300">·</span><span id="pcoUpdated">Loading…</span></span>
         </div>
 
         <!-- Summary -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
             <?php foreach ([
                 ['contract', 'Total contract', 'fa-file-signature', 'bg-amber-50 text-amber-700'],
                 ['cost', 'Total cost', 'fa-coins', 'bg-slate-100 text-slate-700'],
                 ['spent', 'Spent so far', 'fa-money-bill-wave', 'bg-emerald-50 text-emerald-600'],
                 ['margin', 'Remaining', 'fa-piggy-bank', 'bg-sky-50 text-sky-600'],
             ] as [$k, $label, $icon, $cls]): ?>
-                <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0">
+                <div class="bg-white border border-gray-200 rounded-xl px-3 py-2.5 sm:p-4 flex items-center gap-3 shadow-sm min-w-0">
                     <span class="hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 <?= $cls ?>"><i class="fa-solid <?= $icon ?>"></i></span>
-                    <span class="min-w-0"><span class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate"><?= $label ?></span>
-                        <span class="block text-lg md:text-xl font-bold text-gray-900 leading-tight tabular-nums truncate" data-sum="<?= $k ?>">—</span></span>
+                    <span class="min-w-0"><span class="block text-[10px] sm:text-[11px] font-semibold text-gray-500 uppercase sm:tracking-wide truncate"><?= $label ?></span>
+                        <span class="block text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight tabular-nums truncate" data-sum="<?= $k ?>">—</span></span>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -71,15 +72,15 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
             <!-- Listahan -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-w-0">
                 <div class="h-1.5 pco-hazard"></div>
-                <div class="px-4 pt-3 flex flex-wrap gap-1.5" id="pcoTabs">
+                <div class="px-3 sm:px-4 pt-3 pb-px flex sm:flex-wrap gap-1.5 overflow-x-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" id="pcoTabs">
                     <?php foreach ([['all', 'All'], ['over', 'Over budget'], ['near', 'Near limit'], ['within', 'Within budget'], ['no_contract', 'No contract']] as [$k, $label]): ?>
-                        <button type="button" data-tab="<?= $k ?>" class="pco-tab px-3 py-1.5 rounded-full text-[11px] font-semibold border border-gray-200 text-gray-600 hover:border-amber-400 data-[active=true]:bg-amber-700 data-[active=true]:border-amber-700 data-[active=true]:text-white"><?= $label ?> <span class="tabular-nums opacity-80" data-count="<?= $k ?>"></span></button>
+                        <button type="button" data-tab="<?= $k ?>" class="pco-tab shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-semibold border border-gray-200 text-gray-600 hover:border-amber-400 data-[active=true]:bg-amber-700 data-[active=true]:border-amber-700 data-[active=true]:text-white"><?= $label ?> <span class="tabular-nums opacity-80" data-count="<?= $k ?>"></span></button>
                     <?php endforeach; ?>
                 </div>
-                <div class="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-2">
+                <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-2">
                     <div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
-                        <input type="text" id="pcoSearch" placeholder="Search client or control no.…" class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"></div>
-                    <select id="pcoSort" class="h-9 bg-white border border-gray-200 rounded-lg px-2 text-xs outline-none focus:border-amber-500">
+                        <input type="text" id="pcoSearch" placeholder="Search client or control no.…" class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"></div>
+                    <select id="pcoSort" class="h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg px-2 text-xs outline-none focus:border-amber-500">
                         <option value="recent">Latest activity</option><option value="used">Most budget used</option><option value="cost">Highest cost</option><option value="contract">Biggest contract</option>
                     </select>
                 </div>
@@ -103,25 +104,25 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
     </main>
 
     <!-- Detalye ng project -->
-    <div id="pcoModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-2 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl my-auto overflow-hidden">
+    <div id="pcoModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-5xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
             <div class="h-1.5 pco-hazard"></div>
-            <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
+            <div class="sticky top-0 z-10 bg-white flex items-start justify-between gap-3 px-4 md:px-5 py-3 md:py-4 border-b border-gray-100">
                 <div class="min-w-0"><p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Project cost</p><p id="pmTitle" class="text-base font-semibold text-gray-900 truncate"></p><p id="pmSub" class="text-[11px] text-gray-400 truncate"></p></div>
-                <button type="button" id="pmClose" aria-label="Close" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                <button type="button" id="pmClose" aria-label="Close" class="-mr-2 md:-mr-1 w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
-            <div id="pmBody" class="p-4 md:p-5 space-y-4"></div>
+            <div id="pmBody" class="p-3 md:p-5 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-5 space-y-4"></div>
         </div>
     </div>
 
     <!-- Tingnan ang dokumento -->
-    <div id="pcoDoc" class="hidden fixed inset-0 z-[10000] items-start justify-center bg-black/60 p-2 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-auto overflow-hidden">
-            <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-100">
+    <div id="pcoDoc" class="hidden fixed inset-0 z-[10000] items-start justify-center bg-black/60 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-3xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
+            <div class="sticky top-0 z-10 bg-white flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-gray-100">
                 <p id="pdKind" class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700 truncate">Document</p>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" id="pdPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i class="fa-solid fa-print"></i> Print</button>
-                    <button type="button" id="pdClose" aria-label="Close" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                    <button type="button" id="pdPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i class="fa-solid fa-print"></i><span class="hidden sm:inline"> Print</span></button>
+                    <button type="button" id="pdClose" aria-label="Close" class="-mr-2 md:-mr-1 w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
             </div>
             <div class="p-3 md:p-5 bg-slate-50"><div id="pdPaper" class="bg-white border border-gray-200 rounded-lg p-4 md:p-6 min-w-0"></div></div>
@@ -231,7 +232,7 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
                 if (!list.length) { F('pcoList').innerHTML = `<div class="px-6 py-14 text-center text-xs text-gray-400"><i class="fa-solid fa-folder-open text-2xl text-gray-200 block mb-2"></i>${rows.length ? 'No project matches.' : 'No project yet. A project shows here once its BOM is approved.'}</div>`; return; }
                 F('pcoList').innerHTML = list.map(r => {
                     const rem = r.contract - r.cost;
-                    return `<button type="button" data-open="${r.id}" class="w-full text-left px-4 py-3.5 hover:bg-amber-50/40 transition block">
+                    return `<button type="button" data-open="${r.id}" class="w-full text-left px-3 sm:px-4 py-3 sm:py-3.5 hover:bg-amber-50/40 transition block">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0"><p class="text-sm font-semibold text-gray-900 truncate">${esc(r.client || '—')}</p>
                                 <p class="text-[11px] text-gray-400 truncate">${esc(r.control_no)} · ${r.bom_n} BOM · ${r.pr_n} PR · ${r.lq_n} labor</p></div>
@@ -303,7 +304,7 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
                 F('pmBody').innerHTML = `
                     <div class="flex items-start gap-3 rounded-xl border px-4 py-3 ${st[1]}"><i class="fa-solid ${st[2]} mt-0.5"></i><div class="text-xs leading-relaxed"><b>${st[0]}.</b> ${banner}
                         ${p.projected_over && p.status !== 'over' ? `<br>Pending labor quotations (${money(p.labor_pending)}) will push it over the contract.` : ''}</div></div>
-                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
                         ${tile('Contract (budget)', money(p.contract))}
                         ${tile('Total cost', money(p.cost), p.status === 'over' ? 'text-red-600' : 'text-gray-900', 'Materials + labor')}
                         ${tile('Spent so far', money(p.spent), 'text-gray-900', 'Paid PR + approved labor billing')}
@@ -326,8 +327,8 @@ $pcoAjaxUrl = BASE_URL . '/projectcostajax';
                         <div class="bg-white border border-gray-200 rounded-xl p-4 min-w-0"><p class="text-xs font-semibold text-gray-900 mb-2">Spending over time</p>${lineChart(p)}</div>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                        <div class="px-4 pt-3 flex flex-wrap gap-1.5 border-b border-gray-100 pb-3">${DOCS.map(([k, l, i]) => `<button type="button" data-doc="${k}" class="px-2.5 py-1 rounded-full text-[11px] font-semibold border ${docTab === k ? 'bg-amber-700 border-amber-700 text-white' : 'border-gray-200 text-gray-600 hover:border-amber-400'}"><i class="fa-solid ${i} mr-1"></i>${l} <span class="opacity-80">${(p.docs[k] || []).length}</span></button>`).join('')}</div>
-                        <div class="px-4">${docList(p)}</div>
+                        <div class="px-3 sm:px-4 pt-3 flex sm:flex-wrap gap-1.5 overflow-x-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-gray-100 pb-3">${DOCS.map(([k, l, i]) => `<button type="button" data-doc="${k}" class="shrink-0 whitespace-nowrap px-2.5 py-1.5 sm:py-1 rounded-full text-[11px] font-semibold border ${docTab === k ? 'bg-amber-700 border-amber-700 text-white' : 'border-gray-200 text-gray-600 hover:border-amber-400'}"><i class="fa-solid ${i} mr-1"></i>${l} <span class="opacity-80">${(p.docs[k] || []).length}</span></button>`).join('')}</div>
+                        <div class="px-3 sm:px-4">${docList(p)}</div>
                     </div>`;
                 F('pcoModal').scrollTop = keepScroll;
             }

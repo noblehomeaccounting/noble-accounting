@@ -3,10 +3,10 @@
 // Kasama ng sitevisitform.php (include). Huwag buksan nang direkta.
 ?>
 <!-- 2. Notes -->
-<section data-step="2" class="sv-card p-5 hidden">
+<section data-step="2" class="sv-card p-4 sm:p-5 hidden">
     <div class="flex items-center gap-2.5 mb-4">
         <span class="sv-num">2</span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-sm font-semibold text-gray-900 leading-tight">Site notes</h2>
             <p class="text-[11px] text-gray-400">What you saw and what the client asked for.</p>
         </div>
@@ -19,7 +19,7 @@
         ] as [$nm, $lbl, $ph]): ?>
             <div>
                 <label class="sv-label" for="sv_<?= $nm ?>"><?= $lbl ?></label>
-                <textarea id="sv_<?= $nm ?>" name="<?= $nm ?>" rows="5" class="sv-field resize-y min-h-[110px]"
+                <textarea id="sv_<?= $nm ?>" name="<?= $nm ?>" rows="4" class="sv-field resize-y min-h-[96px] md:min-h-[110px]"
                     placeholder="<?= htmlspecialchars($ph) ?>"><?= $svOldVal($nm) ?></textarea>
             </div>
         <?php endforeach; ?>

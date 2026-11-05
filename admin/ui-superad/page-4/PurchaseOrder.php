@@ -22,7 +22,8 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Purchase Order</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -43,15 +44,15 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
 
 <body class="bg-slate-100">
     <main id="main-content"
-        class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden transition-all duration-300">
+        class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 overflow-x-hidden transition-all duration-300">
 
         <div class="max-w-6xl mx-auto">
 
             <!-- ===================== HEADER ===================== -->
-            <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
-                <div>
+            <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
+                <div class="min-w-0">
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">Purchase Request Approval</h1>
+                    <h1 class="text-gray-900 text-lg sm:text-xl font-semibold">Purchase Request Approval</h1>
                     <p class="text-gray-400 text-xs mt-0.5"><?= $nhCanApprove ? 'Review purchase requests from Purchasing. Approving signs the form as Purchasing Head.' : 'View only — the Purchasing Head approves these requests.' ?></p>
                 </div>
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
@@ -61,77 +62,88 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
             </div>
 
             <!-- ===================== STATS ===================== -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">For Approval</p>
-                        <p id="praStatPending" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+            <div class="grid grid-cols-3 gap-1.5 sm:gap-3 mb-4 sm:mb-5">
+                <div class="min-w-0 bg-white border border-gray-200 rounded-xl px-2.5 py-2 sm:px-5 sm:py-4 flex items-center gap-4">
+                    <span class="hidden sm:flex shrink-0 w-11 h-11 rounded-xl bg-amber-50 text-amber-700 items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden">Pending</span><span class="hidden sm:inline">For Approval</span></p>
+                        <p id="praStatPending" class="truncate text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                     </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <span class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-solid fa-file-signature"></i></span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Approved Today</p>
-                        <p id="praStatToday" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                <div class="min-w-0 bg-white border border-gray-200 rounded-xl px-2.5 py-2 sm:px-5 sm:py-4 flex items-center gap-4">
+                    <span class="hidden sm:flex shrink-0 w-11 h-11 rounded-xl bg-green-50 text-green-600 items-center justify-center"><i class="fa-solid fa-file-signature"></i></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden">Today</span><span class="hidden sm:inline">Approved Today</span></p>
+                        <p id="praStatToday" class="truncate text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                     </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <span class="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-peso-sign"></i></span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Pending Amount</p>
-                        <p id="praStatAmount" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                <div class="min-w-0 bg-white border border-gray-200 rounded-xl px-2.5 py-2 sm:px-5 sm:py-4 flex items-center gap-4">
+                    <span class="hidden sm:flex shrink-0 w-11 h-11 rounded-xl bg-slate-100 text-slate-600 items-center justify-center"><i class="fa-solid fa-peso-sign"></i></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden">Amount</span><span class="hidden sm:inline">Pending Amount</span></p>
+                        <p id="praStatAmount" class="truncate text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                     </div>
                 </div>
             </div>
 
             <!-- ===================== LIST ===================== -->
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100">
-                    <div class="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
+                <div class="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
+                    <div class="grid grid-cols-3 sm:inline-flex w-full sm:w-auto min-w-0 items-center gap-0.5 sm:gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
                         <?php foreach (['Pending' => ['For Approval', 'bg-amber-500'], 'Approved' => ['Approved', 'bg-green-500'], 'Rejected' => ['Returned', 'bg-red-500']] as $k => [$lbl, $dot]): ?>
                             <button type="button" data-tab="<?= $k ?>"
-                                class="pra-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500 transition-all">
-                                <span class="w-1.5 h-1.5 rounded-full <?= $dot ?>"></span> <?= $lbl ?>
-                                <span data-count="<?= $k ?>" class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
+                                class="pra-tab min-w-0 justify-center inline-flex items-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-gray-500 whitespace-nowrap transition-all">
+                                <span class="shrink-0 w-1.5 h-1.5 rounded-full <?= $dot ?>"></span>
+                                <span class="sm:hidden truncate"><?= $k === 'Pending' ? 'Pending' : $lbl ?></span><span class="hidden sm:inline"><?= $lbl ?></span>
+                                <span data-count="<?= $k ?>" class="shrink-0 min-w-[18px] sm:min-w-[20px] px-1 sm:px-1.5 py-px rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                             </button>
                         <?php endforeach; ?>
                     </div>
-                    <div class="relative ml-auto w-full sm:w-80">
+                    <div class="relative flex-1 min-w-0 sm:flex-none sm:ml-auto sm:w-80">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="praSearch" placeholder="Search req no., control no., BOM no., client..."
-                            class="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600 transition-colors">
+                            class="w-full h-[38px] sm:h-auto bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600 transition-colors">
                     </div>
+                    <button type="button" data-fd-open="praFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 "><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
                 </div>
 
-                <!-- Filters: petsa + sort -->
-                <div class="flex flex-wrap items-end gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
-                    <div class="flex items-center gap-1">
-                        <button type="button" data-pra-qdate="today" class="pra-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
-                        <button type="button" data-pra-qdate="week" class="pra-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
-                        <button type="button" data-pra-qdate="month" class="pra-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                <!-- Filters: petsa + sort (sa phone: drawer sa gilid, kagaya ng CRM Monitoring) -->
+                <div class="sm:flex sm:flex-wrap items-end gap-2 sm:px-4 sm:py-2.5 sm:border-b border-gray-100 bg-gray-50/50">
+                <div id="praFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="praFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none">&times;</button>
+    </div>
+    <div class="nh-fd-body">
+<p class="nh-fd-only nh-fd-label">Date</p>
+                <div class="grid grid-cols-2 gap-2 sm:contents">
+                    <div class="col-span-2 grid grid-cols-3 sm:flex items-center gap-1">
+                        <button type="button" data-pra-qdate="today" class="pra-qdate px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                        <button type="button" data-pra-qdate="week" class="pra-qdate px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                        <button type="button" data-pra-qdate="month" class="pra-qdate px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
                     </div>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
-                        <input id="praMonth" type="month" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="praMonth" type="month" class="w-full sm:w-auto h-9 sm:h-auto px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
-                        <input id="praDay" type="date" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="praDay" type="date" class="w-full sm:w-auto h-9 sm:h-auto px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
-                        <input id="praFrom" type="date" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="praFrom" type="date" class="w-full sm:w-auto h-9 sm:h-auto px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
-                        <input id="praTo" type="date" class="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="praTo" type="date" class="w-full sm:w-auto h-9 sm:h-auto px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
-                    <button type="button" id="praDateClear" class="hidden px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
-                    <p id="praDateHint" class="text-[10.5px] text-gray-400 pb-1.5"></p>
-                    <label class="block ml-auto">
+                    <button type="button" id="praDateClear" class="hidden col-span-2 px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                    <p id="praDateHint" class="col-span-2 text-[10.5px] text-gray-400 sm:pb-1.5 empty:hidden"></p>
+                    <label class="block col-span-2 sm:ml-auto">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Sort by</span>
-                        <select id="praSort" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <select id="praSort" data-fd-ignore class="w-full sm:w-auto h-9 sm:h-auto px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                             <option value="newest">Newest first</option>
                             <option value="oldest">Oldest first</option>
                             <option value="amount_desc">Amount: high → low</option>
@@ -141,7 +153,17 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                     </label>
                 </div>
 
-                <div class="overflow-x-auto">
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
+                </div>
+
+                <!-- Phone: cards (ang table ay para sa tablet/desktop) -->
+                <div id="praCards" class="md:hidden divide-y divide-gray-100"></div>
+
+                <div class="hidden md:block overflow-x-auto">
                     <table class="w-full text-sm min-w-[1020px]">
                         <thead class="bg-gray-50 text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
                             <tr class="border-b border-gray-200">
@@ -160,36 +182,39 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                         </tbody>
                     </table>
                 </div>
-                <p id="praFooter" class="px-5 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400"></p>
+                <p id="praFooter" class="px-3 sm:px-5 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400"></p>
             </div>
         </div>
 
-        <div id="crmToastContainer" class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="crmToastContainer" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[360px]"></div>
     </main>
 
     <!-- ===================== REVIEW MODAL (form + actions) ===================== -->
-    <div id="praModal" class="hidden fixed inset-0 z-[9998] items-start justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl my-6 overflow-hidden">
+    <div id="praModal" class="hidden fixed inset-0 z-[9998] items-start justify-center bg-black/50 p-0 sm:p-4 overflow-y-auto">
+        <div class="bg-white sm:rounded-xl shadow-xl w-full max-w-6xl min-h-full sm:min-h-0 sm:my-6 overflow-hidden">
             <div class="sticky top-0 z-10 bg-white px-4 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                     <p id="praModalNo" class="font-mono text-xs font-semibold text-red-600"></p>
                     <p id="praModalSub" class="text-[11px] text-gray-400 truncate"></p>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" id="praPrint" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
-                        <i class="fa-solid fa-print"></i> Print
+                <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 order-last sm:order-none">
+                    <button type="button" id="praPrint" class="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <i class="fa-solid fa-print"></i><span class="hidden sm:inline"> Print</span>
                     </button>
-                    <button type="button" id="praRejectBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
+                    <button type="button" id="praRejectBtn" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3 py-2.5 sm:py-1.5 text-[11px] font-semibold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
                         <i class="fa-solid fa-rotate-left"></i> Return
                     </button>
-                    <button type="button" id="praApproveBtn" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm disabled:opacity-60">
+                    <button type="button" id="praApproveBtn" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 text-[11px] font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm disabled:opacity-60">
                         <i class="fa-solid fa-signature"></i> Approve &amp; Sign
                     </button>
-                    <button type="button" id="praClose" class="ml-1 text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                    <button type="button" id="praClose" aria-label="Close" class="hidden sm:flex ml-1 -mr-1 w-8 h-8 items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
+                <!-- Phone: Close katabi ng Req No. -->
+                <button type="button" onclick="document.getElementById('praClose').click()" aria-label="Close" class="sm:hidden -mr-2 w-10 h-10 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <div id="praNotice" class="hidden mx-4 mt-3 rounded-lg px-3 py-2 text-xs"></div>
-            <div class="p-4 md:p-6 flex flex-col xl:flex-row gap-5">
+            <div class="p-3 sm:p-4 md:p-6 flex flex-col xl:flex-row gap-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <p class="md:hidden -mb-3 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see the whole form.</p>
                 <div class="flex-1 min-w-0 overflow-x-auto"><div id="praSheet" class="min-w-[760px]"></div></div>
                 <aside id="praHistory" class="xl:w-72 shrink-0"></aside>
             </div>
@@ -197,8 +222,8 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
     </div>
 
     <!-- ===================== APPROVE CONFIRM MODAL ===================== -->
-    <div id="praApproveModal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+    <div id="praApproveModal" class="hidden fixed inset-0 z-[9999] items-end sm:items-center justify-center bg-black/50 sm:p-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-sm overflow-hidden pb-[env(safe-area-inset-bottom)]">
             <div class="p-5">
                 <div class="flex items-center gap-2.5 mb-3">
                     <span class="w-9 h-9 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-solid fa-file-signature text-sm"></i></span>
@@ -219,8 +244,8 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                 </p>
             </div>
             <div class="flex justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-100">
-                <button type="button" id="praApproveCancel" class="px-3.5 py-2 text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-100">Cancel</button>
-                <button type="button" id="praApproveConfirm" class="px-3.5 py-2 text-[11px] font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-60">
+                <button type="button" id="praApproveCancel" class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-100">Cancel</button>
+                <button type="button" id="praApproveConfirm" class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-60">
                     <i class="fa-solid fa-check mr-1"></i> Approve &amp; Sign
                 </button>
             </div>
@@ -228,19 +253,19 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
     </div>
 
     <!-- ===================== RETURN REASON MODAL ===================== -->
-    <div id="praRejectModal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
+    <div id="praRejectModal" class="hidden fixed inset-0 z-[9999] items-end sm:items-center justify-center bg-black/50 sm:p-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-sm p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5">
             <div class="flex items-center gap-2.5 mb-1">
                 <span class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center"><i class="fa-solid fa-rotate-left text-xs"></i></span>
                 <p class="text-sm font-semibold text-gray-800">Return to Purchasing</p>
             </div>
             <p class="text-xs text-gray-400 mb-3">Tell Purchasing what to fix.</p>
             <textarea id="praRejectRemarks" rows="3" placeholder="e.g. Please attach supplier quotation"
-                class="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"></textarea>
+                class="w-full text-[13px] sm:text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"></textarea>
             <p id="praRejectError" class="hidden text-[11px] text-red-500 mt-1">A reason is required.</p>
             <div class="flex justify-end gap-2 mt-4">
-                <button type="button" id="praRejectCancel" class="px-3.5 py-2 text-[11px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100">Cancel</button>
-                <button type="button" id="praRejectConfirm" class="px-3.5 py-2 text-[11px] font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60">Confirm Return</button>
+                <button type="button" id="praRejectCancel" class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100">Cancel</button>
+                <button type="button" id="praRejectConfirm" class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60">Confirm Return</button>
             </div>
         </div>
     </div>
@@ -704,7 +729,41 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
                         : dateActive() ? `No requests ${tab === 'Pending' ? 'submitted' : tab === 'Approved' ? 'approved' : 'returned'} ${datePhrase()}.`
                         : tab === 'Pending' ? 'Nothing waiting for approval.' : tab === 'Approved' ? 'No approved requests yet.' : 'No returned requests.';
                     body.innerHTML = `<tr><td colspan="8" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular ${tab === 'Pending' && !source.length ? 'fa-circle-check text-green-400' : 'fa-folder-open text-gray-300'} text-2xl block mb-2"></i>${msg}</td></tr>`;
+                    document.getElementById('praCards').innerHTML = `<div class="px-4 py-12 text-center text-xs text-gray-400"><i class="fa-regular ${tab === 'Pending' && !source.length ? 'fa-circle-check text-green-400' : 'fa-folder-open text-gray-300'} text-2xl block mb-2"></i>${msg}</div>`;
                 } else {
+                    // Phone: card bawat request
+                    document.getElementById('praCards').innerHTML = list.map(r => {
+                        const when = whenOf(r);
+                        const days = Math.floor((ageSec(when) ?? 0) / 86400);
+                        const fresh = (ageSec(when) ?? 1e9) < 3600;
+                        const late = r.status === 'Pending' && when && days >= WAIT_WARN_DAYS;
+                        const agoTxt = !when ? '' : late
+                            ? `<span class="font-semibold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i>${esc(ago(when))} · still waiting</span>`
+                            : `<span class="font-semibold ${fresh ? 'text-green-600' : 'text-gray-500'}">${esc(ago(when))}</span>`;
+                        const btn = r.status === 'Pending'
+                            ? `<button type="button" data-open="${r.id}" class="w-full inline-flex justify-center items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-magnifying-glass"></i> Review</button>`
+                            : `<button type="button" data-open="${r.id}" class="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"><i class="fa-solid fa-eye"></i> View</button>`;
+                        return `
+                        <div class="px-3 py-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="font-mono text-[12px] font-semibold text-red-600">${esc(r.req_no)}</p>
+                                    <p class="font-semibold text-sm text-gray-900 truncate">${esc(r.client)}</p>
+                                    <p class="text-[11px] text-gray-400 truncate">${esc(r.project_scope || '')}</p>
+                                </div>
+                                <p class="shrink-0 text-right tabular-nums font-bold text-gray-900 text-sm">₱ ${money(r.total_amount)}<span class="block text-[10.5px] font-normal text-gray-400">${r.item_count} item${r.item_count == 1 ? '' : 's'}</span></p>
+                            </div>
+                            <div class="mt-2 text-[11px]">${idCell(r)}</div>
+                            <dl class="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-[11px]">
+                                <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Requested by</dt><dd class="text-gray-700 truncate">${esc(r.requested_by || '—')}</dd></div>
+                                <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Needed</dt><dd class="text-gray-700 truncate">${esc(r.date_needed || '—')}</dd></div>
+                            </dl>
+                            <p class="mt-1.5 text-[11px] text-gray-500">${fmtDate(when)} ${fmtTime(when)}${agoTxt ? ' · ' + agoTxt : ''} · by ${esc(r.prepared_by || '—')}</p>
+                            ${r.status === 'Rejected' && r.rejection_remarks ? `<p class="mt-1 text-[11px] text-red-700 bg-red-50 border border-red-100 rounded-md px-2 py-1 line-clamp-2">${esc(r.rejection_remarks)}</p>` : ''}
+                            <div class="mt-2.5">${btn}</div>
+                        </div>`;
+                    }).join('');
+
                     body.innerHTML = list.map(r => {
                         const when = whenOf(r);
                         const days = Math.floor((ageSec(when) ?? 0) / 86400);
@@ -754,6 +813,10 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
             }
 
             document.getElementById('praList').addEventListener('click', e => {
+                const b = e.target.closest('[data-open]');
+                if (b) openReview(+b.dataset.open);
+            });
+            document.getElementById('praCards').addEventListener('click', e => {
                 const b = e.target.closest('[data-open]');
                 if (b) openReview(+b.dataset.open);
             });
@@ -921,6 +984,61 @@ $praAjaxUrl = BASE_URL . '/purchaseorderapprovalajax';
             startPolling();
         })();
     </script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>

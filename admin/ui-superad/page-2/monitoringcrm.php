@@ -15,7 +15,8 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>CRM Monitoring</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -276,6 +277,11 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
             background: #10b981;
         }
 
+        @media (max-width: 1279px) {
+            .mon-stage-tab { padding: 9px 10px; }
+            .mon-sec>summary { padding: 14px 16px; }
+        }
+
         .mon-new-dot {
             width: 7px;
             height: 7px;
@@ -291,14 +297,14 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
 
 <body>
 
-    <main class="md:pl-[240px] px-4 sm:px-6 py-6">
+    <main class="md:pl-[240px] px-3 sm:px-6 pt-20 pb-6 md:py-6">
         <div class="max-w-[1400px] mx-auto">
 
             <!-- Header -->
-            <div class="mb-5">
+            <div class="mb-4 sm:mb-5">
                 <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management
                 </p>
-                <h1 class="text-gray-900 text-xl font-semibold">CRM Monitoring</h1>
+                <h1 class="text-gray-900 text-lg sm:text-xl font-semibold">CRM Monitoring</h1>
             </div>
 
             <div class="flex items-start gap-5">
@@ -316,8 +322,8 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                             <button type="button" id="monPanelClear"
                                 class="text-[11px] text-gray-500 hover:text-amber-700 font-medium px-2 py-1">Reset</button>
                             <button type="button" id="monModalClose"
-                                class="xl:hidden w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-xl leading-none"
-                                aria-label="Close">&times;</button>
+                                class="xl:hidden -mr-2 w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                                aria-label="Close"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
                         </div>
                     </div>
 
@@ -468,7 +474,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                     </div>
 
                     <!-- Phone/tablet lang -->
-                    <div class="xl:hidden px-4 py-3 border-t border-gray-100 bg-gray-50/60">
+                    <div class="xl:hidden px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
                         <button type="button" id="monModalDone"
                             class="w-full text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
                     </div>
@@ -481,7 +487,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                     <!-- Toolbar -->
                     <div class="flex flex-wrap items-center gap-2 mb-3">
                         <button type="button" id="monFilterBtn"
-                            class="xl:hidden inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border bg-white text-gray-700 border-gray-300 hover:border-amber-500 transition-colors">
+                            class="xl:hidden shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2.5 sm:py-2 rounded-lg border bg-white text-gray-700 border-gray-300 hover:border-amber-500 transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 5h18l-7 8v6l-4 2v-8L3 5z" />
@@ -491,23 +497,23 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                                 class="hidden bg-amber-600 text-white rounded-full text-[10px] leading-none px-1.5 py-1"></span>
                         </button>
 
-                        <div class="relative flex-1 min-w-[180px] sm:max-w-sm">
+                        <div class="relative flex-1 min-w-0 sm:min-w-[180px] sm:max-w-sm">
                             <input id="monSearch" type="text" placeholder="Search control no., client, contact"
-                                class="w-full pl-8 pr-8 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
-                            <svg class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                class="w-full pl-8 pr-8 py-2.5 sm:py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-600 bg-white transition-colors">
+                            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
                             </svg>
                             <button type="button" id="monSearchClear"
-                                class="hidden absolute right-2.5 top-2 text-gray-300 hover:text-gray-500 text-lg leading-none w-4 h-4">&times;</button>
+                                class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-lg leading-none w-4 h-4">&times;</button>
                         </div>
 
-                        <div class="flex items-center gap-2 ml-auto">
+                        <div class="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
                             <button type="button" id="monClearAll"
                                 class="hidden text-xs text-gray-500 hover:text-amber-700 font-medium px-2 py-1.5">Clear all</button>
                             <label class="mon-hint hidden sm:block" for="fSort">Sort by</label>
-                            <select id="fSort" class="mon-field" style="width:auto" title="Sort by">
+                            <select id="fSort" class="mon-field flex-1 sm:flex-none min-w-0 sm:!w-auto" title="Sort by">
                                 <option value="updated">Recently updated</option>
                                 <option value="newest">Newest filed</option>
                                 <option value="oldest">Oldest filed</option>
@@ -524,7 +530,10 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                 <div id="monPills" class="flex-wrap items-center gap-1.5 mb-3" style="display:none"></div>
 
                 <!-- Table: header 40px + 5 rows x 55px, the rest scrolls -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <!-- Phone: cards (ang table ay para sa tablet/desktop) -->
+                <div id="monCards" class="md:hidden space-y-2"></div>
+
+                <div class="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div class="mon-scroll overflow-auto" style="max-height: 316px;">
                         <table class="w-full text-xs">
                             <thead class="sticky top-0 z-10">
@@ -561,7 +570,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
 
                 <p id="monCount" class="text-[11px] text-gray-400 mt-2.5"></p>
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-6">
+                <div id="monDetailGrid" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-6 scroll-mt-20">
                     <?php include ROOT_PATH . '/admin/ui-superad/page-2/monitoringcontain1.php'; ?>
                     <?php include ROOT_PATH . '/admin/ui-superad/page-2/monitoringcontain2.php'; ?>
                 </div>
@@ -775,15 +784,53 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
         }
         window.addEventListener('resize', () => { if (monIsDesktop()) monCloseModal(); });
 
+        // ── Phone card (kapareho ng laman ng table row) ──
+        function monCardHtml(r) {
+            const isNew = monIsNew(r);
+            const active = r.id === monSelectedId;
+            const daysTxt = r.done ? 'Completed' : (r.stage_days == null ? '' : (r.stage_days === 0 ? 'In this status today' : `${r.stage_days} ${r.stage_days === 1 ? 'day' : 'days'} in this status`));
+            return `
+            <article data-id="${r.id}" onclick="monRowClick(${r.id})"
+                class="bg-white border ${active ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200'} rounded-lg shadow-sm px-3 py-3 cursor-pointer transition">
+                <div class="flex items-start gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            ${isNew ? '<span class="mon-new-dot" title="Updated since you last checked"></span>' : ''}
+                            <span class="notranslate font-mono text-[11px] font-semibold text-amber-700">${monEsc(r.control_no)}</span>
+                            <span class="inline-block text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full ring-1 ${MON_BADGE[r.stage_color] || 'bg-gray-50 text-gray-600 ring-gray-200'}">${monEsc(r.stage)}</span>
+                        </div>
+                        <p class="mt-0.5 text-sm font-semibold text-gray-900 truncate capitalize">${monEsc(r.client_name)}</p>
+                        <p class="text-[11px] text-gray-500 truncate">${monVal(r.contact_number)} <span class="text-gray-300 mx-1">·</span><span class="capitalize">${monVal(r.project_type)}</span> <span class="text-gray-300 mx-1">·</span><span class="${r.material ? 'text-sky-600' : 'text-gray-400'} font-semibold">${r.material ? 'Materials' : 'Modular'}</span></p>
+                    </div>
+                    <a href="${MON_VIEW_URL}?id=${r.id}" onclick="event.stopPropagation()"
+                        class="shrink-0 inline-flex items-center text-[11px] font-medium px-3 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-amber-700">View</a>
+                </div>
+                <div class="mt-2">
+                    <div class="text-[11.5px] font-semibold ${r.stage_key === 'closed' ? 'text-red-600' : 'text-gray-800'}">${monEsc(r.stage_name)}${r.stage_sub ? `<span class="font-normal text-gray-500"> · ${monEsc(r.stage_sub)}</span>` : ''}</div>
+                    <div class="mt-1">${monSegments(r)}</div>
+                </div>
+                <dl class="mt-2 grid grid-cols-3 gap-2 rounded-md bg-gray-50 border border-gray-100 px-2.5 py-2 text-[11px]">
+                    <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Waiting on</dt><dd class="text-gray-700 truncate">${r.waiting_on ? monEsc(r.waiting_on) : '<span class="text-gray-300">—</span>'}</dd></div>
+                    <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Sales</dt><dd class="text-gray-700 truncate capitalize">${monVal(r.sales_name)}</dd></div>
+                    <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Designer</dt><dd class="text-gray-700 truncate capitalize">${monVal(r.designer_name)}</dd></div>
+                </dl>
+                <p class="mt-1.5 text-[10.5px] ${r.stuck ? 'text-red-600 font-semibold' : 'text-gray-400'}">
+                    <span class="${isNew ? 'font-semibold text-gray-700' : ''}">${monAgo(r.last_age, r.last_time)}</span>${daysTxt ? ` · ${r.stuck ? '⚠ ' : ''}${monEsc(daysTxt)}` : ''} · Filed ${monDate(r.created_at)}
+                </p>
+            </article>`;
+        }
+
         // ── Table ──
         function monRender(rows) {
             const tbody = $('monTbody');
             if (!rows.length) {
                 const msg = (monPanelFilterCount() || monF.q || monF.cstage || monF.month || monF.day || monF.mode) ? 'No inquiries match the current filters.' : 'No inquiries yet.';
                 tbody.innerHTML = `<tr class="h-11"><td colspan="11" class="px-5 text-center text-gray-400">${msg}</td></tr>`;
+                $('monCards').innerHTML = `<div class="bg-white border-2 border-dashed border-gray-200 rounded-lg px-4 py-10 text-center text-xs text-gray-400">${msg}</div>`;
                 return;
             }
             monLastRows = rows;
+            $('monCards').innerHTML = rows.map(monCardHtml).join('');
             tbody.innerHTML = rows.map(r => {
                 const isNew = monIsNew(r);
                 const daysTxt = r.done ? 'Completed' : (r.stage_days == null ? '' : (r.stage_days === 0 ? 'In this status today' : `${r.stage_days} ${r.stage_days === 1 ? 'day' : 'days'} in this status`));
@@ -911,8 +958,20 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                 tr.classList.toggle('bg-amber-50', active);
                 tr.classList.toggle('hover:bg-amber-50/40', !active);
             });
+            document.querySelectorAll('#monCards [data-id]').forEach(c => {
+                const active = Number(c.dataset.id) === id;
+                c.classList.toggle('border-amber-500', active);
+                c.classList.toggle('ring-2', active);
+                c.classList.toggle('ring-amber-100', active);
+                c.classList.toggle('border-gray-200', !active);
+                if (active) c.querySelector('.mon-new-dot')?.remove();
+            });
             if (window.monBox1Show) window.monBox1Show(id);
             if (window.monBox2Show) window.monBox2Show(id);
+            // Phone: dalhin sa detalye sa ibaba (nasa ilalim ng listahan)
+            if (!window.matchMedia('(min-width: 768px)').matches) {
+                $('monDetailGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // ── Status checklist (grouped) ──
@@ -1078,7 +1137,7 @@ $monViewUrl = BASE_URL . '/monitoringcrmview';
                 const n = data.count;
                 let text = `${n} ${n === 1 ? 'inquiry' : 'inquiries'} found`;
                 if (n !== data.total) text += ` (of ${data.total} matching the other filters)`;
-                if (n > MON_VISIBLE_ROWS) text += ` · Scroll to see more`;
+                if (n > MON_VISIBLE_ROWS && window.matchMedia('(min-width: 768px)').matches) text += ` · Scroll to see more`;
                 countEl.textContent = text;
 
                 // Live count sa modal button

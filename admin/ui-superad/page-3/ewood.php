@@ -23,7 +23,8 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>QR Approvals | Cutting Department</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -33,17 +34,17 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
 
 <body class="bg-slate-100">
     <main id="main-content"
-        class="md:ml-56 min-h-screen pt-20 md:pt-6 p-4 md:p-6 overflow-x-hidden transition-all duration-300">
+        class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-6 overflow-x-hidden transition-all duration-300">
 
         <div class="max-w-6xl mx-auto">
 
             <!-- ═══ HEADER ═══ -->
             <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-4">
                 <div class="ewood-hazard h-1.5"></div>
-                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                     <div class="flex items-center gap-3 min-w-0">
                         <span
-                            class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
+                            class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
                                 class="fa-solid fa-qrcode text-lg"></i></span>
                         <div class="min-w-0">
                             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Cutting
@@ -57,94 +58,111 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                                 : 'View only — the Cutting Head approves these uploads.' ?></p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
-                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 sm:min-w-[110px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-700">To review</p>
+                    <div class="grid grid-cols-3 gap-1.5 sm:gap-2 w-full sm:w-auto">
+                        <div class="min-w-0 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 sm:px-4 sm:py-2 sm:min-w-[110px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wide text-amber-700">To review</p>
                             <p id="ewoodStatPending"
-                                class="text-2xl font-bold text-amber-800 leading-tight tabular-nums">—</p>
+                                class="text-xl sm:text-2xl font-bold text-amber-800 leading-tight tabular-nums">—</p>
                         </div>
-                        <div class="rounded-xl border border-gray-200 bg-white px-4 py-2 sm:min-w-[110px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Approved today
+                        <div class="min-w-0 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 sm:px-4 sm:py-2 sm:min-w-[110px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wide text-gray-500"><span class="sm:hidden">Today</span><span class="hidden sm:inline">Approved today</span>
                             </p>
-                            <p id="ewoodStatToday" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—
+                            <p id="ewoodStatToday" class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—
                             </p>
                         </div>
-                        <div class="rounded-xl border border-gray-200 bg-white px-4 py-2 sm:min-w-[110px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Approved</p>
+                        <div class="min-w-0 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 sm:px-4 sm:py-2 sm:min-w-[110px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wide text-gray-500">Approved</p>
                             <p id="ewoodStatApproved"
-                                class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                                class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                         </div>
                     </div>
                 </div>
-                <div class="px-5 pb-0 flex flex-wrap items-end justify-between gap-3 border-t border-gray-100">
-                    <div class="flex gap-1 -mb-px">
+                <div class="px-4 sm:px-5 pb-0 flex flex-wrap items-end justify-between gap-x-3 gap-y-0 border-t border-gray-100">
+                    <div class="flex w-full sm:w-auto gap-1 -mb-px">
                         <button type="button" data-tab="pending"
-                            class="ewood-tab inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
+                            class="ewood-tab flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
                             <i class="fa-solid fa-inbox"></i> To review
                             <span id="ewoodPendingCount"
                                 class="min-w-[20px] px-1.5 py-px rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold text-center">—</span>
                         </button>
                         <button type="button" data-tab="approved"
-                            class="ewood-tab inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
+                            class="ewood-tab flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-3.5 py-3 text-xs font-semibold border-b-2 border-transparent text-gray-400">
                             <i class="fa-solid fa-circle-check"></i> Approved
                             <span id="ewoodApprovedCount"
                                 class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold text-center">—</span>
                         </button>
                     </div>
-                    <div class="relative w-full sm:w-64 pb-2.5">
+                    <div class="relative flex-1 min-w-0 sm:flex-none sm:w-64 pt-2.5 sm:pt-0 pb-2.5">
                         <i
-                            class="fa-solid fa-magnifying-glass absolute left-3 top-[calc(50%-5px)] -translate-y-1/2 text-gray-300 text-[11px]"></i>
+                            class="fa-solid fa-magnifying-glass absolute left-3 top-[calc(50%)] sm:top-[calc(50%-5px)] -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="ewoodSearch" placeholder="Search control no., client, BOM no.…"
-                            class="w-full h-9 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:bg-white focus:border-amber-600">
+                            class="w-full h-[38px] sm:h-9 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:bg-white focus:border-amber-600">
                     </div>
+                    <button type="button" data-fd-open="ewoodFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 mb-2.5"><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
                 </div>
 
-                <!-- Filters: petsa · uploaded by · sort -->
-                <div class="px-5 py-2.5 flex flex-wrap items-end gap-2 border-t border-gray-100 bg-gray-50/60">
-                    <div class="flex items-center gap-1">
-                        <button type="button" data-ew-qdate="today" class="ew-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
-                        <button type="button" data-ew-qdate="week" class="ew-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
-                        <button type="button" data-ew-qdate="month" class="ew-qdate px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                <!-- Filters: petsa · uploaded by · sort (sa phone: drawer sa gilid, kagaya ng CRM Monitoring) -->
+                <div class="sm:px-5 sm:py-2.5 sm:flex sm:flex-wrap items-end gap-2 sm:border-t border-gray-100 bg-gray-50/60">
+                <div id="ewoodFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="ewoodFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="-mr-2 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="nh-fd-body">
+<p class="nh-fd-only nh-fd-label">Date uploaded</p>
+                <div class="grid grid-cols-2 gap-2 sm:contents">
+                    <div class="col-span-2 grid grid-cols-3 sm:flex items-center gap-1">
+                        <button type="button" data-ew-qdate="today" class="ew-qdate px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                        <button type="button" data-ew-qdate="week" class="ew-qdate px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                        <button type="button" data-ew-qdate="month" class="ew-qdate px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
                     </div>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
-                        <input id="ewoodMonth" type="month" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="ewoodMonth" type="month" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
-                        <input id="ewoodDay" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="ewoodDay" type="date" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
-                        <input id="ewoodFrom" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="ewoodFrom" type="date" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
-                        <input id="ewoodTo" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="ewoodTo" type="date" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
-                    <button type="button" id="ewoodDateClear" class="hidden px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                    <button type="button" id="ewoodDateClear" class="hidden col-span-2 px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Uploaded by</span>
-                        <select id="ewoodUploader" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <select id="ewoodUploader" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                             <option value="">Everyone</option>
                         </select>
                     </label>
-                    <label class="block ml-auto">
+                    <label class="block sm:ml-auto">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Sort by</span>
-                        <select id="ewoodSort" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <select id="ewoodSort" data-fd-ignore class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                             <option value="oldest">Oldest first</option>
                             <option value="newest">Newest first</option>
                             <option value="client">Client (A–Z)</option>
                             <option value="control">Control no.</option>
                         </select>
                     </label>
-                    <p id="ewoodDateHint" class="basis-full text-[10.5px] text-gray-400 -mt-0.5 empty:hidden"></p>
+                    <p id="ewoodDateHint" class="col-span-2 basis-full text-[10.5px] text-gray-400 -mt-0.5 empty:hidden"></p>
+                </div>
+
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
                 </div>
             </section>
 
             <!-- ═══ TO REVIEW ═══ -->
             <div id="ewoodPanelPending">
-                <ol class="flex flex-wrap items-center gap-x-5 gap-y-1 mb-3 px-1 text-[11px] text-gray-500">
+                <ol class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-5 gap-y-1 mb-3 px-1 text-[11px] text-gray-500">
                     <li class="flex items-center gap-1.5"><span
                             class="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center justify-center">1</span>
                         Open the QR photo (click to enlarge or download)</li>
@@ -184,27 +202,28 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         </div>
 
         <div id="crmToastContainer"
-            class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[360px]">
         </div>
     </main>
 
     <!-- BOM view modal — buong BOM na kamukha ng printed form -->
     <div id="ewoodBomViewModal"
-        class="hidden fixed inset-0 z-[9998] items-center justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl my-auto overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
+        class="hidden fixed inset-0 z-[9998] items-start sm:items-center justify-center bg-black/50 p-0 sm:p-4 overflow-y-auto">
+        <div class="bg-white sm:rounded-xl shadow-xl w-full max-w-4xl min-h-full sm:min-h-0 sm:my-auto overflow-hidden">
+            <div class="sticky top-0 z-30 bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
                 <p id="ewoodBomViewModalTitle" class="text-xs font-semibold text-gray-700 font-mono truncate">BOM</p>
                 <div class="flex items-center gap-2 shrink-0">
                     <a id="ewoodBomViewDownload" href="#" target="_blank"
                         class="inline-flex items-center gap-1.5 h-8 px-3 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
-                        <i class="fa-solid fa-file-pdf"></i> Download PDF
+                        <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">Download </span>PDF
                     </a>
                     <button type="button" onclick="ewoodBomCloseViewModal()" aria-label="Close"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
+                        class="inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
                             class="fa-solid fa-xmark text-base leading-none"></i></button>
                 </div>
             </div>
-            <div id="ewoodBomViewBody" class="p-5 overflow-x-auto"></div>
+            <p class="sm:hidden px-4 pt-3 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see the whole BOM.</p>
+            <div id="ewoodBomViewBody" class="p-3 sm:p-5 overflow-x-auto [&>table]:min-w-[680px]"></div>
         </div>
     </div>
 
@@ -429,10 +448,10 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                                 <span class="ewood-bom-tag hidden ml-1 font-sans inline-flex items-center px-1.5 py-px rounded text-[9.5px] font-bold uppercase bg-red-100 text-red-700"><i class="fa-solid fa-rotate-left mr-1"></i>Back to cutting</span></p>
                             <p class="text-[10.5px] text-gray-500">${ewoodEscapeHtml(b.general_scope || '')}${b.date_needed ? ' · Needed: ' + ewoodEscapeHtml(b.date_needed) : ''}${b.linked_by_job ? ' · <span class="text-amber-700">found by job</span>' : ''}</p>
                         </div>
-                        <button type="button" data-bom-view="${b.id}" class="inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-semibold text-amber-700 bg-white border border-amber-200 rounded-md hover:bg-amber-50"><i class="fa-solid fa-expand"></i> Full BOM</button>
+                        <button type="button" data-bom-view="${b.id}" class="inline-flex items-center gap-1.5 h-8 sm:h-7 px-2.5 text-[11px] font-semibold text-amber-700 bg-white border border-amber-200 rounded-md hover:bg-amber-50 shrink-0"><i class="fa-solid fa-expand"></i> Full BOM</button>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-[11px] min-w-[460px]">
+                        <table class="w-full text-[11px] sm:min-w-[460px]">
                             <thead class="text-gray-400"><tr>
                                 <th class="text-left font-semibold px-3 py-1.5">Supplier</th>
                                 <th class="text-left font-semibold px-3 py-1.5">Item</th>
@@ -460,20 +479,22 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 class="ewood-card bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                 <div class="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
                     <!-- QR + photos -->
-                    <div class="p-4 bg-slate-50 md:border-r border-b md:border-b-0 border-gray-100">
-                        ${qr ? `<a href="${qr}" target="_blank" rel="noopener" class="group relative block aspect-square rounded-lg overflow-hidden border border-gray-200 bg-white" title="Open full size">
+                    <div class="p-3 sm:p-4 bg-slate-50 md:border-r border-b md:border-b-0 border-gray-100 flex md:block gap-3 items-start">
+                        ${qr ? `<a href="${qr}" target="_blank" rel="noopener" class="group relative block w-28 sm:w-36 md:w-auto shrink-0 aspect-square rounded-lg overflow-hidden border border-gray-200 bg-white" title="Open full size">
                             <img src="${qr}" alt="QR photo" class="w-full h-full object-contain">
                             <span class="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-magnifying-glass-plus mr-1"></i>Open</span>
-                        </a>` : '<div class="aspect-square rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-300"><i class="fa-solid fa-qrcode text-3xl"></i></div>'}
-                        <div class="flex flex-wrap gap-1.5 mt-2">
+                        </a>` : '<div class="w-28 sm:w-36 md:w-auto shrink-0 aspect-square rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-300"><i class="fa-solid fa-qrcode text-3xl"></i></div>'}
+                        <div class="min-w-0 flex-1 md:flex-none">
+                        <div class="flex flex-wrap gap-1.5 md:mt-2">
                             ${more.slice(0, 6).map(p => `<a href="${p}" target="_blank" rel="noopener"><img src="${p}" alt="" class="w-11 h-11 object-cover rounded-md border border-gray-200 hover:border-amber-500"></a>`).join('')}
                         </div>
                         ${qr ? `<a href="${qr}" download class="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 hover:text-amber-700"><i class="fa-solid fa-download"></i> Download QR photo</a>` : ''}
                         ${entry.archive_url ? `<a href="${entry.archive_url}" target="_blank" class="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 hover:text-amber-700 min-w-0"><i class="fa-solid fa-file-zipper"></i><span class="truncate">${ewoodEscapeHtml(entry.archive_name || 'Archive')}</span></a>` : ''}
+                        </div>
                     </div>
 
                     <!-- Details + BOM -->
-                    <div class="p-4 min-w-0 flex flex-col gap-3">
+                    <div class="p-3 sm:p-4 min-w-0 flex flex-col gap-3">
                         <div class="flex flex-wrap items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <p class="notranslate font-mono text-[11px] font-semibold text-amber-700">${ewoodEscapeHtml(entry.control_no)}</p>
@@ -491,7 +512,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 </div>
 
                 <!-- Actions -->
-                <div class="ewood-actions px-4 py-3 bg-gray-50 border-t border-gray-100" data-id="${entry.id}">
+                <div class="ewood-actions px-3 sm:px-4 py-3 bg-gray-50 border-t border-gray-100" data-id="${entry.id}">
                     ${ewoodActionsIdle()}
                 </div>
             </article>`;
@@ -503,9 +524,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             }
             return `<div class="flex flex-wrap items-center justify-between gap-2">
                 <p class="text-[11px] text-gray-400"><i class="fa-solid fa-qrcode mr-1"></i>Scan the QR first, then decide.</p>
-                <div class="flex items-center gap-2 ml-auto">
-                    <button type="button" data-act="revise" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50"><i class="fa-solid fa-rotate-left"></i> Send back</button>
-                    <button type="button" data-act="approve" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm"><i class="fa-solid fa-check"></i> Approve</button>
+                <div class="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                    <button type="button" data-act="revise" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50"><i class="fa-solid fa-rotate-left"></i> Send back</button>
+                    <button type="button" data-act="approve" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm"><i class="fa-solid fa-check"></i> Approve</button>
                 </div></div>`;
         }
 
@@ -612,9 +633,9 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
             if (act === 'approve') {
                 const bomNos = (entry.boms || []).map(b => b.bom_number).join(', ');
                 box.innerHTML = `<div class="flex flex-wrap items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
-                    <p class="text-xs text-green-900 flex-1 min-w-[200px]">Approve <b>${ewoodEscapeHtml(entry.control_no)}</b>? ${bomNos ? `Your signature will be placed on <b class="font-mono">${ewoodEscapeHtml(bomNos)}</b>.` : '<span class="text-red-700">No BOM is attached.</span>'}</p>
-                    <button type="button" data-act="cancel" class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg">Cancel</button>
-                    <button type="button" data-act="approve-yes" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"><i class="fa-solid fa-check"></i> Yes, approve</button></div>`;
+                    <p class="text-xs text-green-900 basis-full sm:basis-auto flex-1 sm:min-w-[200px]">Approve <b>${ewoodEscapeHtml(entry.control_no)}</b>? ${bomNos ? `Your signature will be placed on <b class="font-mono">${ewoodEscapeHtml(bomNos)}</b>.` : '<span class="text-red-700">No BOM is attached.</span>'}</p>
+                    <button type="button" data-act="cancel" class="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg">Cancel</button>
+                    <button type="button" data-act="approve-yes" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"><i class="fa-solid fa-check"></i> Yes, approve</button></div>`;
                 return;
             }
 
@@ -710,7 +731,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         // ═════════════ APPROVED ═════════════
         function ewoodApprovedRow(entry) {
             const qr = (entry.photos || [])[0];
-            return `<div id="ewoodApproved_${entry.id}" data-search="${ewoodEscapeHtml(ewoodHay(entry))}" data-id="${entry.id}" class="ewood-card flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-4 py-3">
+            return `<div id="ewoodApproved_${entry.id}" data-search="${ewoodEscapeHtml(ewoodHay(entry))}" data-id="${entry.id}" class="ewood-card flex flex-wrap sm:flex-nowrap items-center gap-x-3 sm:gap-x-4 gap-y-2 px-3 sm:px-4 py-3">
                 ${qr ? `<a href="${qr}" target="_blank" rel="noopener" class="shrink-0"><img src="${qr}" alt="" class="w-12 h-12 object-cover rounded-lg border border-gray-200 hover:border-amber-500"></a>`
                     : '<span class="w-12 h-12 shrink-0 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300"><i class="fa-solid fa-qrcode"></i></span>'}
                 <div class="min-w-0 flex-1 basis-[180px]">
@@ -720,7 +741,7 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
                 <div class="flex flex-wrap gap-1.5 basis-full sm:basis-auto">
                     ${(entry.boms || []).map(b => `<button type="button" data-bom-view="${b.id}" class="inline-flex items-center gap-1 px-2 py-1 text-[10.5px] font-mono font-semibold text-green-800 bg-green-50 border border-green-200 rounded-full hover:bg-green-100"><i class="fa-solid fa-file-invoice"></i> ${ewoodEscapeHtml(b.bom_number)}</button>`).join('') || '<span class="text-[11px] text-gray-400">No BOM linked</span>'}
                 </div>
-                <div class="text-right shrink-0 ml-auto">
+                <div class="basis-full sm:basis-auto text-left sm:text-right shrink-0 sm:ml-auto">
                     <p class="text-[11px] text-green-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>${ewoodEscapeHtml(ewoodFmt(entry.approved_at))}</p>
                     <p class="text-[10.5px] text-gray-400">${ewoodAgoHtml(entry.approved_at, false)}${entry.approved_by ? ' · by ' + ewoodEscapeHtml(entry.approved_by) : ''}</p>
                     ${entry.uploaded_by ? `<p class="text-[10px] text-gray-300">Uploaded by ${ewoodEscapeHtml(entry.uploaded_by)}</p>` : ''}
@@ -1022,6 +1043,61 @@ $approvalAjaxUrl = BASE_URL . '/crmwoodapprovalajax';
         });
         ewoodStartPolling();
     </script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>

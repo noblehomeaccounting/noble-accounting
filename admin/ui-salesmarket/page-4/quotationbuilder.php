@@ -294,7 +294,7 @@ $grandTotal    = $subtotal - $discountAmt;
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8">
+     <main class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-5 md:p-8">
 
         <?php if ($flash): ?>
             <div role="status"
@@ -304,8 +304,6 @@ $grandTotal    = $subtotal - $discountAmt;
                 <?= e($flash[1]) ?>
             </div>
         <?php endif; ?>
-
-
 
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>

@@ -6,7 +6,7 @@ $crmForm = $crmForm ?? $_POST;
 $postedMode = $postedMode ?? ($crmForm['inquiry_mode'] ?? '');
 $postedNature = $postedNature ?? ($crmForm['project_nature'] ?? '');
 $crmNatureLocked = $crmNatureLocked ?? '';
-$crmInputCls = $crmInputCls ?? 'w-full h-11 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
+$crmInputCls = $crmInputCls ?? 'w-full h-11 px-3 text-base sm:text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
 $crmChipCls = $crmChipCls ?? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] text-gray-700 bg-white border border-gray-300 select-none transition hover:border-amber-400 peer-checked:bg-amber-700 peer-checked:border-amber-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 [&>i]:hidden peer-checked:[&>i]:inline';
 ?>
 <div class="crm-step-panel hidden" id="crm-step-2">
@@ -14,7 +14,7 @@ $crmChipCls = $crmChipCls ?? 'inline-flex items-center gap-1.5 px-3 py-1.5 round
         <span
             class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0"><i
                 class="fa-solid fa-ruler-combined"></i></span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-base font-bold text-gray-900 leading-tight">Project Details</h2>
             <p class="text-xs text-gray-400 mt-0.5">What the client needs.</p>
         </div>
@@ -77,7 +77,7 @@ $crmChipCls = $crmChipCls ?? 'inline-flex items-center gap-1.5 px-3 py-1.5 round
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-gray-400 bg-white border border-gray-200 peer-checked:text-white peer-checked:bg-gray-800 peer-checked:border-gray-800"><i
                         class="fa-solid fa-file-invoice"></i> Ready for Quotation</span>
             </label>
-            <span class="text-[11px] text-gray-400">· set automatically from Project Nature</span>
+            <span class="basis-full sm:basis-auto text-[11px] text-gray-400"><span class="hidden sm:inline">· </span>Set automatically from Project Nature</span>
         </div>
     </section>
 
@@ -100,7 +100,7 @@ $crmChipCls = $crmChipCls ?? 'inline-flex items-center gap-1.5 px-3 py-1.5 round
         <div class="flex flex-wrap gap-1.5 mt-2">
             <?php foreach (['Residential', 'Commercial', 'Renovation', 'Condominium'] as $pt): ?>
                 <button type="button" onclick="crmSetProjectType(<?= htmlspecialchars(json_encode($pt), ENT_QUOTES) ?>)"
-                    class="px-2.5 py-1 rounded-full text-[11px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 hover:border-amber-400 hover:text-amber-800"><?= $pt ?></button>
+                    class="px-3 py-1.5 sm:px-2.5 sm:py-1 rounded-full text-[12px] sm:text-[11px] font-semibold text-gray-500 bg-gray-50 border border-gray-200 hover:border-amber-400 hover:text-amber-800"><?= $pt ?></button>
             <?php endforeach; ?>
         </div>
     </section>
@@ -112,12 +112,12 @@ $crmChipCls = $crmChipCls ?? 'inline-flex items-center gap-1.5 px-3 py-1.5 round
             ['measuring_space', 'Scope Area', 'measuring_space_checkboxes', 'measuring_space[]', $measuringSpaceOptions, $postedMeasuringSpace],
         ] as [$type, $title, $boxId, $inputName, $opts, $posted]): ?>
             <section class="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400"><?= $title ?> <span
+                <div class="flex items-center justify-between gap-2 mb-3">
+                    <p class="min-w-0 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400"><?= $title ?> <span
                             data-chip-count="<?= $boxId ?>" class="text-amber-700 normal-case tracking-normal"></span></p>
                     <button type="button" onclick="openOptionsModal('<?= $type ?>')"
                         title="Manage <?= strtolower($title) ?> options"
-                        class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 px-2 py-1 rounded-md hover:text-amber-700 hover:bg-amber-50">
+                        class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-md hover:text-amber-700 hover:bg-amber-50">
                         <i class="fa-solid fa-gear"></i> Manage
                     </button>
                 </div>
@@ -141,19 +141,19 @@ $crmChipCls = $crmChipCls ?? 'inline-flex items-center gap-1.5 px-3 py-1.5 round
     <!-- Measurement Date & Time: itinatakda mamaya sa Sales & Market List -->
     <div
         class="flex gap-2.5 text-xs text-gray-600 bg-amber-50/50 border border-dashed border-amber-200 rounded-xl px-3.5 py-3 leading-relaxed">
-        <i class="fa-regular fa-calendar text-amber-700 mt-0.5"></i>
-        <p>The <b>measurement date &amp; time</b> is set later from the <b>Sales &amp; Market List</b>, once Sales has
+        <i class="fa-regular fa-calendar text-amber-700 mt-0.5 shrink-0"></i>
+        <p class="min-w-0">The <b>measurement date &amp; time</b> is set later from the <b>Sales &amp; Market List</b>, once Sales has
             confirmed the client's schedule.</p>
     </div>
 
     <div class="flex items-center justify-between gap-2 mt-6 pt-5 border-t border-gray-100">
         <button type="button" onclick="crmGoToStep(1)"
-            class="inline-flex items-center gap-2 h-11 px-4 rounded-xl text-gray-600 text-sm font-semibold border border-gray-300 bg-white hover:text-gray-800 hover:border-gray-400">
+            class="inline-flex items-center justify-center gap-2 h-11 px-4 shrink-0 rounded-xl text-gray-600 text-sm font-semibold border border-gray-300 bg-white hover:text-gray-800 hover:border-gray-400">
             <i class="fa-solid fa-arrow-left text-[11px]"></i> Back
         </button>
         <button type="button" onclick="crmGoToStep3()"
-            class="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold">
-            Next: Assignment <i class="fa-solid fa-arrow-right text-[11px]"></i>
+            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold">
+            Next<span class="hidden sm:inline">: Assignment</span> <i class="fa-solid fa-arrow-right text-[11px]"></i>
         </button>
     </div>
 </div>

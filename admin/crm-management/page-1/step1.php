@@ -1,7 +1,7 @@
 <?php
 //step1.php
 // Tailwind-only. Ang $crmInputCls / $crmSelectCls ay galing sa crm-main.php (may fallback dito).
-$crmInputCls = $crmInputCls ?? 'w-full h-11 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
+$crmInputCls = $crmInputCls ?? 'w-full h-11 px-3 text-base sm:text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
 $crmSelectCls = $crmSelectCls ?? $crmInputCls . ' appearance-none pr-9 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed';
 // $crmForm = POST (failed submit) o naka-save na record (edit mode) — galing sa crm-main.php
 $crmForm = $crmForm ?? $_POST;
@@ -10,7 +10,7 @@ $crmEditMode = $crmEditMode ?? false;
 <div class="crm-step-panel" id="crm-step-1">
     <div class="flex items-center gap-3 mb-5">
         <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0"><i class="fa-solid fa-user"></i></span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-base font-bold text-gray-900 leading-tight">Client Information</h2>
             <p class="text-xs text-gray-400 mt-0.5">Basic client details and project address.</p>
         </div>
@@ -109,7 +109,7 @@ $crmEditMode = $crmEditMode ?? false;
 
     <div class="flex items-center justify-end gap-2 mt-6 pt-5 border-t border-gray-100">
         <button type="button" onclick="crmGoToStep2()"
-            class="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold">
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold">
             Next: Project Details <i class="fa-solid fa-arrow-right text-[11px]"></i>
         </button>
     </div>

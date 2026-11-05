@@ -45,7 +45,8 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Final 2D Quotation</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -63,15 +64,15 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
 <body class="bg-slate-100">
     <main id="main-content"
-        class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden transition-all duration-300">
+        class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 overflow-x-hidden transition-all duration-300">
 
         <div class="max-w-6xl mx-auto">
 
             <!-- ===================== HEADER ===================== -->
-            <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
-                <div>
+            <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
+                <div class="min-w-0">
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">CRM Management</p>
-                    <h1 class="text-gray-900 text-xl font-semibold flex items-center gap-2 flex-wrap">
+                    <h1 class="text-gray-900 text-lg sm:text-xl font-semibold flex items-center gap-2 flex-wrap">
                         <?= $chk2dIntro[0] ?>
                         <span class="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] leading-none font-semibold uppercase tracking-wider border bg-green-50 text-green-700 border-green-200">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Final
@@ -88,21 +89,21 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             </div>
 
             <!-- ===================== STATUS CARDS (pindutin para i-filter) ===================== -->
-            <div id="chk2dTabs" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div id="chk2dTabs" class="grid grid-cols-4 gap-1.5 sm:gap-3 mb-3 sm:mb-4">
                 <?php
                 $tabs = [
-                    ['Waiting for Approval', 'Queuing',      'fa-hourglass-half', 'bg-amber-50 text-amber-700'],
-                    ['Approved',             'Approved',     'fa-circle-check',   'bg-green-50 text-green-600'],
-                    ['For Revision',         'For Revision', 'fa-rotate-left',    'bg-red-50 text-red-600'],
-                    ['',                     'All',          'fa-layer-group',    'bg-slate-100 text-slate-600'],
+                    ['Waiting for Approval', 'Queuing',      'fa-hourglass-half', 'bg-amber-50 text-amber-700', 'Queuing'],
+                    ['Approved',             'Approved',     'fa-circle-check',   'bg-green-50 text-green-600', 'Approved'],
+                    ['For Revision',         'For Revision', 'fa-rotate-left',    'bg-red-50 text-red-600', 'Revision'],
+                    ['',                     'All',          'fa-layer-group',    'bg-slate-100 text-slate-600', 'All'],
                 ];
-                foreach ($tabs as [$val, $label, $icon, $tone]): ?>
+                foreach ($tabs as [$val, $label, $icon, $tone, $short]): ?>
                     <button type="button" data-status="<?= htmlspecialchars($val) ?>"
-                        class="chk2d-tab bg-white border border-gray-200 rounded-xl px-4 py-3.5 flex items-center gap-3 text-left hover:border-gray-300 transition-colors">
-                        <span class="w-10 h-10 rounded-xl <?= $tone ?> flex items-center justify-center shrink-0"><i class="fa-solid <?= $icon ?>"></i></span>
+                        class="chk2d-tab min-w-0 bg-white border border-gray-200 rounded-xl px-2 py-1.5 sm:px-4 sm:py-3.5 flex items-center gap-3 text-left hover:border-gray-300 transition-colors">
+                        <span class="hidden sm:flex w-10 h-10 rounded-xl <?= $tone ?> items-center justify-center shrink-0"><i class="fa-solid <?= $icon ?>"></i></span>
                         <span class="min-w-0">
-                            <span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-400"><?= $label ?></span>
-                            <span class="chk2d-tab-count block text-xl font-bold text-gray-900 leading-tight tabular-nums">0</span>
+                            <span class="block truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $label ?></span></span>
+                            <span class="chk2d-tab-count block text-lg sm:text-xl font-bold text-gray-900 leading-tight tabular-nums">0</span>
                         </span>
                     </button>
                 <?php endforeach; ?>
@@ -112,39 +113,54 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
             <div class="flex flex-wrap items-end justify-between gap-2 mb-3">
                 <p id="chk2dTabLabel" class="text-xs font-semibold text-gray-700 w-full lg:w-auto lg:mb-2"></p>
 
-                <!-- Date filter (petsa ng submission) -->
-                <div class="flex flex-wrap items-end gap-1.5">
-                    <div class="flex items-center gap-1">
-                        <button type="button" data-chk2d-qdate="today" class="chk2d-qdate px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
-                        <button type="button" data-chk2d-qdate="week" class="chk2d-qdate px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
-                        <button type="button" data-chk2d-qdate="month" class="chk2d-qdate px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+                <!-- Date filter (petsa ng submission) — sa phone nasa drawer -->
+                <div id="chk2dFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="chk2dFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="-mr-2 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="nh-fd-body">
+<p class="nh-fd-only nh-fd-label">Date submitted</p>
+                <div class="order-3 sm:order-none w-full sm:w-auto grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-1.5">
+                    <div class="col-span-2 grid grid-cols-3 sm:flex items-center gap-1">
+                        <button type="button" data-chk2d-qdate="today" class="chk2d-qdate px-2 sm:px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                        <button type="button" data-chk2d-qdate="week" class="chk2d-qdate px-2 sm:px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                        <button type="button" data-chk2d-qdate="month" class="chk2d-qdate px-2 sm:px-2.5 py-2 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
                     </div>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
-                        <input id="chk2dMonth" type="month" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="chk2dMonth" type="month" class="w-full sm:w-auto px-2.5 py-2 sm:py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
-                        <input id="chk2dDay" type="date" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="chk2dDay" type="date" class="w-full sm:w-auto px-2.5 py-2 sm:py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
-                        <input id="chk2dFrom" type="date" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="chk2dFrom" type="date" class="w-full sm:w-auto px-2.5 py-2 sm:py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
-                        <input id="chk2dTo" type="date" class="px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
+                        <input id="chk2dTo" type="date" class="w-full sm:w-auto px-2.5 py-2 sm:py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600">
                     </label>
-                    <button type="button" id="chk2dDateClear" class="hidden px-2 py-2 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                    <button type="button" id="chk2dDateClear" class="hidden col-span-2 px-2 py-2 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
                 </div>
 
-                <div class="relative w-full sm:w-72">
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
+
+                <div class="order-2 sm:order-none relative flex-1 min-w-0 sm:flex-none sm:w-72">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                     <input id="chk2dSearch" type="text" placeholder="Search control no., client, contact"
-                        class="w-full pl-8 pr-7 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 transition-colors">
+                        class="w-full pl-8 pr-7 py-2.5 sm:py-2 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 transition-colors">
                     <button type="button" id="chk2dSearchClear"
                         class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-base leading-none w-4 h-4">&times;</button>
                 </div>
+                <button type="button" data-fd-open="chk2dFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 order-2"><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
             </div>
 
             <!-- ===================== LIST ===================== -->
@@ -160,21 +176,21 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
 
         <div id="chk2dPanel" class="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col
                    translate-x-full transition-transform duration-300 ease-out">
-            <div class="px-4 py-3 border-b border-gray-100 flex items-start justify-between shrink-0">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
                 <div class="min-w-0">
                     <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase mb-0.5"><?= $chk2dViewer === 'superadmin' ? 'Final Submission (view only)' : 'Final Submission Review' ?></p>
                     <h3 id="chk2dModalControlNo" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
                     <div id="chk2dModalStatus" class="mt-1.5 flex flex-wrap items-center gap-1"></div>
                 </div>
-                <button type="button" onclick="chk2dClosePanel()"
-                    class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                <button type="button" onclick="chk2dClosePanel()" aria-label="Close"
+                    class="shrink-0 inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 -mr-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-2xl sm:text-xl leading-none">&times;</button>
             </div>
             <div id="chk2dModalBody" class="px-4 py-3 overflow-y-auto flex-1 bg-slate-50/60"></div>
-            <div id="chk2dModalFooter" class="px-4 py-3 bg-white border-t border-gray-200 shrink-0"></div>
+            <div id="chk2dModalFooter" class="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3 bg-white border-t border-gray-200 shrink-0"></div>
         </div>
 
         <div id="crmToastContainer"
-            class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm">
         </div>
 
     </main>
@@ -497,11 +513,11 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         function chk2dActionButton(row) {
             if (!CHK2D_IS_MONITOR && row.review_target && row.review_target !== 'none') {
                 return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm transition-colors whitespace-nowrap">
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm transition-colors whitespace-nowrap">
                     <i class="fa-solid fa-clipboard-check"></i> Review</button>`;
             }
             return `<button type="button" onclick="chk2dOpenPanel(${row.id})"
-                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors whitespace-nowrap">
+                class="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors whitespace-nowrap">
                 View <i class="fa-solid fa-chevron-right text-[9px]"></i></button>`;
         }
 
@@ -542,31 +558,34 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
                 return `
                 <article class="relative bg-white border ${ring} rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-sm" onclick="chk2dOpenPanel(${row.id})">
                     <span class="absolute left-0 top-0 bottom-0 w-1 ${bar}"></span>
-                    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 pl-5 pr-4 py-4">
-                        <div class="min-w-0 flex-1 basis-[200px]">
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-4">
+                        <div class="min-w-0 flex-1 basis-full sm:basis-[200px]">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-mono text-[11.5px] font-bold text-amber-700 whitespace-nowrap">${chk2dEscapeHtml(row.control_no)}</span>${turnTag}${newTag}
                             </div>
                             <p class="text-gray-900 text-sm font-semibold mt-0.5 truncate">${chk2dEscapeHtml(row.client_name)}</p>
                             ${chk2dSubmittedLine(row)}
                         </div>
-                        <div class="basis-[210px]" onclick="event.stopPropagation()">
+                        <div class="basis-full sm:basis-[210px] min-w-0" onclick="event.stopPropagation()">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Files</p>
                             ${chk2dFilesCell(row)}
                         </div>
-                        <div class="basis-[150px]">
+                        <!-- Mobile: Heads · Contract · Status sa iisang kahon; sa desktop nawawala ang wrapper (sm:contents) -->
+                        <div class="basis-full grid grid-cols-3 gap-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 sm:contents">
+                        <div class="min-w-0 sm:basis-[150px]">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Heads</p>
                             ${chk2dHeadsCell(row)}
                         </div>
-                        <div class="basis-[130px]">
+                        <div class="min-w-0 sm:basis-[130px]">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">Contract</p>
-                            <p class="text-gray-900 text-sm font-bold tabular-nums mt-0.5">${chk2dFormatCurrency(row.contract_amount)}</p>
+                            <p class="text-gray-900 text-[13px] sm:text-sm font-bold tabular-nums mt-0.5 truncate">${chk2dFormatCurrency(row.contract_amount)}</p>
                         </div>
-                        <div class="basis-[120px]">
+                        <div class="min-w-0 sm:basis-[120px]">
                             <p class="text-[9.5px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p>
                             <div class="flex flex-wrap items-center gap-1">${chk2dStatusBadgeWithRow(row)}</div>
                         </div>
-                        <div class="ml-auto shrink-0" onclick="event.stopPropagation()">${chk2dActionButton(row)}</div>
+                        </div>
+                        <div class="w-full sm:w-auto sm:ml-auto shrink-0" onclick="event.stopPropagation()">${chk2dActionButton(row)}</div>
                     </div>
                 </article>`;
             }).join('');
@@ -1012,6 +1031,61 @@ $chk2dAjaxUrl = BASE_URL . '/check2dquotationajax';
         chk2dSyncDateUI();
         chk2dFetchList().then(chk2dStartPolling);
     </script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>

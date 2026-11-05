@@ -17,7 +17,8 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Progress Billing</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -26,17 +27,17 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
 </head>
 
 <body class="bg-gray-50">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
 
         <!-- ═══ HEADER ═══ -->
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-file-invoice-dollar text-lg"></i></div>
                 <div class="min-w-0">
                     <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Operations · Progress
                         Billing</p>
-                    <h1 class="text-xl font-bold text-gray-900 leading-tight">Progress Billing / Application for Payment
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Progress Billing / Application for Payment
                     </h1>
                     <p class="text-xs text-gray-500">One paper per billing. Each one is signed by the Accounting Head,
                         then the Superadmin, before you can make the next.</p>
@@ -51,22 +52,22 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
         </div>
 
         <!-- ═══ STAT TABS ═══ -->
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <div class="grid grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-3 mb-3 sm:mb-4">
             <?php foreach ([
-                ['todo', 'Can bill', 'fa-file-circle-plus', 'bg-amber-50 text-amber-700'],
-                ['signing', 'Being signed', 'fa-signature', 'bg-sky-50 text-sky-600'],
-                ['returned', 'Returned', 'fa-rotate-left', 'bg-red-50 text-red-600'],
-                ['full', 'Fully billed', 'fa-flag-checkered', 'bg-emerald-50 text-emerald-600'],
-                ['all', 'All projects', 'fa-layer-group', 'bg-gray-100 text-gray-600'],
-            ] as [$k, $label, $icon, $cls]): ?>
+                ['todo', 'Can bill', 'fa-file-circle-plus', 'bg-amber-50 text-amber-700', 'Can bill'],
+                ['signing', 'Being signed', 'fa-signature', 'bg-sky-50 text-sky-600', 'Signing'],
+                ['returned', 'Returned', 'fa-rotate-left', 'bg-red-50 text-red-600', 'Returned'],
+                ['full', 'Fully billed', 'fa-flag-checkered', 'bg-emerald-50 text-emerald-600', 'Full'],
+                ['all', 'All projects', 'fa-layer-group', 'bg-gray-100 text-gray-600', 'All'],
+            ] as [$k, $label, $icon, $cls, $short]): ?>
                 <button type="button" data-tab="<?= $k ?>"
-                    class="bp-tab text-left bg-white border border-gray-200 rounded-xl p-3.5 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
+                    class="bp-tab text-left bg-white border border-gray-200 rounded-xl px-2 py-1.5 sm:p-3.5 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
                     <span class="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center shrink-0 <?= $cls ?>"><i
                             class="fa-solid <?= $icon ?>"></i></span>
                     <span class="min-w-0">
                         <span
-                            class="block text-[10.5px] font-semibold text-gray-500 uppercase tracking-wide truncate"><?= $label ?></span>
-                        <span class="block text-2xl font-bold text-gray-900 leading-tight tabular-nums"
+                            class="block text-[9.5px] sm:text-[10.5px] font-semibold text-gray-500 uppercase sm:tracking-wide truncate"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $label ?></span></span>
+                        <span class="block text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums"
                             data-count="<?= $k ?>">—</span>
                     </span>
                 </button>
@@ -74,15 +75,15 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100">
+            <div class="px-3 sm:px-4 py-3 border-b border-gray-100">
                 <div class="relative">
                     <i
                         class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
                     <input type="text" id="bpSearch" placeholder="Search project, owner, subcontractor, DR no.…"
-                        class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+                        class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
                 </div>
             </div>
-            <div id="bpInfo" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;
+            <div id="bpInfo" class="px-3 sm:px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;
             </div>
             <div id="bpList" class="divide-y divide-gray-100">
                 <div class="px-6 py-14 text-center text-xs text-gray-400"><i
@@ -90,14 +91,14 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
             </div>
         </div>
         <div id="bpToast"
-            class="fixed bottom-4 right-4 z-[10002] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10002] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]">
         </div>
     </main>
 
     <!-- ═══ PROJECT MODAL ═══ -->
     <div id="bpModal"
-        class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-2 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-7xl my-auto overflow-hidden">
+        class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-7xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
             <div class="dr-hazard h-1.5"></div>
             <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
                 <div class="min-w-0">
@@ -106,7 +107,7 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
                     <p id="pmSub" class="text-[11px] text-gray-400 truncate"></p>
                 </div>
                 <button type="button" id="pmClose"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
+                    class="-mr-2 md:mr-0 inline-flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
                     aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
             <div id="pmKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-3 px-5 pt-4"></div>
@@ -305,20 +306,20 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';
                 const BAR = { todo: 'bg-amber-500', signing: 'bg-sky-500', returned: 'bg-red-500', full: 'bg-emerald-600' };
                 F('bpList').innerHTML = list.map(r => {
                     const st = stateOf(r), sum = r.contract_amount + (r.change_orders || 0), pct = sum ? Math.min(100, r.approved_total / sum * 100) : 0;
-                    return `<div data-row="${r.dr_id}" class="bp-row relative flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5">
+                    return `<div data-row="${r.dr_id}" class="bp-row relative flex flex-wrap items-center gap-x-5 gap-y-2.5 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${BAR[st]}"></span>
-                        <div class="min-w-0 flex-1 basis-[260px]">
+                        <div class="min-w-0 flex-1 basis-full sm:basis-[260px]">
                             <div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-gray-900 truncate">${esc(r.project_name || r.owner)}</span>${r.last_status ? bpChip(r.last_status) : '<span class="text-[10.5px] text-gray-400">No billing yet</span>'}</div>
                             <p class="text-[11px] text-gray-400 truncate mt-0.5"><span class="font-mono">DR# ${esc(r.dr_no)}</span> · ${esc(r.subcontractor || '')}${r.location ? ' · ' + esc(r.location) : ''}</p>
                             <div class="mt-2 flex items-center gap-2 max-w-md"><div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full ${st === 'full' ? 'bg-emerald-500' : 'bg-amber-500'}" style="width:${pct}%"></div></div><span class="text-[10.5px] text-gray-500 tabular-nums">${pct.toFixed(1)}% billed</span></div>
                             ${st === 'returned' && r.last_remarks ? `<p class="mt-1.5 text-[11px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-comment-dots mr-1"></i>${esc(r.last_remarks)}</p>` : ''}
                         </div>
-                        <dl class="grid grid-cols-3 gap-x-5 text-[11px] basis-[320px] grow sm:grow-0">
+                        <dl class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[320px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Contract</dt><dd class="font-mono text-gray-800">₱ ${money(sum)}</dd></div>
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Approved billed</dt><dd class="font-mono text-gray-800">₱ ${money(r.approved_total)}</dd></div>
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Balance</dt><dd class="font-mono font-semibold text-gray-900">₱ ${money(sum - r.approved_total)}</dd></div>
                         </dl>
-                        <div class="ml-auto shrink-0"><button type="button" data-open="${r.dr_id}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${st === 'todo' || st === 'returned' ? 'text-white bg-amber-700 hover:bg-amber-800 shadow-sm' : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'}"><i class="fa-solid ${st === 'returned' ? 'fa-pen' : st === 'todo' ? 'fa-plus' : 'fa-eye'}"></i> ${st === 'returned' ? 'Fix billing' : st === 'todo' ? (r.app_count ? 'New billing' : 'Start billing') : 'Open'}</button></div>
+                        <div class="w-full sm:w-auto sm:ml-auto shrink-0 [&_button]:w-full sm:[&_button]:w-auto [&_button]:justify-center [&_button]:py-2.5 sm:[&_button]:py-2 [&_button]:flex-1 sm:[&_button]:flex-none [&_.text-right]:text-left sm:[&_.text-right]:text-right"><button type="button" data-open="${r.dr_id}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${st === 'todo' || st === 'returned' ? 'text-white bg-amber-700 hover:bg-amber-800 shadow-sm' : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'}"><i class="fa-solid ${st === 'returned' ? 'fa-pen' : st === 'todo' ? 'fa-plus' : 'fa-eye'}"></i> ${st === 'returned' ? 'Fix billing' : st === 'todo' ? (r.app_count ? 'New billing' : 'Start billing') : 'Open'}</button></div>
                     </div>`;
                 }).join('');
                 let id = null; try { id = sessionStorage.getItem('nh-bp-picked'); } catch (e) { }

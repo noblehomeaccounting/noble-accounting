@@ -3,19 +3,20 @@
 // Status History: lahat ng status na dinaanan ng napiling project.
 $box2Url = BASE_URL . '/monitoringcrmajax';
 ?>
-<section id="monBox2" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[360px]">
-    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+<!-- Phone: mas mataas na kahon (hanggang 70% ng screen); sa md+ 360px -->
+<section id="monBox2" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col max-h-[70vh] md:max-h-none md:h-[360px]">
+    <div class="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
         <h2 class="text-sm font-semibold text-gray-800">Status History</h2>
         <span id="monBox2Label" class="text-[11px] font-mono text-gray-400"></span>
     </div>
 
-    <div id="monBox2Body" class="mon-scroll flex-1 overflow-y-auto px-5 py-4">
-        <div class="h-full flex flex-col items-center justify-center gap-2 text-center">
+    <div id="monBox2Body" class="mon-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-4">
+        <div class="h-full min-h-[160px] md:min-h-0 flex flex-col items-center justify-center gap-2 text-center">
             <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p class="text-xs text-gray-400">Click a row in the table to see its status history.</p>
+            <p class="text-xs text-gray-400"><span class="md:hidden">Tap an inquiry above to see its status history.</span><span class="hidden md:inline">Click a row in the table to see its status history.</span></p>
         </div>
     </div>
 </section>
@@ -84,7 +85,7 @@ $box2Url = BASE_URL . '/monitoringcrmajax';
                     ${e.current ? '<span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Current</span>' : ''}
                 </div>
                 ${time ? `<p class="text-[11px] text-gray-400 mt-1">${time}</p>` : ''}
-                ${e.note ? `<p class="text-xs text-gray-600 mt-0.5">${esc(e.note)}</p>` : ''}
+                ${e.note ? `<p class="text-xs text-gray-600 mt-0.5 break-words">${esc(e.note)}</p>` : ''}
             </li>`;
         }
 

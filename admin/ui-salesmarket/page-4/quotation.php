@@ -152,7 +152,7 @@ $quotes = qRows($conn, 'SELECT q.*, COALESCE(SUM(i.material_total + i.labor_tota
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8">
+   <main class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-5 md:p-8">
 
         <?php if ($flash): ?>
             <div role="status" class="mb-6 rounded-md border px-4 py-3 text-sm <?= $flash[0] === 'ok'

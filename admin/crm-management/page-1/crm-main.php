@@ -412,7 +412,7 @@ $crmStepsPath = ROOT_PATH . '/admin/crm-management/page-1';
 
 <?php
 // Tailwind-only na class strings — ginagamit ng step1–step4 at ng JS (walang <style> sa page na ito)
-$crmInputCls = 'w-full h-11 px-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
+$crmInputCls = 'w-full h-11 px-3 text-base sm:text-sm text-gray-800 bg-white border border-gray-300 rounded-xl outline-none transition placeholder:text-gray-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100';
 $crmSelectCls = $crmInputCls . ' appearance-none pr-9 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed';
 $crmChipCls = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] text-gray-700 bg-white border border-gray-300 select-none transition hover:border-amber-400 peer-checked:bg-amber-700 peer-checked:border-amber-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-amber-300 [&>i]:hidden peer-checked:[&>i]:inline';
 $crmSteps = [
@@ -469,26 +469,26 @@ $crmSteps = [
 
     <div class="crm-doc max-w-6xl mx-auto">
 
-        <div class="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start">
+        <div class="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-3 sm:gap-4 items-start">
 
             <!-- ═══ FORM CARD ═══ -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-w-0">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-w-0 order-2 lg:order-none">
                 <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
 
                 <!-- Header -->
-                <div class="relative px-5 md:px-7 pt-5 pb-4 border-b border-gray-100 overflow-hidden">
+                <div class="relative px-4 sm:px-5 md:px-7 pt-4 sm:pt-5 pb-4 border-b border-gray-100 overflow-hidden">
                     <img src="<?= BASE_URL ?>/icon/logo.webp" alt="" aria-hidden="true"
                         class="absolute -right-6 -bottom-10 w-40 opacity-[0.05] pointer-events-none select-none">
-                    <div class="relative flex flex-wrap items-start justify-between gap-4">
+                    <div class="relative flex flex-wrap items-start justify-between gap-3 sm:gap-4">
                         <div class="flex items-center gap-3 min-w-0">
                             <span
-                                class="w-12 h-12 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
-                                <img src="<?= BASE_URL ?>/icon/logo.webp" class="h-9 w-9 object-contain" alt="logo">
+                                class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center shrink-0">
+                                <img src="<?= BASE_URL ?>/icon/logo.webp" class="h-7 w-7 sm:h-9 sm:w-9 object-contain" alt="logo">
                             </span>
                             <div class="min-w-0">
                                 <p class="text-amber-700 text-[10px] font-bold tracking-[0.18em] uppercase">CRM ·
                                     <?= $crmEditMode ? 'Edit Inquiry' : 'Inquiry Form' ?></p>
-                                <h1 class="text-gray-900 text-xl leading-tight font-semibold">
+                                <h1 class="text-gray-900 text-lg sm:text-xl leading-tight font-semibold">
                                     <?= $crmEditMode ? 'Update Client Inquiry' : 'New Client Inquiry' ?></h1>
                                 <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                                     <span
@@ -506,7 +506,7 @@ $crmSteps = [
                                 </div>
                             </div>
                         </div>
-                        <div class="text-right shrink-0 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2">
+                        <div class="w-full sm:w-auto flex sm:block items-center justify-between gap-3 text-left sm:text-right shrink-0 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2">
                             <p class="text-[9px] text-gray-400 uppercase tracking-[0.16em]">Reference No.</p>
                             <p class="text-gray-900 font-mono font-semibold text-sm">
                                 <?= $crmEditMode
@@ -521,9 +521,9 @@ $crmSteps = [
 
                 <?php if ($crmEditMode): ?>
                     <div
-                        class="mx-5 md:mx-7 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5">
+                        class="mx-4 sm:mx-5 md:mx-7 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5">
                         <i class="fa-solid fa-pen-to-square text-amber-700"></i>
-                        <p class="flex-1 min-w-[12rem] text-[12px] text-amber-900 leading-relaxed">You're editing an existing
+                        <p class="flex-1 min-w-0 basis-[12rem] text-[12px] text-amber-900 leading-relaxed">You're editing an existing
                             inquiry. Changes are saved to the same record and show up everywhere it appears.</p>
                         <a href="<?= htmlspecialchars($crmListUrl) ?>"
                             class="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-amber-800 px-2.5 py-1 rounded-lg bg-white border border-amber-200 hover:bg-amber-100"><i
@@ -532,27 +532,32 @@ $crmSteps = [
                 <?php endif; ?>
 
                 <!-- Step Indicator -->
-                <div class="flex items-start px-5 md:px-8 pt-5 pb-1">
+                <div class="flex items-start px-4 sm:px-5 md:px-8 pt-4 sm:pt-5 pb-1">
                     <?php foreach ($crmSteps as $i => [$label, $sub, $icon]):
                         $n = $i + 1; ?>
-                        <button type="button" onclick="crmStepClick(<?= $n ?>)" class="flex flex-col items-center group min-w-0"
+                        <button type="button" onclick="crmStepClick(<?= $n ?>)" class="flex flex-col items-center group min-w-0 shrink-0"
                             aria-label="Step <?= $n ?>: <?= $label ?>">
                             <span id="crm-dot-<?= $n ?>"
-                                class="relative z-[1] w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300
+                                class="relative z-[1] w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300
                             <?= $n === 1 ? 'border-amber-700 text-amber-700 bg-amber-50 ring-4 ring-amber-100' : 'border-gray-300 text-gray-400 bg-white' ?>"><?= $n ?></span>
                             <span id="crm-label-<?= $n ?>"
-                                class="mt-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors <?= $n === 1 ? 'text-gray-900' : 'text-gray-400' ?>"><?= $label ?></span>
+                                class="hidden sm:block mt-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors <?= $n === 1 ? 'text-gray-900' : 'text-gray-400' ?>"><?= $label ?></span>
                             <span class="hidden sm:block text-[10px] text-gray-400 whitespace-nowrap"><?= $sub ?></span>
                         </button>
                         <?php if ($n < count($crmSteps)): ?>
-                            <div id="crm-line-<?= $n ?>" class="flex-1 h-0.5 bg-gray-200 mx-1.5 mt-[18px] rounded overflow-hidden">
+                            <div id="crm-line-<?= $n ?>" class="flex-1 h-0.5 bg-gray-200 mx-1 sm:mx-1.5 mt-4 sm:mt-[18px] rounded overflow-hidden">
                                 <span class="block h-full w-0 bg-amber-700 transition-all duration-500"></span></div>
                         <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
+                <!-- Mobile: label ng kasalukuyang step (nakatago ang labels sa ilalim ng dots sa maliit na screen) -->
+                <p id="crm-step-caption" class="sm:hidden px-4 pt-2 text-[12px] text-gray-500">
+                    Step <b class="text-gray-900">1</b> of <?= count($crmSteps) ?> ·
+                    <span class="font-semibold text-gray-900"><?= $crmSteps[0][0] ?></span>
+                </p>
 
                 <!-- Form Body -->
-                <form method="POST" action="" id="crmInquiryForm" class="px-5 md:px-7 pt-4 pb-6 bg-slate-50/50" novalidate>
+                <form method="POST" action="" id="crmInquiryForm" class="px-4 sm:px-5 md:px-7 pt-4 pb-6 bg-slate-50/50" novalidate>
                     <?php
                     include $crmStepsPath . '/step1.php';
                     include $crmStepsPath . '/step2.php';
@@ -563,7 +568,7 @@ $crmSteps = [
 
                 <!-- footer strip -->
                 <div
-                    class="px-5 md:px-7 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                    class="px-4 sm:px-5 md:px-7 py-3 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-1 sm:gap-2 text-center sm:text-left">
                     <p class="text-[11px] text-amber-800/80"><i class="fa-solid fa-shield-halved mr-1"></i>This record is
                         maintained by the Sales Department.</p>
                     <p class="text-[11px] text-gray-400">NobleHome Construction Corporation</p>
@@ -571,17 +576,21 @@ $crmSteps = [
             </div>
 
             <!-- ═══ LIVE SUMMARY (sticky) ═══ -->
-            <aside class="lg:sticky lg:top-4 space-y-3 min-w-0">
+            <aside class="order-1 lg:order-none lg:sticky lg:top-4 space-y-3 min-w-0">
                 <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <div onclick="crmToggleSummary()" role="button" tabindex="0" aria-controls="crm_sum_body"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); crmToggleSummary(); }"
+                        class="px-4 py-3 border-b border-gray-100 flex items-center gap-2 cursor-pointer lg:cursor-default select-none">
                         <i class="fa-solid fa-file-lines text-amber-700"></i>
                         <p class="text-[12.5px] font-semibold text-gray-900 flex-1">Inquiry summary</p>
+                        <span id="crm_sum_pct_m" class="lg:hidden text-[11px] font-semibold text-amber-700">0%</span>
                         <span id="crm_draft_tag"
                             class="hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-semibold">
                             <i class="fa-solid fa-cloud"></i> Draft saved
                         </span>
+                        <i id="crm_sum_chev" class="fa-solid fa-chevron-down text-[11px] text-gray-400 transition-transform lg:hidden"></i>
                     </div>
-                    <div class="p-4">
+                    <div id="crm_sum_body" class="p-4 hidden lg:block">
                         <div class="mb-3">
                             <div class="flex items-center justify-between text-[10.5px] font-semibold text-gray-500 mb-1">
                                 <span>Completion</span><span id="crm_sum_pct">0%</span></div>
@@ -594,7 +603,7 @@ $crmSteps = [
                     </div>
                 </section>
                 <section
-                    class="rounded-2xl border border-dashed border-gray-300 bg-white/60 px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
+                    class="hidden lg:block rounded-2xl border border-dashed border-gray-300 bg-white/60 px-4 py-3 text-[11px] text-gray-500 leading-relaxed">
                     <p class="font-semibold text-gray-700 mb-1"><i class="fa-solid fa-lightbulb text-amber-600 mr-1"></i>Tip
                     </p>
                     <?= $crmEditMode
@@ -606,37 +615,37 @@ $crmSteps = [
     </div>
 
     <!-- Reusable Modal para sa Manage Options (CRUD) ng Measuring Space / Scope of Project -->
-    <div id="optionsModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div id="optionsModal" class="fixed inset-0 bg-black/40 hidden items-end sm:items-center justify-center z-50 sm:px-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]">
             <div class="h-1.5 bg-[repeating-linear-gradient(-45deg,#f59e0b_0_10px,#1f2937_10px_20px)]"></div>
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+            <div class="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
                             class="fa-solid fa-gear text-xs"></i></span>
                     <h3 id="optionsModalTitle" class="text-sm font-semibold text-gray-800 truncate">Manage Options</h3>
                 </div>
                 <button type="button" onclick="closeOptionsModal()" aria-label="Close"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
+                    class="inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i
                         class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
-            <div class="p-5 space-y-4">
-                <div class="flex gap-2">
+            <div class="p-4 sm:p-5 space-y-4 flex-1 min-h-0 flex flex-col">
+                <div class="flex gap-2 shrink-0">
                     <input id="optionsNewLabel" type="text" placeholder="Add new option"
                         onkeydown="if (event.key === 'Enter') { event.preventDefault(); addOption(); }"
-                        class="flex-1 h-10 px-3 text-sm border border-gray-300 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                        class="flex-1 min-w-0 h-11 sm:h-10 px-3 text-base sm:text-sm border border-gray-300 rounded-lg outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                     <button type="button" onclick="addOption()"
-                        class="h-10 px-4 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-black">
+                        class="h-11 sm:h-10 px-4 shrink-0 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-black">
                         <i class="fa-solid fa-plus text-xs mr-1"></i>Add
                     </button>
                 </div>
-                <ul id="optionsList" class="space-y-2 max-h-64 overflow-y-auto [scrollbar-width:thin]"></ul>
+                <ul id="optionsList" class="space-y-2 flex-1 min-h-0 sm:flex-none sm:max-h-64 overflow-y-auto [scrollbar-width:thin]"></ul>
             </div>
         </div>
     </div>
 
     <!-- Toast container -->
     <div id="crmToastContainer"
-        class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
+        class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm">
     </div>
 
     <script>
@@ -762,7 +771,8 @@ $crmSteps = [
             crmUpdateDots();
             crmSaveDraft();
             crmUpdateSummary();
-            window.scrollTo({ top: document.getElementById('crmInquiryForm').offsetTop - 20, behavior: 'smooth' });
+            // I-scroll pabalik sa step indicator (gumagana rin kung naka-scroll container ang layout)
+            document.getElementById('crm-dot-1')?.closest('div')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function crmGoToStep2() {
@@ -849,7 +859,7 @@ $crmSteps = [
         }
 
         function crmUpdateDots() {
-            const base = 'relative z-[1] w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ';
+            const base = 'relative z-[1] w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ';
             for (let i = 1; i <= CRM_TOTAL_STEPS; i++) {
                 const dot = document.getElementById(`crm-dot-${i}`);
                 const lbl = document.getElementById(`crm-label-${i}`);
@@ -858,11 +868,26 @@ $crmSteps = [
                     : cur ? 'border-amber-700 text-amber-700 bg-amber-50 ring-4 ring-amber-100'
                         : 'border-gray-300 text-gray-400 bg-white');
                 dot.innerHTML = done ? '<i class="fa-solid fa-check text-[11px]"></i>' : i;
-                if (lbl) lbl.className = 'mt-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors ' + (i <= crmCurrentStep ? 'text-gray-900' : 'text-gray-400');
+                if (lbl) lbl.className = 'hidden sm:block mt-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors ' + (i <= crmCurrentStep ? 'text-gray-900' : 'text-gray-400');
             }
             for (let i = 1; i < CRM_TOTAL_STEPS; i++) {
                 document.getElementById(`crm-line-${i}`).firstElementChild.style.width = i < crmCurrentStep ? '100%' : '0';
             }
+            // Mobile caption: "Step X of 4 · Label"
+            const cap = document.getElementById('crm-step-caption');
+            const curLbl = document.getElementById(`crm-label-${crmCurrentStep}`);
+            if (cap && curLbl) {
+                cap.querySelector('b').textContent = crmCurrentStep;
+                cap.querySelector('span').textContent = curLbl.textContent.trim();
+            }
+        }
+
+        // Mobile: buksan/isara ang Inquiry summary (laging bukas sa desktop)
+        function crmToggleSummary() {
+            if (window.matchMedia('(min-width: 1024px)').matches) return;
+            const body = document.getElementById('crm_sum_body');
+            const open = body.classList.toggle('hidden') === false;
+            document.getElementById('crm_sum_chev')?.classList.toggle('rotate-180', open);
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -1128,9 +1153,9 @@ $crmSteps = [
                     <button type="button" onclick="crmGoToStep(${g.step})" class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 px-2 py-1 rounded-md hover:bg-amber-50"><i class="fa-solid fa-pen text-[9px]"></i>Edit</button>
                 </div>
                 ${g.rows.map(([label, val]) => `
-                    <div class="flex justify-between gap-4 px-4 py-2.5 border-b border-gray-100 last:border-b-0 text-[13px]">
-                        <span class="text-gray-400 whitespace-nowrap">${label}</span>
-                        <span class="text-right font-medium min-w-0 break-words ${val === '—' ? 'text-gray-300' : 'text-gray-900'}">${escapeHtml(val)}</span>
+                    <div class="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-4 px-4 py-2.5 border-b border-gray-100 last:border-b-0 text-[13px]">
+                        <span class="text-[11.5px] sm:text-[13px] text-gray-400 sm:whitespace-nowrap">${label}</span>
+                        <span class="sm:text-right font-medium min-w-0 break-words ${val === '—' ? 'text-gray-300' : 'text-gray-900'}">${escapeHtml(val)}</span>
                     </div>`).join('')}
             </div>`).join('');
 
@@ -1282,6 +1307,8 @@ $crmSteps = [
             const required = [!!v('crm_client_name'), phoneOk, keep || !!v('crm_house_street'), keep || !!crmSelectedText('crm_city'), keep || !!crmSelectedText('crm_barangay'), !!nature];
             const pct = Math.round(required.filter(Boolean).length / required.length * 100);
             document.getElementById('crm_sum_pct').textContent = pct + '%';
+            const pctM = document.getElementById('crm_sum_pct_m');
+            if (pctM) { pctM.textContent = pct + '%'; pctM.className = 'lg:hidden text-[11px] font-semibold ' + (pct === 100 ? 'text-green-600' : 'text-amber-700'); }
             document.getElementById('crm_sum_bar').style.width = pct + '%';
             document.getElementById('crm_sum_bar').className = 'h-full rounded-full transition-all duration-300 ' + (pct === 100 ? 'bg-green-600' : 'bg-amber-600');
 
@@ -1374,15 +1401,15 @@ $crmSteps = [
             li.className = 'flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2';
             const view = () => {
                 li.innerHTML = `
-                <span class="text-sm text-gray-700 flex-1 option-label">${escapeHtml(item.label)}</span>
-                <button type="button" data-a="edit" class="w-7 h-7 rounded-md text-gray-400 hover:text-amber-700 hover:bg-amber-50" title="Edit"><i class="fa-solid fa-pen text-[11px]"></i></button>
-                <button type="button" data-a="del" class="w-7 h-7 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete"><i class="fa-solid fa-trash text-[11px]"></i></button>`;
+                <span class="text-sm text-gray-700 flex-1 min-w-0 break-words option-label">${escapeHtml(item.label)}</span>
+                <button type="button" data-a="edit" class="w-9 h-9 sm:w-7 sm:h-7 shrink-0 rounded-md text-gray-400 hover:text-amber-700 hover:bg-amber-50" title="Edit"><i class="fa-solid fa-pen text-[11px]"></i></button>
+                <button type="button" data-a="del" class="w-9 h-9 sm:w-7 sm:h-7 shrink-0 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete"><i class="fa-solid fa-trash text-[11px]"></i></button>`;
                 li.querySelector('[data-a="edit"]').addEventListener('click', edit);
                 li.querySelector('[data-a="del"]').addEventListener('click', askDelete);
             };
             const edit = () => {
                 li.innerHTML = `
-                <input type="text" class="flex-1 h-8 px-2 text-sm border border-amber-600 rounded-md focus:outline-none" value="${escapeHtml(item.label)}">
+                <input type="text" class="flex-1 min-w-0 h-9 sm:h-8 px-2 text-base sm:text-sm border border-amber-600 rounded-md focus:outline-none" value="${escapeHtml(item.label)}">
                 <button type="button" data-a="save" class="h-8 px-2.5 rounded-md text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800">Save</button>
                 <button type="button" data-a="cancel" class="h-8 px-2 rounded-md text-xs font-semibold text-gray-500 hover:bg-gray-100">Cancel</button>`;
                 const input = li.querySelector('input');

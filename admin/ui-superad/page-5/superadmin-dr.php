@@ -22,7 +22,8 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>DR Approvals</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -62,14 +63,14 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
 </head>
 
 <body class="bg-gray-50">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
 
         <!-- ═══ HEADER ═══ -->
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-lg"></i></div>
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-lg"></i></div>
                 <div class="min-w-0">
-                    <h1 class="text-xl font-bold text-gray-900 leading-tight">Delivery Receipt Approvals</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Delivery Receipt Approvals</h1>
                     <p class="text-xs text-gray-500"><?= $nhCanApprove ? 'Sign the DRs made by the Project Coordinator. They can print a DR only after you approve it.' : 'View only — the Project Coordinator Head signs these DRs.' ?></p>
                 </div>
             </div>
@@ -79,20 +80,20 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
         </div>
 
         <!-- ═══ STAT TABS ═══ -->
-        <div id="saTabs" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div id="saTabs" class="grid grid-cols-4 gap-1.5 sm:gap-3 mb-3 sm:mb-4">
             <?php foreach ([
-                ['pending', 'For signing', 'fa-signature', 'bg-amber-50 text-amber-700'],
-                ['returned', 'Returned to PC', 'fa-rotate-left', 'bg-red-50 text-red-600'],
-                ['approved', 'Approved', 'fa-circle-check', 'bg-emerald-50 text-emerald-600'],
-                ['all', 'All DRs', 'fa-layer-group', 'bg-gray-100 text-gray-600'],
-            ] as [$k, $label, $icon, $cls]): ?>
+                ['pending', 'For signing', 'fa-signature', 'bg-amber-50 text-amber-700', 'To sign'],
+                ['returned', 'Returned to PC', 'fa-rotate-left', 'bg-red-50 text-red-600', 'Returned'],
+                ['approved', 'Approved', 'fa-circle-check', 'bg-emerald-50 text-emerald-600', 'Approved'],
+                ['all', 'All DRs', 'fa-layer-group', 'bg-gray-100 text-gray-600', 'All'],
+            ] as [$k, $label, $icon, $cls, $short]): ?>
                 <button type="button" data-tab="<?= $k ?>"
-                    class="sa-tab text-left bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
+                    class="sa-tab text-left bg-white border border-gray-200 rounded-xl px-2 py-1.5 sm:p-4 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
                     <span class="hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 <?= $cls ?>"><i class="fa-solid <?= $icon ?>"></i></span>
                     <span class="min-w-0">
-                        <span class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide truncate"><?= $label ?></span>
-                        <span class="block text-2xl font-bold text-gray-900 leading-tight tabular-nums" data-count="<?= $k ?>">—</span>
-                        <span class="block text-[11px] text-gray-400 truncate font-mono" data-sum="<?= $k ?>">&nbsp;</span>
+                        <span class="block text-[9.5px] sm:text-[11px] font-semibold text-gray-500 uppercase sm:tracking-wide truncate"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $label ?></span></span>
+                        <span class="block text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums" data-count="<?= $k ?>">—</span>
+                        <span class="hidden sm:block text-[11px] text-gray-400 truncate font-mono" data-sum="<?= $k ?>">&nbsp;</span>
                     </span>
                 </button>
             <?php endforeach; ?>
@@ -100,40 +101,50 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
 
         <!-- ═══ LIST ═══ -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100">
-                <div class="relative flex-1 min-w-[200px]">
+            <div class="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
+                <div class="relative flex-1 min-w-0 sm:min-w-[200px]">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
                     <input type="text" id="saSearch" placeholder="Search DR no., client, transmittal, PR…"
-                        class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+                        class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
                 </div>
+                <button type="button" data-fd-open="saFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 "><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
             </div>
-            <!-- Filters: petsa · sort -->
-            <div class="flex flex-wrap items-end gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
-                <div class="flex items-center gap-1">
-                    <button type="button" data-nhf-q="today" class="nhf-q px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
-                    <button type="button" data-nhf-q="week" class="nhf-q px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
-                    <button type="button" data-nhf-q="month" class="nhf-q px-2.5 py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
+            <!-- Filters: petsa · sort (sa phone: drawer sa gilid, kagaya ng CRM Monitoring) -->
+            <div class="sm:flex sm:flex-wrap items-end gap-2 sm:px-4 sm:py-2.5 sm:border-b border-gray-100 bg-gray-50/60">
+            <div id="saFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="saFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-2xl leading-none">&times;</button>
+    </div>
+    <div class="nh-fd-body">
+<p class="nh-fd-only nh-fd-label">Date</p>
+            <div class="grid grid-cols-2 gap-2 sm:contents">
+                <div class="col-span-2 grid grid-cols-3 sm:flex items-center gap-1">
+                    <button type="button" data-nhf-q="today" class="nhf-q px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
+                    <button type="button" data-nhf-q="week" class="nhf-q px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This week</button>
+                    <button type="button" data-nhf-q="month" class="nhf-q px-2 sm:px-2.5 py-2 sm:py-1.5 text-[11px] font-medium bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">This month</button>
                 </div>
                 <label class="block">
                     <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Month</span>
-                    <input id="nhfMonth" type="month" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                    <input id="nhfMonth" type="month" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
                 </label>
                 <label class="block">
                     <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Day</span>
-                    <input id="nhfDay" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                    <input id="nhfDay" type="date" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
                 </label>
                 <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">From</span>
-                        <input id="nhfFrom" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                        <input id="nhfFrom" type="date" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
                     </label>
                     <label class="block">
                         <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">To</span>
-                        <input id="nhfTo" type="date" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                        <input id="nhfTo" type="date" class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
                     </label>
-                    <button type="button" id="nhfClear" class="hidden px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
-                <label class="block ml-auto">
+                    <button type="button" id="nhfClear" class="hidden col-span-2 px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:text-amber-700">Clear date</button>
+                <label class="block col-span-2 sm:ml-auto">
                     <span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Sort by</span>
-                    <select id="nhfSort" class="h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
+                    <select id="nhfSort" data-fd-ignore class="w-full sm:w-auto h-9 sm:h-8 px-2.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-500">
                         <option value="oldest">Oldest first</option>
                         <option value="newest">Newest first</option>
                         <option value="amount_desc">Amount: high → low</option>
@@ -141,38 +152,46 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                         <option value="name">Client (A–Z)</option>
                     </select>
                 </label>
-                <p id="nhfHint" class="basis-full text-[10.5px] text-gray-400 empty:hidden"></p>
+                <p id="nhfHint" class="col-span-2 basis-full text-[10.5px] text-gray-400 empty:hidden"></p>
             </div>
-            <div id="saInfo" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
+
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
+            </div>
+            <div id="saInfo" class="px-3 sm:px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
             <div id="saList" class="divide-y divide-gray-100">
                 <div class="px-6 py-14 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div>
             </div>
         </div>
 
-        <div id="saToast" class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="saToast" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]"></div>
     </main>
 
     <!-- ═══ REVIEW MODAL ═══ -->
-    <div id="saModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-3 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl my-auto overflow-hidden">
-            <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
+    <div id="saModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-6xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
+            <div class="sticky top-0 z-10 bg-white flex items-start justify-between gap-3 px-4 md:px-5 py-3 md:py-4 border-b border-gray-100">
                 <div class="min-w-0">
                     <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Delivery Receipt</p>
                     <p id="saMTitle" class="text-base font-semibold text-gray-900 truncate"></p>
                     <p id="saMSub" class="text-[11px] text-gray-400 truncate"></p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" id="saPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i class="fa-solid fa-print"></i> Print</button>
-                    <button type="button" data-close class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xl leading-none">&times;</button>
+                    <button type="button" id="saPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i class="fa-solid fa-print"></i><span class="hidden sm:inline"> Print</span></button>
+                    <button type="button" data-close aria-label="Close" class="-mr-2 md:-mr-1 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
             </div>
             <div class="grid lg:grid-cols-[minmax(0,1fr)_340px]">
                 <!-- Document -->
-                <div class="p-4 md:p-5 bg-slate-50 min-w-0 lg:border-r border-gray-100">
+                <div class="p-3 md:p-5 bg-slate-50 min-w-0 lg:border-r border-gray-100">
+                    <p class="md:hidden mb-2 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see the whole DR.</p>
                     <div class="overflow-x-auto sa-scroll"><div id="saDoc" class="min-w-[720px] bg-white border border-gray-200 rounded-lg p-6"></div></div>
                 </div>
                 <!-- Actions -->
-                <div id="saSide" class="p-5 space-y-4"></div>
+                <div id="saSide" class="p-4 md:p-5 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-5 space-y-4"></div>
             </div>
         </div>
     </div>
@@ -377,9 +396,9 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                     const sub = r.status === 'approved' ? `<span class="text-emerald-700"><i class="fa-solid fa-signature mr-1"></i>Signed ${fmtY(r.approved_at)}${r.approved_by ? ' by ' + esc(r.approved_by) : ''} · ${nhfAgoHtml(r, r.approved_at)}</span>`
                         : r.status === 'returned' ? `<span class="text-red-700"><i class="fa-solid fa-comment-dots mr-1"></i>${r.returned_at ? nhfAgoHtml(r, r.returned_at) + ' · ' : ''}${esc(r.return_remarks || '')}</span>`
                         : `<span class="text-amber-700"><i class="fa-regular fa-clock mr-1"></i>Submitted ${nhfAgoHtml(r, r.submitted_at)}${r.submitted_at ? ' · ' + fmtY(r.submitted_at) : ''}</span>`;
-                    return `<button type="button" data-id="${r.id}" class="sa-row relative w-full text-left flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5 hover:bg-amber-50/40 transition">
+                    return `<button type="button" data-id="${r.id}" class="sa-row relative w-full text-left flex flex-wrap items-center gap-x-5 gap-y-2.5 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5 hover:bg-amber-50/40 transition">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${s.bar}"></span>
-                        <span class="min-w-0 flex-1 basis-[260px]">
+                        <span class="min-w-0 flex-1 basis-full sm:basis-[260px]">
                             <span class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-sm font-bold text-gray-900">DR# ${esc(r.dr_no)}</span>
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${s.pill}"><i class="fa-solid ${s.icon} text-[9px]"></i>${s.text}</span>
@@ -387,15 +406,15 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
                                 ${r.resubmitted ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 ring-1 ring-purple-600/20"><i class="fa-solid fa-rotate text-[9px]"></i>Resubmitted</span>' : ''}
                             </span>
                             <span class="block text-sm font-semibold text-gray-800 truncate mt-0.5">${esc(r.client_name)}</span>
-                            <span class="block text-[11px] truncate mt-0.5">${sub}</span>
+                            <span class="block text-[11px] line-clamp-2 sm:line-clamp-none sm:truncate mt-0.5">${sub}</span>
                         </span>
-                        <span class="grid grid-cols-3 gap-x-5 text-[11px] basis-[300px] grow sm:grow-0">
+                        <span class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[300px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                             <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">DR date</span><span class="text-gray-700">${fmtY(r.dr_date)}</span></span>
-                            <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Transmittal</span><span class="font-mono text-gray-700">${esc(r.ref_no)}</span></span>
+                            <span class="min-w-0"><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Transmittal</span><span class="font-mono text-gray-700 truncate block">${esc(r.ref_no)}</span></span>
                             <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Prepared by</span><span class="text-gray-700 truncate block">${esc(r.prepared_by || '—')}</span></span>
                         </span>
-                        <span class="ml-auto shrink-0 flex items-center gap-3">
-                            <span class="text-right"><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">${r.item_count} item${r.item_count === 1 ? '' : 's'}</span><span class="font-mono text-sm font-bold text-gray-900">₱ ${money(r.total)}</span></span>
+                        <span class="w-full sm:w-auto sm:ml-auto shrink-0 flex items-center justify-between sm:justify-start gap-3">
+                            <span class="text-left sm:text-right"><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">${r.item_count} item${r.item_count === 1 ? '' : 's'}</span><span class="font-mono text-sm font-bold text-gray-900">₱ ${money(r.total)}</span></span>
                             <span class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${r.status === 'pending' ? 'text-white bg-amber-700 shadow-sm' : 'text-gray-600 bg-white border border-gray-200'}">
                                 <i class="fa-solid ${r.status === 'pending' ? 'fa-pen-nib' : 'fa-eye'}"></i> ${r.status === 'pending' ? 'Review & sign' : 'View'}</span>
                         </span>
@@ -693,6 +712,61 @@ $saAjaxUrl = BASE_URL . '/superadmindrajax';
             rtStartPolling();
         })();
     </script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>

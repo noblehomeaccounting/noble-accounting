@@ -15,22 +15,23 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Purchase Order Dashboard</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
 
         <div class="max-w-6xl mx-auto">
 
             <!-- ===================== HEADER ===================== -->
-            <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
-                <div>
+            <div class="flex flex-wrap items-end justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
+                <div class="min-w-0">
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">Purchase Orders</h1>
+                    <h1 class="text-gray-900 text-lg sm:text-xl font-semibold">Purchase Orders</h1>
                     <p class="text-gray-400 text-xs mt-0.5">Bills of Materials approved by the Superadmin. BOMs made together in Cutting come as one order: one receive, one purchase request, one transmittal.</p>
                 </div>
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5">
@@ -40,26 +41,26 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
             </div>
 
             <!-- ===================== STATS ===================== -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-inbox"></i></span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">To Receive</p>
-                        <p id="poStatPending" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+            <div class="grid grid-cols-3 gap-1.5 sm:gap-3 mb-4 sm:mb-5">
+                <div class="min-w-0 bg-white border border-gray-200 rounded-xl px-2.5 py-2 sm:px-5 sm:py-4 flex items-center gap-4">
+                    <span class="hidden sm:flex shrink-0 w-11 h-11 rounded-xl bg-amber-50 text-amber-700 items-center justify-center"><i class="fa-solid fa-inbox"></i></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden">To receive</span><span class="hidden sm:inline">To Receive</span></p>
+                        <p id="poStatPending" class="text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                     </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <span class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-solid fa-calendar-check"></i></span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Received Today</p>
-                        <p id="poStatToday" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                <div class="min-w-0 bg-white border border-gray-200 rounded-xl px-2.5 py-2 sm:px-5 sm:py-4 flex items-center gap-4">
+                    <span class="hidden sm:flex shrink-0 w-11 h-11 rounded-xl bg-green-50 text-green-600 items-center justify-center"><i class="fa-solid fa-calendar-check"></i></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden">Today</span><span class="hidden sm:inline">Received Today</span></p>
+                        <p id="poStatToday" class="text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                     </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <span class="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-file-circle-check"></i></span>
-                    <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Received</p>
-                        <p id="poStatReceived" class="text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
+                <div class="min-w-0 bg-white border border-gray-200 rounded-xl px-2.5 py-2 sm:px-5 sm:py-4 flex items-center gap-4">
+                    <span class="hidden sm:flex shrink-0 w-11 h-11 rounded-xl bg-slate-100 text-slate-600 items-center justify-center"><i class="fa-solid fa-file-circle-check"></i></span>
+                    <div class="min-w-0">
+                        <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-gray-400"><span class="sm:hidden">Received</span><span class="hidden sm:inline">Total Received</span></p>
+                        <p id="poStatReceived" class="text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums">—</p>
                     </div>
                 </div>
             </div>
@@ -68,28 +69,31 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
                 <!-- tabs + search -->
-                <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100">
-                    <div class="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
+                <div class="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
+                    <div class="grid grid-cols-2 sm:inline-flex w-full sm:w-auto items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1">
                         <button type="button" data-tab="pending"
-                            class="po-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500 transition-all">
+                            class="po-tab min-w-0 justify-center inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold text-gray-500 whitespace-nowrap transition-all">
                             <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> To Receive
                             <span id="poCountPending" class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                         </button>
                         <button type="button" data-tab="received"
-                            class="po-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500 transition-all">
+                            class="po-tab min-w-0 justify-center inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold text-gray-500 whitespace-nowrap transition-all">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Received
                             <span id="poCountReceived" class="min-w-[20px] px-1.5 py-px rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                         </button>
                     </div>
 
-                    <div class="relative ml-auto w-full sm:w-72">
+                    <div class="relative w-full sm:w-72 sm:ml-auto">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="poSearch" placeholder="Search BOM no., control no. or client..."
-                            class="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600 transition-colors">
+                            class="w-full h-[38px] sm:h-auto bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600 transition-colors">
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                <!-- Phone: cards (ang table ay para sa tablet/desktop) -->
+                <div id="poCards" class="md:hidden divide-y divide-gray-100"></div>
+
+                <div class="hidden md:block overflow-x-auto">
                     <table class="w-full text-sm min-w-[860px]">
                         <thead class="bg-gray-50 text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
                             <tr class="border-b border-gray-200">
@@ -108,16 +112,16 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                     </table>
                 </div>
 
-                <p id="poFooter" class="px-5 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400"></p>
+                <p id="poFooter" class="px-3 sm:px-5 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400"></p>
             </div>
         </div>
 
-        <div id="crmToastContainer" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="crmToastContainer" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-[360px]"></div>
     </main>
 
     <!-- ===================== RECEIVE CONFIRM MODAL ===================== -->
-    <div id="poReceiveModal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+    <div id="poReceiveModal" class="hidden fixed inset-0 z-[9999] items-end sm:items-center justify-center bg-black/50 sm:p-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-sm overflow-hidden pb-[env(safe-area-inset-bottom)]">
             <div class="p-5">
                 <div class="flex items-center gap-2.5 mb-3">
                     <span class="w-9 h-9 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center">
@@ -139,9 +143,9 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
             </div>
             <div class="flex justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-100">
                 <button type="button" id="poReceiveCancel"
-                    class="px-3.5 py-2 text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
+                    class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
                 <button type="button" id="poReceiveConfirm"
-                    class="px-3.5 py-2 text-[11px] font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 transition-colors">
+                    class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 transition-colors">
                     <i class="fa-solid fa-check mr-1"></i> Receive &amp; Sign
                 </button>
             </div>
@@ -149,19 +153,20 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
     </div>
 
     <!-- ===================== BOM VIEW MODAL ===================== -->
-    <div id="poBomModal" class="hidden fixed inset-0 z-[9998] items-center justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl my-auto overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+    <div id="poBomModal" class="hidden fixed inset-0 z-[9998] items-start sm:items-center justify-center bg-black/50 p-0 sm:p-4 overflow-y-auto">
+        <div class="bg-white sm:rounded-lg shadow-xl w-full max-w-4xl min-h-full sm:min-h-0 sm:my-auto overflow-hidden">
+            <div class="sticky top-0 z-30 bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
                 <p id="poBomModalTitle" class="text-xs font-semibold text-gray-700 font-mono truncate">BOM</p>
                 <div class="flex items-center gap-3 shrink-0">
                     <a id="poBomDownload" href="#" target="_blank"
                         class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800">
-                        <i class="fa-solid fa-file-pdf"></i> Download PDF
+                        <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">Download </span>PDF
                     </a>
-                    <button type="button" id="poBomClose" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+                    <button type="button" id="poBomClose" aria-label="Close" class="-mr-2 sm:-mr-1 w-10 h-10 sm:w-8 sm:h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
             </div>
-            <div id="poBomBody" class="p-5 overflow-x-auto"></div>
+            <p class="sm:hidden px-4 pt-3 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see the whole BOM.</p>
+            <div id="poBomBody" class="p-3 sm:p-5 overflow-x-auto [&>table]:min-w-[680px]"></div>
         </div>
     </div>
 
@@ -171,15 +176,15 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
     <!-- ===================== STATUS HISTORY DRAWER ===================== -->
     <div id="poHistOverlay" class="hidden fixed inset-0 z-[9997] bg-black/20"></div>
     <aside id="poHistDrawer" class="fixed top-0 right-0 z-[9998] h-full w-full max-w-[400px] bg-slate-50 shadow-2xl flex flex-col translate-x-full transition-transform duration-300">
-        <div class="bg-white px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-3">
+        <div class="bg-white px-4 sm:px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-3">
             <div class="min-w-0">
                 <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Status History</p>
                 <p id="poHistTitle" class="font-mono text-[12px] font-semibold text-gray-800 truncate mt-0.5">—</p>
                 <p id="poHistSub" class="text-[11px] text-gray-400 truncate"></p>
             </div>
-            <button type="button" id="poHistClose" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            <button type="button" id="poHistClose" aria-label="Close" class="-mr-2 shrink-0 w-10 h-10 sm:w-8 sm:h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
-        <div id="poHistBody" class="flex-1 overflow-y-auto p-4"></div>
+        <div id="poHistBody" class="flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"></div>
     </aside>
 
     <script>
@@ -215,7 +220,7 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                 t.className = `pointer-events-auto flex items-start gap-2.5 border rounded-lg shadow-lg px-4 py-3 text-sm ${p.wrap} translate-x-6 opacity-0 scale-95 transition-all duration-300 ease-out`;
                 t.innerHTML = `<span class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${p.icon}">${p.sym}</span>
                     <span class="flex-1 leading-relaxed"></span>
-                    <button type="button" class="shrink-0 opacity-50 hover:opacity-100 text-base leading-none">&times;</button>`;
+                    <button type="button" aria-label="Close" class="shrink-0 w-5 h-5 inline-flex items-center justify-center opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>`;
                 t.querySelector('span.flex-1').textContent = message;
                 box.appendChild(t);
                 requestAnimationFrame(() => t.classList.remove('translate-x-6', 'opacity-0', 'scale-95'));
@@ -436,7 +441,36 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
                         : (tab === 'pending' ? 'Nothing to receive. New approved BOMs will appear here.' : 'No received BOMs yet.');
                     const icon = tab === 'pending' && !source.length ? 'fa-regular fa-circle-check text-green-400' : 'fa-regular fa-folder-open text-gray-300';
                     body.innerHTML = `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="${icon} text-2xl block mb-2"></i>${msg}</td></tr>`;
+                    document.getElementById('poCards').innerHTML = `<div class="px-4 py-12 text-center text-xs text-gray-400"><i class="${icon} text-2xl block mb-2"></i>${msg}</div>`;
                 } else {
+                    // Phone: card bawat order (parehong buttons → parehong click handler)
+                    document.getElementById('poCards').innerHTML = list.map(r => {
+                        const status = r.is_received
+                            ? `<span class="text-gray-700">Received ${fmtDate(r.received_at)} ${fmtTime(r.received_at)}</span><span class="text-gray-400"> · ${esc(r.received_by)}</span>${prChip(r) ? `<div class="mt-1">${prChip(r)}</div>` : ''}`
+                            : `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200"><i class="fa-solid fa-lock text-[9px]"></i> Awaiting receipt</span>`;
+                        const action = r.is_received
+                            ? `<div class="flex items-center gap-1.5 [&>*:first-child]:flex-1 [&>*:first-child]:justify-center [&>*:first-child]:py-2.5 [&>*:first-child]:text-xs">${nextBtn(r)}
+                                   <button type="button" data-menu="${r.id}" title="More actions" aria-label="More actions"
+                                       class="shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-lg border ${histTone(r)}"><i class="fa-solid fa-ellipsis-vertical text-xs"></i></button></div>`
+                            : `<button type="button" data-receive="${r.id}" class="w-full inline-flex justify-center items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-hand-holding"></i> Receive</button>`;
+                        return `
+                        <div class="${rowTone(r)} px-3 py-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">${bomList(r)}
+                                    <p class="mt-0.5 font-semibold text-sm text-gray-900 truncate">${esc(r.client_name)}</p>
+                                    <p class="font-mono text-[11px] text-gray-400 truncate">${esc(r.control_no ?? '—')}</p>
+                                </div>
+                                <span class="shrink-0 text-right text-[11px] text-gray-500"><b class="block text-sm text-gray-900 tabular-nums">${r.item_count}</b>item${r.item_count == 1 ? '' : 's'}</span>
+                            </div>
+                            <dl class="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-[11px]">
+                                <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Date needed</dt><dd class="text-gray-700 truncate">${esc(r.date_needed || '—')}</dd></div>
+                                <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Approved</dt><dd class="text-gray-700 truncate">${fmtDate(r.approved_at)} · ${esc(r.approved_by || '—')}</dd></div>
+                            </dl>
+                            <div class="mt-1.5 text-[11px]">${status}</div>
+                            <div class="mt-2.5">${action}</div>
+                        </div>`;
+                    }).join('');
+
                     body.innerHTML = list.map(r => {
                         const status = r.is_received
                             ? `<p class="text-gray-700">${fmtDate(r.received_at)}</p><p class="text-[11px] text-gray-400">${fmtTime(r.received_at)} · ${esc(r.received_by)}</p>${prChip(r)}`
@@ -501,14 +535,16 @@ $poAjaxUrl = BASE_URL . '/purchaseorderajax';
             }
 
             // ── row buttons ──
-            document.getElementById('poList').addEventListener('click', e => {
+            const poRowClick = e => {
                 const rec = e.target.closest('[data-receive]');
                 const view = e.target.closest('[data-view]');
                 if (rec) askReceive(+rec.dataset.receive);
                 if (view) openBom(+view.dataset.view);
                 const menuBtn = e.target.closest('[data-menu]');
                 if (menuBtn) toggleRowMenu(menuBtn);
-            });
+            };
+            document.getElementById('poList').addEventListener('click', poRowClick);
+            document.getElementById('poCards').addEventListener('click', poRowClick);
 
             // ── row "more actions" menu (nakalutang sa body para hindi maputol ng table) ──
             const rowMenu = document.getElementById('poRowMenu');

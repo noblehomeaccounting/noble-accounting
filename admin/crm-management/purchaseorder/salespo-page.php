@@ -22,7 +22,8 @@ $spoIntro = $spoMode === 'sales'
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title><?= htmlspecialchars($spoTitle) ?></title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -88,6 +89,14 @@ $spoIntro = $spoMode === 'sales'
             border-color: #b45309;
         }
 
+        .spo-search { height: 36px; }
+
+        /* Mobile: bahagyang mas mataas na tap target */
+        @media (max-width: 639px) {
+            .spo-inp, .spo-sel, .spo-search { height: 38px; }
+            .spo-q { height: 34px; }
+        }
+
         .spo-scroll {
             scrollbar-width: thin;
             scrollbar-color: #d1d5db transparent;
@@ -96,16 +105,16 @@ $spoIntro = $spoMode === 'sales'
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 overflow-x-hidden">
         <div class="max-w-6xl mx-auto">
 
             <!-- ═══ HEADER + TABS ═══ -->
             <section class="relative z-20 bg-white border border-gray-200 rounded-xl mb-4">
                 <div class="spo-hazard h-1.5 rounded-t-xl"></div>
-                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                     <div class="flex items-center gap-3 min-w-0">
                         <span
-                            class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
+                            class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i
                                 class="fa-solid fa-file-invoice text-lg"></i></span>
                         <div class="min-w-0">
                             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">
@@ -117,42 +126,50 @@ $spoIntro = $spoMode === 'sales'
                     </div>
                     <?php if ($spoMode === 'sales'): ?>
                         <button type="button" id="spoNew"
-                            class="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i
+                            class="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i
                                 class="fa-solid fa-plus"></i> New Purchase Order</button>
                     <?php endif; ?>
                 </div>
-                <div id="spoTabs" class="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <?php foreach ([['todo', $spoMode === 'sales' ? 'To do' : 'For your signature', 'text-amber-700'], ['progress', 'In progress', 'text-blue-700'], ['released', 'Released', 'text-emerald-700'], ['', 'All', 'text-gray-900']] as [$v, $l, $cls]): ?>
+                <div id="spoTabs" class="px-4 sm:px-5 pb-4 grid grid-cols-4 gap-1.5 sm:gap-2">
+                    <?php foreach ([['todo', $spoMode === 'sales' ? 'To do' : 'For your signature', 'text-amber-700', $spoMode === 'sales' ? 'To do' : 'To sign'], ['progress', 'In progress', 'text-blue-700', 'Ongoing'], ['released', 'Released', 'text-emerald-700', 'Released'], ['', 'All', 'text-gray-900', 'All']] as [$v, $l, $cls, $short]): ?>
                         <button type="button" data-tab="<?= $v ?>"
-                            class="spo-tab text-left rounded-xl border border-gray-200 bg-white px-3.5 py-2 transition-colors">
+                            class="spo-tab min-w-0 text-left rounded-xl border border-gray-200 bg-white px-2 py-1.5 sm:px-3.5 sm:py-2 transition-colors">
                             <span
-                                class="block text-[10px] font-semibold uppercase tracking-wide text-gray-500"><?= $l ?></span>
+                                class="block truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wide text-gray-500"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $l ?></span></span>
                             <span class="flex items-baseline justify-between gap-2"><span
-                                    class="spo-tab-count text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span><span
-                                    class="spo-tab-sum text-[10.5px] text-gray-400 font-mono truncate"></span></span>
+                                    class="spo-tab-count text-lg sm:text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span><span
+                                    class="spo-tab-sum hidden sm:inline text-[10.5px] text-gray-400 font-mono truncate"></span></span>
                         </button>
                     <?php endforeach; ?>
                 </div>
 
                 <!-- Search · Date · Status · Sort -->
                 <div
-                    class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl flex flex-wrap items-center gap-2">
-                    <div class="relative flex-1 min-w-[200px] max-w-sm">
+                    class="px-4 sm:px-5 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:flex-wrap items-center gap-2">
+                    <div class="relative sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
                         <i
                             class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input id="spoSearch" type="text" placeholder="Search P.O. no., vendor, customer…"
-                            class="spo-inp" style="padding-left:2rem;height:36px">
+                            class="spo-inp spo-search" style="padding-left:2rem">
                     </div>
-                    <div class="relative" id="spoDateWrap">
+                    <button type="button" data-fd-open="spoFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 "><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
+                    <div id="spoFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="spoFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="-mr-2 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="nh-fd-body">
+                    <div class="relative min-w-0" id="spoDateWrap">
                         <button type="button" id="spoDateBtn"
-                            class="h-9 inline-flex items-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300">
-                            <i class="fa-regular fa-calendar text-gray-400"></i><span id="spoDateText">Any date</span>
+                            class="w-full sm:w-auto h-[38px] sm:h-9 inline-flex items-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300">
+                            <i class="fa-regular fa-calendar text-gray-400"></i><span id="spoDateText" class="flex-1 sm:flex-none min-w-0 truncate text-left">Any date</span>
                             <span id="spoDateX"
                                 class="hidden w-4 h-4 -mr-1 rounded-full bg-amber-700 text-white text-[9px] leading-4 text-center">&times;</span>
                             <i class="fa-solid fa-chevron-down text-[9px] text-gray-400"></i>
                         </button>
                         <div id="spoDatePop"
-                            class="hidden absolute left-0 top-full mt-1.5 z-30 w-[320px] max-w-[calc(100vw-2.5rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-3.5">
+                            class="hidden absolute left-0 top-full mt-1.5 z-30 w-[320px] max-w-[calc(100vw-3.5rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-3.5">
                             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">P.O. date</p>
                             <div class="grid grid-cols-3 gap-1.5 mb-3">
                                 <button type="button" data-q="today" class="spo-q">Today</button>
@@ -182,7 +199,8 @@ $spoIntro = $spoMode === 'sales'
                             </div>
                         </div>
                     </div>
-                    <select id="spoStatus" class="spo-sel" title="Status">
+<p class="nh-fd-only nh-fd-label">Status</p>
+                    <select id="spoStatus" class="spo-sel w-full sm:w-auto min-w-0" title="Status">
                         <option value="">All statuses</option>
                         <?php if ($spoMode === 'sales'): ?>
                             <option value="draft">Draft</option><?php endif; ?>
@@ -193,7 +211,8 @@ $spoIntro = $spoMode === 'sales'
                         <option value="released">Released</option>
                         <option value="returned">Returned to Sales</option>
                     </select>
-                    <select id="spoSort" class="spo-sel" title="Sort by">
+<p class="nh-fd-only nh-fd-label">Sort by</p>
+                    <select id="spoSort" data-fd-ignore class="spo-sel w-full sm:w-auto min-w-0" title="Sort by">
                         <option value="newest">Sort: Newest</option>
                         <option value="oldest">Sort: Oldest</option>
                         <option value="waiting">Sort: Longest waiting</option>
@@ -201,7 +220,13 @@ $spoIntro = $spoMode === 'sales'
                         <option value="amount_asc">Sort: Amount low → high</option>
                         <option value="vendor">Sort: Vendor A–Z</option>
                     </select>
-                    <span id="spoCount" class="ml-auto text-[11px] text-gray-400"></span>
+
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
+                    <span id="spoCount" class="col-span-2 sm:ml-auto text-[11px] text-gray-400 truncate"></span>
                 </div>
             </section>
 
@@ -210,9 +235,9 @@ $spoIntro = $spoMode === 'sales'
 
         <!-- ═══ PO MODAL ═══ -->
         <div id="spoModal"
-            class="hidden fixed inset-0 z-[9998] items-start justify-center bg-black/50 p-2 md:p-4 overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-7xl my-auto overflow-hidden">
-                <div class="flex items-start justify-between gap-3 px-5 py-3.5 border-b border-gray-100">
+            class="hidden fixed inset-0 z-[9998] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+            <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-7xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
+                <div class="sticky top-0 z-10 bg-white flex items-start justify-between gap-3 px-4 md:px-5 py-3 md:py-3.5 border-b border-gray-100">
                     <div class="min-w-0">
                         <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700" id="spoMKicker">
                             Purchase Order</p>
@@ -221,27 +246,28 @@ $spoIntro = $spoMode === 'sales'
                     <div class="flex items-center gap-2 shrink-0">
                         <button type="button" id="spoPrint"
                             class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800"><i
-                                class="fa-solid fa-print"></i> Print</button>
+                                class="fa-solid fa-print"></i><span class="hidden sm:inline"> Print</span></button>
                         <button type="button" id="spoClose"
-                            class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xl leading-none"
+                            class="w-10 h-10 md:w-8 md:h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-2xl md:text-xl leading-none"
                             aria-label="Close">&times;</button>
                     </div>
                 </div>
                 <div class="grid lg:grid-cols-[minmax(0,1fr)_320px]">
                     <div class="p-3 md:p-5 bg-slate-50 min-w-0 lg:border-r border-gray-100">
-                        <div class="overflow-x-auto spo-scroll">
+                        <p class="md:hidden mb-2 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see the whole P.O.</p>
+                        <div class="overflow-x-auto spo-scroll -mx-3 px-3 md:mx-0 md:px-0">
                             <div id="spoDoc"
                                 class="min-w-[760px] bg-white border border-gray-200 rounded-xl p-5 md:p-7 shadow-sm">
                             </div>
                         </div>
                     </div>
-                    <div id="spoSide" class="p-5 space-y-4"></div>
+                    <div id="spoSide" class="p-4 md:p-5 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-5 space-y-4"></div>
                 </div>
             </div>
         </div>
 
         <div id="spoToast"
-            class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]">
         </div>
     </main>
 
@@ -374,22 +400,22 @@ $spoIntro = $spoMode === 'sales'
                         : '<span class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg"><i class="fa-regular fa-eye"></i> View</span>';
                     return `<button type="button" data-id="${r.id}" class="spo-row relative w-full text-left bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 hover:shadow-sm transition">
                         <span class="absolute left-0 top-0 bottom-0 w-1" style="background:${bar}"></span>
-                        <span class="flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5">
-                            <span class="min-w-0 flex-1 basis-[260px]">
+                        <span class="flex flex-wrap items-center gap-x-5 gap-y-2.5 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
+                            <span class="min-w-0 flex-1 basis-full sm:basis-[260px]">
                                 <span class="flex flex-wrap items-center gap-2">
                                     ${r.my_turn ? '<span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-700 text-white">Your turn</span>' : ''}
                                     <span class="font-mono text-[12px] font-bold text-gray-900">${esc(r.po_no)}</span>${STATUS_PILL(r.status)}
                                 </span>
                                 <span class="block text-sm font-semibold text-gray-800 truncate mt-0.5">${esc(r.vendor || '— no vendor yet —')}</span>
-                                <span class="block text-[11px] truncate mt-0.5" title="${esc(fmtDT(since))}">${when}</span>
+                                <span class="block text-[11px] line-clamp-2 sm:line-clamp-none sm:truncate mt-0.5" title="${esc(fmtDT(since))}">${when}</span>
                             </span>
-                            <span class="grid grid-cols-3 gap-x-5 text-[11px] basis-[300px] grow sm:grow-0">
+                            <span class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[300px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                                 <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">P.O. date</span><span class="text-gray-700">${fmtDate(r.po_date)}</span></span>
                                 <span class="min-w-0"><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Prepared by</span><span class="text-gray-700 truncate block">${esc(r.prepared_by || '—')}</span></span>
                                 <span><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Items</span><span class="text-gray-700">${r.item_count}</span></span>
                             </span>
-                            <span class="ml-auto shrink-0 flex items-center gap-3">
-                                <span class="text-right"><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Final amount</span><span class="font-mono text-sm font-bold text-gray-900">₱${money(r.final_amount)}</span></span>
+                            <span class="w-full sm:w-auto sm:ml-auto shrink-0 flex items-center justify-between sm:justify-start gap-3">
+                                <span class="text-left sm:text-right"><span class="block text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Final amount</span><span class="font-mono text-sm font-bold text-gray-900">₱${money(r.final_amount)}</span></span>
                                 ${btn}
                             </span>
                         </span>
@@ -641,6 +667,64 @@ $spoIntro = $spoMode === 'sales'
             });
         })();
     </script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+    @media (max-width: 639px) {
+        #spoFd #spoDateBtn, #spoFd #spoDateDone { display: none !important; }
+        #spoFd #spoDatePop { display: block !important; position: static; width: auto; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; }
+    }
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>

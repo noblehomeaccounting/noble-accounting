@@ -46,7 +46,8 @@ $nhcIntro = [
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Contracts</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php if ($nhcViewer === 'acct_head'): ?>
@@ -60,6 +61,7 @@ $nhcIntro = [
         .nhc-scroll { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
         .nhc-field { width: 100%; height: 38px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #fff; outline: none; }
         .nhc-field:focus { border-color: #b45309; box-shadow: 0 0 0 3px #fef3c7; }
+        @media (max-width: 639px) { #nhcEditorWrap .ql-editor { padding: 14px; min-height: 320px; } }
         .nhc-label { display: block; font-size: 11.5px; font-weight: 600; color: #374151; margin-bottom: 4px; }
         /* contract editor */
         #nhcEditorWrap .ql-toolbar.ql-snow { border: 0; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; background: #fff; z-index: 2; flex-wrap: wrap; }
@@ -74,46 +76,55 @@ $nhcIntro = [
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 min-h-screen pt-20 md:pt-8 p-4 md:p-8 overflow-x-hidden">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 overflow-x-hidden">
         <div class="max-w-6xl mx-auto">
 
             <section class="relative z-20 bg-white border border-gray-200 rounded-xl mb-4">
                 <div class="nhc-hazard h-1.5 rounded-t-xl"></div>
-                <div class="p-5 flex flex-wrap items-center justify-between gap-4">
+                <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                     <div class="flex items-center gap-3 min-w-0">
-                        <span class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-lg"></i></span>
+                        <span class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-file-signature text-lg"></i></span>
                         <div class="min-w-0">
                             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">CRM Management · <?= htmlspecialchars($nhcIntro[0]) ?></p>
                             <h1 class="text-gray-900 text-lg font-semibold leading-tight">Contract Agreement</h1>
                             <p class="text-gray-400 text-[11px] mt-0.5 max-w-xl"><?= htmlspecialchars($nhcIntro[1]) ?></p>
                         </div>
                     </div>
-                    <div id="nhcTabs" class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+                    <div id="nhcTabs" class="grid grid-cols-4 gap-1.5 sm:gap-2 w-full lg:w-auto">
                         <?php foreach ([['todo', 'Your turn', 'text-amber-700'], ['progress', 'In progress', 'text-blue-700'], ['done', 'Completed', 'text-emerald-700'], ['', 'All', 'text-gray-900']] as [$v, $l, $cls]): ?>
-                            <button type="button" data-tab="<?= $v ?>" class="nhc-tab text-left rounded-xl border border-gray-200 bg-white px-3.5 py-2 lg:min-w-[110px] transition-colors">
-                                <span class="block text-[10px] font-semibold uppercase tracking-wide text-gray-500"><?= $l ?></span>
-                                <span class="nhc-tab-count block text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span>
+                            <button type="button" data-tab="<?= $v ?>" class="nhc-tab min-w-0 text-left rounded-xl border border-gray-200 bg-white px-2 py-1.5 sm:px-3.5 sm:py-2 lg:min-w-[110px] transition-colors">
+                                <span class="block truncate text-[9px] sm:text-[10px] font-semibold uppercase sm:tracking-wide text-gray-500"><?= $l ?></span>
+                                <span class="nhc-tab-count block text-lg sm:text-xl font-bold leading-tight tabular-nums <?= $cls ?>">0</span>
                             </button>
                         <?php endforeach; ?>
                     </div>
                 </div>
                 <!-- Search · Date · Status · Sort (iisang hilera) -->
-                <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl flex flex-wrap items-center gap-2">
-                    <div class="relative flex-1 min-w-[200px] max-w-sm">
+                <div class="px-4 sm:px-5 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-xl grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:flex-wrap items-center gap-2">
+                    <div class="relative sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input id="nhcSearch" type="text" placeholder="Search control no. or client…" class="nhc-field pl-8 text-xs" style="padding-left:2rem">
                     </div>
+                    <button type="button" data-fd-open="nhcFd" class="sm:hidden shrink-0 inline-flex items-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-500 "><i class="fa-solid fa-sliders"></i> Filters <span data-fd-badge class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-amber-700 text-white text-[10px] font-bold inline-flex items-center justify-center">0</span></button>
 
-                    <!-- Date: isang button, bukas ang panel kapag pinindot -->
-                    <div class="relative" id="nhcDateWrap">
+                    <div id="nhcFdBackdrop" class="nh-fd-backdrop"></div>
+<div id="nhcFd" class="nh-fd" role="dialog" aria-label="Filters">
+    <div class="nh-fd-only flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-600"></i><h2 class="text-gray-900 text-sm font-semibold">Filters</h2></div>
+        <button type="button" data-fd-close aria-label="Close" class="-mr-2 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="nh-fd-body">
+
+                    <!-- Date: isang button, bukas ang panel kapag pinindot (sa phone: laging bukas sa loob ng drawer) -->
+                    <div class="relative min-w-0" id="nhcDateWrap">
                         <button type="button" id="nhcDateBtn" aria-haspopup="true" aria-expanded="false"
-                            class="h-9 inline-flex items-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300">
+                            class="w-full sm:w-auto h-[38px] sm:h-9 inline-flex items-center gap-2 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300">
                             <i class="fa-regular fa-calendar text-gray-400"></i>
-                            <span id="nhcDateBtnText">Any date</span>
+                            <span id="nhcDateBtnText" class="flex-1 sm:flex-none min-w-0 truncate text-left">Any date</span>
                             <span id="nhcDateBtnX" class="hidden w-4 h-4 -mr-1 rounded-full bg-amber-700 text-white text-[9px] leading-4 text-center" title="Clear date">&times;</span>
                             <i class="fa-solid fa-chevron-down text-[9px] text-gray-400"></i>
                         </button>
-                        <div id="nhcDatePop" class="hidden absolute left-0 top-full mt-1.5 z-30 w-[320px] max-w-[calc(100vw-2.5rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-3.5">
+                        <div id="nhcDatePop" class="hidden absolute left-0 top-full mt-1.5 z-30 w-[320px] max-w-[calc(100vw-3.5rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-3.5">
                             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Last update</p>
                             <div class="grid grid-cols-3 gap-1.5 mb-3">
                                 <button type="button" data-nhc-q="today" class="nhc-q h-8 text-[11px] font-semibold bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors">Today</button>
@@ -136,7 +147,8 @@ $nhcIntro = [
                         </div>
                     </div>
 
-                    <select id="nhcFStatus" class="h-9 pl-3 pr-8 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 hover:border-gray-300" title="Status">
+<p class="nh-fd-only nh-fd-label">Status</p>
+                    <select id="nhcFStatus" class="w-full sm:w-auto min-w-0 h-[38px] sm:h-9 pl-3 pr-8 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 hover:border-gray-300" title="Status">
                         <option value="">All statuses</option>
                         <option value="Not created">Not created</option>
                         <option value="Draft">Draft</option>
@@ -146,7 +158,8 @@ $nhcIntro = [
                         <option value="For GM Signing">For GM Signing</option>
                         <option value="Completed">Completed</option>
                     </select>
-                    <select id="nhcFSort" class="h-9 pl-3 pr-8 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 hover:border-gray-300" title="Sort by">
+<p class="nh-fd-only nh-fd-label">Sort by</p>
+                    <select id="nhcFSort" data-fd-ignore class="w-full sm:w-auto min-w-0 h-[38px] sm:h-9 pl-3 pr-8 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-amber-600 hover:border-gray-300" title="Sort by">
                         <option value="updated">Sort: Recently updated</option>
                         <option value="oldest">Sort: Oldest update</option>
                         <option value="amount_desc">Sort: Amount high → low</option>
@@ -154,7 +167,13 @@ $nhcIntro = [
                         <option value="client">Sort: Client A–Z</option>
                         <option value="control">Sort: Control no.</option>
                     </select>
-                    <span id="nhcCount" class="ml-auto text-[11px] text-gray-400"></span>
+
+    </div>
+    <div class="nh-fd-only px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-gray-50/60">
+        <button type="button" data-fd-close class="w-full text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg transition-colors">Show results</button>
+    </div>
+</div>
+                    <span id="nhcCount" class="col-span-2 sm:ml-auto text-[11px] text-gray-400 truncate"></span>
                 </div>
             </section>
 
@@ -165,20 +184,20 @@ $nhcIntro = [
         <div id="nhcOverlay" class="fixed inset-0 bg-black/30 hidden z-40" onclick="nhcClose()"></div>
         <div id="nhcPanel" class="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 flex flex-col translate-x-full transition-transform duration-300 ease-out">
             <div class="nhc-hazard h-1.5 shrink-0"></div>
-            <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+            <div class="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
                 <div class="min-w-0">
                     <p class="text-[10px] text-amber-700 font-semibold tracking-[0.15em] uppercase">Contract Agreement</p>
                     <h3 id="nhcPControl" class="text-gray-900 font-mono font-semibold text-sm">—</h3>
                     <p id="nhcPClient" class="text-[15px] font-semibold text-gray-900 truncate"></p>
                     <div id="nhcPBadges" class="mt-1 flex flex-wrap gap-1.5"></div>
                 </div>
-                <button type="button" onclick="nhcClose()" aria-label="Close" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="nhcClose()" aria-label="Close" class="inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div id="nhcPBody" class="nhc-scroll px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60"></div>
-            <div id="nhcPFoot" class="px-5 py-3.5 bg-white border-t border-gray-100 shrink-0"></div>
+            <div id="nhcPBody" class="nhc-scroll px-4 sm:px-5 py-4 overflow-y-auto flex-1 bg-slate-50/60"></div>
+            <div id="nhcPFoot" class="px-4 sm:px-5 py-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom))] sm:pb-3.5 bg-white border-t border-gray-100 shrink-0"></div>
         </div>
 
-        <div id="crmToastContainer" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0"></div>
+        <div id="crmToastContainer" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm"></div>
     </main>
 
     <script>
@@ -310,7 +329,7 @@ $nhcIntro = [
         function nhcProgress(r) {
             if (!r.signed) return '';
             const steps = [['acct', 'Accounting'], ['sales', 'Sales'], ['designer', 'Designer'], ['client', 'Client'], ['gm', 'GM']];
-            return `<div class="flex items-center gap-1" title="Signatures">${steps.map(([k, l]) =>
+            return `<div class="flex items-center gap-1 w-full sm:w-auto" title="Signatures"><span class="sm:hidden mr-1 text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Signatures</span>${steps.map(([k, l]) =>
                 `<span title="${l}" class="w-6 h-6 rounded-full text-[9px] font-bold flex items-center justify-center ${r.signed[k] ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-400'}">${r.signed[k] ? '<i class="fa-solid fa-check"></i>' : l[0]}</span>`).join('')}</div>`;
         }
 
@@ -349,8 +368,8 @@ $nhcIntro = [
                 const act = r.my_action !== 'none';
                 return `<article onclick="nhcOpen(${r.inquiry_id})" class="relative bg-white border rounded-xl overflow-hidden cursor-pointer transition ${nhcCurrent === r.inquiry_id ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}">
                     <span class="absolute left-0 top-0 bottom-0 w-1 ${(NHC_STATUS[r.status] || NHC_STATUS.Draft)[1]}"></span>
-                    <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
-                        <div class="min-w-0 flex-1 basis-[220px]">
+                    <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
+                        <div class="min-w-0 flex-1 basis-full sm:basis-[220px]">
                             <div class="flex flex-wrap items-center gap-1.5">
                                 ${act ? '<span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wide bg-amber-700 text-white">Your turn</span>' : ''}
                                 <span class="font-mono text-[11px] font-semibold text-amber-700">${nhcEsc(r.control_no)}</span>
@@ -362,9 +381,9 @@ $nhcIntro = [
                             <p class="text-[11px] mt-0.5" title="${nhcEsc(nhcDate(r.updated_at))}"><i class="fa-regular fa-clock mr-1 text-gray-300"></i>${nhcAgoHtml(r)}</p>
                         </div>
                         ${nhcProgress(r)}
-                        <div class="ml-auto shrink-0">
-                            ${act ? `<span class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg">${NHC_ACTION_LABEL[r.my_action]}</span>`
-                                : '<span class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg"><i class="fa-regular fa-eye"></i> View</span>'}
+                        <div class="w-full sm:w-auto sm:ml-auto shrink-0">
+                            ${act ? `<span class="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg">${NHC_ACTION_LABEL[r.my_action]}</span>`
+                                : '<span class="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg"><i class="fa-regular fa-eye"></i> View</span>'}
                         </div>
                     </div>
                 </article>`;
@@ -391,7 +410,7 @@ $nhcIntro = [
                 <div class="px-4 py-3">${inner}</div></section>`;
         }
         function nhcRow(k, v) {
-            return `<div class="flex justify-between gap-3 py-1.5 border-b border-gray-50 last:border-0 text-[12.5px]"><span class="text-gray-400 whitespace-nowrap">${k}</span><span class="text-gray-800 font-medium text-right min-w-0 break-words">${v}</span></div>`;
+            return `<div class="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-3 py-1.5 border-b border-gray-50 last:border-0 text-[12.5px]"><span class="text-[11.5px] sm:text-[12.5px] text-gray-400 sm:whitespace-nowrap">${k}</span><span class="text-gray-800 font-medium sm:text-right min-w-0 break-words">${v}</span></div>`;
         }
 
         async function nhcOpen(inquiryId) {
@@ -829,6 +848,64 @@ $nhcIntro = [
             if (q && /^\d+$/.test(q)) nhcOpen(Number(q));
         });
     </script>
+
+<style>
+    /* ═══ Filter drawer sa phone (kagaya ng CRM Monitoring) · sa sm+ walang epekto (display: contents) ═══ */
+    .nh-fd-backdrop { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 9998; }
+    @media (max-width: 639px) {
+        .nh-fd { position: fixed; top: 0; bottom: 0; left: 0; width: 300px; max-width: 88vw; z-index: 9999; background: #fff;
+            display: flex; flex-direction: column; transform: translateX(-105%); transition: transform .22s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+        .nh-fd.open { transform: none; }
+        .nh-fd-backdrop.open { display: block; }
+        .nh-fd-body { flex: 1; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .nh-fd-body > * { width: 100%; }
+        .nh-fd-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin-bottom: -8px; }
+    }
+    @media (min-width: 640px) {
+        .nh-fd, .nh-fd-body { display: contents; }
+        .nh-fd-only { display: none !important; }
+    }
+    @media (max-width: 639px) {
+        #nhcFd #nhcDateBtn, #nhcFd #nhcDateDone { display: none !important; }
+        #nhcFd #nhcDatePop { display: block !important; position: static; width: auto; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; }
+    }
+</style>
+
+<script>
+    // Filter drawer sa phone — bubuksan ng [data-fd-open="id"]; badge = ilang filter ang naka-on
+    (function () {
+        const isPhone = () => !window.matchMedia('(min-width: 640px)').matches;
+        function setup(d) {
+            const bd = document.getElementById(d.id + 'Backdrop');
+            const open = () => { d.classList.add('open'); bd && bd.classList.add('open'); document.body.style.overflow = 'hidden'; };
+            const close = () => { if (!d.classList.contains('open')) return; d.classList.remove('open'); bd && bd.classList.remove('open'); document.body.style.overflow = ''; };
+            d._fdOpen = open;
+            bd && bd.addEventListener('click', close);
+            d.querySelectorAll('[data-fd-close]').forEach(b => b.addEventListener('click', close));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+            window.addEventListener('resize', () => { if (!isPhone()) close(); });
+            const badges = document.querySelectorAll(`[data-fd-open="${d.id}"] [data-fd-badge]`);
+            const count = () => {
+                let n = 0;
+                d.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden' || el.hasAttribute('data-fd-ignore')) return;
+                    if (el.tagName === 'SELECT' ? el.selectedIndex > 0 : (el.type === 'checkbox' ? el.checked : !!el.value)) n++;
+                });
+                badges.forEach(b => { b.textContent = n; b.classList.toggle('hidden', !n); });
+            };
+            ['change', 'input'].forEach(ev => d.addEventListener(ev, count));
+            d.addEventListener('click', () => setTimeout(count, 0));
+            setTimeout(count, 0);
+        }
+        document.querySelectorAll('.nh-fd').forEach(setup);
+        document.querySelectorAll('[data-fd-open]').forEach(btn => btn.addEventListener('click', () => {
+            const d = document.getElementById(btn.dataset.fdOpen);
+            if (d && d._fdOpen) d._fdOpen();
+        }));
+        window.nhFdOpen = id => { const d = document.getElementById(id); if (d && d._fdOpen) d._fdOpen(); };
+    })();
+</script>
 </body>
 
 </html>

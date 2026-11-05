@@ -18,7 +18,8 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Labor Quotations</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -26,16 +27,16 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
 </head>
 
 <body class="bg-gray-50">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
 
         <!-- ═══ HEADER ═══ -->
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-helmet-safety text-lg"></i></div>
                 <div class="min-w-0">
                     <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Operations · Step 3</p>
-                    <h1 class="text-xl font-bold text-gray-900 leading-tight">Subcontractor / Labor Quotations</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Subcontractor / Labor Quotations</h1>
                     <p class="text-xs text-gray-500">For DRs signed by the Superadmin. Add the foreman's ID first, then
                         make the labor quotation. You can print it once the Superadmin approves it.</p>
                 </div>
@@ -49,23 +50,23 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
         </div>
 
         <!-- ═══ STAT TABS ═══ -->
-        <div id="lpTabs" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
+        <div id="lpTabs" class="grid grid-cols-3 md:grid-cols-3 xl:grid-cols-6 gap-1.5 sm:gap-3 mb-3 sm:mb-4">
             <?php foreach ([
-                ['todo', 'To do', 'fa-list-check', 'bg-amber-50 text-amber-700'],
-                ['foreman', 'Needs foreman', 'fa-id-badge', 'bg-orange-50 text-orange-600'],
-                ['pending', 'For approval', 'fa-signature', 'bg-sky-50 text-sky-600'],
-                ['returned', 'Returned', 'fa-rotate-left', 'bg-red-50 text-red-600'],
-                ['approved', 'Approved', 'fa-circle-check', 'bg-emerald-50 text-emerald-600'],
-                ['all', 'All', 'fa-layer-group', 'bg-gray-100 text-gray-600'],
-            ] as [$k, $label, $icon, $cls]): ?>
+                ['todo', 'To do', 'fa-list-check', 'bg-amber-50 text-amber-700', 'To do'],
+                ['foreman', 'Needs foreman', 'fa-id-badge', 'bg-orange-50 text-orange-600', 'Foreman'],
+                ['pending', 'For approval', 'fa-signature', 'bg-sky-50 text-sky-600', 'Approval'],
+                ['returned', 'Returned', 'fa-rotate-left', 'bg-red-50 text-red-600', 'Returned'],
+                ['approved', 'Approved', 'fa-circle-check', 'bg-emerald-50 text-emerald-600', 'Approved'],
+                ['all', 'All', 'fa-layer-group', 'bg-gray-100 text-gray-600', 'All'],
+            ] as [$k, $label, $icon, $cls, $short]): ?>
                 <button type="button" data-tab="<?= $k ?>"
-                    class="lp-tab text-left bg-white border border-gray-200 rounded-xl p-3.5 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
+                    class="lp-tab text-left bg-white border border-gray-200 rounded-xl px-2 py-1.5 sm:p-3.5 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
                     <span class="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center shrink-0 <?= $cls ?>"><i
                             class="fa-solid <?= $icon ?>"></i></span>
                     <span class="min-w-0">
                         <span
-                            class="block text-[10.5px] font-semibold text-gray-500 uppercase tracking-wide truncate"><?= $label ?></span>
-                        <span class="block text-2xl font-bold text-gray-900 leading-tight tabular-nums"
+                            class="block text-[9.5px] sm:text-[10.5px] font-semibold text-gray-500 uppercase sm:tracking-wide truncate"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $label ?></span></span>
+                        <span class="block text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums"
                             data-count="<?= $k ?>">—</span>
                     </span>
                 </button>
@@ -74,15 +75,15 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
 
         <!-- ═══ LIST ═══ -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100">
-                <div class="relative flex-1 min-w-[200px]">
+            <div class="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
+                <div class="relative flex-1 min-w-0 basis-full sm:basis-auto sm:min-w-[200px]">
                     <i
                         class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
                     <input type="text" id="lpSearch" placeholder="Search DR no., client, quotation no., foreman…"
-                        class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+                        class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
                 </div>
             </div>
-            <div id="lpInfo" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;
+            <div id="lpInfo" class="px-3 sm:px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;
             </div>
             <div id="lpList" class="divide-y divide-gray-100">
                 <div class="px-6 py-14 text-center text-xs text-gray-400"><i
@@ -91,14 +92,14 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
         </div>
 
         <div id="crmToastContainer"
-            class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]">
         </div>
     </main>
 
     <!-- ===================== STEP 3 · LABOR MODAL (Foreman → Labor Quotation) ===================== -->
     <div id="lbModal"
-        class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-3 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl my-auto overflow-hidden">
+        class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-5xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
             <div class="dr-hazard h-1.5"></div>
             <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
                 <div class="min-w-0">
@@ -108,7 +109,7 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
                     <p id="lbSub" class="text-[11px] text-gray-400 truncate"></p>
                 </div>
                 <button type="button" data-close="lbModal"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                    class="-mr-2 md:mr-0 inline-flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
             <!-- progress -->
             <div id="lbSteps"
@@ -596,9 +597,9 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
                 }
                 F('lpList').innerHTML = list.map(r => {
                     const btn = { foreman: ['Add foreman', 'fa-id-badge', true], quote: ['Make labor quote', 'fa-file-pen', true], returned: ['Fix & resubmit', 'fa-pen', true], pending: ['View', 'fa-eye', false], approved: ['View / Print', 'fa-print', false] }[r.labor_state];
-                    return `<div data-row="${r.dr_id}" class="lp-row relative flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5">
+                    return `<div data-row="${r.dr_id}" class="lp-row relative flex flex-wrap items-center gap-x-5 gap-y-2.5 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${BAR[r.labor_state] || 'bg-gray-300'}"></span>
-                        <div class="min-w-0 flex-1 basis-[260px]">
+                        <div class="min-w-0 flex-1 basis-full sm:basis-[260px]">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-mono text-sm font-bold text-gray-900">DR# ${esc(r.dr_no)}</span>
                                 ${laborChip(r.labor_state)}
@@ -608,12 +609,12 @@ $tlPageUrl = BASE_URL . '/coordinatortimeline';   // Timeline page (hiwalay na p
                             ${r.labor_state === 'returned' && r.quote_remarks ? `<p class="mt-1.5 text-[11px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-comment-dots mr-1"></i><b>Superadmin:</b> ${esc(r.quote_remarks)}</p>` : ''}
                             ${r.labor_state === 'approved' && r.quote_approved_by ? `<p class="mt-1 text-[11px] text-emerald-700"><i class="fa-solid fa-signature mr-1"></i>Signed by ${esc(r.quote_approved_by)} · ${fmtY(r.quote_approved_at)}</p>` : ''}
                         </div>
-                        <dl class="grid grid-cols-3 gap-x-5 text-[11px] basis-[300px] grow sm:grow-0">
+                        <dl class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[300px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Transmittal</dt><dd class="font-mono text-gray-700">${esc(r.ref_no)}</dd></div>
                             <div class="min-w-0"><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Foreman</dt><dd class="truncate ${r.foreman_name ? 'text-gray-700' : 'text-orange-600'}">${esc(r.foreman_name || 'Not yet')}</dd></div>
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Labor total</dt><dd class="font-mono font-semibold text-gray-900">${r.quote_total !== null ? '₱ ' + money(r.quote_total) : '—'}</dd></div>
                         </dl>
-                        <div class="ml-auto shrink-0 text-right"><button type="button" data-labor="${r.dr_id}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${btn[2] ? 'text-white bg-amber-700 hover:bg-amber-800 shadow-sm' : 'text-gray-600 bg-white border border-gray-200 hover:bg-gray-50'}"><i class="fa-solid ${btn[1]}"></i> ${btn[0]}</button>
+                        <div class="w-full sm:w-auto sm:ml-auto shrink-0 sm:text-right [&_button]:w-full sm:[&_button]:w-auto [&_button]:justify-center [&_button]:py-2.5 sm:[&_button]:py-2 [&_button]:flex-1 sm:[&_button]:flex-none [&_.text-right]:text-left sm:[&_.text-right]:text-right"><button type="button" data-labor="${r.dr_id}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${btn[2] ? 'text-white bg-amber-700 hover:bg-amber-800 shadow-sm' : 'text-gray-600 bg-white border border-gray-200 hover:bg-gray-50'}"><i class="fa-solid ${btn[1]}"></i> ${btn[0]}</button>
                             ${r.labor_state === 'approved' ? `<a href="${TIMELINE_URL}?dr=${r.dr_id}" class="block mt-1 text-[10.5px] font-semibold text-amber-700 hover:underline"><i class="fa-solid fa-chart-gantt mr-0.5"></i> Timeline →</a>` : ''}</div>
                     </div>`;
                 }).join('');

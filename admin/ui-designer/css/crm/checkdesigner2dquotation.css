@@ -97,3 +97,22 @@
     border-color: #DC2626;
     box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
 }
+
+/* ═══ MOBILE (wala pang 768px — kapareho ng md: ng sidebar) ═══ */
+@media (max-width: 767px) {
+    /* Walang sariling scroll ang listahan sa phone — buong page na lang ang nag-i-scroll */
+    .dchk-list { max-height: none; min-height: 200px; overflow: visible; padding: 3px; }
+
+    /* Mas maikli ang file list sa review panel para kita pa rin ang ibang slot */
+    .dchk-file-list { max-height: 220px; }
+
+    .dchk-file { padding: .6rem .65rem; }
+
+    /* Filename sa itaas, Approve / Revision sa ilalim — buong lapad at madaling pindutin */
+    .dchk-file > .flex:first-child { flex-wrap: wrap; row-gap: .5rem; }
+    .dchk-file > .flex:first-child > a { flex: 1 1 100%; }
+    .dchk-seg { display: flex; width: 100%; }
+    .dchk-seg button { flex: 1; justify-content: center; padding: .5rem .6rem; font-size: 12px; }
+
+    .dchk-remarks { font-size: 13px; }
+}

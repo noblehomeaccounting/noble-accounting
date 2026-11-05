@@ -160,7 +160,8 @@ $svToneText = ['amber' => 'text-amber-700', 'red' => 'text-red-600', 'gray' => '
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Site Visit Record</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -168,7 +169,7 @@ $svToneText = ['amber' => 'text-amber-700', 'red' => 'text-red-600', 'gray' => '
 </head>
 
 <body class="bg-gray-50 font-['Barlow_Condensed']">
-    <main class="md:ml-56 min-h-screen px-4 pb-6 pt-20 md:p-7 sv-scope bg-[#F5F6FA] overflow-x-hidden">
+    <main class="md:ml-56 min-h-screen px-3 sm:px-4 pb-6 pt-20 md:p-7 sv-scope bg-[#F5F6FA] overflow-x-hidden">
 
         <div class="max-w-6xl mx-auto">
 
@@ -213,7 +214,7 @@ $svToneText = ['amber' => 'text-amber-700', 'red' => 'text-red-600', 'gray' => '
 
         <!-- Toast container: bottom-right -->
         <div id="crmToastContainer"
-            class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-full max-w-sm px-4 sm:px-0">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:right-6 sm:bottom-6 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-full sm:max-w-sm">
         </div>
 
         <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/sv-script.php'; ?>

@@ -2,18 +2,19 @@
 // monitoringcontain1.php — included by monitoringcrm.php
 $box1Url = BASE_URL . '/monitoringcrmajax';
 ?>
-<section id="monBox1" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[360px]">
-    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+<!-- Phone: humahaba ayon sa laman (walang sariling scroll); sa md+ 360px na may sariling scroll -->
+<section id="monBox1" class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col md:h-[360px]">
+    <div class="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
         <h2 class="text-sm font-semibold text-gray-800">Project Status</h2>
         <span id="monBox1Label" class="text-[11px] font-mono text-gray-400"></span>
     </div>
-    <div id="monBox1Body" class="mon-scroll flex-1 overflow-y-auto px-5 py-3">
-        <div class="h-full flex flex-col items-center justify-center gap-2 text-center">
+    <div id="monBox1Body" class="mon-scroll flex-1 md:overflow-y-auto px-4 sm:px-5 py-3">
+        <div class="h-full min-h-[160px] md:min-h-0 flex flex-col items-center justify-center gap-2 text-center">
             <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
             </svg>
-            <p class="text-xs text-gray-400">Click a row in the table to see its project status.</p>
+            <p class="text-xs text-gray-400"><span class="md:hidden">Tap an inquiry above to see its project status.</span><span class="hidden md:inline">Click a row in the table to see its project status.</span></p>
         </div>
     </div>
 </section>
@@ -93,10 +94,10 @@ $box1Url = BASE_URL . '/monitoringcrmajax';
                         ? `<span class="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold ring-4 ring-amber-100">${n}</span>`
                         : `<span class="w-5 h-5 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px] font-bold">${n}</span>`;
                 const line = n < it.flow.length
-                    ? `<span class="flex-1 h-0.5 mt-2.5 mx-1 ${n < step ? 'bg-emerald-400' : 'bg-gray-200'}"></span>` : '';
+                    ? `<span class="flex-1 h-0.5 mt-2.5 mx-0.5 sm:mx-1 ${n < step ? 'bg-emerald-400' : 'bg-gray-200'}"></span>` : '';
                 return `
                     <div class="flex items-start ${n < it.flow.length ? 'flex-1' : ''} min-w-0">
-                        <div class="flex flex-col items-center w-11 sm:w-14 shrink-0">
+                        <div class="flex flex-col items-center w-10 sm:w-14 shrink-0">
                             ${dot}
                             <span class="mt-1 text-[9px] sm:text-[9.5px] leading-tight text-center break-words ${cur ? 'font-bold text-amber-700' : (done ? 'text-gray-600' : 'text-gray-400')}">${esc(f.name)}</span>
                         </div>
@@ -144,7 +145,7 @@ $box1Url = BASE_URL . '/monitoringcrmajax';
                     ${esc(it.stage)}
                 </span>
                 ${it.stage_name ? `<span class="ml-1 text-[11px] text-gray-500">${esc(it.stage_name)}${it.stage_sub ? ' · ' + esc(it.stage_sub) : ''}</span>` : ''}
-                <dl class="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 mt-3">
+                <dl class="grid grid-cols-[92px_1fr] sm:grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 mt-3">
                     ${rows}
                 </dl>
                 ${note}

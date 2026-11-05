@@ -4,7 +4,7 @@
 // Ang laman ay galing sa monitoringcrmviewajax.php (?action=timeline → "production").
 ?>
 <section class="bg-white rounded-lg shadow-sm border border-gray-200 mb-5 overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+    <div class="px-4 sm:px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
         <div>
             <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">After Final Approval</p>
             <h2 class="text-gray-900 text-base font-semibold">Production &amp; Delivery</h2>
@@ -13,9 +13,9 @@
     </div>
 
     <!-- 5 yugto -->
-    <div id="monProdSteps" class="px-5 pt-4"></div>
+    <div id="monProdSteps" class="px-4 sm:px-5 pt-4"></div>
 
-    <div id="monProduction" class="px-5 py-4">
+    <div id="monProduction" class="px-4 sm:px-5 py-4">
         <div class="space-y-2">
             <div class="h-4 w-48 rounded bg-gray-100 animate-pulse"></div>
             <div class="h-4 w-full rounded bg-gray-100 animate-pulse"></div>
@@ -25,7 +25,7 @@
 </section>
 
 <!-- larawan ng cutting list (malaking view) -->
-<div id="monProdPhoto" class="hidden fixed inset-0 z-[9999] bg-black/80 items-center justify-center p-6" onclick="this.classList.add('hidden');this.classList.remove('flex')">
+<div id="monProdPhoto" class="hidden fixed inset-0 z-[9999] bg-black/80 items-center justify-center p-3 sm:p-6" onclick="this.classList.add('hidden');this.classList.remove('flex')">
     <img id="monProdPhotoImg" src="" alt="" class="max-h-full max-w-full rounded-lg shadow-2xl">
 </div>
 
@@ -70,16 +70,16 @@
                     <span>${title} <span class="text-gray-400 font-normal">(${rows.length})</span></span>
                     <span class="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
                 </summary>
-                <table class="w-full table-fixed text-[11.5px]">
+                <div class="overflow-x-auto"><table class="w-full min-w-[420px] sm:min-w-0 table-fixed text-[11.5px]">
                     <thead class="text-[10px] uppercase tracking-wider text-gray-400"><tr>${head.map(h => `<th class="px-3 py-1.5 text-left font-semibold" ${h.w ? `style="width:${h.w}"` : ''}>${h.t}</th>`).join('')}</tr></thead>
                     <tbody class="divide-y divide-gray-100">${rows.map(r => `<tr>${r.map((c, i) => `<td class="px-3 py-1.5 align-top break-words ${head[i].r ? 'text-right tabular-nums' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody>
-                </table>
+                </table></div>
             </details>`;
         }
 
         // isang yugto (card)
         function stage(no, title, statusPill, body, done) {
-            return `<div class="relative pl-10 pb-6 last:pb-0">
+            return `<div class="relative pl-9 sm:pl-10 pb-6 last:pb-0">
                 <span class="absolute left-[15px] top-8 bottom-0 w-px bg-gray-200"></span>
                 <span class="absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-600 text-white' : 'bg-white border-2 border-gray-200 text-gray-400'}">${done ? '✓' : no}</span>
                 <div class="flex flex-wrap items-center gap-2 mb-2 pt-1">
@@ -89,7 +89,7 @@
             </div>`;
         }
         const empty = text => `<p class="text-xs text-gray-400 italic">${text}</p>`;
-        const block = inner => `<div class="rounded-lg border border-gray-200 p-3.5 mb-2 last:mb-0">${inner}</div>`;
+        const block = inner => `<div class="rounded-lg border border-gray-200 p-3 sm:p-3.5 mb-2 last:mb-0 min-w-0">${inner}</div>`;
 
         // ── 0. Deposit & Notice to Proceed (Accounting) ──
         function depositHtml(d) {

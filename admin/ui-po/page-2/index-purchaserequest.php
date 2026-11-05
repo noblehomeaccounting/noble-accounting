@@ -78,7 +78,8 @@ $signatories = [
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Purchase Request Form</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -118,23 +119,23 @@ $signatories = [
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
         <div class="max-w-5xl mx-auto">
 
             <!-- ===================== HEADER ===================== -->
             <div class="no-print flex flex-wrap items-end justify-between gap-3 mb-4">
-                <div>
+                <div class="min-w-0">
                     <a href="<?= BASE_URL ?>/purchaseorder" onclick="if (history.length > 1) { history.back(); return false; }" class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-amber-700 mb-1">
                         <i class="fa-solid fa-chevron-left text-[9px]"></i> Purchase Orders
                     </a>
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase">Purchasing</p>
-                    <h1 class="text-gray-900 text-xl font-semibold">Purchase Request Form</h1>
+                    <h1 class="text-gray-900 text-lg sm:text-xl font-semibold">Purchase Request Form</h1>
                 </div>
-                <div class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-                    <button type="button" data-tab="new" class="pr-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
+                <div class="grid grid-cols-2 sm:inline-flex w-full sm:w-auto items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+                    <button type="button" data-tab="new" class="pr-tab justify-center whitespace-nowrap inline-flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold text-gray-500">
                         <i class="fa-solid fa-plus text-[10px]"></i> New Request
                     </button>
-                    <button type="button" data-tab="list" class="pr-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
+                    <button type="button" data-tab="list" class="pr-tab justify-center whitespace-nowrap inline-flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold text-gray-500">
                         <i class="fa-solid fa-list text-[10px]"></i> Submitted
                         <span id="prCount" class="min-w-[20px] px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
                     </button>
@@ -145,20 +146,20 @@ $signatories = [
             <section id="prPanelSheet">
                 <div class="no-print flex flex-wrap items-center justify-between gap-2 mb-3">
                     <p id="prSheetHint" class="text-xs text-gray-500"></p>
-                    <div class="flex items-center gap-2">
-                        <button type="button" id="prClearDraft" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50" title="Erase everything typed in this form">
+                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto [&>button]:justify-center [&>button]:py-2.5 sm:[&>button]:py-2">
+                        <button type="button" id="prClearDraft" class="flex-1 sm:flex-none inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50" title="Erase everything typed in this form">
                             <i class="fa-solid fa-eraser"></i> Clear
                         </button>
-                        <button type="button" id="prAddRow" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-700 bg-white border border-amber-200 rounded-lg hover:bg-amber-50">
+                        <button type="button" id="prAddRow" class="flex-1 sm:flex-none inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-700 bg-white border border-amber-200 rounded-lg hover:bg-amber-50">
                             <i class="fa-solid fa-plus"></i> Add Item
                         </button>
-                        <button type="button" id="prPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <button type="button" id="prPrint" class="hidden flex-1 sm:flex-none inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                             <i class="fa-solid fa-print"></i> Print / Save PDF
                         </button>
-                        <button type="button" id="prNewBtn" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <button type="button" id="prNewBtn" class="hidden flex-1 sm:flex-none inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                             <i class="fa-solid fa-plus"></i> New Request
                         </button>
-                        <button type="button" id="prSubmit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 shadow-sm">
+                        <button type="button" id="prSubmit" class="basis-full sm:basis-auto inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60 shadow-sm">
                             <i class="fa-solid fa-paper-plane"></i> Submit Request
                         </button>
                     </div>
@@ -174,7 +175,8 @@ $signatories = [
                     </a>
                 </div>
 
-                <div id="prPaper" class="pr-print-area bg-white border border-gray-200 shadow-sm rounded-lg p-4 md:p-6 overflow-x-auto">
+                <p class="no-print md:hidden mb-2 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see and fill the whole form.</p>
+                <div id="prPaper" class="pr-print-area bg-white border border-gray-200 shadow-sm rounded-lg p-3 md:p-6 overflow-x-auto">
                     <div id="prSheet" class="pr-sheet min-w-[760px]"></div>
                 </div>
             </section>
@@ -182,14 +184,16 @@ $signatories = [
             <!-- ===================== LIST ===================== -->
             <section id="prPanelList" class="hidden no-print">
                 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                    <div class="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
                         <div class="relative w-full sm:w-72">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                             <input type="text" id="prSearch" placeholder="Search req no. or client..."
-                                class="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600">
+                                class="w-full h-[38px] sm:h-auto border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600">
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+                    <!-- Phone: cards (ang table ay para sa tablet/desktop) -->
+                    <div id="prCards" class="md:hidden divide-y divide-gray-100"></div>
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="w-full text-sm min-w-[760px]">
                             <thead class="bg-gray-50 text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
                                 <tr class="border-b border-gray-200">
@@ -209,7 +213,7 @@ $signatories = [
             </section>
         </div>
 
-        <div id="crmToastContainer" class="no-print fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="crmToastContainer" class="no-print fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-[360px]"></div>
     </main>
 
     <script>
@@ -918,12 +922,29 @@ $signatories = [
                         <td class="px-5 py-3 text-right"><span class="text-[11px] font-semibold text-amber-700">View ›</span></td>
                     </tr>`).join('')
                     : `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-2xl block mb-2 text-gray-300"></i>${listRows.length ? 'No requests match your search.' : 'No purchase requests yet.'}</td></tr>`;
+                // Phone: card bawat request
+                document.getElementById('prCards').innerHTML = rows.length ? rows.map(r => `
+                    <button type="button" data-open="${r.id}" class="w-full text-left px-3 py-3 active:bg-amber-50/40">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="font-mono text-[12px] font-semibold text-red-600">${esc(r.req_no)}</p>
+                                <p class="font-semibold text-sm text-gray-900 truncate">${esc(r.client)}</p>
+                                <p class="text-[11px] text-gray-400 truncate">${esc(r.project_scope || '')}</p>
+                            </div>
+                            <p class="shrink-0 text-right font-bold text-sm text-gray-900 tabular-nums">₱ ${money(r.total_amount)}<span class="block text-[10.5px] font-normal text-gray-400">${r.item_count} item${r.item_count == 1 ? '' : 's'}</span></p>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                            <span class="text-gray-500">${esc(shortDate(r.request_date))}</span>
+                            <span class="flex items-center gap-2">${stageBadge(r)}<span class="font-semibold text-amber-700">View ›</span></span>
+                        </div>
+                    </button>`).join('')
+                    : `<div class="px-4 py-12 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-2xl block mb-2 text-gray-300"></i>${listRows.length ? 'No requests match your search.' : 'No purchase requests yet.'}</div>`;
             }
             document.getElementById('prSearch').addEventListener('input', renderList);
-            document.getElementById('prList').addEventListener('click', e => {
+            ['prList', 'prCards'].forEach(id => document.getElementById(id).addEventListener('click', e => {
                 const tr = e.target.closest('[data-open]');
                 if (tr) openPr(+tr.dataset.open);
-            });
+            }));
 
             // ═════════════ TABS ═════════════
             function setTab(t) {

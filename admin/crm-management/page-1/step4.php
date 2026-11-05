@@ -7,7 +7,7 @@ $crmEditMode = $crmEditMode ?? false;
         <span
             class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0"><i
                 class="fa-solid fa-clipboard-check"></i></span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-base font-bold text-gray-900 leading-tight">
                 <?= $crmEditMode ? 'Review &amp; Save' : 'Review &amp; Submit' ?></h2>
             <p class="text-xs text-gray-400 mt-0.5">
@@ -26,7 +26,7 @@ $crmEditMode = $crmEditMode ?? false;
 
     <label
         class="mt-4 flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-3 cursor-pointer has-[:checked]:bg-green-50 has-[:checked]:border-green-300">
-        <input type="checkbox" id="crm_review_confirm" class="mt-0.5 w-4 h-4 accent-amber-700"
+        <input type="checkbox" id="crm_review_confirm" class="mt-0.5 w-5 h-5 sm:w-4 sm:h-4 shrink-0 accent-amber-700"
             onchange="document.getElementById('crm_submit_btn').disabled = !this.checked">
         <span class="text-[12px] text-amber-900 leading-relaxed">I checked the client details and they are correct.
             <span
@@ -35,11 +35,11 @@ $crmEditMode = $crmEditMode ?? false;
 
     <div class="flex items-center justify-between gap-2 mt-6 pt-5 border-t border-gray-100">
         <button type="button" onclick="crmGoToStep(3)"
-            class="inline-flex items-center gap-2 h-11 px-4 rounded-xl text-gray-600 text-sm font-semibold border border-gray-300 bg-white hover:text-gray-800 hover:border-gray-400">
+            class="inline-flex items-center justify-center gap-2 h-11 px-4 shrink-0 rounded-xl text-gray-600 text-sm font-semibold border border-gray-300 bg-white hover:text-gray-800 hover:border-gray-400">
             <i class="fa-solid fa-arrow-left text-[11px]"></i> Back
         </button>
         <button type="submit" id="crm_submit_btn" disabled
-            class="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-sm font-bold shadow-[0_6px_16px_-6px_rgba(180,83,9,.6)] disabled:opacity-45 disabled:cursor-not-allowed disabled:shadow-none">
+            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 h-11 px-6 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-sm font-bold shadow-[0_6px_16px_-6px_rgba(180,83,9,.6)] disabled:opacity-45 disabled:cursor-not-allowed disabled:shadow-none">
             <?= $crmEditMode
                 ? '<i class="fa-solid fa-floppy-disk text-[11px]"></i> Save changes'
                 : '<i class="fa-solid fa-paper-plane text-[11px]"></i> Submit Inquiry' ?>

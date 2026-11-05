@@ -12,7 +12,7 @@ $crmFmtDt = function ($v, $fmt) {
         <span
             class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0"><i
                 class="fa-solid fa-users-gear"></i></span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-base font-bold text-gray-900 leading-tight">Assignment</h2>
             <p class="text-xs text-gray-400 mt-0.5">Who's handling this inquiry, and what happens next.</p>
         </div>
@@ -32,8 +32,8 @@ $crmFmtDt = function ($v, $fmt) {
                 branch</p>
         </div>
         <span
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-bold ring-1 ring-green-600/15">
-            <i class="fa-solid fa-check text-[9px]"></i> AUTO-ASSIGNED
+            class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-bold ring-1 ring-green-600/15" title="Auto-assigned">
+            <i class="fa-solid fa-check text-[9px]"></i> AUTO<span class="hidden sm:inline">-ASSIGNED</span>
         </span>
     </div>
 
@@ -118,12 +118,12 @@ $crmFmtDt = function ($v, $fmt) {
 
     <div class="flex items-center justify-between gap-2 mt-6 pt-5 border-t border-gray-100">
         <button type="button" onclick="crmGoToStep(2)"
-            class="inline-flex items-center gap-2 h-11 px-4 rounded-xl text-gray-600 text-sm font-semibold border border-gray-300 bg-white hover:text-gray-800 hover:border-gray-400">
+            class="inline-flex items-center justify-center gap-2 h-11 px-4 shrink-0 rounded-xl text-gray-600 text-sm font-semibold border border-gray-300 bg-white hover:text-gray-800 hover:border-gray-400">
             <i class="fa-solid fa-arrow-left text-[11px]"></i> Back
         </button>
         <button type="button" onclick="crmGoToStep4()"
-            class="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold">
-            Next: Review <i class="fa-solid fa-arrow-right text-[11px]"></i>
+            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-gray-900 hover:bg-black text-white text-sm font-semibold">
+            Next<span class="hidden sm:inline">: Review</span> <i class="fa-solid fa-arrow-right text-[11px]"></i>
         </button>
     </div>
 </div>

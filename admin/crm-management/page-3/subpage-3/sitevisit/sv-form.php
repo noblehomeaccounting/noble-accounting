@@ -86,14 +86,14 @@
         <?php include ROOT_PATH . '/admin/crm-management/page-3/subpage-3/sitevisit/step5-review.php'; ?>
 
         <!-- Back / Next -->
-        <div id="sv_step_nav" class="sv-card px-4 py-3 flex items-center gap-2">
+        <div id="sv_step_nav" class="sv-card px-3 sm:px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3 flex items-center gap-2">
             <button type="button" id="sv_prev"
-                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                class="inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </button>
-            <span id="sv_step_label" class="flex-1 text-center text-[11px] font-semibold text-gray-400"></span>
+            <span id="sv_step_label" class="flex-1 min-w-0 truncate text-center text-[11px] font-semibold text-gray-400"></span>
             <button type="button" id="sv_next"
-                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gray-900 hover:bg-black rounded-lg">
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-gray-900 hover:bg-black rounded-lg">
                 <span>Next</span> <i class="fa-solid fa-arrow-right"></i>
             </button>
         </div>
@@ -103,7 +103,7 @@
     <aside id="sv_side_col" class="space-y-4 lg:sticky lg:top-4 min-w-0">
         <section class="sv-card overflow-hidden">
             <div class="sv-hazard h-1"></div>
-            <div class="p-5">
+            <div class="p-4 sm:p-5">
                 <h2 class="text-sm font-semibold text-gray-900">Record checklist</h2>
                 <p class="text-[11px] text-gray-400 mb-3">Required items must be done before saving.</p>
                 <ul id="sv_checklist" class="space-y-2 text-[12.5px]">

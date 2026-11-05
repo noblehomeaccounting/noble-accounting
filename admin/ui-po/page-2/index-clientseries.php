@@ -18,7 +18,8 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Client Series Number</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -39,22 +40,23 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
         .cs-lbl { font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9ca3af; width: 56px; flex: none; }
         .cs-lbl.sm { width: 38px; }
         .cs-in[type="date"] { padding-right: 2px; }
+        @media (max-width: 767px) { #csCards .cs-in { font-size: 13px; padding: 7px 8px; border-color: #f3f4f6; background: #fff; } #csCards .cs-lbl { width: 64px; } }
         .cs-in[type="date"]::-webkit-calendar-picker-indicator { margin-left: 2px; opacity: .45; cursor: pointer; }
     </style>
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
 
         <!-- ===================== HEADER ===================== -->
         <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
-            <div>
+            <div class="min-w-0">
                 <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5">Purchasing</p>
-                <h1 class="text-gray-900 text-xl font-semibold">Client Series Number</h1>
+                <h1 class="text-gray-900 text-lg sm:text-xl font-semibold">Client Series Number</h1>
                 <p class="text-gray-400 text-xs mt-0.5">Pick a client tab to see its series. Gray cells come from the system; white cells are typed in and save on their own.</p>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-2">
+            <div class="flex w-full sm:w-auto items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-2 mr-auto sm:mr-0">
                     <span id="csLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="csLiveText">Connecting…</span>
                 </span>
                 <button type="button" id="csRefresh" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -77,7 +79,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
             <div class="border-t border-gray-200"></div>
 
             <!-- buod ng napiling client -->
-            <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-3 sm:px-4 py-3">
                 <div class="flex items-center gap-3 min-w-0">
                     <span id="csAvatar" class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center text-sm font-bold shrink-0"></span>
                     <div class="min-w-0">
@@ -85,7 +87,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                         <p id="csClientSub" class="text-[11px] text-gray-400">—</p>
                     </div>
                 </div>
-                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 ml-auto">
+                <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-6 gap-y-2 w-full sm:w-auto sm:ml-auto">
                     <div><p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Series</p><p id="csStatCount" class="text-lg font-bold text-gray-900 tabular-nums leading-tight">—</p></div>
                     <div><p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Amount</p><p id="csStatAmount" class="text-lg font-bold text-gray-900 tabular-nums leading-tight">—</p></div>
                     <div><p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Paid · to deliver</p><p id="csStatUndelivered" class="text-lg font-bold text-orange-600 tabular-nums leading-tight">—</p></div>
@@ -98,27 +100,31 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
         <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
             <!-- status chips + search + dates -->
-            <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-gray-100">
-                <div id="csStatusChips" class="inline-flex flex-wrap items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1"></div>
-                <div class="flex flex-wrap items-center gap-2 ml-auto">
-                    <div class="relative">
+            <div class="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
+                <!-- Phone: isang hilera na pwedeng i-swipe -->
+                <div id="csStatusChips" class="cs-tabs flex sm:inline-flex sm:flex-wrap w-full sm:w-auto overflow-x-auto sm:overflow-visible items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-1 [&>button]:shrink-0 [&>button]:whitespace-nowrap"></div>
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                    <div class="relative flex-1 sm:flex-none min-w-0">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="csSearch" placeholder="Search series, transmittal, person…"
-                            class="w-56 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600">
+                            class="w-full sm:w-56 h-[38px] sm:h-auto border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600">
                     </div>
-                    <div class="inline-flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 bg-white">
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">P.O. Date</span>
-                        <input type="date" id="csFrom" class="text-xs outline-none bg-transparent px-1 py-1" title="From">
+                    <div class="order-last sm:order-none w-full sm:w-auto inline-flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1 bg-white">
+                        <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-gray-400">P.O. Date</span>
+                        <input type="date" id="csFrom" class="flex-1 sm:flex-none min-w-0 text-xs outline-none bg-transparent px-1 py-1" title="From">
                         <span class="text-gray-300">–</span>
-                        <input type="date" id="csTo" class="text-xs outline-none bg-transparent px-1 py-1" title="To">
+                        <input type="date" id="csTo" class="flex-1 sm:flex-none min-w-0 text-xs outline-none bg-transparent px-1 py-1" title="To">
                     </div>
-                    <button type="button" id="csReset" class="px-2 py-2 text-[11px] font-semibold text-gray-400 hover:text-amber-700" title="Clear search, status and dates">
+                    <button type="button" id="csReset" aria-label="Clear filters" class="shrink-0 w-[38px] h-[38px] sm:w-auto sm:h-auto inline-flex items-center justify-center border border-gray-200 sm:border-0 rounded-lg px-2 py-2 text-[11px] font-semibold text-gray-400 hover:text-amber-700" title="Clear search, status and dates">
                         <i class="fa-solid fa-filter-circle-xmark"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-360px)] min-h-[260px]">
+            <!-- Phone: card bawat series (parehong auto-save) -->
+            <div id="csCards" class="md:hidden divide-y divide-gray-100"></div>
+
+            <div class="hidden md:block overflow-y-auto overflow-x-hidden max-h-[calc(100vh-360px)] min-h-[260px]">
                 <table class="w-full table-fixed text-xs border-separate border-spacing-0">
                     <colgroup>
                         <col style="width:14%"><col style="width:13%"><col style="width:8%"><col style="width:10%">
@@ -131,7 +137,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                     </tbody>
                 </table>
             </div>
-            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400">
                 <span id="csFooter"></span>
                 <span>
                     <span class="inline-block w-3 h-3 rounded-sm bg-slate-100 border border-slate-300 align-middle mr-1"></span>from the system
@@ -142,7 +148,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
 
         <datalist id="csModes"></datalist>
         <datalist id="csPeople"></datalist>
-        <div id="crmToastContainer" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="crmToastContainer" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[9999] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]"></div>
     </main>
 
     <script>
@@ -369,6 +375,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                 const body = document.getElementById('csBody');
                 if (!list.length) {
                     body.innerHTML = `<tr><td colspan="8" class="px-5 py-14 text-center text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${scope.length ? 'No series match your filters.' : 'No purchase requests yet.'}</td></tr>`;
+                    document.getElementById('csCards').innerHTML = `<div class="px-4 py-12 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${scope.length ? 'No series match your filters.' : 'No purchase requests yet.'}</div>`;
                     return;
                 }
 
@@ -396,7 +403,40 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                         <td class="${manTd} text-center"><input type="checkbox" class="w-4 h-4 accent-green-600 cursor-pointer" data-id="${r.id}" data-field="is_done" ${r.is_done ? 'checked' : ''}></td>
                     </tr>`;
                 }).join('');
-                body.querySelectorAll('textarea').forEach(t => { if (t.value) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; } });
+
+                // Phone: card bawat series — parehong data-id / data-field, kaya pareho ang auto-save
+                document.getElementById('csCards').innerHTML = list.map(r => {
+                    const cancel = r.status === 'Rejected';
+                    const cx = '<span class="font-semibold text-red-600">CANCEL</span>';
+                    const dash = '<span class="text-gray-300">—</span>';
+                    const tr = r.tr_ref_no
+                        ? `<a href="${TR_URL}?view=${r.tr_id}" class="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-amber-700 hover:underline"><i class="fa-solid fa-link text-[9px]"></i>${esc(r.tr_ref_no)}</a>`
+                        : '<span class="text-gray-300">Not yet</span>';
+                    return `
+                    <div data-card class="${r.is_done ? 'bg-green-50' : 'bg-white'} ${cancel ? 'opacity-60' : ''} px-3 py-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0" data-series>${seriesCell(r)}</div>
+                            <label class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-600">
+                                <input type="checkbox" class="w-5 h-5 accent-green-600" data-id="${r.id}" data-field="is_done" ${r.is_done ? 'checked' : ''}> Done
+                            </label>
+                        </div>
+                        <dl class="mt-2 grid grid-cols-4 gap-2 rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-2 text-[11px]">
+                            <div class="min-w-0"><dt class="text-[9px] font-bold uppercase tracking-wide text-gray-400">P.O.</dt><dd class="text-gray-700">${mdy(poDate(r))}</dd></div>
+                            <div class="min-w-0"><dt class="text-[9px] font-bold uppercase tracking-wide text-gray-400">Approved</dt><dd class="text-gray-700">${cancel ? cx : (r.approved_at ? mdy(r.approved_at) : dash)}</dd></div>
+                            <div class="min-w-0"><dt class="text-[9px] font-bold uppercase tracking-wide text-gray-400">Paid</dt><dd class="text-gray-700">${cancel ? cx : (r.paid_at ? mdy(r.paid_at) : dash)}</dd></div>
+                            <div class="min-w-0 text-right"><dt class="text-[9px] font-bold uppercase tracking-wide text-gray-400">Amount</dt><dd class="font-semibold tabular-nums ${cancel ? 'line-through text-gray-400' : 'text-gray-900'} truncate">${money(r.total_amount)}</dd></div>
+                        </dl>
+                        <p class="mt-1.5 text-[11px] text-gray-500">Transmittal: ${tr}</p>
+                        <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50/40 p-2 space-y-1">
+                            ${lblRow('Office', dateIn(r, 'receive_office_date'))}
+                            ${lblRow('Client', dateIn(r, 'deliver_client_date'))}
+                            ${lblRow('Mode', textIn(r, 'delivery_mode', 'e.g. Lalamove', 'csModes'))}
+                            ${lblRow('By', textIn(r, 'delivered_by', 'Name', 'csPeople'))}
+                            ${lblRow('Remarks', `<textarea rows="1" class="cs-in" data-id="${r.id}" data-field="remarks" placeholder="Remarks">${esc(r.remarks || '')}</textarea>`)}
+                        </div>
+                    </div>`;
+                }).join('');
+                document.querySelectorAll('#csBody textarea, #csCards textarea').forEach(t => { if (t.value) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; } });
             }
 
             function fillOptions(modes, people) {
@@ -446,10 +486,15 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
 
                     if (row && (field === 'is_done' || field === 'deliver_client_date')) {
                         // i-update ang tag, kulay at mga bilang nang hindi binubura ang ibang tina-type
-                        const tr = el.closest('tr');
-                        tr.querySelector('[data-series]').innerHTML = seriesCell(row);
-                        tr.classList.remove('bg-green-50', 'bg-white');
-                        tr.classList.add(row.is_done ? 'bg-green-50' : 'bg-white');
+                        // parehong table row at phone card ang ina-update
+                        document.querySelectorAll(`#csBody [data-id="${id}"][data-field="is_done"], #csCards [data-id="${id}"][data-field="is_done"]`).forEach(cb => {
+                            const box = cb.closest('tr, [data-card]');
+                            if (!box) return;
+                            if (cb !== el && field === 'is_done') cb.checked = el.checked;
+                            const ser = box.querySelector('[data-series]'); if (ser) ser.innerHTML = seriesCell(row);
+                            box.classList.remove('bg-green-50', 'bg-white');
+                            box.classList.add(row.is_done ? 'bg-green-50' : 'bg-white');
+                        });
                         renderChips();
                         renderSummary(filtered());
                     }
@@ -461,16 +506,18 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
             }
 
             const body = document.getElementById('csBody');
-            body.addEventListener('change', e => { if (e.target.matches('[data-field]')) save(e.target); });
-            body.addEventListener('focusout', e => { if (e.target.matches('input[type="text"][data-field], textarea[data-field]')) save(e.target); });
-            body.addEventListener('keydown', e => {
+            [body, document.getElementById('csCards')].forEach(box => {
+            box.addEventListener('change', e => { if (e.target.matches('[data-field]')) save(e.target); });
+            box.addEventListener('focusout', e => { if (e.target.matches('input[type="text"][data-field], textarea[data-field]')) save(e.target); });
+            box.addEventListener('keydown', e => {
                 if (e.key === 'Enter' && !e.shiftKey && e.target.matches('input[type="text"][data-field], textarea[data-field]')) {
                     e.preventDefault();
                     e.target.blur();
                 }
             });
-            body.addEventListener('input', e => {
+            box.addEventListener('input', e => {
                 if (e.target.tagName === 'TEXTAREA') { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }
+            });
             });
 
             document.getElementById('csRefresh').addEventListener('click', load);
@@ -503,7 +550,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
             // Hindi nire-render habang may tina-type o naka-focus sa isang cell; hahabol pagka-alis sa cell.
             const rtLive = () => !!(window.NH_RT && window.NH_RT.enabled && window.NH_RT.isLive());
             const ME = typeof CURRENT_USER_ID !== 'undefined' ? Number(CURRENT_USER_ID) : 0;
-            const editing = () => !!document.activeElement?.closest?.('#csBody [data-field], #csSearch, #csFrom, #csTo');
+            const editing = () => !!document.activeElement?.closest?.('#csBody [data-field], #csCards [data-field], #csSearch, #csFrom, #csTo');
             let missed = false, pollTimer = null;
 
             function sync() {
@@ -539,7 +586,7 @@ $csAjaxUrl = BASE_URL . '/clientseriesajax';
                 if (!window.NH_RT || !window.NH_RT.enabled) document.getElementById('csLiveText').textContent = 'Auto-refresh 30s';
             })();
             // pagka-alis sa cell (naka-save na), habulin ang na-miss
-            document.getElementById('csBody').addEventListener('focusout', () => setTimeout(() => { if (missed) sync(); }, 300));
+            ['csBody', 'csCards'].forEach(id => document.getElementById(id).addEventListener('focusout', () => setTimeout(() => { if (missed) sync(); }, 300)));
             setInterval(() => { if (missed) sync(); }, 5000);
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) { if (pollTimer) clearInterval(pollTimer); }

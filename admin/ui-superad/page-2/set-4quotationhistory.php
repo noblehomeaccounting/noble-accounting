@@ -78,7 +78,7 @@
                     <span class="text-gray-500">${monEscapeHtml(label)}</span>
                     ${monReviewBadge(reviewStatus)}
                 </div>
-                <p class="text-xs mt-0.5">${link}${meta}</p>
+                <p class="text-xs mt-0.5 break-words">${link}${meta}</p>
                 ${remarksHtml}
             </div>
         `;
@@ -104,19 +104,19 @@
 
         return `
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-5 py-3 border-b border-gray-100">
-                    <div class="flex items-center gap-2">
+                <div class="px-4 sm:px-5 py-3 border-b border-gray-100">
+                    <div class="flex flex-wrap items-center gap-2">
                         ${monStageTag(cycle.stage)}
                         <p class="text-[10px] text-gray-400 font-semibold tracking-[0.1em] uppercase">${cycleLabel}</p>
                     </div>
                     <p class="text-xs text-gray-400 mt-0.5">Submitted ${monFormatDateTimeLong(cycle.submitted_at)}</p>
                 </div>
-                <div class="px-5 py-1">
+                <div class="px-4 sm:px-5 py-1">
                     ${monFileLine('2D File', cycle.design_2d_path, cycle.design_2d_uploader_name, cycle.design_2d_uploaded_role, cycle.design_2d_uploaded_at, cycle.design_2d_review_status, cycle.design_2d_remarks)}
                     ${monFileLine('Quotation File', cycle.quotation_path, cycle.quotation_uploader_name, cycle.quotation_uploaded_role, cycle.quotation_uploaded_at, cycle.quotation_review_status, cycle.quotation_remarks)}
                     ${showsThreeD ? monFileLine('3D File', cycle.design_3d_path, cycle.design_3d_uploader_name, cycle.design_3d_uploaded_role, cycle.design_3d_uploaded_at, cycle.design_3d_review_status, cycle.design_3d_remarks) : ''}
                 </div>
-                ${lastReviewed ? `<div class="px-5 py-2.5 bg-gray-50 border-t border-gray-100"><p class="text-[11px] text-gray-400">Last reviewed ${monFormatDateTimeLong(lastReviewed)}</p></div>` : ''}
+                ${lastReviewed ? `<div class="px-4 sm:px-5 py-2.5 bg-gray-50 border-t border-gray-100"><p class="text-[11px] text-gray-400">Last reviewed ${monFormatDateTimeLong(lastReviewed)}</p></div>` : ''}
             </div>
         `;
     }

@@ -49,7 +49,8 @@ if ($uid > 0) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Transmittal</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -89,24 +90,24 @@ if ($uid > 0) {
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
         <div class="max-w-6xl mx-auto">
 
             <!-- ===================== HEADER ===================== -->
-            <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
-                <div>
+            <div class="flex flex-wrap items-end justify-between gap-3 mb-4 sm:mb-5">
+                <div class="min-w-0">
                     <p class="text-amber-700 text-[10px] font-semibold tracking-[0.15em] uppercase mb-0.5"><?= $trCanAll ? 'Purchasing' : 'My Transmittals' ?></p>
-                    <h1 class="text-gray-900 text-xl font-semibold">Transmittal</h1>
+                    <h1 class="text-gray-900 text-lg sm:text-xl font-semibold">Transmittal</h1>
                     <p class="text-gray-400 text-xs mt-0.5"><?= $trCanAll
                         ? 'Make one from a <b class="text-green-600">Paid</b> purchase request, or start a blank transmittal.'
                         : 'Make a transmittal for items you send out. Only you can see the ones you made.' ?></p>
                 </div>
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1.5" title="Updates automatically when someone else makes a change"><span id="trLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="trLiveText">Auto-refresh</span></span>
-                <button type="button" id="trNew" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
+                <button type="button" id="trNew" class="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
                     <i class="fa-solid fa-plus"></i> New Transmittal
                 </button>
-                <div class="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+                <div class="flex sm:inline-flex w-full sm:w-auto items-center gap-1 bg-white border border-gray-200 rounded-lg p-1 [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:whitespace-nowrap">
                     <button type="button" data-tab="ready" class="tr-tab <?= $trCanAll ? '' : 'hidden' ?> inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-500">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Ready
                         <span data-count="ready" class="min-w-[20px] px-1.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold text-center">—</span>
@@ -121,14 +122,16 @@ if ($uid > 0) {
 
             <!-- ===================== LIST ===================== -->
             <section id="trPanelList" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                <div class="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-gray-100">
                     <div class="relative w-full sm:w-80">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
                         <input type="text" id="trSearch" placeholder="Search ref no., req no. or client..."
-                            class="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600">
+                            class="w-full h-[38px] sm:h-auto border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-amber-600">
                     </div>
                 </div>
-                <div class="overflow-x-auto">
+                <!-- Phone: cards (ang table ay para sa tablet/desktop) -->
+                <div id="trCards" class="md:hidden divide-y divide-gray-100"></div>
+                <div class="hidden md:block overflow-x-auto">
                     <table class="w-full text-sm min-w-[820px]">
                         <thead id="trHead" class="bg-gray-50 text-[10.5px] font-semibold uppercase tracking-wider text-gray-500"></thead>
                         <tbody id="trList" class="divide-y divide-gray-100">
@@ -136,7 +139,7 @@ if ($uid > 0) {
                         </tbody>
                     </table>
                 </div>
-                <p id="trFooter" class="px-5 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400"></p>
+                <p id="trFooter" class="px-3 sm:px-5 py-2.5 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400"></p>
             </section>
 
             <!-- ===================== FORM (papel) ===================== -->
@@ -148,12 +151,12 @@ if ($uid > 0) {
                         </button>
                         <p id="trHint" class="text-xs text-gray-500 truncate"></p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center [&>button]:py-2.5 sm:[&>button]:py-2">
                         <button type="button" id="trAddRow" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-700 bg-white border border-amber-200 rounded-lg hover:bg-amber-50">
                             <i class="fa-solid fa-plus"></i> Add Item
                         </button>
                         <button type="button" id="trPrint" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
-                            <i class="fa-solid fa-print"></i> Print / Save PDF
+                            <i class="fa-solid fa-print"></i> Print<span class="hidden sm:inline"> / Save PDF</span>
                         </button>
                         <button type="button" id="trSubmit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm">
                             <i class="fa-solid fa-paper-plane"></i> Save Transmittal
@@ -166,7 +169,7 @@ if ($uid > 0) {
                         <p class="text-xs font-semibold text-amber-900"><i class="fa-solid fa-list-check mr-1"></i> For the Summary of Transmittal <span class="font-normal text-amber-700">· not printed</span></p>
                         <span id="trSumStatus" class="text-[11px]"></span>
                     </div>
-                    <div id="trSumEdit" class="grid grid-cols-1 md:grid-cols-3 gap-3 p-4">
+                    <div id="trSumEdit" class="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 sm:p-4">
                         <label class="block">
                             <span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Particulars <span class="text-red-500">*</span></span>
                             <input type="text" id="trParticulars" maxlength="255" placeholder="e.g. Counter top Consumables"
@@ -187,18 +190,19 @@ if ($uid > 0) {
                     <div id="trSumView" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 px-4 py-3 text-xs"></div>
                 </div>
 
-                <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-4 md:p-8 overflow-x-auto">
+                <p class="md:hidden mb-2 text-[11px] text-gray-400"><i class="fa-solid fa-left-right mr-1"></i>Swipe sideways to see and fill the whole form.</p>
+                <div class="bg-white border border-gray-200 shadow-sm rounded-lg p-3 md:p-8 overflow-x-auto">
                     <div id="trSheet" class="tr-sheet min-w-[760px] max-w-[820px] mx-auto"></div>
                 </div>
             </section>
         </div>
 
-        <div id="crmToastContainer" class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[360px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="crmToastContainer" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[360px]"></div>
     </main>
 
     <!-- ===================== CONFIRM MODAL ===================== -->
-    <div id="trConfirmModal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+    <div id="trConfirmModal" class="hidden fixed inset-0 z-[9999] items-end sm:items-center justify-center bg-black/50 sm:p-4">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-sm overflow-hidden pb-[env(safe-area-inset-bottom)]">
             <div class="p-5">
                 <div class="flex items-center gap-2.5 mb-3">
                     <span class="w-9 h-9 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-file-export text-sm"></i></span>
@@ -216,8 +220,8 @@ if ($uid > 0) {
                 </p>
             </div>
             <div class="flex justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-100">
-                <button type="button" id="trConfirmCancel" class="px-3.5 py-2 text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-100">Cancel</button>
-                <button type="button" id="trConfirmOk" class="px-3.5 py-2 text-[11px] font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60">
+                <button type="button" id="trConfirmCancel" class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-100">Cancel</button>
+                <button type="button" id="trConfirmOk" class="flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 text-[11px] font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 disabled:opacity-60">
                     <i class="fa-solid fa-check mr-1"></i> Save
                 </button>
             </div>
@@ -297,6 +301,20 @@ if ($uid > 0) {
                         </tr>`).join('')
                         : `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${data.ready.length ? 'No requests match your search.' : 'No paid purchase requests waiting for a transmittal.'}</td></tr>`;
                     document.getElementById('trFooter').textContent = `Showing ${list.length} of ${data.ready.length}`;
+                    document.getElementById('trCards').innerHTML = list.length ? list.map(r => `
+                        <div class="px-3 py-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="font-mono text-[12px] font-semibold text-red-600">${esc(r.req_no)}${r.bom_number ? ` <span class="text-amber-700 text-[11px]">· ${esc(r.bom_number)}</span>` : ''}</p>
+                                    <p class="font-semibold text-sm text-gray-900 truncate">${esc(r.client)}</p>
+                                    <p class="text-[11px] text-gray-400 truncate">${esc(r.project_scope || '')}</p>
+                                </div>
+                                <p class="shrink-0 text-right font-bold text-sm text-gray-900 tabular-nums">₱ ${money(r.total_amount)}<span class="block text-[10.5px] font-normal text-gray-400">${r.item_count} item${r.item_count == 1 ? '' : 's'}</span></p>
+                            </div>
+                            <p class="mt-1.5 text-[11px]"><span class="inline-flex items-center gap-1.5 font-semibold text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Paid</span> <span class="text-gray-400">· ${fmtDate(r.paid_at)}</span></p>
+                            <button type="button" data-create="${r.id}" class="mt-2.5 w-full inline-flex justify-center items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-amber-700 rounded-lg hover:bg-amber-800 shadow-sm"><i class="fa-solid fa-file-export"></i> Create Transmittal</button>
+                        </div>`).join('')
+                        : `<div class="px-4 py-12 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${data.ready.length ? 'No requests match your search.' : 'No paid purchase requests waiting for a transmittal.'}</div>`;
                 } else {
                     head.innerHTML = `<tr class="border-b border-gray-200"><th class="${th}">Ref No.</th><th class="${th}">Date</th><th class="${th}">Project / Client</th><th class="${th}">Req No.</th><th class="px-5 py-3 text-center">Items</th><th class="${th}">Issued / Received</th><th class="px-5 py-3 text-right">Action</th></tr>`;
                     const list = data.done.filter(r => !q || `${r.ref_no} ${r.req_no ?? ''} ${r.project_name} ${r.client_name}`.toLowerCase().includes(q));
@@ -312,6 +330,22 @@ if ($uid > 0) {
                         </tr>`).join('')
                         : `<tr><td colspan="7" class="px-5 py-14 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${data.done.length ? 'No transmittals match your search.' : (CAN_ALL ? 'No transmittals yet.' : 'You have no transmittals yet. Click <b>New Transmittal</b> to make one.')}</td></tr>`;
                     document.getElementById('trFooter').textContent = `Showing ${list.length} of ${data.done.length}`;
+                    document.getElementById('trCards').innerHTML = list.length ? list.map(r => `
+                        <button type="button" data-view="${r.id}" class="w-full text-left px-3 py-3 active:bg-amber-50/40">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="font-mono text-[12px] font-semibold text-gray-900">${esc(r.ref_no)}${r.req_no ? ` <span class="text-red-600 text-[11px]">· ${esc(r.req_no)}</span>` : ''}</p>
+                                    <p class="font-semibold text-sm text-gray-900 truncate">${esc(r.project_name)}</p>
+                                    <p class="text-[11px] text-gray-400 truncate">${esc(r.client_name)}</p>
+                                </div>
+                                <p class="shrink-0 text-right text-[11px] text-gray-500">${esc(slashDate(r.transmittal_date))}<span class="block">${r.item_count} item${r.item_count == 1 ? '' : 's'}</span></p>
+                            </div>
+                            <div class="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
+                                <span class="text-gray-500 truncate">${esc(r.issued_by || '—')} → ${esc(r.received_by || '—')}</span>
+                                <span class="shrink-0 font-semibold text-amber-700">View ›</span>
+                            </div>
+                        </button>`).join('')
+                        : `<div class="px-4 py-12 text-center text-xs text-gray-400"><i class="fa-regular fa-folder-open text-gray-300 text-2xl block mb-2"></i>${data.done.length ? 'No transmittals match your search.' : (CAN_ALL ? 'No transmittals yet.' : 'You have no transmittals yet. Tap <b>New Transmittal</b> to make one.')}</div>`;
                 }
             }
 
@@ -336,12 +370,12 @@ if ($uid > 0) {
                 } catch (e) { if (!silent) toast('Connection error while loading.', 'error'); }
             }
 
-            document.getElementById('trList').addEventListener('click', e => {
+            ['trList', 'trCards'].forEach(id => document.getElementById(id).addEventListener('click', e => {
                 const c = e.target.closest('[data-create]');
                 const v = e.target.closest('[data-view]');
                 if (c) openCreate(+c.dataset.create);
                 if (v) openView(+v.dataset.view);
-            });
+            }));
 
             function showPanel(p) {
                 mode = p === 'list' ? 'list' : mode;

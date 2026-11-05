@@ -19,7 +19,8 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>PC Dashboard</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -28,44 +29,43 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
 </head>
 
 <body class="bg-slate-100">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
 
         <!-- ===================== SITE BOARD (header) ===================== -->
         <section class="rounded-2xl overflow-hidden shadow-sm mb-5">
             <div class="dr-hazard h-2"></div>
-            <div class="dr-board px-5 py-5 md:px-7 md:py-6 text-white">
+            <div class="dr-board px-4 py-4 sm:px-5 sm:py-5 md:px-7 md:py-6 text-white">
                 <div class="flex flex-wrap items-end justify-between gap-5">
                     <div class="min-w-0">
                         <p class="text-amber-400 text-[10px] font-bold tracking-[0.2em] uppercase">Operations · Project
                             Coordinator</p>
-                        <h1 class="text-2xl font-bold mt-1">Delivery Receipts</h1>
+                        <h1 class="text-xl sm:text-2xl font-bold mt-1">Delivery Receipts</h1>
                         <p class="text-slate-400 text-xs mt-1 max-w-xl">You can create a DR once the transmittal is OK,
                             meaning it is marked <b class="text-slate-200">Delivered</b> in the Transmittal Summary.
                             Each DR goes to the <b class="text-slate-200">Superadmin</b> for signing, and you can print
                             it once it is approved.</p>
                         <p class="mt-2"><span class="inline-flex items-center gap-1.5 text-[10.5px] text-slate-300 bg-white/5 border border-white/10 rounded-full px-2.5 py-1" title="Updates automatically when someone else makes a change"><span id="drLiveDot" class="w-2 h-2 rounded-full bg-amber-400"></span><span id="drLiveText">Auto-refresh</span></span></p>
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full sm:w-auto">
+                    <div class="grid grid-cols-4 gap-1.5 sm:gap-2 w-full sm:w-auto">
                         <button type="button" data-filter="ready"
-                            class="text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 sm:min-w-[118px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wider text-green-400">Ready for DR
-                            </p>
-                            <p id="drStatReady" class="text-2xl font-bold tabular-nums">—</p>
+                            class="min-w-0 text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1.5 sm:px-4 sm:py-2.5 sm:min-w-[118px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-green-400"><span class="sm:hidden">Ready</span><span class="hidden sm:inline">Ready for DR</span></p>
+                            <p id="drStatReady" class="text-lg sm:text-2xl font-bold tabular-nums">—</p>
                         </button>
                         <button type="button" data-filter="waiting"
-                            class="text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 sm:min-w-[118px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Waiting</p>
-                            <p id="drStatWaiting" class="text-2xl font-bold tabular-nums">—</p>
+                            class="min-w-0 text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1.5 sm:px-4 sm:py-2.5 sm:min-w-[118px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-amber-400">Waiting</p>
+                            <p id="drStatWaiting" class="text-lg sm:text-2xl font-bold tabular-nums">—</p>
                         </button>
                         <button type="button" data-filter="pending"
-                            class="text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 sm:min-w-[118px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wider text-sky-300">For Approval</p>
-                            <p id="drStatPending" class="text-2xl font-bold tabular-nums">—</p>
+                            class="min-w-0 text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1.5 sm:px-4 sm:py-2.5 sm:min-w-[118px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-sky-300"><span class="sm:hidden">Approval</span><span class="hidden sm:inline">For Approval</span></p>
+                            <p id="drStatPending" class="text-lg sm:text-2xl font-bold tabular-nums">—</p>
                         </button>
                         <button type="button" data-filter="approved"
-                            class="text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2.5 sm:min-w-[118px]">
-                            <p class="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">Approved</p>
-                            <p id="drStatApproved" class="text-2xl font-bold tabular-nums">—</p>
+                            class="min-w-0 text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1.5 sm:px-4 sm:py-2.5 sm:min-w-[118px]">
+                            <p class="truncate text-[9.5px] sm:text-[10px] font-semibold uppercase sm:tracking-wider text-emerald-300">Approved</p>
+                            <p id="drStatApproved" class="text-lg sm:text-2xl font-bold tabular-nums">—</p>
                         </button>
                     </div>
                 </div>
@@ -74,12 +74,12 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
 
         <!-- ===================== TOOLBAR ===================== -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
-            <div id="drTabs" class="flex flex-wrap gap-1 bg-white border border-gray-200 rounded-xl p-1"></div>
-            <div class="relative flex-1 min-w-[200px]">
+            <div id="drTabs" class="flex sm:flex-wrap w-full sm:w-auto overflow-x-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 gap-1 bg-white border border-gray-200 rounded-xl p-1"></div>
+            <div class="relative flex-1 min-w-0 basis-full sm:basis-auto sm:min-w-[200px]">
                 <i
                     class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
                 <input type="text" id="drSearch" placeholder="Search transmittal no., client, project, PR…"
-                    class="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-xs outline-none focus:border-amber-600">
+                    class="w-full h-[40px] bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-xs outline-none focus:border-amber-600">
             </div>
         </div>
 
@@ -90,13 +90,13 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
         </div>
 
         <div id="crmToastContainer"
-            class="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]">
+            class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10000] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]">
         </div>
     </main>
 
     <!-- ===================== CREATE DR MODAL ===================== -->
-    <div id="drModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl my-auto overflow-hidden">
+    <div id="drModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-4xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
             <div class="dr-hazard h-1.5"></div>
             <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
                 <div class="min-w-0">
@@ -106,7 +106,7 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
                     <p id="drModalSub" class="text-[11px] text-gray-400"></p>
                 </div>
                 <button type="button" data-close="drModal"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
+                    class="-mr-2 md:mr-0 inline-flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
                     aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
             <div id="drModalBody" class="p-5"></div>
@@ -126,8 +126,8 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
 
     <!-- ===================== VIEW DR MODAL ===================== -->
     <div id="drViewModal"
-        class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl my-auto overflow-hidden">
+        class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-4xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
             <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-gray-100">
                 <p id="drViewTitle" class="text-sm font-semibold text-gray-800 min-w-0 truncate"></p>
                 <div class="flex items-center gap-2 shrink-0">
@@ -138,7 +138,7 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
                         class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"><i
                             class="fa-solid fa-print"></i> <span>Print / Save PDF</span></button>
                     <button type="button" data-close="drViewModal"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
+                        class="-mr-2 md:mr-0 inline-flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
                         aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
                 </div>
             </div>
@@ -277,8 +277,8 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
                         <a href="${SUMMARY_URL}" class="block mt-1 text-[10.5px] text-amber-700 hover:underline">Mark delivered in Transmittal Summary →</a></div>`;
                     return `<article class="relative bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${s.bar}"></span>
-                        <div class="flex flex-wrap items-center gap-x-5 gap-y-3 pl-5 pr-4 py-3.5">
-                            <div class="min-w-0 flex-1 basis-[260px]">
+                        <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 sm:gap-y-3 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
+                            <div class="min-w-0 flex-1 basis-full sm:basis-[260px]">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span class="font-mono text-sm font-bold text-gray-900">${esc(r.ref_no)}</span>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${s.pill}"><i class="fa-solid ${s.icon} text-[9px]"></i>${s.text}</span>
@@ -289,12 +289,12 @@ $pcLaborUrl = BASE_URL . '/coordinatorlabor';        // Step 3 · Labor Quotatio
                                 ${r.state === 'returned' && r.return_remarks ? `<p class="mt-1.5 text-[11px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-comment-dots mr-1"></i><b>Superadmin:</b> ${esc(r.return_remarks)}</p>` : ''}
                                 ${r.state === 'approved' && r.approved_by ? `<p class="mt-1 text-[11px] text-emerald-700"><i class="fa-solid fa-signature mr-1"></i>Signed by ${esc(r.approved_by)} · ${fmtY(r.approved_at)}</p>` : ''}
                             </div>
-                            <dl class="grid grid-cols-3 gap-x-5 gap-y-1 text-[11px] basis-[300px] grow sm:grow-0">
+                            <dl class="grid grid-cols-3 gap-x-3 sm:gap-x-5 gap-y-1 text-[11px] basis-full sm:basis-[300px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                                 <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Transmittal</dt><dd class="text-gray-700">${fmtY(r.transmittal_date)}</dd></div>
                                 <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Delivered</dt><dd class="${r.delivered_at ? 'text-green-700 font-semibold' : 'text-amber-600'}">${r.delivered_at ? fmtY(r.delivered_at) : 'Pending'}</dd></div>
                                 <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">${r.dr_no ? 'DR No.' : 'Items'}</dt><dd class="${r.dr_no ? 'font-mono font-semibold text-sky-700' : 'text-gray-700'}">${r.dr_no ? esc(r.dr_no) : r.item_count}</dd></div>
                             </dl>
-                            <div class="ml-auto shrink-0">${action}</div>
+                            <div class="w-full sm:w-auto sm:ml-auto shrink-0 [&_button]:w-full sm:[&_button]:w-auto [&_button]:justify-center [&_button]:py-2.5 sm:[&_button]:py-2 [&_button]:flex-1 sm:[&_button]:flex-none [&_.text-right]:text-left sm:[&_.text-right]:text-right">${action}</div>
                         </div>
                     </article>`;
                 }).join('');

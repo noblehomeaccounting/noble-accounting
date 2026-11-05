@@ -20,7 +20,7 @@
             ? `
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-green-50 text-green-700 border-green-200">
-                        <i class="fa-solid fa-circle-check"></i>Client Review & Approval
+                        <i class="fa-solid fa-circle-check"></i>Client Review &amp; Approval
                     </span>
                     <p class="text-xs text-gray-400">${monFormatDateTimeLong(dp.confirmed_at)} · by ${monEscapeHtml(dp.confirmed_by_name)}</p>
                 </div>
@@ -30,7 +30,7 @@
                </span>`;
 
         container.innerHTML = `
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5">
                 <div class="flex items-center justify-between gap-3 mb-3">
                     <p class="text-[13px] text-gray-500">Design Progress</p>
                     <p class="text-sm font-semibold text-gray-800">${pct}%</p>

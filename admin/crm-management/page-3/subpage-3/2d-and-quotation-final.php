@@ -76,7 +76,7 @@ $initialPageUrl = BASE_URL . '/crm2dquotation?id=' . $inquiryId;
 </head>
 
 <body class="bg-gray-100 font-['Barlow_Condensed']">
-    <main class="ml-56 min-h-screen p-5 lg:p-7 bg-[#F5F6FA] overflow-x-hidden">
+      <main class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-5 md:p-8">
 
         <div class="max-w-6xl mx-auto">
 

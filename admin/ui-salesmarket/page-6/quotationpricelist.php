@@ -52,7 +52,7 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8">
+   <main class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-5 md:p-8">
 
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">

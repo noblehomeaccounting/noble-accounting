@@ -3,11 +3,11 @@
 // Kasama ng sitevisitform.php (include). Huwag buksan nang direkta.
 ?>
 <!-- 3. Spaces: space muna, saka ang sukat at photos nito -->
-<section id="sv_spaces_section" data-step="3" class="sv-card p-5 hidden">
+<section id="sv_spaces_section" data-step="3" class="sv-card p-4 sm:p-5 hidden">
     <div class="flex items-start justify-between gap-3 mb-4">
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2.5 min-w-0">
             <span class="sv-num">3</span>
-            <div>
+            <div class="min-w-0">
                 <h2 class="text-sm font-semibold text-gray-900 leading-tight">Spaces &amp; measurements</h2>
                 <p class="text-[11px] text-gray-400">Name each space, then fill in its requirements, site photos,
                     measurement and remark.</p>
@@ -21,15 +21,15 @@
     <!-- Add space -->
     <div class="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-3">
         <div class="flex flex-wrap gap-2">
-            <div class="relative flex-1 min-w-[180px]">
+            <div class="relative flex-1 min-w-0 sm:min-w-[180px]">
                 <i
                     class="fa-solid fa-vector-square absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-amber-700/70 pointer-events-none"></i>
                 <input id="sv_space_name" type="text" list="sv_space_suggest" maxlength="100" autocomplete="off"
                     placeholder="Space name, e.g. Kitchen" class="sv-field h-[40px] !pl-8">
             </div>
             <button type="button" id="sv_space_add"
-                class="inline-flex items-center gap-1.5 h-[40px] px-4 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold shadow-sm">
-                <i class="fa-solid fa-plus"></i> Add space
+                class="shrink-0 inline-flex items-center gap-1.5 h-[40px] px-3 sm:px-4 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold shadow-sm">
+                <i class="fa-solid fa-plus"></i> <span class="hidden min-[380px]:inline">Add space</span><span class="min-[380px]:hidden">Add</span>
             </button>
         </div>
         <datalist id="sv_space_suggest">
@@ -50,14 +50,14 @@
             <div class="flex flex-wrap items-center gap-2 mt-2.5 mb-1.5">
                 <p class="text-[11px] text-gray-500"><i class="fa-solid fa-clipboard-list mr-1 text-amber-700"></i>From the inquiry's scope area — tap to add as an item to</p>
                 <select id="sv_chip_target" aria-label="Add the item to which space"
-                    class="h-7 max-w-[220px] text-[11.5px] font-semibold text-gray-800 bg-white border border-amber-300 rounded-md px-2 outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
+                    class="h-8 sm:h-7 w-full sm:w-auto sm:max-w-[220px] text-[11.5px] font-semibold text-gray-800 bg-white border border-amber-300 rounded-md px-2 outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-100">
                     <option value="new">➕ As a new space</option>
                 </select>
             </div>
             <div id="sv_space_chips" class="flex flex-wrap gap-1.5">
                 <?php foreach ($svInquirySpaces as $chip): ?>
                     <button type="button" data-space-chip="<?= htmlspecialchars($chip) ?>"
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-white border border-amber-200 text-amber-800 hover:bg-amber-100 disabled:bg-emerald-50 disabled:border-emerald-200 disabled:text-emerald-700 disabled:cursor-default">
+                        class="inline-flex items-center gap-1 px-3 py-1.5 sm:px-2.5 sm:py-1 rounded-full text-[11.5px] font-semibold bg-white border border-amber-200 text-amber-800 hover:bg-amber-100 disabled:bg-emerald-50 disabled:border-emerald-200 disabled:text-emerald-700 disabled:cursor-default">
                         <i class="fa-solid fa-plus text-[9px]"></i><?= htmlspecialchars($chip) ?>
                     </button>
                 <?php endforeach; ?>
@@ -72,7 +72,7 @@
         <span class="hidden lg:inline text-gray-400">· Drag files onto <b class="font-semibold">Add photos</b> / <b
                 class="font-semibold">PDF / photo</b> too.</span>
         <button type="button" id="sv_whole_btn"
-            class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-black text-white text-[11.5px] font-semibold">
+            class="ml-auto inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg bg-gray-900 hover:bg-black text-white text-[11.5px] font-semibold">
             <i class="fa-solid fa-table-list"></i> Whole view
         </button>
     </div>

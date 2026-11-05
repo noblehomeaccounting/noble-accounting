@@ -192,7 +192,7 @@ $inputCls = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-s
 </head>
 
 <body class="bg-slate-100">
-    <main class="ml-56 min-h-screen p-8">
+     <main class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-5 md:p-8">
 
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-slate-900">Accessories</h1>

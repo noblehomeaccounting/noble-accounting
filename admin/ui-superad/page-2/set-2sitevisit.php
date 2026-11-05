@@ -37,26 +37,26 @@
         const steps = ['Scheduled', 'Site Visit Ongoing', 'Report Uploaded'];
         const currentStep = monTrackerStatus(visit);
 
-        let html = '<div class="flex items-center justify-center w-full px-6 py-6">';
+        let html = '<div class="flex items-start justify-center w-full px-1 sm:px-6 py-4 sm:py-6">';
 
         steps.forEach((label, i) => {
             const done = i <= currentStep;
 
             const dot = done
-                ? `<div class="w-12 h-12 rounded-full bg-amber-600 flex items-center justify-center text-white shrink-0 ring-4 ring-amber-100">
-                       <i class="fa-solid fa-circle-check text-[22px] leading-none"></i>
+                ? `<div class="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-amber-600 flex items-center justify-center text-white shrink-0 ring-4 ring-amber-100">
+                       <i class="fa-solid fa-circle-check text-[17px] sm:text-[22px] leading-none"></i>
                    </div>`
-                : `<div class="w-12 h-12 rounded-full bg-white border-[3px] border-gray-200 shrink-0"></div>`;
+                : `<div class="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-white border-[3px] border-gray-200 shrink-0"></div>`;
 
             html += `
-                <div class="flex flex-col items-center shrink-0" style="width:140px">
+                <div class="flex flex-col items-center shrink-0 w-[72px] sm:w-[140px]">
                     ${dot}
-                    <span class="text-sm mt-2.5 font-semibold ${done ? 'text-amber-700' : 'text-gray-400'} text-center leading-tight whitespace-nowrap">${label}</span>
+                    <span class="text-[11px] sm:text-sm mt-2 sm:mt-2.5 font-semibold ${done ? 'text-amber-700' : 'text-gray-400'} text-center leading-tight sm:whitespace-nowrap">${label}</span>
                 </div>
             `;
 
             if (i < steps.length - 1) {
-                html += `<div class="flex-1 h-1 -mt-8 ${i < currentStep ? 'bg-amber-500' : 'bg-gray-200'} rounded-full"></div>`;
+                html += `<div class="flex-1 h-1 mt-4 sm:mt-[22px] ${i < currentStep ? 'bg-amber-500' : 'bg-gray-200'} rounded-full"></div>`;
             }
         });
 
@@ -75,7 +75,7 @@
         return `
             <div class="${extraCls}">
                 <p class="text-[10px] text-gray-400 font-semibold tracking-[0.1em] uppercase mb-1">${label}</p>
-                <div class="text-[13px] text-gray-800 leading-relaxed">${valueHtml}</div>
+                <div class="text-[13px] text-gray-800 leading-relaxed break-words">${valueHtml}</div>
             </div>
         `;
     }
@@ -100,7 +100,7 @@
 
     function monRenderSiteVisitCard(visit, label, deadline) {
         const photosHtml = visit.photos.length
-            ? `<div class="grid grid-cols-6 sm:grid-cols-8 gap-2 mt-2">
+            ? `<div class="grid grid-cols-4 sm:grid-cols-8 gap-2 mt-2">
                 ${visit.photos.map(p => `
                     <a href="${monEscapeHtml(p)}" target="_blank" rel="noopener" class="block aspect-square border border-gray-200 rounded overflow-hidden hover:border-amber-600 transition-colors">
                         <img src="${monEscapeHtml(p)}" class="w-full h-full object-cover">
@@ -111,17 +111,17 @@
 
         return `
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                    <div>
+                <div class="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
                         <p class="text-[10px] text-gray-400 font-semibold tracking-[0.1em] uppercase">${label}</p>
                         <p class="text-xs text-gray-400 mt-0.5">Logged ${monFormatDateTimeLong(visit.created_at)} · ${monEscapeHtml(visit.designer_name)}</p>
                     </div>
                     ${monVisitedBadge(visit.visited)}
                 </div>
-                <div class="px-5 py-2 border-b border-gray-100 bg-gray-50/60">
+                <div class="px-2 sm:px-5 py-2 border-b border-gray-100 bg-gray-50/60">
                     ${monRenderTracker(visit)}
                 </div>
-                <div class="px-5 py-4">
+                <div class="px-4 sm:px-5 py-4">
                     <div class="grid sm:grid-cols-2 gap-4">
                         ${monSvField('Address', monEscapeHtml(visit.address), 'sm:col-span-2')}
                         ${monSvField('Visit Date', monFormatDateTimeLong(visit.visit_datetime))}

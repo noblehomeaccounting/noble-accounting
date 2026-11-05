@@ -17,7 +17,8 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale=1: hindi na mag-a-auto-zoom ang iPhone kapag nag-tap sa field (pwede pa ring mag-pinch zoom) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <title>Punch List & Turnover</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <?php include ROOT_PATH . '/admin/navigation/sidebar.php'; ?>
@@ -25,13 +26,13 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
 </head>
 
 <body class="bg-gray-50">
-    <main id="main-content" class="md:ml-56 pt-20 md:pt-5 min-h-screen p-4 md:p-8 transition-all duration-300">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <main id="main-content" class="md:ml-56 min-h-screen px-3 pt-20 pb-6 sm:px-4 md:p-8 md:pt-5 overflow-x-hidden transition-all duration-300">
+        <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-key text-lg"></i></div>
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><i class="fa-solid fa-key text-lg"></i></div>
                 <div class="min-w-0">
                     <p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Operations · Step 7 &amp; 8</p>
-                    <h1 class="text-xl font-bold text-gray-900 leading-tight">Punch List &amp; Turnover</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Punch List &amp; Turnover</h1>
                     <p class="text-xs text-gray-500">Inspect the work, fix and verify every item, then prepare the turnover letter. The project closes once the client signs.</p>
                 </div>
             </div>
@@ -41,40 +42,40 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
             </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
+        <div class="grid grid-cols-3 md:grid-cols-3 xl:grid-cols-6 gap-1.5 sm:gap-3 mb-3 sm:mb-4">
             <?php foreach ([
-                ['punch', 'Punch list open', 'fa-list-check', 'bg-orange-50 text-orange-600'],
-                ['ready', 'Ready for turnover', 'fa-circle-check', 'bg-amber-50 text-amber-700'],
-                ['pending_sa', 'For Superadmin', 'fa-signature', 'bg-sky-50 text-sky-600'],
-                ['approved', 'Get client signature', 'fa-user-pen', 'bg-violet-50 text-violet-600'],
-                ['closed', 'Closed', 'fa-flag-checkered', 'bg-emerald-50 text-emerald-600'],
-                ['all', 'All projects', 'fa-layer-group', 'bg-gray-100 text-gray-600'],
-            ] as [$k, $label, $icon, $cls]): ?>
+                ['punch', 'Punch list open', 'fa-list-check', 'bg-orange-50 text-orange-600', 'Punch list'],
+                ['ready', 'Ready for turnover', 'fa-circle-check', 'bg-amber-50 text-amber-700', 'Ready'],
+                ['pending_sa', 'For Superadmin', 'fa-signature', 'bg-sky-50 text-sky-600', 'Superadmin'],
+                ['approved', 'Get client signature', 'fa-user-pen', 'bg-violet-50 text-violet-600', 'Client sign'],
+                ['closed', 'Closed', 'fa-flag-checkered', 'bg-emerald-50 text-emerald-600', 'Closed'],
+                ['all', 'All projects', 'fa-layer-group', 'bg-gray-100 text-gray-600', 'All'],
+            ] as [$k, $label, $icon, $cls, $short]): ?>
                 <button type="button" data-tab="<?= $k ?>"
-                    class="to-tab text-left bg-white border border-gray-200 rounded-xl p-3.5 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
+                    class="to-tab text-left bg-white border border-gray-200 rounded-xl px-2 py-1.5 sm:p-3.5 flex items-center gap-3 shadow-sm min-w-0 transition hover:border-amber-400 data-[active=true]:border-amber-600 data-[active=true]:ring-2 data-[active=true]:ring-amber-100 data-[active=true]:bg-amber-50/40">
                     <span class="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center shrink-0 <?= $cls ?>"><i class="fa-solid <?= $icon ?>"></i></span>
-                    <span class="min-w-0"><span class="block text-[10.5px] font-semibold text-gray-500 uppercase tracking-wide truncate"><?= $label ?></span>
-                        <span class="block text-2xl font-bold text-gray-900 leading-tight tabular-nums" data-count="<?= $k ?>">—</span></span>
+                    <span class="min-w-0"><span class="block text-[9.5px] sm:text-[10.5px] font-semibold text-gray-500 uppercase sm:tracking-wide truncate"><span class="sm:hidden"><?= $short ?></span><span class="hidden sm:inline"><?= $label ?></span></span>
+                        <span class="block text-lg sm:text-2xl font-bold text-gray-900 leading-tight tabular-nums" data-count="<?= $k ?>">—</span></span>
                 </button>
             <?php endforeach; ?>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-100"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
-                <input type="text" id="toSearch" placeholder="Search project, owner, DR no.…" class="w-full h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"></div></div>
-            <div id="toInfo" class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
+            <div class="px-3 sm:px-4 py-3 border-b border-gray-100"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
+                <input type="text" id="toSearch" placeholder="Search project, owner, DR no.…" class="w-full h-[38px] sm:h-9 bg-white border border-gray-200 rounded-lg pl-9 pr-3 text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"></div></div>
+            <div id="toInfo" class="px-3 sm:px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-b border-gray-100">&nbsp;</div>
             <div id="toList" class="divide-y divide-gray-100"><div class="px-6 py-14 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading…</div></div>
         </div>
-        <div id="bpToast" class="fixed bottom-4 right-4 z-[10002] flex flex-col gap-2.5 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]"></div>
+        <div id="bpToast" class="fixed left-4 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:left-auto sm:bottom-4 z-[10002] flex flex-col gap-2.5 pointer-events-none sm:w-[340px]"></div>
     </main>
 
-    <div id="toModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-2 md:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-7xl my-auto overflow-hidden">
+    <div id="toModal" class="hidden fixed inset-0 z-[9999] items-start justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+        <div class="bg-white md:rounded-2xl shadow-xl w-full max-w-7xl min-h-full md:min-h-0 md:my-auto overflow-hidden">
             <div class="dr-hazard h-1.5"></div>
             <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
                 <div class="min-w-0"><p class="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-700">Punch List &amp; Turnover</p>
                     <p id="tmTitle" class="text-base font-semibold text-gray-900 truncate"></p><p id="tmSub" class="text-[11px] text-gray-400 truncate"></p></div>
-                <button type="button" id="tmClose" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
+                <button type="button" id="tmClose" class="-mr-2 md:mr-0 inline-flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0" aria-label="Close"><i class="fa-solid fa-xmark text-base leading-none"></i></button>
             </div>
             <!-- readiness -->
             <div id="tmReady" class="grid md:grid-cols-3 gap-2 px-5 pt-4"></div>
@@ -216,19 +217,19 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
                     const chip = r.to_status ? toChip(r.to_status) : st === 'ready' ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 bg-amber-50 text-amber-700 ring-amber-600/20"><i class="fa-solid fa-circle-check text-[9px]"></i>Ready for turnover</span>'
                         : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 bg-orange-50 text-orange-700 ring-orange-600/20"><i class="fa-solid fa-list-check text-[9px]"></i>Not ready</span>';
                     const btn = { punch: ['Open punch list', 'fa-list-check'], ready: ['Prepare turnover', 'fa-file-pen'], returned: ['Fix letter', 'fa-pen'], pending_sa: ['View', 'fa-eye'], approved: ['Complete turnover', 'fa-user-pen'], closed: ['View', 'fa-eye'] }[st];
-                    return `<div data-row="${r.dr_id}" class="to-row relative flex flex-wrap items-center gap-x-5 gap-y-2 pl-5 pr-4 py-3.5">
+                    return `<div data-row="${r.dr_id}" class="to-row relative flex flex-wrap items-center gap-x-5 gap-y-2.5 pl-4 sm:pl-5 pr-3 sm:pr-4 py-3 sm:py-3.5">
                         <span class="absolute left-0 top-0 bottom-0 w-1 ${BAR[st]}"></span>
-                        <div class="min-w-0 flex-1 basis-[260px]">
+                        <div class="min-w-0 flex-1 basis-full sm:basis-[260px]">
                             <div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-gray-900 truncate">${esc(r.project_name || r.owner)}</span>${chip}</div>
                             <p class="text-[11px] text-gray-400 truncate mt-0.5"><span class="font-mono">DR# ${esc(r.dr_no)}</span> · ${esc(r.subcontractor || '')}${r.location ? ' · ' + esc(r.location) : ''}</p>
                             ${r.to_status === 'returned' && r.to_remarks ? `<p class="mt-1.5 text-[11px] text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-comment-dots mr-1"></i>${esc(r.to_remarks)}</p>` : ''}
                         </div>
-                        <dl class="grid grid-cols-3 gap-x-5 text-[11px] basis-[300px] grow sm:grow-0">
+                        <dl class="grid grid-cols-3 gap-x-3 sm:gap-x-5 text-[11px] basis-full sm:basis-[300px] grow sm:grow-0 rounded-lg bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 px-3 py-2 sm:p-0">
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Punch list</dt><dd class="${r.punch_total && r.punch_verified < r.punch_total ? 'text-orange-700 font-semibold' : 'text-gray-700'}">${r.punch_total ? `${r.punch_verified}/${r.punch_total} verified` : 'No items'}</dd></div>
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Overdue</dt><dd class="${r.punch_overdue ? 'text-red-600 font-bold' : 'text-gray-700'}">${r.punch_overdue}</dd></div>
                             <div><dt class="text-[9.5px] font-semibold uppercase tracking-wider text-gray-400">Billing</dt><dd class="${r.billing_ok ? 'text-emerald-700' : 'text-gray-500'}">${r.billing_ok ? 'Complete' : 'Not complete'}</dd></div>
                         </dl>
-                        <div class="ml-auto shrink-0"><button type="button" data-open="${r.dr_id}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${['ready', 'returned', 'approved'].includes(st) ? 'text-white bg-amber-700 hover:bg-amber-800 shadow-sm' : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'}"><i class="fa-solid ${btn[1]}"></i> ${btn[0]}</button></div>
+                        <div class="w-full sm:w-auto sm:ml-auto shrink-0 [&_button]:w-full sm:[&_button]:w-auto [&_button]:justify-center [&_button]:py-2.5 sm:[&_button]:py-2 [&_button]:flex-1 sm:[&_button]:flex-none [&_.text-right]:text-left sm:[&_.text-right]:text-right"><button type="button" data-open="${r.dr_id}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg ${['ready', 'returned', 'approved'].includes(st) ? 'text-white bg-amber-700 hover:bg-amber-800 shadow-sm' : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'}"><i class="fa-solid ${btn[1]}"></i> ${btn[0]}</button></div>
                     </div>`;
                 }).join('');
                 let id = null; try { id = sessionStorage.getItem(MEMO + 'picked'); } catch (e) { }
@@ -328,7 +329,7 @@ $bpPageUrl = BASE_URL . '/coordinatorbilling';
                         const s = P_ST[x.status], over = x.status !== 'verified' && x.target_date && x.target_date < today;
                         return `<div data-pid="${x.id}" class="relative rounded-xl border ${over ? 'border-red-200 bg-red-50/40' : 'border-gray-200 bg-white'} pl-4 pr-3 py-3 flex flex-wrap items-start gap-x-4 gap-y-2">
                             <span class="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${x.status === 'verified' ? 'bg-emerald-500' : x.status === 'fixed' ? 'bg-sky-500' : over ? 'bg-red-500' : 'bg-orange-400'}"></span>
-                            <div class="min-w-0 flex-1 basis-[280px]">
+                            <div class="min-w-0 flex-1 basis-full sm:basis-[280px]">
                                 <div class="flex flex-wrap items-center gap-2"><span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">${esc(x.area)}</span>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${s[1]}"><i class="fa-solid ${s[2]} text-[9px]"></i>${s[0]}</span>
                                     ${over ? '<span class="text-[10px] font-bold text-red-600"><i class="fa-solid fa-clock mr-0.5"></i>Overdue</span>' : ''}</div>

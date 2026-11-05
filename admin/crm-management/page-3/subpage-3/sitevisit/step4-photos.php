@@ -3,10 +3,10 @@
 // Kasama ng sitevisitform.php (include). Huwag buksan nang direkta.
 ?>
 <!-- 4. Other photos -->
-<section data-step="4" class="sv-card p-5 hidden">
+<section data-step="4" class="sv-card p-4 sm:p-5 hidden">
     <div class="flex items-center gap-2.5 mb-4">
         <span class="sv-num">4</span>
-        <div>
+        <div class="min-w-0">
             <h2 class="text-sm font-semibold text-gray-900 leading-tight">Other site photos <span
                     class="text-[11px] font-normal text-gray-400">· optional</span></h2>
             <p class="text-[11px] text-gray-400">Photos not tied to one space — facade, entrance, surroundings.</p>
@@ -19,5 +19,5 @@
         <span class="text-[11px] text-gray-400">JPG, PNG, WEBP</span>
     </label>
     <input id="sv_photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
-    <div id="sv_photo_preview" class="mt-2 grid grid-cols-5 sm:grid-cols-8 gap-1.5"></div>
+    <div id="sv_photo_preview" class="mt-2 grid grid-cols-4 sm:grid-cols-8 gap-1.5"></div>
 </section>
