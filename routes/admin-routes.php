@@ -35,8 +35,8 @@ return [
 
     //IT page 2
     'it'                                    => 'admin/ui-informationtech/page-2/index-it-main.php',
-    'itpush'                                => 'admin/ui-informationtech/pui-it/itpush.php',
-    'itpushajax'                            => 'admin/ui-informationtech/backend/page-2/ackend/itpushajax.php',
+    'itpush'                                => 'admin/ui-informationtech/page-4/itpush.php',
+    'itpushajax'                            => 'admin/ui-informationtech/backend/page-4/ackend/itpushajax.php',
 
     // accounting
     'accounting'                            => 'admin/ui-accounting/page-1/index-accounting-main.php',
