@@ -10,3 +10,6 @@ tests/accounts.js
 .env
 .env.test
 network/push/push-config.php
+
+/uploads/*
+!/uploads/.gitkeep
