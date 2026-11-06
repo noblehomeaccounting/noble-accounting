@@ -162,18 +162,23 @@
                     if (!path) return;
                     img.dataset[MARK] = '1';
                     const host = img.closest('button, a') || img.parentElement;
-                    // huwag buksan ang lightbox ng sirang larawan
-                    host.addEventListener('click', e => { e.preventDefault(); e.stopImmediatePropagation(); }, true);
+                    // huwag buksan ang lightbox ng sirang larawan — pero hayaang gumana ang Re-upload / ×
+                    host.addEventListener('click', e => {
+                        if (e.target.closest('[data-sv-fix]')) return;
+                        e.preventDefault(); e.stopImmediatePropagation();
+                    }, true);
                     if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
                     img.style.visibility = 'hidden';
                     const cover = document.createElement('span');
                     cover.className = 'absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-[inherit] bg-red-50 border border-dashed border-red-300 text-red-600 cursor-pointer hover:bg-red-100';
                     cover.title = 'File is missing on the server — tap to re-upload';
+                    cover.dataset.svFix = 'up';
                     cover.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-[13px]"></i><span class="text-[8.5px] font-bold uppercase leading-none">Re-upload</span>';
                     cover.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); pick(path, false); });
                     const x = document.createElement('span');
                     x.className = 'absolute -top-1.5 -right-1.5 z-10 w-[18px] h-[18px] rounded-full bg-white border border-gray-300 text-gray-500 hover:text-red-600 hover:border-red-300 flex items-center justify-center shadow-sm cursor-pointer';
                     x.title = 'Remove from record';
+                    x.dataset.svFix = 'rm';
                     x.innerHTML = '<i class="fa-solid fa-xmark text-[9px]"></i>';
                     x.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeFile(path); });
                     host.appendChild(cover);
