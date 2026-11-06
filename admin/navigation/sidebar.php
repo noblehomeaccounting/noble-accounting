@@ -201,7 +201,7 @@ if ($role === ROLE_DESIGNER) {
     }
     $add('Manage', $I('/crmdesigner', 'fa-solid fa-compass-drafting', 'CRM Designer', 'designerTodo'));
     $add('Manage', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
-    $add('Manage', $I('/designinsertercrm', 'fa-solid fa-pen-ruler', 'Designer CRM', null, 'Designer CRM'));
+    $add('Manage', $I('/designinsertercrm', 'fa-solid fa-pen-ruler', 'Designer Inquiry', null, 'Designer CRM'));
     $add('Manage', $I('/designercrmlist', 'fa-solid fa-list-ol', 'CRM List', 'designerList'));
 
     if ($isHead) {
