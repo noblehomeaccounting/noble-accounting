@@ -14,7 +14,11 @@ include ROOT_PATH . '/admin/authentication/index-roleguard.php';
 header('Content-Type: application/json');
 
 const Q2D_MAX_FILES_PER_SLOT = 10;
-const Q2D_MAX_FILE_BYTES = 15 * 1024 * 1024; // 15MB bawat file
+const Q2D_MAX_FILE_MB = 50;                              // dapat kapareho ng Q2D_MAX_MB sa 2d-and-quotation.php
+const Q2D_MAX_FILE_BYTES = Q2D_MAX_FILE_MB * 1024 * 1024; // 50MB bawat file
+const Q2D_IMG_MAX_SIDE = 3840;                            // 3D image: liliitan hanggang 4K (mahabang gilid) bago gawing WEBP
+const Q2D_IMG_QUALITY = 85;                               // WEBP quality ng 3D image
+const Q2D_PDF_COMPRESS = true;                            // paliitin ang PDF gamit ang Ghostscript KUNG meron sa server
 
 $currentUserId = intval($_SESSION['account_id'] ?? 0);
 
@@ -643,6 +647,47 @@ function q2dGetOrCreateDraft(mysqli $conn, int $inquiryId): array
 }
 
 
+// ── Ghostscript (pang-paliit ng PDF) — gagamitin lang kung may exec() at naka-install ang gs ──
+function q2dGhostscriptBin(): ?string
+{
+    static $bin = false;
+    if ($bin !== false) return $bin;
+    $bin = null;
+    if (!Q2D_PDF_COMPRESS || !function_exists('exec')) return $bin;
+    $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+    if (in_array('exec', $disabled, true)) return $bin;
+
+    $isWin = stripos(PHP_OS_FAMILY, 'Windows') === 0;
+    $candidates = $isWin ? ['gswin64c', 'gswin32c'] : ['gs', '/usr/bin/gs', '/usr/local/bin/gs'];
+    foreach ($candidates as $c) {
+        $out = [];
+        $code = 1;
+        @exec(($isWin ? 'where ' : 'command -v ') . escapeshellarg($c) . ' 2>' . ($isWin ? 'NUL' : '/dev/null'), $out, $code);
+        if ($code === 0 && !empty($out[0])) { $bin = trim($out[0]); break; }
+    }
+    return $bin;
+}
+
+// Paliitin ang PDF (300dpi "printer" quality — malinaw pa rin ang 2D/quotation).
+// Papalitan lang ang file kapag mas maliit talaga ang resulta; kung hindi, iiwan ang orihinal.
+function q2dCompressPdf(string $path): void
+{
+    $gs = q2dGhostscriptBin();
+    if (!$gs || !is_file($path)) return;
+    $tmp = $path . '.gs.pdf';
+    $cmd = escapeshellarg($gs) . ' -q -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -dCompatibilityLevel=1.5'
+        . ' -dPDFSETTINGS=/printer -dDetectDuplicateImages=true -dCompressFonts=true'
+        . ' -sOutputFile=' . escapeshellarg($tmp) . ' ' . escapeshellarg($path) . ' 2>&1';
+    $out = [];
+    $code = 1;
+    @exec($cmd, $out, $code);
+    if ($code === 0 && is_file($tmp) && filesize($tmp) > 0 && filesize($tmp) < filesize($path) * 0.95) {
+        @rename($tmp, $path);
+    } elseif (is_file($tmp)) {
+        @unlink($tmp);
+    }
+}
+
 function q2dSaveUploadedPdf(array $file, string $prefix, int $inquiryId, int $maxBytes, string $uploadDir): array
 {
     if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) {
@@ -662,7 +707,7 @@ function q2dSaveUploadedPdf(array $file, string $prefix, int $inquiryId, int $ma
         return ['path' => null, 'error' => '"' . $file['name'] . '" must be a valid PDF.'];
     }
     if ($file['size'] > $maxBytes) {
-        return ['path' => null, 'error' => '"' . $file['name'] . '" exceeds the 15MB limit.'];
+        return ['path' => null, 'error' => '"' . $file['name'] . '" exceeds the ' . Q2D_MAX_FILE_MB . 'MB limit.'];
     }
 
     $safeName = $prefix . '_' . $inquiryId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.pdf';
@@ -671,6 +716,7 @@ function q2dSaveUploadedPdf(array $file, string $prefix, int $inquiryId, int $ma
     if (!move_uploaded_file($file['tmp_name'], $destPath)) {
         return ['path' => null, 'error' => 'Something went wrong while saving the file.'];
     }
+    q2dCompressPdf($destPath);   // paliitin kung may Ghostscript (kung wala, orihinal ang matitira)
 
     return ['path' => 'uploads/crm-2dquotation/' . $safeName, 'error' => null];
 }
@@ -685,7 +731,7 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
         return ['path' => null, 'error' => 'Upload failed. Please try again.'];
     }
     if ($file['size'] > $maxBytes) {
-        return ['path' => null, 'error' => '"' . $file['name'] . '" exceeds the 15MB limit.'];
+        return ['path' => null, 'error' => '"' . $file['name'] . '" exceeds the ' . Q2D_MAX_FILE_MB . 'MB limit.'];
     }
 
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -699,6 +745,7 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
         if (!move_uploaded_file($file['tmp_name'], $destPath)) {
             return ['path' => null, 'error' => 'Something went wrong while saving the file.'];
         }
+        q2dCompressPdf($destPath);
         return ['path' => 'uploads/crm-2dquotation/' . $safeBase . '.pdf', 'error' => null];
     }
 
@@ -706,6 +753,13 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
     if (!in_array($mime, $allowedImageMimes, true)) {
         return ['path' => null, 'error' => '"' . $file['name'] . '": the 3D file must be a PDF or an image (JPG, PNG, WEBP).'];
     }
+
+    // Iwasang maubos ang memory sa sobrang laking larawan (hal. 12000px)
+    $dim = @getimagesize($file['tmp_name']);
+    if (!$dim || ($dim[0] * $dim[1]) > 60000000) {
+        return ['path' => null, 'error' => '"' . $file['name'] . '" is too large in resolution (max ~60 megapixels).'];
+    }
+    @ini_set('memory_limit', '512M');
 
     $srcImage = null;
     if ($mime === 'image/jpeg')
@@ -719,13 +773,34 @@ function q2dSaveUploaded3dFile(array $file, int $inquiryId, int $maxBytes, strin
         return ['path' => null, 'error' => 'Could not read the uploaded image "' . $file['name'] . '".'];
     }
 
+    // Ayusin ang ikot ng litrato galing phone (EXIF)
+    if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
+        $o = (int) ((@exif_read_data($file['tmp_name'])['Orientation']) ?? 1);
+        $deg = [3 => 180, 6 => -90, 8 => 90][$o] ?? 0;
+        if ($deg) { $r = imagerotate($srcImage, $deg, 0); if ($r) { imagedestroy($srcImage); $srcImage = $r; } }
+    }
+
     // Preserve transparency for PNG/WEBP sources.
     imagepalettetotruecolor($srcImage);
     imagealphablending($srcImage, true);
     imagesavealpha($srcImage, true);
 
+    // Liitan hanggang Q2D_IMG_MAX_SIDE (mahabang gilid) — sapat pa rin para sa 3D render
+    $w = imagesx($srcImage); $h = imagesy($srcImage);
+    $scale = min(1, Q2D_IMG_MAX_SIDE / max($w, $h));
+    if ($scale < 1) {
+        $nw = max(1, (int) round($w * $scale)); $nh = max(1, (int) round($h * $scale));
+        $dst = imagecreatetruecolor($nw, $nh);
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+        imagecopyresampled($dst, $srcImage, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($srcImage);
+        $srcImage = $dst;
+    }
+
     $destPath = $uploadDir . $safeBase . '.webp';
-    if (!imagewebp($srcImage, $destPath, 90)) {
+    if (!imagewebp($srcImage, $destPath, Q2D_IMG_QUALITY)) {
         imagedestroy($srcImage);
         return ['path' => null, 'error' => 'Something went wrong while converting the image.'];
     }

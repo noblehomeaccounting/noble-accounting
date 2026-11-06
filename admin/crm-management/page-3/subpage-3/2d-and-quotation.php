@@ -230,7 +230,9 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                 const Q2D_POLL_INTERVAL_MS = 8000;
                 const Q2D_MAX_FILES = 10;                  // dapat kapareho ng Q2D_MAX_FILES_PER_SLOT sa PHP
-                const Q2D_MAX_BYTES = 15 * 1024 * 1024;    // 15MB bawat file
+                const Q2D_MAX_MB = 50;                       // dapat kapareho ng limit sa crm2dquotationajax.php
+                const Q2D_MAX_BYTES = Q2D_MAX_MB * 1024 * 1024;   // 50MB bawat file
+                const Q2D_MAX_TOTAL_MB = 100;                // kabuuan ng isang upload (isang request lang lahat ng files[])
 
                 let q2dPollTimer = null;
                 let q2dLastSignature = '';
@@ -439,8 +441,8 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     const is3d = slot === '3d';
                     const accept = is3d ? 'application/pdf,image/jpeg,image/png,image/webp' : 'application/pdf';
                     const hint = is3d
-                        ? `PDF or JPG/PNG/WEBP · max 15MB each · up to ${Q2D_MAX_FILES}`
-                        : `PDF only · max 15MB each · up to ${Q2D_MAX_FILES}`;
+                        ? `PDF or JPG/PNG/WEBP · max ${Q2D_MAX_MB}MB each · up to ${Q2D_MAX_FILES}`
+                        : `PDF only · max ${Q2D_MAX_MB}MB each · up to ${Q2D_MAX_FILES}`;
                     const idleLabel = savedFiles.length ? 'Add more files' : (is3d ? 'Upload 3D file(s)' : (slot === '2d' ? 'Upload 2D PDF(s)' : 'Upload Quotation PDF(s)'));
 
                     const savedList = savedFiles.length ? `
@@ -1100,7 +1102,12 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                             continue;
                         }
                         if (f.size > Q2D_MAX_BYTES) {
-                            rejected = `"${f.name}" exceeds the 15MB limit.`;
+                            rejected = `"${f.name}" exceeds the ${Q2D_MAX_MB}MB limit.`;
+                            continue;
+                        }
+                        const totalNow = q2dSelected[slot].reduce((n, x) => n + x.size, 0);
+                        if (totalNow + f.size > Q2D_MAX_TOTAL_MB * 1024 * 1024) {
+                            rejected = `Total size per upload is up to ${Q2D_MAX_TOTAL_MB}MB. Upload these first, then add the rest.`;
                             continue;
                         }
                         if (q2dSelected[slot].some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) {
@@ -1288,6 +1295,27 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     }
                 }
 
+                // POST na may upload progress (ang fetch ay walang progress kaya XMLHttpRequest ang gamit)
+                function q2dPostWithProgress(formData, onProgress) {
+                    return new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', Q2D_AJAX_URL);
+                        xhr.responseType = 'text';
+                        xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded, e.total); };
+                        xhr.upload.onload = () => onProgress(-1, -1);   // tapos na ang pag-upload → server na ang nagpo-proseso
+                        xhr.onload = () => {
+                            try { resolve(JSON.parse(xhr.responseText)); }
+                            catch (err) { reject(new Error('Bad response (HTTP ' + xhr.status + ')')); }
+                        };
+                        xhr.onerror = () => reject(new Error('Network error'));
+                        xhr.ontimeout = () => reject(new Error('Timed out'));
+                        xhr.send(formData);
+                    });
+                }
+                const q2dFmtMB = b => (b / 1024 / 1024).toFixed(b >= 10 * 1024 * 1024 ? 0 : 1) + ' MB';
+                let q2dUploading = 0;   // bilang ng upload na tumatakbo (para sa babala bago umalis sa page)
+                window.addEventListener('beforeunload', e => { if (q2dUploading > 0) { e.preventDefault(); e.returnValue = ''; } });
+
                 // MULTI-FILE: i-upload lahat ng napiling file (files[]) at i-mark done ang slot.
                 async function q2dSaveSlot(slot) {
                     const formData = new FormData();
@@ -1299,13 +1327,46 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
                     const doneBtn = document.getElementById(`${q2dInputId(slot)}_done_btn`);
                     if (doneBtn) {
                         doneBtn.disabled = true;
-                        doneBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading…';
+                        doneBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading… 0%';
                     }
-                    const resetBtn = () => { if (doneBtn) doneBtn.innerHTML = '<i class="fa-solid fa-check"></i> Mark as done'; q2dRefreshSlotUi(slot); };
 
+                    // Progress bar sa ilalim ng button
+                    let bar = null;
+                    if (doneBtn && q2dSelected[slot].length) {
+                        bar = document.createElement('div');
+                        bar.className = 'mt-2';
+                        bar.innerHTML = `
+                            <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+                                <div data-fill class="h-full w-0 rounded-full bg-amber-600 transition-[width] duration-200"></div>
+                            </div>
+                            <div class="mt-1 flex items-center justify-between text-[11px] text-gray-500">
+                                <span data-label>Starting upload…</span><span data-pct class="font-semibold tabular-nums text-amber-700">0%</span>
+                            </div>`;
+                        doneBtn.insertAdjacentElement('afterend', bar);
+                    }
+                    const setProgress = (loaded, total) => {
+                        if (!bar) return;
+                        const fill = bar.querySelector('[data-fill]'), label = bar.querySelector('[data-label]'), pct = bar.querySelector('[data-pct]');
+                        if (loaded < 0) {   // tapos na ang upload, nagpo-proseso ang server (convert/compress)
+                            fill.style.width = '100%';
+                            fill.classList.add('animate-pulse');
+                            label.textContent = 'Processing files on the server…';
+                            pct.textContent = '100%';
+                            if (doneBtn) doneBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+                            return;
+                        }
+                        const p = total ? Math.min(99, Math.floor(loaded / total * 100)) : 0;
+                        fill.style.width = p + '%';
+                        label.textContent = `${q2dFmtMB(loaded)} of ${q2dFmtMB(total)}`;
+                        pct.textContent = p + '%';
+                        if (doneBtn) doneBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading… ${p}%`;
+                    };
+                    const removeBar = () => { if (bar) bar.remove(); };
+                    const resetBtn = () => { removeBar(); if (doneBtn) doneBtn.innerHTML = '<i class="fa-solid fa-check"></i> Mark as done'; q2dRefreshSlotUi(slot); };
+
+                    q2dUploading++;
                     try {
-                        const res = await fetch(Q2D_AJAX_URL, { method: 'POST', body: formData });
-                        const data = await res.json();
+                        const data = await q2dPostWithProgress(formData, setProgress);
 
                         if (!data.success) {
                             crmShowToast(q2dEscapeHtml(data.message || 'Something went wrong.'), 'error');
@@ -1315,12 +1376,15 @@ if (empty($qError) && !empty($inquiry['deadline'])) {
 
                         q2dSelected[slot] = [];
                         q2dLastSignature = ''; // force re-render even if signature looks unchanged
+                        removeBar();
                         crmShowToast(data.message || 'Saved.');
                         await q2dFetchState();
                     } catch (e) {
                         console.error('q2dSaveSlot:', e);
                         crmShowToast('Connection error. Please try again.', 'error');
                         resetBtn();
+                    } finally {
+                        q2dUploading = Math.max(0, q2dUploading - 1);
                     }
                 }
 
