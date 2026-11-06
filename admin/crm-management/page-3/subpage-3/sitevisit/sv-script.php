@@ -198,10 +198,20 @@
                     a.insertAdjacentElement('afterend', box);
                 }
 
-                document.querySelectorAll('img[src*="uploads/crm-sitevisit/"]').forEach(img => {
+                const imgs = [...document.querySelectorAll('img[src*="uploads/crm-sitevisit/"]')];
+                const scan = () => imgs.forEach(img => {
                     if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) markImg(img);
+                });
+                imgs.forEach(img => {
+                    img.loading = 'eager';   // i-load agad kahit nakatago (modal / naka-sara na space) para makita kung sira
                     img.addEventListener('error', () => markImg(img));
                 });
+                scan();
+                // ulitin ilang beses (mabagal na net) + tuwing bubuksan ang Space list / space
+                [800, 2000, 5000].forEach(t => setTimeout(scan, t));
+                document.addEventListener('click', () => setTimeout(scan, 300), true);
+                document.addEventListener('toggle', () => setTimeout(scan, 300), true);
+                console.info('[Site visit] missing-file check ready —', imgs.length, 'photo(s) checked');
                 const seen = new Set();
                 document.querySelectorAll('a[href*="uploads/crm-sitevisit/"][href$=".pdf"]').forEach(a => {
                     const href = a.href;
