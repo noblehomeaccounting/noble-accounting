@@ -13,8 +13,7 @@
 
 include ROOT_PATH . '/network/connect.php';
 include ROOT_PATH . '/admin/authentication/index-roles.php';
-
-$allowedRoles = [ROLE_SALES];
+$allowedRoles = [ROLE_SALES,ROLE_DESIGNER];
 
 include ROOT_PATH . '/admin/authentication/index-authguard.php';
 include ROOT_PATH . '/admin/authentication/index-roleguard.php';

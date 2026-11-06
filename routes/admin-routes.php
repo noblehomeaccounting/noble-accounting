@@ -199,13 +199,11 @@ return [
 
     // designer page 1
     'designer'                              => 'admin/ui-designer/page-1/index-designer-main.php',
-
-    // designer page 2
     'crmdesigner'                           => 'admin/ui-designer/page-2/crmdesigner.php',
-
-    // designer page 3
     'checkdesignerquotation'                => 'admin/ui-designer/page-3/checkdesigner2dquotation.php',
     'checkdesigner2dquotationajax'          => 'admin/ui-designer/backend/page-3/checkdesigner2dquotationajax.php',
+    'designinsertercrm'                     => 'admin/ui-designer/page-4/designercrminsert.php',
+    'designercrmlist'                       => 'admin/ui-designer/page-5/designercrmlist.php',
 
     // cutting list
     'cuttinglist'                           => 'admin/ui-cuttinglist/page-1/index-cuttinglist-main.php',

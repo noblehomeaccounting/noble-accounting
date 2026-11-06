@@ -40,10 +40,47 @@ function apHasCol(mysqli $conn, string $table, string $col): bool
 }
 function apFlash(string $type, string $msg, string $tab): void
 {
-    $_SESSION['ap_flash'] = ['type' => $type, 'msg' => $msg];
-    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . '#' . $tab);
+    // Tab na bubuksan pagbalik — nasa session (hindi #hash sa URL)
+    $_SESSION['ap_flash'] = ['type' => $type, 'msg' => $msg, 'tab' => $tab];
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
     exit;
 }
+// Profile photo → WEBP: square crop sa gitna, max 512px, quality 82 (GD).
+// Ibinabalik ang true kapag na-save; false kapag walang GD/WEBP support (gagamitin ang orihinal na file).
+function apSaveAvatarWebp(string $src, string $mime, string $dest, int $max = 512): bool
+{
+    if (!function_exists('imagewebp') || !function_exists('imagecreatetruecolor')) return false;
+    $im = match ($mime) {
+        'image/jpeg' => @imagecreatefromjpeg($src),
+        'image/png'  => @imagecreatefrompng($src),
+        'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($src) : false,
+        default      => false,
+    };
+    if (!$im) return false;
+
+    // Ayusin ang ikot ng picture galing phone (EXIF orientation)
+    if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
+        $o = (int) ((@exif_read_data($src)['Orientation']) ?? 1);
+        $deg = [3 => 180, 6 => -90, 8 => 90][$o] ?? 0;
+        if ($deg) { $r = imagerotate($im, $deg, 0); if ($r) { imagedestroy($im); $im = $r; } }
+    }
+
+    $w = imagesx($im); $h = imagesy($im);
+    $side = min($w, $h);
+    $sx = (int) (($w - $side) / 2); $sy = (int) (($h - $side) / 2);
+    $out = min($max, $side);
+
+    $dst = imagecreatetruecolor($out, $out);
+    imagealphablending($dst, false);
+    imagesavealpha($dst, true);
+    imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+    imagecopyresampled($dst, $im, 0, 0, $sx, $sy, $out, $out, $side, $side);
+
+    $ok = imagewebp($dst, $dest, 82);
+    imagedestroy($im); imagedestroy($dst);
+    return $ok && is_file($dest);
+}
+
 // Isang "info tile" (icon + label + value)
 function apTile(string $icon, string $label, string $value, string $extra = ''): string
 {
@@ -68,10 +105,23 @@ if ($roleId <= 0 && !empty($_SESSION['email'])) {
     $roleId = (int) ($found['id'] ?? 0);
 }
 
+// ── Profile photo column (noblerole.avatar) — hiwalay sa ID photo (nobleid.photo) ──
+// Kusang gagawin ang column kung wala pa. (Kung bawal ang ALTER sa hosting, patakbuhin ito sa phpMyAdmin:
+//   ALTER TABLE noblerole ADD COLUMN avatar VARCHAR(255) NULL DEFAULT NULL;)
+$hasAvatar = apHasCol($conn, 'noblerole', 'avatar');
+if (!$hasAvatar) {
+    try {
+        $conn->query("ALTER TABLE noblerole ADD COLUMN avatar VARCHAR(255) NULL DEFAULT NULL");
+        $hasAvatar = true;
+    } catch (Throwable $e) {
+        error_log('adminprofile: cannot add noblerole.avatar — ' . $e->getMessage());
+    }
+}
+
 // ── noblerole row (account info) ──────────────────────────────
 $acct = null;
 if ($roleId > 0) {
-    $stmt = $conn->prepare("SELECT id, name, email, role, position, branch, created_at, last_active FROM noblerole WHERE id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, name, email, role, position, branch, created_at, last_active" . ($hasAvatar ? ", avatar" : "") . " FROM noblerole WHERE id = ? LIMIT 1");
     $stmt->bind_param("i", $roleId);
     $stmt->execute();
     $acct = $stmt->get_result()->fetch_assoc() ?: null;
@@ -102,6 +152,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $acct) {
         apFlash('error', 'Invalid request. Please refresh and try again.', 'personal');
     }
     $action = $_POST['action'] ?? '';
+
+    // 0) Profile: pangalan + profile photo (noblerole) — hiwalay sa ID ng HR
+    if ($action === 'update_profile') {
+        $newName = preg_replace('/\s+/', ' ', trim((string) ($_POST['display_name'] ?? '')));
+        if (mb_strlen($newName) < 2 || mb_strlen($newName) > 100) {
+            apFlash('error', 'Name must be 2 to 100 characters.', 'profile');
+        }
+        if (!preg_match("/^[\p{L}\p{M}0-9 .,'\-ñÑ]+$/u", $newName)) {
+            apFlash('error', 'Name can only contain letters, numbers, spaces, dot, comma, dash or apostrophe.', 'profile');
+        }
+
+        $relDir  = 'uploads/avatar';
+        $oldAv   = (string) ($acct['avatar'] ?? '');
+        $newAv   = $oldAv;
+        $f       = $_FILES['avatar'] ?? null;
+        $hasFile = $f && ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+
+        if ($hasFile) {
+            if (!$hasAvatar) apFlash('error', 'Profile photo is not available yet (missing avatar column).', 'profile');
+            if (in_array($f['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) apFlash('error', 'Photo must be 5MB or smaller.', 'profile');
+            if ($f['error'] !== UPLOAD_ERR_OK) apFlash('error', 'Upload failed. Please try again.', 'profile');
+            if ($f['size'] > 5 * 1024 * 1024) apFlash('error', 'Photo must be 5MB or smaller.', 'profile');
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);
+            $exts = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+            if (!isset($exts[$mime])) apFlash('error', 'Only JPG, PNG, or WEBP allowed.', 'profile');
+            if (!@getimagesize($f['tmp_name'])) apFlash('error', 'That file is not a valid image.', 'profile');
+
+            $absDir = ROOT_PATH . '/' . $relDir;
+            if (!is_dir($absDir)) mkdir($absDir, 0755, true);
+            $base = 'avatar_' . $roleId . '_' . time();
+
+            // Iko-convert sa WEBP (square, max 512px). Kapag walang WEBP support ang server, orihinal na file ang ise-save.
+            if (apSaveAvatarWebp($f['tmp_name'], $mime, $absDir . '/' . $base . '.webp')) {
+                $fname = $base . '.webp';
+            } else {
+                $fname = $base . '.' . $exts[$mime];
+                if (!move_uploaded_file($f['tmp_name'], $absDir . '/' . $fname)) {
+                    apFlash('error', 'Could not save the photo.', 'profile');
+                }
+            }
+            $newAv = $relDir . '/' . $fname;
+        } elseif (($_POST['remove_avatar'] ?? '') === '1') {
+            $newAv = '';
+        }
+
+        if ($hasAvatar) {
+            $avVal = $newAv !== '' ? $newAv : null;
+            $stmt = $conn->prepare("UPDATE noblerole SET name = ?, avatar = ? WHERE id = ?");
+            $stmt->bind_param("ssi", $newName, $avVal, $roleId);
+        } else {
+            $stmt = $conn->prepare("UPDATE noblerole SET name = ? WHERE id = ?");
+            $stmt->bind_param("si", $newName, $roleId);
+        }
+        $ok = $stmt->execute();
+        $stmt->close();
+
+        if ($ok) {
+            // burahin ang lumang profile photo (sa uploads/avatar lang)
+            if ($oldAv !== '' && $oldAv !== $newAv && strpos($oldAv, $relDir . '/') === 0 && is_file(ROOT_PATH . '/' . $oldAv)) {
+                @unlink(ROOT_PATH . '/' . $oldAv);
+            }
+            $_SESSION['username'] = $newName;   // para agad makita sa sidebar
+        } elseif ($newAv !== $oldAv && $newAv !== '' && is_file(ROOT_PATH . '/' . $newAv)) {
+            @unlink(ROOT_PATH . '/' . $newAv);
+        }
+        apFlash($ok ? 'success' : 'error', $ok ? 'Profile updated.' : 'Failed to update profile.', 'profile');
+    }
 
     // 1) Update personal info (contact, address, emergency lang — HR ang may hawak ng iba)
     if ($action === 'update_info') {
@@ -177,12 +294,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $acct) {
         $stmt->bind_param("si", $path, $roleId);
         $ok = $stmt->execute();
         $stmt->close();
-        apFlash($ok ? 'success' : 'error', $ok ? 'Profile photo updated.' : 'Failed to update photo.', 'personal');
+        apFlash($ok ? 'success' : 'error', $ok ? 'ID photo updated.' : 'Failed to update ID photo.', 'idcard');
     }
 }
 
 // ── Flash ─────────────────────────────────────────────────────
 $flash = $_SESSION['ap_flash'] ?? null;
+// Unang tab: galing sa save (flash) → ?tab=... (link ng sidebar) → wala (JS ang bahala)
+$apStartTab = preg_replace('/[^a-z]/', '', (string) ($flash['tab'] ?? ($_GET['tab'] ?? '')));
 unset($_SESSION['ap_flash']);
 
 // ── View data ─────────────────────────────────────────────────
@@ -234,7 +353,10 @@ $empId      = $emp['employeeid'] ?? '';
 $branch     = $acct['branch'] ?? '';
 $createdAt  = !empty($acct['created_at']) ? date('F j, Y g:i A', strtotime($acct['created_at'])) : '—';
 $lastActive = !empty($acct['last_active']) ? date('F j, Y g:i A', strtotime($acct['last_active'])) : '—';
-$initials   = strtoupper(substr(trim($fullName), 0, 1));
+// Profile (sariling pangalan + photo ng account) — hiwalay sa pangalan/photo ng ID
+$profileName = trim((string) ($acct['name'] ?? '')) !== '' ? $acct['name'] : $fullName;
+$avatar      = apImgUrlIfExists($acct['avatar'] ?? '');
+$initials    = mb_strtoupper(mb_substr(trim($profileName) ?: 'U', 0, 1));
 $csrf       = $_SESSION['ap_csrf'];
 
 // ── Profile completeness ──────────────────────────────────────
@@ -424,29 +546,24 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                     <div class="relative z-10 bg-white px-5 md:px-8 pb-5">
                         <div class="flex flex-col md:flex-row md:items-start gap-4 md:gap-6">
 
-                            <!-- Avatar -->
-                            <form method="post" enctype="multipart/form-data" id="ap-photo-form" class="relative shrink-0 self-center md:self-auto -mt-14">
-                                <input type="hidden" name="csrf" value="<?= apEsc($csrf) ?>">
-                                <input type="hidden" name="action" value="change_photo">
-                                <input type="file" name="photo" id="ap-photo-input" accept="image/jpeg,image/png,image/webp" class="hidden">
+                            <!-- Avatar (PROFILE photo — hiwalay sa ID photo) -->
+                            <div class="relative shrink-0 self-center md:self-auto -mt-14">
                                 <div class="w-28 h-28 rounded-2xl border-4 border-white shadow-lg bg-orange-100 overflow-hidden flex items-center justify-center">
-                                    <?php if ($photo): ?>
-                                        <img src="<?= apEsc($photo) ?>" alt="<?= apEsc($fullName) ?>" class="w-full h-full object-cover object-top">
+                                    <?php if ($avatar): ?>
+                                        <img src="<?= apEsc($avatar) ?>" alt="<?= apEsc($profileName) ?>" class="w-full h-full object-cover">
                                     <?php else: ?>
                                         <span class="text-4xl font-extrabold text-orange-500"><?= apEsc($initials) ?></span>
                                     <?php endif; ?>
                                 </div>
-                                <?php if ($emp): ?>
-                                    <button type="button" id="ap-photo-btn" class="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center border-2 border-white hover:bg-orange-600 transition" title="Change photo">
-                                        <i class="fa-solid fa-camera"></i>
-                                    </button>
-                                <?php endif; ?>
-                            </form>
+                                <button type="button" data-open-profile class="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center border-2 border-white hover:bg-orange-600 transition" title="Edit profile">
+                                    <i class="fa-solid fa-camera"></i>
+                                </button>
+                            </div>
 
                             <!-- Name + badges -->
                             <div class="flex-1 min-w-0 text-center md:text-left md:pt-4">
                                 <div class="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                                    <h2 class="text-xl md:text-2xl font-extrabold text-gray-900 leading-tight capitalize"><?= apEsc($fullName) ?></h2>
+                                    <h2 class="text-xl md:text-2xl font-extrabold text-gray-900 leading-tight"><?= apEsc($profileName) ?></h2>
                                     <?php if ($isOfficial): ?>
                                         <span class="relative inline-flex items-center justify-center w-5 h-5 shrink-0" title="Official Employee · Verified">
                                             <i class="fa-solid fa-certificate text-sky-500 text-[20px]"></i>
@@ -489,10 +606,10 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                                         <button type="button" data-goto="idcard" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition">
                                             <i class="fa-solid fa-id-card text-orange-500"></i> View My ID
                                         </button>
-                                        <button type="button" id="ap-photo-btn2" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 shadow-sm transition">
-                                            <i class="fa-solid fa-camera"></i> Change Photo
-                                        </button>
                                     <?php endif; ?>
+                                    <button type="button" data-open-profile class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 shadow-sm transition">
+                                        <i class="fa-solid fa-user-pen"></i> Edit Profile
+                                    </button>
                                 </div>
 
                                 <?php if ($isOfficial): ?>
@@ -648,11 +765,69 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                     <section class="min-w-0">
 
                         <nav class="rounded-2xl bg-white shadow-sm border border-gray-100 p-1.5 mb-5 overflow-x-auto flex gap-1" id="ap-tabs">
+                            <button type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors" data-tab="profile"><i class="fa-solid fa-user-pen"></i> My Profile</button>
                             <button type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors" data-tab="personal"><i class="fa-regular fa-user"></i> Personal Information</button>
                             <button type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors" data-tab="account"><i class="fa-solid fa-shield-halved"></i> Account Info</button>
                             <button type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors" data-tab="activity"><i class="fa-solid fa-clock-rotate-left"></i> Activity Log</button>
                             <button type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors" data-tab="idcard"><i class="fa-solid fa-id-card"></i> My ID</button>
                         </nav>
+
+                        <!-- ───── MY PROFILE (pangalan + profile photo ng account; hiwalay sa ID) ───── -->
+                        <div id="panel-profile" data-panel class="hidden">
+                            <form method="post" enctype="multipart/form-data" id="ap-profile-form" class="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 md:p-6">
+                                <input type="hidden" name="csrf" value="<?= apEsc($csrf) ?>">
+                                <input type="hidden" name="action" value="update_profile">
+                                <input type="hidden" name="remove_avatar" id="ap-av-remove" value="0">
+                                <input type="file" name="avatar" id="ap-av-input" accept="image/jpeg,image/png,image/webp" class="hidden">
+
+                                <div class="flex items-center gap-3 mb-5">
+                                    <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><i class="fa-solid fa-user-pen text-orange-500"></i></div>
+                                    <div>
+                                        <h3 class="text-base font-extrabold text-gray-900 leading-tight">My Profile</h3>
+                                        <p class="text-xs text-gray-500">Your photo and name in the system (sidebar, virtual office). Your employee ID is not affected.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+                                    <!-- photo -->
+                                    <div class="flex items-center gap-4">
+                                        <div class="relative w-24 h-24 rounded-2xl bg-orange-100 overflow-hidden flex items-center justify-center shrink-0 ring-1 ring-orange-200">
+                                            <img id="ap-av-img" src="<?= apEsc($avatar) ?>" alt="" class="w-full h-full object-cover <?= $avatar ? '' : 'hidden' ?>">
+                                            <span id="ap-av-init" class="text-3xl font-extrabold text-orange-500 <?= $avatar ? 'hidden' : '' ?>"><?= apEsc($initials) ?></span>
+                                        </div>
+                                        <div class="flex flex-col gap-2">
+                                            <button type="button" id="ap-av-pick" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100 transition">
+                                                <i class="fa-solid fa-upload"></i> Upload photo
+                                            </button>
+                                            <button type="button" id="ap-av-del" class="<?= $avatar ? '' : 'hidden' ?> inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:text-red-600 hover:border-red-200 transition">
+                                                <i class="fa-regular fa-trash-can"></i> Remove
+                                            </button>
+                                            <p class="text-[10.5px] text-gray-400">JPG, PNG or WEBP · max 5MB<br>Saved as a square WEBP</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- name -->
+                                    <div class="flex-1 min-w-0">
+                                        <label for="ap-display-name" class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Display Name</label>
+                                        <div class="relative">
+                                            <i class="fa-regular fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                                            <input id="ap-display-name" name="display_name" type="text" maxlength="100" required value="<?= apEsc($profileName) ?>"
+                                                class="w-full pl-10 pr-3 py-2.5 text-sm text-gray-800 bg-white border border-gray-200 rounded-lg outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20">
+                                        </div>
+                                        <p class="text-[11px] text-gray-400 mt-1.5">Login email stays the same: <b class="text-gray-500"><?= apEsc($email) ?></b></p>
+                                    </div>
+                                </div>
+
+                                <p id="ap-profile-err" class="hidden mt-4 text-xs font-semibold text-red-600"></p>
+
+                                <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                                    <button type="button" id="ap-profile-reset" class="px-4 py-2.5 sm:py-2 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 transition">Reset</button>
+                                    <button type="submit" id="ap-profile-save" class="px-5 py-2.5 sm:py-2 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 shadow-sm transition disabled:opacity-60">
+                                        <i class="fa-solid fa-floppy-disk mr-1"></i> Save Profile
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
 
                         <!-- ───── PERSONAL INFORMATION ───── -->
                         <div id="panel-personal" data-panel class="space-y-5">
@@ -670,7 +845,7 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                                     <span class="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-500"><i class="fa-solid fa-lock"></i> Read-only</span>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <?= apTile('fa-regular fa-user', 'Full Name', $fullName) ?>
+                                    <?= apTile('fa-regular fa-user', 'Full Name (on ID)', $emp['fullname'] ?? '') ?>
                                     <?= apTile('fa-solid fa-id-badge', 'Employee ID', $empId) ?>
                                     <?= apTile('fa-regular fa-building', 'Department', $department) ?>
                                     <?= apTile('fa-solid fa-briefcase', 'Position', $position) ?>
@@ -933,7 +1108,15 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                                         </div>
                                         <div class="id-ground" style="--u:min(3.4px,.85vw)"></div>
 
-                                        <div class="flex items-center justify-center gap-3 mt-6">
+                                        <form method="post" enctype="multipart/form-data" id="ap-photo-form" class="hidden">
+                                            <input type="hidden" name="csrf" value="<?= apEsc($csrf) ?>">
+                                            <input type="hidden" name="action" value="change_photo">
+                                            <input type="file" name="photo" id="ap-photo-input" accept="image/jpeg,image/png,image/webp">
+                                        </form>
+                                        <div class="flex items-center justify-center flex-wrap gap-3 mt-6">
+                                            <button type="button" id="ap-photo-btn" class="px-4 py-2 rounded-lg text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 shadow-sm transition">
+                                                <i class="fa-solid fa-camera mr-1"></i> Change ID Photo
+                                            </button>
                                             <button type="button" id="id-flip"
                                                 class="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 shadow transition">
                                                 <i class="fa-solid fa-rotate mr-1"></i> Flip
@@ -968,14 +1151,18 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                                 t.classList.add(...(on ? ON : OFF));
                             });
                             panels.forEach(p => p.classList.toggle('hidden', p.id !== 'panel-' + name));
-                            if (history.replaceState) history.replaceState(null, '', '#' + name);
+                            try { sessionStorage.setItem('ap-tab', name); } catch (e) { }   // naaalala ang tab kahit i-refresh
                         }
                         tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
                         document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => {
                             show(b.dataset.goto);
                             document.getElementById('ap-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }));
-                        show((location.hash || '#personal').slice(1));
+                        let start = <?= json_encode($apStartTab) ?> || (location.hash || '').slice(1);
+                        if (!start) { try { start = sessionStorage.getItem('ap-tab') || ''; } catch (e) { } }
+                        show(start || 'personal');
+                        // malinis na URL (walang #profile o ?tab=) para normal ang refresh
+                        if ((location.hash || location.search) && history.replaceState) history.replaceState(null, '', location.pathname);
 
                         const flash = document.getElementById('ap-flash');
                         if (flash) setTimeout(() => { flash.style.transition = 'opacity .4s'; flash.style.opacity = 0; setTimeout(() => flash.remove(), 400); }, 4500);
@@ -1006,11 +1193,61 @@ $percent   = (int) round($doneCount / max(1, count($checks)) * 100);
                         cancel.addEventListener('click', () => { inputs.forEach((i, n) => i.value = original[n]); setEdit(false); });
                     })();
 
-                    /* ───── Photo upload ───── */
+                    /* ───── My Profile: photo preview + name ───── */
+                    (function () {
+                        const form = document.getElementById('ap-profile-form');
+                        if (!form) return;
+                        const input = document.getElementById('ap-av-input'), img = document.getElementById('ap-av-img'),
+                            init = document.getElementById('ap-av-init'), del = document.getElementById('ap-av-del'),
+                            rm = document.getElementById('ap-av-remove'), nameIn = document.getElementById('ap-display-name'),
+                            err = document.getElementById('ap-profile-err'), save = document.getElementById('ap-profile-save');
+                        const orig = { src: img.getAttribute('src') || '', name: nameIn.value };
+                        let blobUrl = '';
+                        const showErr = m => { err.textContent = m; err.classList.toggle('hidden', !m); };
+                        const setPreview = src => {
+                            img.classList.toggle('hidden', !src); init.classList.toggle('hidden', !!src);
+                            if (src) img.src = src; else img.removeAttribute('src');
+                            del.classList.toggle('hidden', !src);
+                        };
+                        const refreshInit = () => { init.textContent = (nameIn.value.trim()[0] || 'U').toUpperCase(); };
+
+                        document.getElementById('ap-av-pick').addEventListener('click', () => input.click());
+                        input.addEventListener('change', () => {
+                            const f = input.files[0];
+                            if (!f) return;
+                            if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { showErr('Only JPG, PNG, or WEBP allowed.'); input.value = ''; return; }
+                            if (f.size > 5 * 1024 * 1024) { showErr('Photo must be 5MB or smaller.'); input.value = ''; return; }
+                            showErr('');
+                            if (blobUrl) URL.revokeObjectURL(blobUrl);
+                            blobUrl = URL.createObjectURL(f);
+                            rm.value = '0';
+                            setPreview(blobUrl);
+                        });
+                        del.addEventListener('click', () => { input.value = ''; rm.value = '1'; setPreview(''); });
+                        nameIn.addEventListener('input', () => { refreshInit(); showErr(''); });
+                        document.getElementById('ap-profile-reset').addEventListener('click', () => {
+                            input.value = ''; rm.value = '0'; nameIn.value = orig.name; refreshInit(); setPreview(orig.src); showErr('');
+                        });
+                        form.addEventListener('submit', e => {
+                            const n = nameIn.value.trim();
+                            if (n.length < 2) { e.preventDefault(); showErr('Name must be at least 2 characters.'); nameIn.focus(); return; }
+                            save.disabled = true;
+                            save.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving…';
+                        });
+
+                        // "Edit Profile" / camera sa itaas → buksan ang tab na ito
+                        document.querySelectorAll('[data-open-profile]').forEach(b => b.addEventListener('click', () => {
+                            const t = document.querySelector('[data-tab="profile"]');
+                            if (t) t.click();
+                            document.getElementById('ap-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }));
+                    })();
+
+                    /* ───── ID photo upload (nasa My ID tab) ───── */
                     (function () {
                         const input = document.getElementById('ap-photo-input');
                         if (!input) return;
-                        ['ap-photo-btn', 'ap-photo-btn2'].forEach(id => {
+                        ['ap-photo-btn'].forEach(id => {
                             const b = document.getElementById(id);
                             if (b) b.addEventListener('click', () => input.click());
                         });

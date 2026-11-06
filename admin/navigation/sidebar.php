@@ -32,7 +32,15 @@ if (!function_exists('sbIsActive')) {
 }
 
 $user_id = intval($_SESSION['account_id'] ?? 0);
-$onlineResult = $conn->query("SELECT last_active FROM noblerole WHERE id = $user_id LIMIT 1");
+// Kasama na ang name + avatar (profile photo mula sa My Profile). Kung wala pang avatar column, fallback sa luma.
+try {
+    $onlineResult = $conn->query("SELECT last_active, name, avatar FROM noblerole WHERE id = $user_id LIMIT 1");
+} catch (Throwable $e) {
+    $onlineResult = false;
+}
+if (!$onlineResult) {
+    $onlineResult = $conn->query("SELECT last_active, name FROM noblerole WHERE id = $user_id LIMIT 1");
+}
 $onlineRow = $onlineResult ? $onlineResult->fetch_assoc() : null;
 $isOnline = $onlineRow && $onlineRow['last_active'] &&
     (time() - strtotime($onlineRow['last_active'])) < 60;
@@ -68,9 +76,27 @@ $roleColors = [
 ];
 $currentRoleColor = $roleColors[$role] ?? '#6B7280';
 
-$sbUserName = $_SESSION['username'] ?? 'Admin';
+$sbUserName = trim((string) ($onlineRow['name'] ?? '')) !== '' ? $onlineRow['name'] : ($_SESSION['username'] ?? 'Admin');
 $sbPositionLabel = ucfirst($_SESSION['position'] ?? '');
 $sbInitial = mb_strtoupper(mb_substr(trim($sbUserName) ?: 'A', 0, 1));
+
+// Profile photo (noblerole.avatar) — URL lang kung nag-eexist ang file
+$sbAvatarRel = ltrim((string) ($onlineRow['avatar'] ?? ''), '/');
+$sbAvatar = ($sbAvatarRel !== '' && is_file(ROOT_PATH . '/' . $sbAvatarRel)) ? BASE_URL . '/' . $sbAvatarRel : '';
+
+// Avatar: larawan kung meron, kung wala ang unang letra (kulay ng role)
+if (!function_exists('sbAvatarHtml')) {
+    function sbAvatarHtml(string $avatar, string $initial, string $color, string $size): string
+    {
+        if ($avatar !== '') {
+            return '<img src="' . htmlspecialchars($avatar) . '" alt="" class="' . $size . ' object-cover bg-gray-100"'
+                . ' style="box-shadow: 0 0 0 1.5px ' . $color . '55;">';
+        }
+        return '<div class="' . $size . ' flex items-center justify-center font-bold"'
+            . ' style="background-color: ' . $color . '1A; color: ' . $color . '; box-shadow: inset 0 0 0 1.5px ' . $color . '55;">'
+            . htmlspecialchars($initial) . '</div>';
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  MENU — [section label => [items]]  (walang laman = hindi ipapakita)
@@ -175,6 +201,9 @@ if ($role === ROLE_DESIGNER) {
     }
     $add('Manage', $I('/crmdesigner', 'fa-solid fa-compass-drafting', 'CRM Designer', 'designerTodo'));
     $add('Manage', $I('/crmcontracts', 'fa-solid fa-file-signature', 'Contracts', 'contractTodo', 'Contract Agreement'));
+    $add('Manage', $I('/designinsertercrm', 'fa-solid fa-pen-ruler', 'Designer CRM', null, 'Designer CRM'));
+    $add('Manage', $I('/designercrmlist', 'fa-solid fa-list-ol', 'CRM List', 'designerList'));
+
     if ($isHead) {
         $add('Manage', $I('/checkdesignerquotation', 'fa-solid fa-file-pdf', 'Check Designer Quotation', 'designerReview'));
         // Final approval ng 2D at 3D (Designer Head)
@@ -441,10 +470,7 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             class="relative flex items-center gap-2.5 px-3 py-3 hover:bg-gray-50 cursor-pointer transition group-[.collapsed]/sb:justify-center group-[.collapsed]/sb:px-0"
             onmouseenter="showUserCard()" onmouseleave="hideUserCard()" onclick="toggleUserCard()">
             <div class="relative shrink-0">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold"
-                    style="background-color: <?= $currentRoleColor ?>1A; color: <?= $currentRoleColor ?>; box-shadow: inset 0 0 0 1.5px <?= $currentRoleColor ?>55;">
-                    <?= htmlspecialchars($sbInitial) ?>
-                </div>
+                <?= sbAvatarHtml($sbAvatar, $sbInitial, $currentRoleColor, 'w-8 h-8 rounded-lg text-[13px]') ?>
                 <span id="presence-dot"
                     class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
             </div>
@@ -468,10 +494,7 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             <div class="h-1" style="background-color: <?= $currentRoleColor ?>;"></div>
             <div class="px-4 py-3.5">
                 <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 rounded-xl flex items-center justify-center text-base font-bold shrink-0"
-                        style="background-color: <?= $currentRoleColor ?>1A; color: <?= $currentRoleColor ?>; box-shadow: inset 0 0 0 1.5px <?= $currentRoleColor ?>55;">
-                        <?= htmlspecialchars($sbInitial) ?>
-                    </div>
+                    <div class="shrink-0"><?= sbAvatarHtml($sbAvatar, $sbInitial, $currentRoleColor, 'w-11 h-11 rounded-xl text-base') ?></div>
                     <div class="min-w-0">
                         <p class="text-sm font-bold text-gray-900 truncate"><?= htmlspecialchars($sbUserName) ?></p>
                         <p class="text-[11px] text-gray-500 truncate">
@@ -491,9 +514,9 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
                 </div>
             </div>
             <div class="p-1.5 border-t border-gray-100">
-                <a href="<?= BASE_URL ?>/adminprofile"
+                <a href="<?= BASE_URL ?>/adminprofile?tab=profile"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition">
-                    <i class="fa-solid fa-id-badge w-4 text-center text-gray-400"></i> My Employee ID
+                    <i class="fa-solid fa-user-pen w-4 text-center text-gray-400"></i> My Profile
                 </a>
                 <a href="<?= BASE_URL ?>/logout"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition">
@@ -528,10 +551,8 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
                 <span id="mobile-notif-badge"
                     class="hidden absolute top-1.5 right-1.5 min-w-[15px] h-[15px] bg-red-500 rounded-full ring-2 ring-white text-[8px] font-bold text-white flex items-center justify-center px-0.5"></span>
             </button>
-            <button type="button" onclick="openMobileDrawer()" aria-label="Account"
-                class="relative w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                style="background-color: <?= $currentRoleColor ?>1A; color: <?= $currentRoleColor ?>; box-shadow: inset 0 0 0 1.5px <?= $currentRoleColor ?>55;">
-                <?= htmlspecialchars($sbInitial) ?>
+            <button type="button" onclick="openMobileDrawer()" aria-label="Account" class="relative w-8 h-8 shrink-0">
+                <?= sbAvatarHtml($sbAvatar, $sbInitial, $currentRoleColor, 'w-8 h-8 rounded-lg text-xs') ?>
                 <span
                     class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
             </button>
@@ -573,10 +594,7 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
     <div class="relative z-[1] px-4 py-3 border-b border-gray-100 bg-gray-50/80">
         <div class="flex items-center gap-3">
             <div class="relative shrink-0">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
-                    style="background-color: <?= $currentRoleColor ?>1A; color: <?= $currentRoleColor ?>; box-shadow: inset 0 0 0 1.5px <?= $currentRoleColor ?>55;">
-                    <?= htmlspecialchars($sbInitial) ?>
-                </div>
+                <?= sbAvatarHtml($sbAvatar, $sbInitial, $currentRoleColor, 'w-10 h-10 rounded-xl text-sm') ?>
                 <span
                     class="absolute -bottom-0.5 -right-0.5 w-3 h-3 <?= $isOnline ? 'bg-green-400' : 'bg-gray-300' ?> border-2 border-white rounded-full"></span>
             </div>
@@ -599,9 +617,9 @@ $sbHazard = 'bg-[repeating-linear-gradient(-45deg,#f59e0b_0_8px,#1f2937_8px_16px
             </div>
         </div>
         <div class="grid grid-cols-2 gap-2 mt-3">
-            <a href="<?= BASE_URL ?>/adminprofile" onclick="closeMobileDrawer()"
+            <a href="<?= BASE_URL ?>/adminprofile?tab=profile" onclick="closeMobileDrawer()"
                 class="inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:border-amber-300 hover:text-amber-800">
-                <i class="fa-solid fa-id-badge text-gray-400"></i> Employee ID
+                <i class="fa-solid fa-user-pen text-gray-400"></i> My Profile
             </a>
             <a href="<?= BASE_URL ?>/logout"
                 class="inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:border-red-200 hover:text-red-600 hover:bg-red-50">

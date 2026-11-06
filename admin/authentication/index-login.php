@@ -5,18 +5,36 @@ include ROOT_PATH . '/network/connect.php';
 
 $error = '';
 
-// ── Cloudflare Turnstile (human check bago mag-login) ──
-// Galing ang keys sa .env → index.php (TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY constants)
-// Kapag walang laman sa .env, gagamitin ang TEST keys ng Cloudflare (laging pumapasa) — para sa localhost lang.
-$tsSiteKey   = defined('TURNSTILE_SITE_KEY')   && trim(TURNSTILE_SITE_KEY)   !== '' ? trim(TURNSTILE_SITE_KEY)   : '1x00000000000000000000AA';
-$tsSecretKey = defined('TURNSTILE_SECRET_KEY') && trim(TURNSTILE_SECRET_KEY) !== '' ? trim(TURNSTILE_SECRET_KEY) : '1x0000000000000000000000000000000AA';
+// ── Cloudflare Turnstile (HYBRID: gumagana sa localhost at sa deployment) ──
+// Pagkakasunod ng keys:
+//   LOCAL  (localhost / 127.0.0.1):  TURNSTILE_SITE_KEY_LOCAL → TURNSTILE_SITE_KEY → Cloudflare TEST keys
+//   LIVE   (deployed domain):        TURNSTILE_SITE_KEY  (kapag wala → hindi papayagang mag-login)
+// Sa LOCAL lang: kapag offline / hindi maabot ang Cloudflare, papayagan pa ring mag-login (para tuloy ang dev).
+$tsHost    = strtolower($_SERVER['HTTP_HOST'] ?? '');
+$tsIsLocal = str_contains($tsHost, 'localhost') || str_contains($tsHost, '127.0.0.1') || str_contains($tsHost, '[::1]');
+
+$tsEnv = function (string $k): string {
+    if (defined($k)) return trim((string) constant($k));
+    return trim((string) ($_ENV[$k] ?? getenv($k) ?: ''));
+};
+
+if ($tsIsLocal) {
+    $tsSiteKey   = $tsEnv('TURNSTILE_SITE_KEY_LOCAL')   ?: $tsEnv('TURNSTILE_SITE_KEY')   ?: '1x00000000000000000000AA';
+    $tsSecretKey = $tsEnv('TURNSTILE_SECRET_KEY_LOCAL') ?: $tsEnv('TURNSTILE_SECRET_KEY') ?: '1x0000000000000000000000000000000AA';
+} else {
+    $tsSiteKey   = $tsEnv('TURNSTILE_SITE_KEY');
+    $tsSecretKey = $tsEnv('TURNSTILE_SECRET_KEY');
+}
+$tsReady = $tsSiteKey !== '' && $tsSecretKey !== '';   // sa LIVE: false kapag kulang ang keys sa .env
 
 /**
  * Sine-check sa Cloudflare kung totoo ang token na galing sa widget.
  * Ibinabalik ang true kapag pumasa.
  */
-function turnstileVerify(string $secret, string $token): bool
+function turnstileVerify(string $secret, string $token, bool $isLocal = false): bool
 {
+    // LOCAL lang: offline ang Cloudflare script (walang internet) → tuloy pa rin ang login
+    if ($isLocal && $token === '' && ($_POST['ts_offline'] ?? '') === '1') return true;
     if ($token === '' || strlen($token) > 2048) return false;
 
     // Kung naka-proxy ang site sa Cloudflare, nasa CF-Connecting-IP ang totoong IP ng user
@@ -46,7 +64,7 @@ function turnstileVerify(string $secret, string $token): bool
     }
     if ($body === false) {
         error_log('Turnstile: could not reach Cloudflare');
-        return false;   // hindi maabot ang Cloudflare → huwag papasukin
+        return $isLocal;   // LOCAL: tuloy pa rin · LIVE: huwag papasukin
     }
     $res = json_decode($body, true);
     if (empty($res['success'])) {
@@ -110,7 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if (!turnstileVerify($tsSecretKey, (string) ($_POST['cf-turnstile-response'] ?? ''))) {
+    if (!$tsReady) {
+        // LIVE pero walang Turnstile keys sa .env
+        error_log('Turnstile: TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY missing in .env');
+        $error = 'Login is temporarily unavailable (security check not configured). Please contact IT.';
+    } elseif (!turnstileVerify($tsSecretKey, (string) ($_POST['cf-turnstile-response'] ?? ''), $tsIsLocal)) {
         // Inuuna ang human check bago galawin ang database
         $error = 'Please complete the security check and try again.';
     } elseif (empty($email) || empty($password)) {
@@ -172,7 +194,25 @@ if (!empty($_SESSION['logged_in'])) {
     <title>Admin Login — Noblehome</title>
     <?php include ROOT_PATH . '/link/top.php'; ?>
     <!-- Cloudflare Turnstile -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        window.NH_TS_LOCAL = <?= $tsIsLocal ? 'true' : 'false' ?>;
+        // Hindi ma-load ang Cloudflare (offline) → sa LOCAL lang bubuksan ang Sign In
+        function nhTsOffline() {
+            if (window.nhTsPassed) return;
+            var btn = document.getElementById('signInBtn'), hint = document.getElementById('tsHint'), off = document.getElementById('tsOffline');
+            if (!btn || !hint) return;
+            if (window.NH_TS_LOCAL) {
+                if (off) off.value = '1';
+                btn.disabled = false;
+                hint.textContent = (window.nhTsErrCode ? 'Cloudflare error ' + window.nhTsErrCode : 'Offline') + ' — security check skipped (localhost only).';
+            } else {
+                hint.textContent = 'Could not load the security check. Check your connection and refresh the page.';
+            }
+        }
+    </script>
+    <?php if ($tsReady): ?>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer onerror="nhTsOffline()"></script>
+    <?php endif; ?>
     <style>
         /* Phone: paliitin ang Turnstile widget (65px → ~52px taas), sakop pa rin ang buong lapad */
         /* Buong taas ng NAKIKITANG screen (dvh) — hindi lumalampas dahil sa address bar ng phone */
@@ -338,6 +378,8 @@ if (!empty($_SESSION['logged_in'])) {
 
                     <!-- Security check (Cloudflare Turnstile) -->
                     <div class="mb-4 sm:mb-5">
+                        <?php if ($tsReady): ?>
+                        <input type="hidden" name="ts_offline" id="tsOffline" value="0">
                         <div class="ts-wrap"><div class="cf-turnstile"
                             data-sitekey="<?= htmlspecialchars($tsSiteKey) ?>"
                             data-action="login"
@@ -345,8 +387,11 @@ if (!empty($_SESSION['logged_in'])) {
                             data-theme="light"
                             data-callback="nhTurnstileOk"
                             data-expired-callback="nhTurnstileReset"
-                            data-error-callback="nhTurnstileReset"></div></div>
+                            data-error-callback="nhTurnstileError"></div></div>
                         <p id="tsHint" class="text-[10px] sm:text-[11px] text-gray-400 mt-1 sm:mt-1.5">Verifying you're human… the Sign In button unlocks once it's done.</p>
+                        <?php else: ?>
+                        <p id="tsHint" class="text-[11px] text-red-600 font-medium">Security check is not configured. Please contact IT.</p>
+                        <?php endif; ?>
                     </div>
 
                     <button type="submit" id="signInBtn" disabled
@@ -380,39 +425,29 @@ if (!empty($_SESSION['logged_in'])) {
             });
         })();
 
-        // Remember me — email lang ang sine-save (hindi ang password)
-        (function () {
-            var emailInput = document.getElementById('email');
-            var remember = document.getElementById('remember');
-            var KEY = 'noble_remember_email';
-
-            try {
-                var saved = localStorage.getItem(KEY);
-                if (saved && !emailInput.value) {
-                    emailInput.value = saved;
-                    remember.checked = true;
-                }
-            } catch (e) { }
-
-            emailInput.form.addEventListener('submit', function () {
-                try {
-                    if (remember.checked) {
-                        localStorage.setItem(KEY, emailInput.value);
-                    } else {
-                        localStorage.removeItem(KEY);
-                    }
-                } catch (e) { }
-            });
-        })();
-
         // Cloudflare Turnstile: bukas lang ang Sign In kapag pumasa na ang check
         function nhTurnstileOk() {
+            window.nhTsPassed = true;
+            var off = document.getElementById('tsOffline'); if (off) off.value = '0';
             document.getElementById('signInBtn').disabled = false;
             document.getElementById('tsHint').textContent = 'Security check passed.';
         }
         function nhTurnstileReset() {
+            window.nhTsPassed = false;
             document.getElementById('signInBtn').disabled = true;
             document.getElementById('tsHint').textContent = 'Security check expired or failed. Please wait for it to refresh.';
+        }
+
+        // Naka-block ng ad-blocker / mabagal na net: kapag hindi pa rin lumalabas ang widget pagkalipas ng 10s
+        setTimeout(function () { if (!window.turnstile) nhTsOffline(); }, 10000);
+
+        // Error ng widget (hal. "Unable to connect to website" = hindi naka-add ang domain sa Hostnames ng widget)
+        function nhTurnstileError(code) {
+            window.nhTsErrCode = code || '';
+            console.warn('[Turnstile] error code:', code, '— i-check ang Hostnames ng widget sa Cloudflare at ang site key sa .env');
+            if (window.NH_TS_LOCAL) { nhTsOffline(); return true; }   // LOCAL: tuloy pa rin ang login
+            nhTurnstileReset();
+            document.getElementById('tsHint').textContent = 'Security check failed to load' + (code ? ' (error ' + code + ')' : '') + '. Please refresh the page.';
         }
 
         sessionStorage.clear();
