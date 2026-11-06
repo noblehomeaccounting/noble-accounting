@@ -10,6 +10,98 @@ if (
     $svFormError = 'The files are too large for the server to accept. Try fewer or smaller files.';
 }
 
+// ═══ Ayusin ang nawawalang file ng naka-save na record (Re-upload / Remove) — JSON ═══
+// Galing sa sv-script.php kapag hindi ma-load ang isang photo o PDF (hal. nabura ng deploy).
+if (empty($svError) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && in_array($_POST['sv_fix'] ?? '', ['replace', 'remove'], true)) {
+    header('Content-Type: application/json');
+    $svFixOut = function (bool $ok, string $msg, array $extra = []) {
+        echo json_encode(['success' => $ok, 'message' => $msg] + $extra);
+        exit;
+    };
+
+    // Path lang sa loob ng uploads/crm-sitevisit (galing sa src/href ng larawan o link)
+    if (!preg_match('#(uploads/crm-sitevisit/[A-Za-z0-9_\-]+\.(webp|jpe?g|png|pdf))(?:[?\#].*)?$#i', (string) ($_POST['path'] ?? ''), $m)) {
+        $svFixOut(false, 'Invalid file reference.');
+    }
+    $rel = $m[1];
+    $isPdf = strtolower($m[2]) === 'pdf';
+
+    // Siguraduhing kasama ang file sa record ng inquiry na ito (at sa designer na ito)
+    $svFixRows = [];   // [table, id, column, csv]
+    $collect = function (string $sql, string $table, array $params, string $types) use ($conn, &$svFixRows) {
+        try {
+            $st = $conn->prepare($sql);
+            if (!$st) return;
+            $st->bind_param($types, ...$params);
+            $st->execute();
+            foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+                foreach (['photos', 'measurement_files'] as $col) {
+                    if (array_key_exists($col, $r)) $svFixRows[] = [$table, (int) $r['id'], $col, (string) $r[$col]];
+                }
+            }
+            $st->close();
+        } catch (Throwable $e) {
+            // walang table/column → laktawan
+        }
+    };
+    $collect("SELECT id, photos, measurement_files FROM noblecrm_sitevisit WHERE inquiry_id = ? AND designer_id = ?", 'noblecrm_sitevisit', [$inquiryId, $currentDesignerId], 'ii');
+    $collect("SELECT id, photos, measurement_files FROM noblecrm_sitevisit_space WHERE inquiry_id = ?", 'noblecrm_sitevisit_space', [$inquiryId], 'i');
+    $collect("SELECT id, photos, measurement_files FROM noblecrm_sitevisit_space_item WHERE inquiry_id = ?", 'noblecrm_sitevisit_space_item', [$inquiryId], 'i');
+
+    $inRecord = false;
+    foreach ($svFixRows as [, , , $csv]) {
+        if (in_array($rel, array_map('trim', explode(',', $csv)), true)) { $inRecord = true; break; }
+    }
+    if (!$inRecord) $svFixOut(false, 'That file is not part of this site visit.');
+
+    $abs = ROOT_PATH . '/' . $rel;
+
+    if ($_POST['sv_fix'] === 'replace') {
+        $f = svFileList('file')[0] ?? null;
+        if (!$f || $f['error'] !== UPLOAD_ERR_OK) $svFixOut(false, 'Upload failed. Please try again.');
+        if (!is_dir(dirname($abs))) mkdir(dirname($abs), 0755, true);
+
+        if ($isPdf) {
+            $fi = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($fi, $f['tmp']);
+            finfo_close($fi);
+            if ($mime !== 'application/pdf') $svFixOut(false, 'Please choose a PDF file.');
+            if ($f['size'] > SV_MAX_PDF_BYTES) $svFixOut(false, 'The PDF is too large.');
+            if (!move_uploaded_file($f['tmp'], $abs)) $svFixOut(false, 'Could not save the file.');
+        } else {
+            $conv = svConvertImage($f['tmp']);   // WEBP (o JPG kapag sira ang WEBP) — parehong pangalan pa rin
+            if (!$conv) $svFixOut(false, 'Could not read that photo. Use JPG, PNG or WEBP.');
+            if (!svMoveConverted($conv[0], $abs)) { @unlink($conv[0]); $svFixOut(false, 'Could not save the photo.'); }
+        }
+        include_once ROOT_PATH . '/network/realtime-helper.php';
+        if (function_exists('nhRtInquiry')) nhRtInquiry($conn, (int) $inquiryId, [], 'crm_sitevisit');
+        $svFixOut(true, 'File restored.', ['path' => $rel]);
+    }
+
+    // remove: tanggalin sa lahat ng record (at ang file kung meron pa)
+    $conn->begin_transaction();
+    try {
+        foreach ($svFixRows as [$table, $id, $col, $csv]) {
+            $list = array_values(array_filter(array_map('trim', explode(',', $csv)), fn($x) => $x !== '' && $x !== $rel));
+            $new = implode(',', $list);
+            if ($new === $csv) continue;
+            $st = $conn->prepare("UPDATE `$table` SET `$col` = ? WHERE id = ?");
+            $st->bind_param('si', $new, $id);
+            $st->execute();
+            $st->close();
+        }
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log('sitevisit remove file: ' . $e->getMessage());
+        $svFixOut(false, 'Could not remove the file. Please try again.');
+    }
+    if (is_file($abs)) @unlink($abs);
+    include_once ROOT_PATH . '/network/realtime-helper.php';
+    if (function_exists('nhRtInquiry')) nhRtInquiry($conn, (int) $inquiryId, [], 'crm_sitevisit');
+    $svFixOut(true, 'File removed from the record.');
+}
+
 // --- Handle submit ---
 if (empty($svError) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_sitevisit'])) {
 
