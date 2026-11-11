@@ -33,5 +33,25 @@ RewriteRule ^(.*)$ index.php [QSA,L]
     RewriteRule (^|/)\.(?!well-known/) - [F,L]
 </IfModule>
 
+# ===== SECURITY =====
+
+# Itago ang mga file/folder na pang-developer lang (404 ang lalabas)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(vendor|node_modules|tests|test-results|playwright-report|\.git|\.github|\.vscode)(/|$) - [R=404,L]
+    RewriteRule ^(composer\.(json|lock)|package(-lock)?\.json|playwright\.config\.js|\.env.*|\.gitignore)$ - [R=404,L]
+    RewriteRule \.(sql|md|log|bak|sh)$ - [R=404,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # Maliit na CSP — hindi nito haharangin ang mga CDN at inline script mo
+    Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+    Header always unset X-Powered-By
+</IfModule>
+
 # Custom 404 error page
 ErrorDocument 404 /nobleaccounting/404.php

@@ -1,0 +1,71 @@
+# .github/workflows/ci.yml — CI/CD para sa nobleaccounting
+# Tumatakbo tuwing may push sa main (at sa bawat pull request).
+#   1) check  → PHP syntax ng lahat ng .php, composer.json, at bawal ang .env sa repo
+#   2) deploy → tatawagin ang Hostinger auto-deploy, PERO kung pumasa lang ang check
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:        # may "Run workflow" button din sa Actions tab
+
+concurrency:                # kapag sunod-sunod ang push, ang huli lang ang ide-deploy
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kunin ang code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'          # gawing kapareho ng PHP version sa Hostinger
+          extensions: mysqli, mbstring, gd, curl
+          tools: composer
+
+      - name: Bawal ang .env sa repo
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "::error file=.env::Naka-commit ang .env! Tanggalin: git rm --cached .env"
+            exit 1
+          fi
+
+      - name: Tama ba ang composer.json
+        run: composer validate --no-check-publish --no-check-all
+
+      - name: PHP syntax check (lahat ng .php)
+        run: |
+          failed=0
+          while IFS= read -r -d '' f; do
+            out=$(php -l "$f" 2>&1) || { echo "::error file=$f::$out"; failed=1; }
+          done < <(find . -name '*.php' \
+                     -not -path './vendor/*' \
+                     -not -path './node_modules/*' \
+                     -not -path './playwright-report/*' \
+                     -not -path './test-results/*' -print0)
+          if [ "$failed" -ne 0 ]; then echo "May syntax error. Tingnan ang mga error sa itaas."; exit 1; fi
+          echo "Walang syntax error."
+
+  deploy:
+    name: Deploy to Hostinger
+    needs: check                          # tatakbo lang kung pumasa ang check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tawagin ang Hostinger auto-deploy
+        env:
+          DEPLOY_URL: ${{ secrets.HOSTINGER_DEPLOY_URL }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::Wala pang HOSTINGER_DEPLOY_URL sa GitHub Secrets."
+            exit 1
+          fi
+          curl -fsS -X POST "$DEPLOY_URL"
+          echo "Na-trigger ang deploy."

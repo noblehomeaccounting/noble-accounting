@@ -65,6 +65,24 @@ $userRoutes  = require ROOT_PATH . '/routes/user-routes.php';
 $isAdminRoute = isset($adminRoutes[$request]);
 
 session_name($isAdminRoute ? 'nobleadmin' : 'nobleuser');
+
+// ─── Session cookie security ─────────────────────────────────────────────────
+// httponly → hindi mababasa ng JavaScript ang session cookie (iwas session theft)
+// secure   → sa HTTPS lang ipapadala (live); naka-off sa localhost para gumana sa XAMPP
+// samesite → Lax: hindi ipapadala kapag galing sa ibang site ang form/request,
+//            pero gumagana pa rin ang Google login at mga link mula sa email/chat
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+session_set_cookie_params([
+    'lifetime' => 0,          // mawawala kapag isinara ang browser (gaya ng dati)
+    'path'     => '/',
+    'secure'   => $isHttps,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+ini_set('session.use_strict_mode', '1');   // tanggihan ang gawa-gawang session ID
+
 session_start();
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
